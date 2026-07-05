@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "home_clip_seongsu.png",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}
