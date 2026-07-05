@@ -1,0 +1,12 @@
+{
+  "images" : [
+    {
+      "filename" : "event_gangneung_dano.png",
+      "idiom" : "universal"
+    }
+  ],
+  "info" : {
+    "author" : "xcode",
+    "version" : 1
+  }
+}
