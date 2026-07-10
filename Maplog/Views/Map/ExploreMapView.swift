@@ -33,7 +33,8 @@ struct ExploreMapView: View {
     var body: some View {
         GeometryReader { proxy in
             ZStack(alignment: .bottom) {
-                KakaoMapCanvas()
+//                KakaoMapCanvas()
+                PracticeKakaoMapView()
                     .ignoresSafeArea()
                 
                 VStack(spacing: 0) {
