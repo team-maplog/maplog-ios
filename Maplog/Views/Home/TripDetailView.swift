@@ -646,10 +646,12 @@ struct InfoBadge: View {
 
     var body: some View {
         Label(title, systemImage: systemImage)
-            .font(.system(size: 13, weight: .bold))
+            .font(.system(size: 12, weight: .bold))
             .foregroundStyle(Color.maplogInk)
-            .padding(.horizontal, MaplogSpacing.small)
-            .padding(.vertical, 9)
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
+            .padding(.horizontal, 10)
+            .padding(.vertical, MaplogSpacing.xSmall)
             .background(Color.maplogCanvas)
             .clipShape(Capsule())
     }

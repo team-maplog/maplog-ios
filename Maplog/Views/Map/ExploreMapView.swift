@@ -1,18 +1,10 @@
 import SwiftUI
 
-private enum BottomSheetState: Equatable {
-    case collapsed
-    case medium
-    case expanded
-}
-
 struct ExploreMapView: View {
     @EnvironmentObject private var sessionStore: MaplogSessionStore
     @StateObject private var viewModel = ExploreMapViewModel()
     @State private var toastText: String?
     @State private var showsLocationPermissionPrompt = false
-    @State private var sheetState: BottomSheetState  = .collapsed
-    @State private var sheetDragTranslation: CGFloat = 0 // 지금 손가락이 얼마나 드래그 중인지 기억
     
     private var selectedTrip: MaplogTrip {
         guard let selectedSpot = viewModel.selectedSpot else {
@@ -66,18 +58,9 @@ struct ExploreMapView: View {
         return spots.filter { seenIDs.insert($0.id).inserted }
     }
 
-    private var showsMapFloatingControl: Bool {
-        switch sheetState {
-        case .collapsed, .medium:
-            return true
-        case .expanded:
-            return false
-        }
-    }
-    
     var body: some View {
         GeometryReader { proxy in
-            let currentSheetHeight = interactiveSheetHeight(for: proxy.size.height)
+            let currentSheetHeight = routeSheetHeight(for: proxy.size.height)
 
             ZStack(alignment: .bottom) {
 //                KakaoMapCanvas()
@@ -103,10 +86,8 @@ struct ExploreMapView: View {
             }
             .clipped()
             
-            if showsMapFloatingControl {
-                mapFloatingControls
-                    .padding(.bottom, currentSheetHeight + 14)
-            }
+            mapFloatingControls
+                .padding(.bottom, currentSheetHeight + 14)
             
             if let toastText {
                 Text(toastText)
@@ -123,9 +104,8 @@ struct ExploreMapView: View {
             }
         }
         .toolbar(.hidden, for: .navigationBar)
-        // 장소 컨텍스트 카드가 열려 있는 동안에는 하단 탭바와 겹치지 않게 한다.
-        // 카드의 보조 액션이 가려지지 않고, 닫으면 곧바로 전역 탭으로 돌아갈 수 있다.
-        .maplogTabBarHidden(viewModel.selectedSpot != nil || sheetState != .collapsed)
+        // 지도는 전역 탐색 화면이므로 장소 카드 상태와 관계없이 탭바를 유지한다.
+        .maplogTabBarHidden(false)
         .sheet(isPresented: $showsLocationPermissionPrompt) {
             LocationPermissionPromptSheet(
                 onAllow: {
@@ -241,28 +221,42 @@ struct ExploreMapView: View {
     }
     
     private var routeSheet: some View {
-        VStack(alignment: .leading, spacing: MaplogSpacing.medium) {
-            sheetHandle
-            
-            if let selectedSpot = viewModel.selectedSpot {
-                routeSummaryHeader(for: selectedSpot)
-                routePrimaryActions(for: selectedSpot)
+        ScrollView(.vertical, showsIndicators: true) {
+            VStack(alignment: .leading, spacing: MaplogSpacing.medium) {
+                systemSheetDragIndicator
 
-                if sheetState != .collapsed {
-                    ScrollView(.vertical, showsIndicators: false) {
-                        routeSheetDetails(for: selectedSpot)
-                    }
+                if let selectedSpot = viewModel.selectedSpot {
+                    routeSummaryHeader(for: selectedSpot)
+                    routePrimaryActions(for: selectedSpot)
+
+                    routeSheetDetails(for: selectedSpot)
+                } else {
+                    mapEmptyState
                 }
-            } else {
-                mapEmptyState
             }
+            .padding(.top, MaplogSpacing.xSmall)
+            .padding(.horizontal, MaplogSpacing.page)
+            .padding(.bottom, MaplogSpacing.small)
         }
-        .padding(.top, MaplogSpacing.small)
-        .padding(.horizontal, MaplogSpacing.page)
+        .scrollIndicators(.visible)
+        .scrollBounceBehavior(.basedOnSize)
         .frame(maxWidth: .infinity, alignment: .topLeading)
         .background(Color(uiColor: .systemBackground))
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .shadow(color: .black.opacity(0.10), radius: 20, x: 0, y: -6)
+    }
+
+    private var systemSheetDragIndicator: some View {
+        Capsule()
+            .fill(Color(uiColor: .systemGray3))
+            .frame(width: 36, height: 5)
+            .frame(maxWidth: .infinity)
+            .padding(.bottom, -MaplogSpacing.xSmall)
+            .accessibilityHidden(true)
+    }
+
+    private func routeSheetHeight(for screenHeight: CGFloat) -> CGFloat {
+        min(max(screenHeight * 0.36, 280), 304)
     }
 
     private var savedRouteShortcut: some View {
@@ -291,7 +285,7 @@ struct ExploreMapView: View {
         }
         .buttonStyle(.plain)
     }
-    
+
     private var mapEmptyState: some View {
         VStack(spacing: 10) {
             Image(systemName: "map")
@@ -310,42 +304,7 @@ struct ExploreMapView: View {
         .background(Color.maplogCanvas)
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
-    
-    private var sheetHandle: some View {
-        Button {
-            withAnimation(.spring(response: 0.32, dampingFraction: 0.9)) {
-                sheetState = sheetState == .collapsed ? .medium : .collapsed
-            }
-        } label: {
-            Capsule()
-                .fill(Color.maplogBorder)
-                .frame(width: 52, height: 5)
-                .frame(maxWidth: .infinity)
-            .frame(height: 24)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(MaplogPressFeedbackStyle(pressedScale: 0.98))
-        .accessibilityLabel(sheetState == .collapsed ? "장소 상세 펼치기" : "장소 상세 접기")
-        .accessibilityHint("위아래로 끌어 시트 높이를 조절할 수도 있습니다")
-            .gesture(
-                DragGesture()
-                    .onChanged { value in
-                        sheetDragTranslation = value.translation.height
-                    }
-                    .onEnded{ value in
-                        withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
-                            if value.translation.height < -60 {
-                                sheetState = .expanded
-                            } else if value.translation.height > 60 {
-                                sheetState = .collapsed
-                            }
-                            
-                            sheetDragTranslation = 0
-                        }
-                    }
-            )
-    }
-    
+
     private func toggleRouteSaved() {
         if sessionStore.hasSavedRoute(selectedTrip) {
             withAnimation(.spring(response: 0.32, dampingFraction: 0.88)) {
@@ -359,7 +318,7 @@ struct ExploreMapView: View {
             showToast("현재 경로를 보관함에 저장했어요")
         }
     }
-    
+
     private func toggleSpotSaved(_ spot: MaplogSpot) {
         if sessionStore.hasSavedSpot(spot) {
             sessionStore.removeSavedSpot(spot)
@@ -369,7 +328,7 @@ struct ExploreMapView: View {
             showToast("\(spot.name)을 저장했어요")
         }
     }
-    
+
     private func showToast(_ message: String) {
         withAnimation(.spring(response: 0.3, dampingFraction: 0.86)) {
             toastText = message
@@ -382,19 +341,7 @@ struct ExploreMapView: View {
             }
         }
     }
-    
-    private func sheetHeight(for screenHeight: CGFloat) -> CGFloat {
-        switch sheetState {
-        case .collapsed:
-            return min(max(screenHeight * 0.29, 240), 268)
-        case .medium:
-            return screenHeight * 0.55
-        case .expanded:
-            return screenHeight * 0.82
-        }
-    }
-    
-    
+
     private func routeSummaryHeader(for selectedSpot: MaplogSpot) -> some View {
         HStack(alignment: .top, spacing: MaplogSpacing.small) {
             MaplogSpotImageView(
@@ -406,7 +353,7 @@ struct ExploreMapView: View {
 
             VStack(alignment: .leading, spacing: MaplogSpacing.xxSmall) {
                 Text(selectedSpot.name)
-                    .font(MaplogFont.screenTitle)
+                    .font(.system(size: 22, weight: .semibold, design: .rounded))
                     .foregroundStyle(Color.maplogTextPrimary)
                     .lineLimit(2)
                 Label(selectedSpot.area, systemImage: "mappin.and.ellipse")
@@ -436,7 +383,7 @@ struct ExploreMapView: View {
                     .frame(width: MaplogSize.minimumTapTarget, height: MaplogSize.minimumTapTarget)
                     .background(sessionStore.hasSavedSpot(selectedSpot) ? Color.maplogLime : Color.maplogCanvas)
                     .clipShape(Circle())
-        }
+            }
 
             .buttonStyle(MaplogPressFeedbackStyle())
             .accessibilityLabel(sessionStore.hasSavedSpot(selectedSpot) ? "장소 저장 해제" : "장소 저장")
@@ -468,7 +415,7 @@ struct ExploreMapView: View {
                     .font(MaplogFont.calloutStrong)
                     .foregroundStyle(Color.maplogInk)
                     .frame(maxWidth: .infinity)
-                    .frame(height: MaplogSize.compactControlHeight)
+                    .frame(height: max(MaplogSize.compactControlHeight, 46))
                     .background(Color.maplogCanvas)
                     .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.small, style: .continuous))
             }
@@ -481,7 +428,7 @@ struct ExploreMapView: View {
                     .font(MaplogFont.calloutStrong)
                     .foregroundStyle(Color.maplogInk)
                     .frame(maxWidth: .infinity)
-                    .frame(height: MaplogSize.compactControlHeight)
+                    .frame(height: max(MaplogSize.compactControlHeight, 46))
                     .background(Color.maplogCanvas)
                     .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.small, style: .continuous))
             }
@@ -527,18 +474,6 @@ struct ExploreMapView: View {
         .padding(.top, 2)
         .padding(.bottom, MaplogSpacing.section)
     }
-    
-    private func interactiveSheetHeight(for screenHeight: CGFloat) -> CGFloat {
-        let baseHeight = sheetHeight(for: screenHeight)
-        let draggedHeight = baseHeight - sheetDragTranslation
-        
-        let minHeight = min(max(screenHeight * 0.29, 240), 268)
-        let maxHeight = screenHeight * 0.82
-        
-        return min(max(draggedHeight, minHeight), maxHeight)
-    }
-    
-    
     
 }
 
