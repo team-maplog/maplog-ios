@@ -35,6 +35,15 @@ enum PhotoStyle: String, CaseIterable, Hashable {
     }
 }
 
+enum MapPinStyle: Hashable {
+    /// Maplog 릴스에 실제로 기록된 장소입니다. 사진 썸네일로 표시합니다.
+    case recorded
+    case cafe
+    case restaurant
+    case event
+    case festival
+}
+
 struct MaplogSpot: Identifiable, Hashable {
     let id: String
     let name: String
@@ -43,9 +52,40 @@ struct MaplogSpot: Identifiable, Hashable {
     let summary: String
     let rating: Double
     let imageStyle: PhotoStyle
+    /// 장소 카드와 지도 핀에 사용할 실제 사진 에셋입니다. 없으면 카테고리 기본 이미지를 사용합니다.
+    let imageAssetName: String?
+    let mapPinStyle: MapPinStyle
     let tags: [String]
     let pinX: Double
     let pinY: Double
+
+    init(
+        id: String,
+        name: String,
+        category: String,
+        area: String,
+        summary: String,
+        rating: Double,
+        imageStyle: PhotoStyle,
+        imageAssetName: String? = nil,
+        mapPinStyle: MapPinStyle = .recorded,
+        tags: [String],
+        pinX: Double,
+        pinY: Double
+    ) {
+        self.id = id
+        self.name = name
+        self.category = category
+        self.area = area
+        self.summary = summary
+        self.rating = rating
+        self.imageStyle = imageStyle
+        self.imageAssetName = imageAssetName
+        self.mapPinStyle = mapPinStyle
+        self.tags = tags
+        self.pinX = pinX
+        self.pinY = pinY
+    }
 }
 
 struct MaplogTrip: Identifiable, Hashable {
@@ -56,6 +96,28 @@ struct MaplogTrip: Identifiable, Hashable {
     let duration: String
     let coverStyle: PhotoStyle
     let spots: [MaplogSpot]
+    /// 경로에 포함되지는 않지만 지도에서 함께 확인할 수 있는 주변 추천 장소입니다.
+    let nearbySpots: [MaplogSpot]
+
+    init(
+        id: String,
+        title: String,
+        subtitle: String,
+        location: String,
+        duration: String,
+        coverStyle: PhotoStyle,
+        spots: [MaplogSpot],
+        nearbySpots: [MaplogSpot] = []
+    ) {
+        self.id = id
+        self.title = title
+        self.subtitle = subtitle
+        self.location = location
+        self.duration = duration
+        self.coverStyle = coverStyle
+        self.spots = spots
+        self.nearbySpots = nearbySpots
+    }
 }
 
 struct TravelLog: Identifiable, Hashable {

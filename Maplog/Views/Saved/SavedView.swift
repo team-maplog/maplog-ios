@@ -26,19 +26,20 @@ struct SavedView: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: MaplogSpacing.xLarge) {
                     topBar
 
-                    VStack(alignment: .leading, spacing: 6) {
+                    VStack(alignment: .leading, spacing: MaplogSpacing.xxSmall) {
                         Text("저장한 Maplog")
-                            .font(.system(size: 28, weight: .black))
+                            .font(MaplogFont.largeTitle)
+                            .tracking(-0.4)
                             .foregroundStyle(Color.maplogInk)
                         Text("다시 보고 싶은 장소와 루트를 모아두는 화면입니다.")
-                            .font(.system(size: 14, weight: .medium))
+                            .font(MaplogFont.callout)
                             .foregroundStyle(Color.maplogMuted)
                     }
 
-                    VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: MaplogSpacing.small) {
                         SectionHeader(title: "컬렉션")
                         ForEach(collections) { collection in
                             NavigationLink {
@@ -59,7 +60,7 @@ struct SavedView: View {
                     visitChecklistSection
 
                     if !sessionStore.issuedServicePasses.isEmpty {
-                        VStack(alignment: .leading, spacing: 12) {
+                        VStack(alignment: .leading, spacing: MaplogSpacing.small) {
                             SectionHeader(title: "발급한 패스", subtitle: "\(sessionStore.issuedServicePasses.count)개 여행 패스가 준비됐어요.")
                             ForEach(sessionStore.issuedServicePasses) { pass in
                                 SavedServicePassActionRow(
@@ -73,7 +74,7 @@ struct SavedView: View {
                     }
 
                     if !sessionStore.savedEvents.isEmpty {
-                        VStack(alignment: .leading, spacing: 12) {
+                        VStack(alignment: .leading, spacing: MaplogSpacing.small) {
                             SectionHeader(title: "관심 행사", subtitle: "\(sessionStore.savedEvents.count)개 행사를 저장했어요.")
                             ForEach(sessionStore.savedEvents) { event in
                                 NavigationLink {
@@ -87,7 +88,7 @@ struct SavedView: View {
                     }
 
                     if !savedDigests.isEmpty {
-                        VStack(alignment: .leading, spacing: 12) {
+                        VStack(alignment: .leading, spacing: MaplogSpacing.small) {
                             SectionHeader(title: "저장한 요약", subtitle: "\(savedDigests.count)개 AI 여행 요약을 저장했어요.")
                             ForEach(savedDigests) { digest in
                                 SavedDigestActionRow(
@@ -103,24 +104,18 @@ struct SavedView: View {
                     savedSpotSection
                     recommendedSpotSection
                 }
-                .padding(MaplogSpacing.page)
-                .padding(.bottom, 52)
+                .maplogPagePadding()
+                .padding(.top, MaplogSpacing.xSmall)
+                .padding(.bottom, MaplogSpacing.xxLarge)
             }
 
             if let toastText {
-                Text(toastText)
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(Color.maplogInk)
-                    .padding(.horizontal, 18)
-                    .frame(height: 48)
-                    .background(.white)
-                    .clipShape(Capsule())
-                    .shadow(color: .black.opacity(0.14), radius: 18, x: 0, y: 8)
-                    .padding(.bottom, 24)
+                MaplogToast(message: toastText)
+                    .padding(.bottom, MaplogSpacing.xLarge)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
-        .background(Color.white)
+        .maplogScreenSurface()
         .maplogTabBarHidden()
         .toolbar(.hidden, for: .navigationBar)
     }
@@ -131,7 +126,7 @@ struct SavedView: View {
                 dismiss()
             } label: {
                 Image(systemName: "chevron.left")
-                    .font(.system(size: 20, weight: .bold))
+                    .font(.system(size: MaplogSize.iconMedium, weight: .semibold))
                     .foregroundStyle(Color.maplogInk)
                     .frame(width: 42, height: 42)
             }
@@ -140,7 +135,7 @@ struct SavedView: View {
             Spacer()
 
             Text("보관함")
-                .font(.system(size: 20, weight: .black))
+                .font(MaplogFont.sectionTitle)
                 .foregroundStyle(Color.maplogInk)
 
             Spacer()
@@ -148,12 +143,12 @@ struct SavedView: View {
             Color.clear
                 .frame(width: 42, height: 42)
         }
-        .padding(.top, 4)
+        .padding(.top, MaplogSpacing.xxSmall)
     }
 
     @ViewBuilder
     private var savedRouteSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: MaplogSpacing.small) {
             SectionHeader(
                 title: "저장한 루트",
                 subtitle: sessionStore.savedRoutes.isEmpty ? "따라가고 싶은 루트를 저장하면 여기에 표시됩니다." : "\(sessionStore.savedRoutes.count)개 루트가 저장됐어요."
@@ -189,7 +184,7 @@ struct SavedView: View {
     @ViewBuilder
     private var visitChecklistSection: some View {
         if !sessionStore.visitChecklistSpots.isEmpty {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: MaplogSpacing.small) {
                 SectionHeader(title: "방문 전 확인", subtitle: "\(sessionStore.visitChecklistSpots.count)개 장소를 방문 전 확인 목록에 담았어요.")
                 ForEach(sessionStore.visitChecklistSpots) { spot in
                     VisitChecklistSpotRow(
@@ -205,7 +200,7 @@ struct SavedView: View {
 
     @ViewBuilder
     private var savedSpotSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: MaplogSpacing.small) {
             SectionHeader(title: "저장한 장소", subtitle: savedSpotSubtitle)
 
             if sessionStore.savedSpots.isEmpty {
@@ -238,7 +233,7 @@ struct SavedView: View {
     @ViewBuilder
     private var recommendedSpotSection: some View {
         if !recommendedSpots.isEmpty {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: MaplogSpacing.small) {
                 SectionHeader(title: "추천 장소", subtitle: "저장하면 위 보관함에 바로 추가됩니다.")
                 ForEach(recommendedSpots) { spot in
                     SavedSpotActionRow(
@@ -355,14 +350,14 @@ private struct SavedEmptyStateCard<CTA: View>: View {
                 .font(.system(size: 19, weight: .black))
                 .foregroundStyle(Color.maplogInk)
             Text(subtitle)
-                .font(.system(size: 14, weight: .medium))
+                .font(MaplogFont.callout)
                 .foregroundStyle(Color.maplogMuted)
                 .multilineTextAlignment(.center)
                 .lineSpacing(4)
             cta()
                 .padding(.top, 4)
         }
-        .padding(20)
+        .padding(MaplogSpacing.large)
         .frame(maxWidth: .infinity)
         .background(Color.maplogCanvas)
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
@@ -374,19 +369,19 @@ private struct VisitChecklistSpotRow: View {
     let onRemove: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: MaplogSpacing.small) {
             NavigationLink {
                 SpotDetailView(spot: spot)
             } label: {
-                HStack(spacing: 12) {
-                    TravelImageView(style: spot.imageStyle, height: 82, cornerRadius: 8)
+                HStack(spacing: MaplogSpacing.small) {
+                    TravelImageView(style: spot.imageStyle, height: 82, cornerRadius: MaplogRadius.small)
                         .frame(width: 82)
 
                     VStack(alignment: .leading, spacing: 6) {
                         Text("방문 준비")
                             .font(.system(size: 11, weight: .black))
                             .foregroundStyle(Color.maplogInk)
-                            .padding(.horizontal, 8)
+                            .padding(.horizontal, MaplogSpacing.xSmall)
                             .padding(.vertical, 4)
                             .background(Color.maplogLime)
                             .clipShape(Capsule())
@@ -442,12 +437,12 @@ private struct SavedSpotActionRow: View {
     let onToggleSave: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: MaplogSpacing.small) {
             NavigationLink {
                 SpotDetailView(spot: spot)
             } label: {
-                HStack(spacing: 12) {
-                    TravelImageView(style: spot.imageStyle, height: 82, cornerRadius: 8)
+                HStack(spacing: MaplogSpacing.small) {
+                    TravelImageView(style: spot.imageStyle, height: 82, cornerRadius: MaplogRadius.small)
                         .frame(width: 82)
 
                     VStack(alignment: .leading, spacing: 6) {
@@ -455,7 +450,7 @@ private struct SavedSpotActionRow: View {
                             Text(spot.category)
                                 .font(.system(size: 11, weight: .bold))
                                 .foregroundStyle(Color.maplogInk)
-                                .padding(.horizontal, 8)
+                                .padding(.horizontal, MaplogSpacing.xSmall)
                                 .padding(.vertical, 4)
                                 .background(Color.maplogLime)
                                 .clipShape(Capsule())
@@ -512,19 +507,19 @@ private struct SavedDigestActionRow: View {
     let onRemove: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: MaplogSpacing.small) {
             NavigationLink {
                 AIDigestDetailView(digest: digest)
             } label: {
-                HStack(spacing: 12) {
-                    TravelImageView(style: digest.imageStyle, height: 82, cornerRadius: 8, showsSymbol: false)
+                HStack(spacing: MaplogSpacing.small) {
+                    TravelImageView(style: digest.imageStyle, height: 82, cornerRadius: MaplogRadius.small, showsSymbol: false)
                         .frame(width: 82)
 
                     VStack(alignment: .leading, spacing: 6) {
                         Text(digest.badge)
                             .font(.system(size: 11, weight: .bold))
                             .foregroundStyle(Color.maplogInk)
-                            .padding(.horizontal, 8)
+                            .padding(.horizontal, MaplogSpacing.xSmall)
                             .padding(.vertical, 4)
                             .background(Color.maplogLime)
                             .clipShape(Capsule())
@@ -570,14 +565,14 @@ private struct SavedCollectionDetailView: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: MaplogSpacing.xLarge) {
                     header
 
                     NavigationLink {
                         MapSearchView(query: collection.title)
                     } label: {
                         Label("컬렉션 지도에서 보기", systemImage: "map.fill")
-                            .font(.system(size: 17, weight: .black))
+                            .font(MaplogFont.cardTitle)
                             .foregroundStyle(Color.maplogInk)
                             .frame(maxWidth: .infinity)
                             .frame(height: 54)
@@ -586,7 +581,7 @@ private struct SavedCollectionDetailView: View {
                     }
                     .buttonStyle(.plain)
 
-                    VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: MaplogSpacing.small) {
                         SectionHeader(title: "대표 장소", subtitle: "\(spots.count)개 장소를 먼저 확인해보세요.")
                         ForEach(spots) { spot in
                             SavedCollectionSpotRow(
@@ -609,33 +604,33 @@ private struct SavedCollectionDetailView: View {
                     .foregroundStyle(Color.maplogInk)
                     .padding(.horizontal, 18)
                     .frame(height: 48)
-                    .background(.white)
+                    .background(Color.maplogSurface)
                     .clipShape(Capsule())
                     .shadow(color: .black.opacity(0.14), radius: 18, x: 0, y: 8)
                     .padding(.bottom, 24)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
-        .background(Color.white)
+        .background(Color.maplogSurface)
         .navigationTitle(collection.title)
         .navigationBarTitleDisplayMode(.inline)
         .maplogTabBarHidden()
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: MaplogSpacing.medium) {
             HStack(spacing: -18) {
                 ForEach(Array(collection.styles.enumerated()), id: \.offset) { _, style in
-                    TravelImageView(style: style, height: 118, cornerRadius: 12)
+                    TravelImageView(style: style, height: 118, cornerRadius: MaplogRadius.medium)
                         .frame(width: 118)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous)
                                 .stroke(.white, lineWidth: 4)
                         )
                 }
             }
 
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
                 Text(collection.title)
                     .font(.system(size: 30, weight: .black))
                     .foregroundStyle(Color.maplogInk)
@@ -643,16 +638,16 @@ private struct SavedCollectionDetailView: View {
                     .font(.system(size: 15, weight: .medium))
                     .foregroundStyle(Color.maplogMuted)
                     .lineSpacing(4)
-                HStack(spacing: 8) {
+                HStack(spacing: MaplogSpacing.xSmall) {
                     InfoBadge(title: "\(collection.count)개 저장됨", systemImage: "bookmark.fill")
                     InfoBadge(title: "\(spots.count)개 대표 장소", systemImage: "mappin.and.ellipse")
                 }
             }
         }
-        .padding(16)
+        .padding(MaplogSpacing.medium)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.maplogCanvas)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.xLarge, style: .continuous))
     }
 
     private func toggleSave(_ spot: MaplogSpot) {
@@ -698,12 +693,12 @@ private struct SavedCollectionSpotRow: View {
     let onToggleSave: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: MaplogSpacing.small) {
             NavigationLink {
                 SpotDetailView(spot: spot)
             } label: {
                 HStack(spacing: 14) {
-                    TravelImageView(style: spot.imageStyle, height: 86, cornerRadius: 8)
+                    TravelImageView(style: spot.imageStyle, height: 86, cornerRadius: MaplogRadius.small)
                         .frame(width: 86)
 
                     VStack(alignment: .leading, spacing: 7) {
@@ -711,7 +706,7 @@ private struct SavedCollectionSpotRow: View {
                             Text(spot.category)
                                 .font(.system(size: 11, weight: .black))
                                 .foregroundStyle(Color.maplogInk)
-                                .padding(.horizontal, 8)
+                                .padding(.horizontal, MaplogSpacing.xSmall)
                                 .frame(height: 22)
                                 .background(Color.maplogLime)
                                 .clipShape(Capsule())
@@ -758,7 +753,7 @@ private struct SavedCollectionSpotRow: View {
             .buttonStyle(.plain)
             .accessibilityLabel(isSaved ? "장소 저장 해제" : "장소 저장")
         }
-        .padding(12)
+        .padding(MaplogSpacing.small)
         .maplogCard()
     }
 }
@@ -768,12 +763,12 @@ private struct SavedServicePassActionRow: View {
     let onRemove: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: MaplogSpacing.small) {
             NavigationLink {
                 ServiceDetailView(title: pass.title)
             } label: {
                 HStack(spacing: 14) {
-                    TravelImageView(style: pass.heroStyle, height: 88, cornerRadius: 8, showsSymbol: false)
+                    TravelImageView(style: pass.heroStyle, height: 88, cornerRadius: MaplogRadius.small, showsSymbol: false)
                         .frame(width: 88)
 
                     VStack(alignment: .leading, spacing: 7) {
@@ -810,7 +805,7 @@ private struct SavedServicePassActionRow: View {
             .buttonStyle(.plain)
             .accessibilityLabel("\(pass.title) 패스 해제")
         }
-        .padding(12)
+        .padding(MaplogSpacing.small)
         .maplogCard()
     }
 }
@@ -820,7 +815,7 @@ private struct SavedEventRow: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            TravelImageView(style: event.imageStyle, height: 92, cornerRadius: 8)
+            TravelImageView(style: event.imageStyle, height: 92, cornerRadius: MaplogRadius.small)
                 .frame(width: 92)
 
             VStack(alignment: .leading, spacing: 7) {
@@ -843,7 +838,7 @@ private struct SavedEventRow: View {
                 .font(.system(size: 13, weight: .black))
                 .foregroundStyle(Color.maplogMuted)
         }
-        .padding(12)
+        .padding(MaplogSpacing.small)
         .maplogCard()
     }
 }
@@ -855,10 +850,10 @@ struct CollectionCard: View {
         HStack(spacing: 14) {
             HStack(spacing: -18) {
                 ForEach(Array(collection.styles.enumerated()), id: \.offset) { _, style in
-                    TravelImageView(style: style, height: 64, cornerRadius: 8)
+                    TravelImageView(style: style, height: 64, cornerRadius: MaplogRadius.small)
                         .frame(width: 64)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            RoundedRectangle(cornerRadius: MaplogRadius.small, style: .continuous)
                                 .stroke(.white, lineWidth: 3)
                         )
                 }
@@ -876,7 +871,7 @@ struct CollectionCard: View {
                 .font(.system(size: 13, weight: .black))
                 .foregroundStyle(Color.maplogMuted)
         }
-        .padding(12)
+        .padding(MaplogSpacing.small)
         .maplogCard()
     }
 }

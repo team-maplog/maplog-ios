@@ -17,7 +17,8 @@ enum MockMaplogData {
         summary: "도심 속에서 펼쳐지는 화려한 미디어 아트. 오늘 밤 광화문 광장에서 특별한 추억을 만들기 좋은 장소.",
         rating: 4.7,
         imageStyle: .night,
-        tags: ["성수동", "팝업스토어", "서울숲"],
+        imageAssetName: "home_gwanghwamun_photo",
+        tags: ["광화문", "야경", "미디어아트"],
         pinX: 0.48,
         pinY: 0.34
     )
@@ -30,6 +31,7 @@ enum MockMaplogData {
         summary: "성수동 힙플 투어 중 쉬어가기 좋은 카페. 비밀스러운 골목 분위기와 부드러운 커피가 어울린다.",
         rating: 4.5,
         imageStyle: .cafe,
+        imageAssetName: "photo_cafe",
         tags: ["커피", "산책", "휴식"],
         pinX: 0.32,
         pinY: 0.58
@@ -37,15 +39,72 @@ enum MockMaplogData {
 
     static let jejuOreum = MaplogSpot(
         id: "spot-jeju-oreum",
-        name: "경복궁",
-        category: "궁궐",
-        area: "서울 종로구",
-        summary: "게시물 24개와 주변 명소가 이어지는 도심 궁궐 루트의 중심 장소.",
+        name: "새별오름",
+        category: "자연",
+        area: "제주 제주시 애월읍",
+        summary: "억새 능선을 따라 일몰을 보기 좋은 제주 서쪽 오름. 정상까지 천천히 걸어도 한 시간이면 충분해요.",
         rating: 4.9,
-        imageStyle: .palace,
-        tags: ["문화", "한옥", "루트"],
+        imageStyle: .forest,
+        imageAssetName: "log_jeju_sunrise",
+        tags: ["제주", "오름", "일몰", "억새"],
         pinX: 0.70,
         pinY: 0.46
+    )
+
+    static let aewolCoast = MaplogSpot(
+        id: "spot-aewol-coast",
+        name: "한담해안산책로",
+        category: "산책",
+        area: "제주 제주시 애월읍",
+        summary: "바다 바로 옆으로 이어지는 완만한 산책로. 새별오름 전후로 천천히 걷기 좋아요.",
+        rating: 4.7,
+        imageStyle: .ocean,
+        imageAssetName: "event_ocean_film_hero",
+        tags: ["애월", "해안산책", "제주바다"],
+        pinX: 0.58,
+        pinY: 0.60
+    )
+
+    static let seongsuAlley = MaplogSpot(
+        id: "spot-seongsu-alley",
+        name: "연무장길",
+        category: "골목",
+        area: "서울 성동구 성수동",
+        summary: "오래된 공장과 작은 편집숍, 카페가 자연스럽게 이어지는 성수동 산책길.",
+        rating: 4.6,
+        imageStyle: .city,
+        imageAssetName: "log_seongsu_evening",
+        tags: ["성수", "골목", "카페", "산책"],
+        pinX: 0.38,
+        pinY: 0.54
+    )
+
+    static let seoulForest = MaplogSpot(
+        id: "spot-seoul-forest",
+        name: "서울숲",
+        category: "공원",
+        area: "서울 성동구 성수동",
+        summary: "성수 골목에서 잠시 벗어나 나무 그늘과 잔디 사이를 천천히 걷기 좋은 도심 공원.",
+        rating: 4.8,
+        imageStyle: .forest,
+        imageAssetName: "log_jeju_sunrise",
+        tags: ["서울숲", "산책", "피크닉", "성수"],
+        pinX: 0.69,
+        pinY: 0.30
+    )
+
+    static let ttukseomRiverPark = MaplogSpot(
+        id: "spot-ttukseom-river-park",
+        name: "뚝섬한강공원",
+        category: "한강",
+        area: "서울 광진구 자양동",
+        summary: "성수에서 한강 쪽으로 이어 걸으며 노을과 강변 풍경으로 하루를 마무리하기 좋은 장소.",
+        rating: 4.7,
+        imageStyle: .ocean,
+        imageAssetName: "event_ocean_film_hero",
+        tags: ["한강", "노을", "산책", "서울"],
+        pinX: 0.76,
+        pinY: 0.72
     )
 
     static let busanMarket = MaplogSpot(
@@ -56,6 +115,7 @@ enum MockMaplogData {
         summary: "경복궁 경로 주변에서 함께 둘러보기 좋은 한옥 골목.",
         rating: 4.6,
         imageStyle: .alley,
+        imageAssetName: "photo_alley",
         tags: ["한옥", "산책", "사진"],
         pinX: 0.61,
         pinY: 0.70
@@ -69,6 +129,7 @@ enum MockMaplogData {
         summary: "해운대 밤바다 루트와 함께 보기 좋은 부산 대표 야경 명소.",
         rating: 4.8,
         imageStyle: .night,
+        imageAssetName: "log_busan_night",
         tags: ["부산", "야경", "해운대", "광안대교"],
         pinX: 0.56,
         pinY: 0.38
@@ -82,12 +143,98 @@ enum MockMaplogData {
         summary: "부산 바다축제와 밤바다 루트가 이어지는 대표 해변.",
         rating: 4.7,
         imageStyle: .ocean,
+        imageAssetName: "event_ocean_film_hero",
         tags: ["부산", "축제", "해운대", "바다"],
         pinX: 0.48,
         pinY: 0.46
     )
 
-    static let spots = [seoulTower, forestCafe, jejuOreum, busanMarket, gwanganBridgeNight, haeundaeBeach]
+    static let spots = [seoulTower, forestCafe, jejuOreum, aewolCoast, seongsuAlley, seoulForest, ttukseomRiverPark, busanMarket, gwanganBridgeNight, haeundaeBeach]
+
+    /// 릴스에 기록된 장소를 중심으로 표시할 3km 내 주변 추천 목업입니다.
+    static func nearbyRecommendations(around spot: MaplogSpot, withinKilometers: Int = 3) -> [MaplogSpot] {
+        let neighborhood: String
+        let area: String
+
+        if spot.area.contains("제주") {
+            neighborhood = "애월"
+            area = "제주 제주시 애월읍"
+        } else if spot.area.contains("부산") {
+            neighborhood = "광안리"
+            area = "부산 수영구"
+        } else if spot.area.contains("종로") {
+            neighborhood = "광화문"
+            area = "서울 종로구"
+        } else {
+            neighborhood = "성수"
+            area = "서울 성동구 성수동"
+        }
+
+        func clamped(_ value: Double) -> Double {
+            min(max(value, 0.14), 0.86)
+        }
+
+        let radiusText = "\(withinKilometers)km 이내"
+
+        return [
+            MaplogSpot(
+                id: "nearby-\(spot.id)-cafe",
+                name: "\(neighborhood) 로스터리",
+                category: "카페",
+                area: area,
+                summary: "\(radiusText)에서 잠깐 쉬어가기 좋은 로스터리 카페.",
+                rating: 4.4,
+                imageStyle: .cafe,
+                imageAssetName: "photo_cafe",
+                mapPinStyle: .cafe,
+                tags: ["카페", neighborhood, "주변"],
+                pinX: clamped(spot.pinX - 0.18),
+                pinY: clamped(spot.pinY - 0.06)
+            ),
+            MaplogSpot(
+                id: "nearby-\(spot.id)-restaurant",
+                name: "\(neighborhood) 식탁",
+                category: "음식점",
+                area: area,
+                summary: "\(radiusText)에서 여행 동선에 더하기 좋은 로컬 다이닝.",
+                rating: 4.6,
+                imageStyle: .cafe,
+                imageAssetName: "nearby_dining",
+                mapPinStyle: .restaurant,
+                tags: ["음식점", neighborhood, "주변"],
+                pinX: clamped(spot.pinX + 0.18),
+                pinY: clamped(spot.pinY + 0.08)
+            ),
+            MaplogSpot(
+                id: "nearby-\(spot.id)-event",
+                name: "\(neighborhood) 주말 팝업",
+                category: "행사",
+                area: area,
+                summary: "\(radiusText)에서 이번 주말만 열리는 전시와 로컬 팝업.",
+                rating: 4.5,
+                imageStyle: .city,
+                imageAssetName: "log_seongsu_evening",
+                mapPinStyle: .event,
+                tags: ["행사", "전시", neighborhood, "주변"],
+                pinX: clamped(spot.pinX + 0.15),
+                pinY: clamped(spot.pinY - 0.18)
+            ),
+            MaplogSpot(
+                id: "nearby-\(spot.id)-festival",
+                name: "\(neighborhood) 불빛 축제",
+                category: "축제",
+                area: area,
+                summary: "\(radiusText)에서 공연과 야간 조명을 즐길 수 있는 계절 축제.",
+                rating: 4.7,
+                imageStyle: .festival,
+                imageAssetName: "event_ocean_film_hero",
+                mapPinStyle: .festival,
+                tags: ["축제", "야경", neighborhood, "주변"],
+                pinX: clamped(spot.pinX - 0.05),
+                pinY: clamped(spot.pinY + 0.18)
+            )
+        ]
+    }
 
     static let trips: [MaplogTrip] = [
         MaplogTrip(
@@ -101,28 +248,28 @@ enum MockMaplogData {
         ),
         MaplogTrip(
             id: "trip-jeju-green",
-            title: "궁궐과 골목 루트",
-            subtitle: "경복궁에서 북촌까지 이어지는 산책",
-            location: "서울",
-            duration: "게시물 24개",
-            coverStyle: .palace,
-            spots: [jejuOreum, busanMarket]
+            title: "제주 서쪽 일몰 루트",
+            subtitle: "새별오름에서 애월 바다까지 이어지는 저녁",
+            location: "제주",
+            duration: "약 2시간",
+            coverStyle: .forest,
+            spots: [jejuOreum, aewolCoast]
         ),
         MaplogTrip(
             id: "trip-busan-blue",
-            title: "성수 팝업 투어",
-            subtitle: "카페와 팝업스토어 4곳 완벽 정리",
+            title: "퇴근 후 성수 산책",
+            subtitle: "성수 골목에서 서울숲과 한강까지 이어 걷는 저녁",
             location: "서울",
-            duration: "45분",
+            duration: "약 2시간",
             coverStyle: .city,
-            spots: [busanMarket, forestCafe]
+            spots: [forestCafe, seongsuAlley, seoulForest, ttukseomRiverPark]
         )
     ]
 
     static let logs: [TravelLog] = [
-        TravelLog(id: "log-1", title: "도심 탐험", place: "서울라이트 광화문", date: "2024.05", note: "빛바랜 대한실과 뒷마루 사이를 걷는 기분.", imageStyle: .night, clips: 3, city: "Seoul"),
-        TravelLog(id: "log-2", title: "네온 나이트", place: "성수동", date: "2024.04", note: "성수동 팝업스토어부터 비밀스러운 카페까지.", imageStyle: .city, clips: 5, city: "Tokyo"),
-        TravelLog(id: "log-3", title: "궁궐 산책", place: "경복궁", date: "2024.03", note: "경로 주변 명소를 따라 천천히 걸었다.", imageStyle: .palace, clips: 4, city: "Seoul")
+        TravelLog(id: "log-1", title: "광안리 나이트 워크", place: "광안대교 야경 포인트", date: "2026.06", note: "불이 켜진 광안대교를 보며 민락수변공원까지 천천히 걸었다.", imageStyle: .night, clips: 7, city: "Busan"),
+        TravelLog(id: "log-2", title: "퇴근 후 성수 산책", place: "오우드 성수", date: "2026.05", note: "연무장길과 조용한 카페의 저녁 풍경을 짧게 기록했다.", imageStyle: .city, clips: 6, city: "Seoul"),
+        TravelLog(id: "log-3", title: "새별오름 일몰", place: "새별오름", date: "2026.04", note: "억새길을 오르며 노을이 바뀌는 순간을 이어 담았다.", imageStyle: .forest, clips: 5, city: "Jeju")
     ]
 
     static let collections: [SavedCollection] = [
@@ -167,39 +314,40 @@ enum MockMaplogData {
 
     static let searchBusanNightPost = VlogPost(
         id: "search-busan-night-route",
-        author: "@busan_runner",
-        title: "해운대 밤바다 3컷",
-        caption: "광안대교가 켜지는 시간에 맞춰 걷기 좋은 짧은 야경 루트.",
+        author: "@night.in.busan",
+        title: "광안리에서 민락까지, 밤바다 7컷",
+        caption: "광안대교 조명이 하나둘 켜지기 시작한 저녁, 민락수변공원에서 출발해 해변 산책로를 따라 걸었어요. 파도 소리와 보랏빛 불빛이 이어지는 구간은 1초씩만 담아도 충분히 분위기가 남더라고요. 잠시 벤치에 앉아 야경을 바라본 뒤, 사람들이 적어진 골목으로 돌아왔습니다.",
         place: gwanganBridgeNight,
-        imageStyle: .ocean,
-        likes: "1.2k",
-        comments: "86",
-        hashtags: ["야경명소", "부산", "해운대"]
+        imageStyle: .night,
+        likes: "2.4k",
+        comments: "119",
+        hashtags: ["광안리", "부산야경", "밤산책"]
     )
 
     static let posts: [VlogPost] = [
         VlogPost(
             id: "post-1",
-            author: "@seoul_vibe",
-            title: "성수동 힙플 투어 4컷 완벽 정리",
-            caption: "꼭 가봐야 할 팝업스토어부터 비밀스러운 카페까지.",
+            author: "@slow.seoul",
+            title: "퇴근 후 성수, 여섯 개의 1초",
+            caption: "연무장길을 걷다가 조용한 카페에서 하루를 마무리했어요.",
             place: forestCafe,
             imageStyle: .city,
-            likes: "1.2k",
-            comments: "342",
-            hashtags: ["성수동", "팝업스토어", "서울숲"]
+            likes: "638",
+            comments: "28",
+            hashtags: ["성수산책", "퇴근후여행", "서울"]
         ),
         VlogPost(
             id: "post-2",
-            author: "@maplog",
-            title: "경복궁 주변 경로 저장",
-            caption: "궁궐에서 북촌까지 걸어서 따라가기 좋은 루트.",
+            author: "@jeju.oneday",
+            title: "새별오름 일몰을 5초에 담으면",
+            caption: "바람이 강했던 날, 억새길과 노을만 짧게 이어 남겼어요.",
             place: jejuOreum,
-            imageStyle: .palace,
-            likes: "842",
-            comments: "91",
-            hashtags: ["궁궐", "한옥", "서울여행"]
-        )
+            imageStyle: .forest,
+            likes: "1.8k",
+            comments: "74",
+            hashtags: ["새별오름", "제주일몰", "억새"]
+        ),
+        searchBusanNightPost
     ]
 
     static func routeTrip(for post: VlogPost) -> MaplogTrip {
@@ -213,7 +361,8 @@ enum MockMaplogData {
             location: post.place.area,
             duration: baseTrip.duration,
             coverStyle: post.imageStyle,
-            spots: orderedSpots
+            spots: orderedSpots,
+            nearbySpots: nearbyRecommendations(around: post.place)
         )
     }
 
@@ -237,7 +386,8 @@ enum MockMaplogData {
             location: spot.area,
             duration: baseTrip.duration,
             coverStyle: spot.imageStyle,
-            spots: orderedSpots(primarySpot: spot, baseTrip: baseTrip)
+            spots: orderedSpots(primarySpot: spot, baseTrip: baseTrip),
+            nearbySpots: nearbyRecommendations(around: spot)
         )
     }
 
@@ -270,6 +420,6 @@ enum MockMaplogData {
     private static func orderedSpots(primarySpot: MaplogSpot, baseTrip: MaplogTrip) -> [MaplogSpot] {
         let secondarySpots = baseTrip.spots.filter { $0.id != primarySpot.id }
         let routeSpots = [primarySpot] + secondarySpots
-        return Array(routeSpots.prefix(3))
+        return Array(routeSpots.prefix(4))
     }
 }

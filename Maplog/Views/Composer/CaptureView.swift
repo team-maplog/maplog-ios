@@ -334,30 +334,32 @@ private struct CameraPreview: UIViewRepresentable {
 
 private struct CameraFallbackPreview: View {
     let message: String
+    var showsProgress = false
 
     var body: some View {
         ZStack {
-            TravelImageView(style: .mountain, height: 920, cornerRadius: 0, showsSymbol: false)
-                .scaleEffect(1.08)
-            LinearGradient(
-                colors: [.black.opacity(0.04), .black.opacity(0.34)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
+            Color.black
+
             VStack(spacing: 10) {
-                Image(systemName: "video.fill")
-                    .font(.system(size: 28, weight: .bold))
-                    .foregroundStyle(.white)
+                if showsProgress {
+                    ProgressView()
+                        .tint(.white)
+                        .controlSize(.large)
+                } else {
+                    Image(systemName: "video.slash.fill")
+                        .font(.system(size: 28, weight: .bold))
+                        .foregroundStyle(.white)
+                }
+
                 Text(message)
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.88))
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.82))
                     .multilineTextAlignment(.center)
                     .lineSpacing(3)
                     .padding(.horizontal, MaplogSpacing.page)
             }
-            .padding(.top, 132)
-            .frame(maxHeight: .infinity, alignment: .top)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
@@ -417,7 +419,7 @@ struct CaptureView: View {
         GeometryReader { proxy in
             ZStack(alignment: .bottom) {
                 cameraSurface
-                    .frame(width: proxy.size.width, height: proxy.size.height + 20)
+                    .frame(width: proxy.size.width, height: proxy.size.height)
                     .ignoresSafeArea()
 
                 if isGridOn {
@@ -454,13 +456,16 @@ struct CaptureView: View {
                         .foregroundStyle(Color.maplogInk)
                         .padding(.horizontal, 18)
                         .frame(height: 48)
-                        .background(.white)
+                        .background(Color.maplogSurface)
                         .clipShape(Capsule())
                         .shadow(color: .black.opacity(0.14), radius: 18, x: 0, y: 8)
                         .padding(.bottom, 164)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
+            .frame(width: proxy.size.width, height: proxy.size.height)
+            .background(Color.black)
+            .clipped()
         }
         .toolbar(.hidden, for: .navigationBar)
         .maplogTabBarHidden()
@@ -522,7 +527,7 @@ struct CaptureView: View {
             case .ready:
                 CameraPreview(session: camera.session)
             case .checking:
-                CameraFallbackPreview(message: "카메라를 준비하는 중입니다.")
+                CameraFallbackPreview(message: "카메라를 준비하는 중입니다.", showsProgress: true)
             case .denied:
                 CameraFallbackPreview(message: "설정에서 카메라 권한을 허용하면 실제 영상 촬영을 시작할 수 있어요.")
             case .unavailable(let message):
@@ -545,7 +550,7 @@ struct CaptureView: View {
                             .font(.system(size: 13, weight: .black))
                             .foregroundStyle(.white)
                     }
-                    .padding(.horizontal, 12)
+                    .padding(.horizontal, MaplogSpacing.small)
                     .frame(height: 30)
                     .background(.black.opacity(0.42))
                     .clipShape(Capsule())
@@ -577,7 +582,7 @@ struct CaptureView: View {
             .background(.black.opacity(0.42))
             .clipShape(Capsule())
             Spacer()
-            HStack(spacing: 12) {
+            HStack(spacing: MaplogSpacing.small) {
                 CameraCircleButton(systemImage: isFlashOff ? "bolt.slash.fill" : "bolt.fill") {
                     isFlashOff.toggle()
                     showToast(isFlashOff ? "플래시를 껐어요" : "플래시를 켰어요")
@@ -593,10 +598,12 @@ struct CaptureView: View {
     }
 
     private var toolsAndClips: some View {
-        HStack(alignment: .bottom) {
+        HStack(alignment: .bottom, spacing: MaplogSpacing.small) {
             clipStrip
-            Spacer()
-            VStack(spacing: 16) {
+                .frame(maxWidth: .infinity)
+                .layoutPriority(1)
+
+            VStack(spacing: MaplogSpacing.medium) {
                 CameraCircleButton(systemImage: "clock.arrow.circlepath", isSelected: selectedTimer != "끄기") {
                     activeToolSheet = .timer
                 }
@@ -618,41 +625,59 @@ struct CaptureView: View {
     }
 
     private var clipStrip: some View {
-        HStack(spacing: 8) {
-            ForEach(Array(camera.recordedClips.enumerated()), id: \.element.id) { index, clip in
-                VStack(spacing: 5) {
-                    ZStack(alignment: .topTrailing) {
-                        TravelImageView(style: clip.style, height: 80, cornerRadius: 8, showsSymbol: false)
-                            .frame(width: 64)
-                            .overlay(RoundedRectangle(cornerRadius: 8).stroke(Color.maplogLime, lineWidth: 2))
-                        Text("\(index + 1)")
-                            .font(.system(size: 11, weight: .black))
-                            .foregroundStyle(Color.maplogInk)
-                            .frame(width: 18, height: 18)
-                            .background(Color.maplogLime)
-                            .clipShape(Circle())
-                            .offset(x: 7, y: -7)
-                    }
-                    Text(clip.isImported ? "가져옴" : "매칭됨")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(Color.maplogLime)
+        ScrollView(.horizontal, showsIndicators: false) {
+            LazyHStack(spacing: 10) {
+                ForEach(Array(camera.recordedClips.enumerated()), id: \.element.id) { index, clip in
+                    CaptureTravelImageView(style: clip.style, cornerRadius: MaplogRadius.medium)
+                        .frame(width: 68, height: 88)
+                        .overlay {
+                            RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous)
+                                .stroke(Color.maplogLime, lineWidth: 2)
+                        }
+                        .overlay(alignment: .topTrailing) {
+                            Text("\(index + 1)")
+                                .font(.caption2.weight(.bold))
+                                .foregroundStyle(Color.maplogInk)
+                                .frame(width: 22, height: 22)
+                                .background(Color.maplogLime)
+                                .clipShape(Circle())
+                                .padding(5)
+                        }
+                        .overlay(alignment: .bottomLeading) {
+                            Text(clip.durationLabel)
+                                .font(.caption2.weight(.bold))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 7)
+                                .frame(minHeight: 22)
+                                .background(.black.opacity(0.56), in: Capsule())
+                                .padding(6)
+                        }
+                        .accessibilityLabel("\(index + 1)번째 \(clip.durationLabel) 클립")
                 }
-            }
 
-            Button {
-                activeToolSheet = .gallery
-            } label: {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 8, style: .continuous)
-                        .stroke(.white.opacity(0.78), style: StrokeStyle(lineWidth: 2, dash: [7]))
-                        .frame(width: 64, height: 80)
-                    Image(systemName: "plus")
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.82))
+                Button {
+                    activeToolSheet = .gallery
+                } label: {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous)
+                            .fill(.black.opacity(0.22))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous)
+                                    .stroke(.white.opacity(0.78), style: StrokeStyle(lineWidth: 2, dash: [7]))
+                            }
+                        Image(systemName: "plus")
+                            .font(.title2.weight(.semibold))
+                            .foregroundStyle(.white.opacity(0.88))
+                    }
+                    .frame(width: 68, height: 88)
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel("갤러리에서 클립 추가")
             }
-            .buttonStyle(.plain)
+            .padding(.horizontal, 2)
+            .padding(.vertical, 10)
         }
+        .frame(height: 108)
     }
 
     private var durationPicker: some View {
@@ -793,7 +818,7 @@ struct CaptureView: View {
 
 private struct CameraCircleButton: View {
     let systemImage: String
-    var size: CGFloat = 40
+    var size: CGFloat = 44
     var isSelected = false
     let action: () -> Void
 
@@ -875,7 +900,7 @@ private struct CaptureTimerSheet: View {
                     } label: {
                         VStack(spacing: 10) {
                             Image(systemName: timer == "끄기" ? "timer" : "timer.circle.fill")
-                                .font(.system(size: 22, weight: .black))
+                                .font(MaplogFont.screenTitle)
                             Text(timer)
                                 .font(.system(size: 14, weight: .black))
                         }
@@ -883,7 +908,7 @@ private struct CaptureTimerSheet: View {
                         .frame(maxWidth: .infinity)
                         .frame(height: 96)
                         .background(selectedTimer == timer ? Color.maplogLime : Color.maplogCanvas)
-                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.large, style: .continuous))
                     }
                     .buttonStyle(.plain)
                 }
@@ -900,17 +925,17 @@ private struct CaptureTimerSheet: View {
             }
             .buttonStyle(.plain)
         }
-        .padding(24)
+        .padding(MaplogSpacing.xLarge)
     }
 
     private func sheetHeader(title: String, subtitle: String) -> some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 5) {
                 Text(title)
-                    .font(.system(size: 24, weight: .black))
+                    .font(MaplogFont.screenTitle)
                     .foregroundStyle(Color.maplogInk)
                 Text(subtitle)
-                    .font(.system(size: 14, weight: .medium))
+                    .font(MaplogFont.callout)
                     .foregroundStyle(Color.maplogMuted)
             }
             Spacer()
@@ -946,10 +971,10 @@ private struct CaptureTransitionSheet: View {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 5) {
                     Text("전환 효과")
-                        .font(.system(size: 24, weight: .black))
+                        .font(MaplogFont.screenTitle)
                         .foregroundStyle(Color.maplogInk)
                     Text("다음 클립에 적용할 움직임을 고르세요.")
-                        .font(.system(size: 14, weight: .medium))
+                        .font(MaplogFont.callout)
                         .foregroundStyle(Color.maplogMuted)
                 }
                 Spacer()
@@ -981,7 +1006,7 @@ private struct CaptureTransitionSheet: View {
                         .frame(maxWidth: .infinity)
                         .frame(height: 94)
                         .background(selectedTransition == transition.title ? Color.maplogLime : Color.maplogCanvas)
-                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.large, style: .continuous))
                     }
                     .buttonStyle(.plain)
                 }
@@ -993,9 +1018,9 @@ private struct CaptureTransitionSheet: View {
                 .padding(14)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Color.maplogCanvas.opacity(0.75))
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous))
         }
-        .padding(24)
+        .padding(MaplogSpacing.xLarge)
     }
 }
 
@@ -1014,10 +1039,10 @@ private struct CaptureTextStickerSheet: View {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 5) {
                     Text("텍스트 스티커")
-                        .font(.system(size: 24, weight: .black))
+                        .font(MaplogFont.screenTitle)
                         .foregroundStyle(Color.maplogInk)
                     Text("영상 위에 올릴 짧은 문구를 입력하세요.")
-                        .font(.system(size: 14, weight: .medium))
+                        .font(MaplogFont.callout)
                         .foregroundStyle(Color.maplogMuted)
                 }
                 Spacer()
@@ -1036,13 +1061,13 @@ private struct CaptureTextStickerSheet: View {
 
             TextField("예: 오늘의 맵로그", text: $draftText)
                 .font(.system(size: 17, weight: .bold))
-                .padding(.horizontal, 16)
+                .padding(.horizontal, MaplogSpacing.medium)
                 .frame(height: 54)
                 .background(Color.maplogCanvas)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous))
 
             Text(draftText.isEmpty ? "텍스트 미리보기" : draftText)
-                .font(.system(size: 24, weight: .black))
+                .font(MaplogFont.screenTitle)
                 .foregroundStyle(.white)
                 .lineLimit(2)
                 .padding(.horizontal, 18)
@@ -1078,7 +1103,7 @@ private struct CaptureTextStickerSheet: View {
                 .buttonStyle(.plain)
             }
         }
-        .padding(24)
+        .padding(MaplogSpacing.xLarge)
     }
 }
 
@@ -1092,10 +1117,10 @@ private struct CaptureGallerySheet: View {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 5) {
                     Text("최근 사진")
-                        .font(.system(size: 24, weight: .black))
+                        .font(MaplogFont.screenTitle)
                         .foregroundStyle(Color.maplogInk)
                     Text("목 갤러리에서 클립으로 추가할 컷을 선택하세요.")
-                        .font(.system(size: 14, weight: .medium))
+                        .font(MaplogFont.callout)
                         .foregroundStyle(Color.maplogMuted)
                 }
                 Spacer()
@@ -1117,7 +1142,8 @@ private struct CaptureGallerySheet: View {
                     Button {
                         onSelect(style)
                     } label: {
-                        TravelImageView(style: style, height: 86, cornerRadius: 12, showsSymbol: false)
+                        CaptureTravelImageView(style: style, cornerRadius: MaplogRadius.medium)
+                            .frame(height: 86)
                             .overlay(alignment: .topLeading) {
                                 Text("0\(index + 1)")
                                     .font(.system(size: 11, weight: .black))
@@ -1133,7 +1159,7 @@ private struct CaptureGallerySheet: View {
                 }
             }
         }
-        .padding(24)
+        .padding(MaplogSpacing.xLarge)
     }
 }
 
@@ -1181,12 +1207,12 @@ struct PlaceMatchingView: View {
                     .buttonStyle(.plain)
                     Spacer()
                     Text("장소 선택")
-                        .font(.system(size: 22, weight: .black))
+                        .font(MaplogFont.screenTitle)
                         .foregroundStyle(Color.maplogInk)
                     Spacer()
                     Color.clear.frame(width: 42, height: 42)
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, MaplogSpacing.medium)
                 .padding(.top, 6)
                 .frame(height: 60)
                 .overlay(alignment: .bottom) {
@@ -1195,8 +1221,8 @@ struct PlaceMatchingView: View {
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 22) {
-                        TravelImageView(style: capturedStyles.last ?? .city, height: 94, cornerRadius: 14, showsSymbol: false)
-                            .frame(width: 94)
+                        CaptureTravelImageView(style: capturedStyles.last ?? .city, cornerRadius: 18)
+                            .frame(width: 112, height: 112)
                             .padding(.top, 28)
 
                         Text(placeMatchingMessage)
@@ -1221,7 +1247,7 @@ struct PlaceMatchingView: View {
                             Button {
                                 showsManualSearch = true
                             } label: {
-                                HStack(spacing: 12) {
+                                HStack(spacing: MaplogSpacing.small) {
                                     Image(systemName: "magnifyingglass")
                                         .font(.system(size: 20, weight: .bold))
                                         .foregroundStyle(Color.maplogMuted)
@@ -1239,7 +1265,7 @@ struct PlaceMatchingView: View {
                             }
                             .buttonStyle(.plain)
                         }
-                        .background(.white)
+                        .background(Color.maplogSurface)
                         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                         .shadow(color: .black.opacity(0.06), radius: 18, x: 0, y: 8)
                         .padding(.horizontal, MaplogSpacing.page)
@@ -1252,7 +1278,7 @@ struct PlaceMatchingView: View {
                 UploadView(spot: selectedSpot, capturedStyles: capturedStyles)
             } label: {
                 Text("장소 확정하기")
-                    .font(.system(size: 17, weight: .black))
+                    .font(MaplogFont.cardTitle)
                     .foregroundStyle(Color.maplogInk)
                     .frame(maxWidth: .infinity)
                     .frame(height: 58)
@@ -1262,7 +1288,7 @@ struct PlaceMatchingView: View {
             }
             .buttonStyle(.plain)
             .padding(.bottom, 22)
-            .background(.white)
+            .background(Color.maplogSurface)
         }
         .background(Color.maplogCanvas.opacity(0.34))
         .navigationBarBackButtonHidden()
@@ -1344,7 +1370,7 @@ private struct PlaceCandidateRow: View {
                         .font(.system(size: 18, weight: .bold))
                         .foregroundStyle(Color.maplogInk)
                     Text(spot.area)
-                        .font(.system(size: 14, weight: .medium))
+                        .font(MaplogFont.callout)
                         .foregroundStyle(Color.maplogMuted)
                 }
 
@@ -1572,7 +1598,7 @@ struct UploadView: View {
     }
 
     private var durationText: String {
-        Self.durationTimeCode(for: safeClipCount * 15)
+        "\(safeClipCount)–\(safeClipCount * 2)초"
     }
 
     private var locationCandidates: [ComposerLocationTag] {
@@ -1590,7 +1616,7 @@ struct UploadView: View {
         ZStack(alignment: .bottom) {
             VStack(spacing: 0) {
                 ScrollView(showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 24) {
+                    VStack(alignment: .leading, spacing: MaplogSpacing.xLarge) {
                         uploadHeader
                         mediaPreview
                         if let savedDraft {
@@ -1613,16 +1639,16 @@ struct UploadView: View {
                 Text(toastText)
                     .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(Color.maplogInk)
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, MaplogSpacing.medium)
                     .frame(height: 44)
-                    .background(.white)
+                    .background(Color.maplogSurface)
                     .clipShape(Capsule())
                     .shadow(color: .black.opacity(0.12), radius: 14, x: 0, y: 6)
                     .padding(.bottom, 86)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
-        .background(Color.white)
+        .background(Color.maplogSurface)
         .navigationBarBackButtonHidden()
         .toolbar(.hidden, for: .navigationBar)
         .maplogTabBarHidden()
@@ -1689,7 +1715,7 @@ struct UploadView: View {
                 showsPreview = true
             } label: {
                 Text("게시하기")
-                    .font(.system(size: 17, weight: .black))
+                    .font(MaplogFont.cardTitle)
                     .foregroundStyle(Color.maplogInk)
                     .frame(maxWidth: .infinity)
                     .frame(height: 56)
@@ -1701,7 +1727,7 @@ struct UploadView: View {
         .padding(.horizontal, MaplogSpacing.page)
         .padding(.top, 10)
         .padding(.bottom, 10)
-        .background(.white)
+        .background(Color.maplogSurface)
     }
 
     private var uploadHeader: some View {
@@ -1717,7 +1743,7 @@ struct UploadView: View {
             .buttonStyle(.plain)
             Spacer()
             Text("Maplog 업로드")
-                .font(.system(size: 20, weight: .black))
+                .font(MaplogFont.sectionTitle)
                 .foregroundStyle(Color.maplogInk)
             Spacer()
             Button {
@@ -1735,7 +1761,7 @@ struct UploadView: View {
     }
 
     private func draftStatusCard(_ draft: MaplogDraft) -> some View {
-        HStack(spacing: 12) {
+        HStack(spacing: MaplogSpacing.small) {
             Image(systemName: "tray.and.arrow.down.fill")
                 .font(.system(size: 18, weight: .black))
                 .foregroundStyle(Color.maplogInk)
@@ -1772,16 +1798,17 @@ struct UploadView: View {
     }
 
     private var mediaPreview: some View {
-        TravelImageView(style: coverStyle, height: 262, cornerRadius: 8, showsSymbol: false)
+        CaptureTravelImageView(style: coverStyle, cornerRadius: 18)
+            .frame(height: 262)
             .overlay(alignment: .topTrailing) {
                 Label(durationText, systemImage: "circle.fill")
                     .font(.system(size: 14, weight: .bold))
                     .foregroundStyle(.white)
-                    .padding(.horizontal, 12)
+                    .padding(.horizontal, MaplogSpacing.small)
                     .frame(height: 34)
                     .background(.black.opacity(0.62))
                     .clipShape(Capsule())
-                    .padding(12)
+                    .padding(MaplogSpacing.small)
             }
             .overlay(alignment: .bottomLeading) {
                 Button {
@@ -1800,16 +1827,16 @@ struct UploadView: View {
     }
 
     private var titleSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: MaplogSpacing.small) {
             Text("로그 제목")
                 .font(.system(size: 18, weight: .bold))
                 .foregroundStyle(Color.maplogInk)
             TextField("로그 제목을 입력하세요", text: $title)
                 .font(.system(size: 16, weight: .medium))
-                .padding(.horizontal, 16)
+                .padding(.horizontal, MaplogSpacing.medium)
                 .frame(height: 56)
                 .background(Color.maplogCanvas)
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.small, style: .continuous))
 
             Text("설명")
                 .font(.system(size: 18, weight: .bold))
@@ -1818,18 +1845,18 @@ struct UploadView: View {
             TextField("이번 여정에 대해 자유롭게 남겨주세요.", text: $note, axis: .vertical)
                 .lineLimit(4...5)
                 .font(.system(size: 16, weight: .medium))
-                .padding(16)
+                .padding(MaplogSpacing.medium)
                 .frame(minHeight: 92, alignment: .top)
                 .background(Color.maplogCanvas)
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.small, style: .continuous))
         }
     }
 
     private var locationTagSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: MaplogSpacing.small) {
             HStack {
                 Label("위치 태그", systemImage: "mappin.circle.fill")
-                    .font(.system(size: 20, weight: .black))
+                    .font(MaplogFont.sectionTitle)
                     .foregroundStyle(Color.maplogOlive)
                 Spacer()
                 Text("자동 매칭됨")
@@ -1842,7 +1869,7 @@ struct UploadView: View {
             }
 
             ForEach(Array(locationTags.enumerated()), id: \.element.id) { index, tag in
-                HStack(spacing: 12) {
+                HStack(spacing: MaplogSpacing.small) {
                     Text("\(index + 1)")
                         .font(.system(size: 13, weight: .bold))
                         .foregroundStyle(Color.maplogOlive)
@@ -1881,7 +1908,7 @@ struct UploadView: View {
                     .frame(maxWidth: .infinity)
                     .frame(height: 48)
                     .background {
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        RoundedRectangle(cornerRadius: MaplogRadius.small, style: .continuous)
                             .stroke(Color.maplogLine, style: StrokeStyle(lineWidth: 1.4, dash: [4]))
                     }
             }
@@ -1890,12 +1917,12 @@ struct UploadView: View {
     }
 
     private var tagSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: MaplogSpacing.small) {
             Text("# 태그")
-                .font(.system(size: 20, weight: .black))
+                .font(MaplogFont.sectionTitle)
                 .foregroundStyle(Color.maplogOlive)
 
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: MaplogSpacing.small) {
                 FlowChips(items: tags, selectedItem: nil) { tag in
                     tags.removeAll { $0 == tag }
                 }
@@ -1904,16 +1931,16 @@ struct UploadView: View {
                     .submitLabel(.done)
                     .onSubmit(addTag)
             }
-            .padding(16)
+            .padding(MaplogSpacing.medium)
             .background(Color.maplogCanvas)
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.small, style: .continuous))
         }
     }
 
     private var visibilitySection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: MaplogSpacing.small) {
             Label("공개 설정", systemImage: "eye.fill")
-                .font(.system(size: 20, weight: .black))
+                .font(MaplogFont.sectionTitle)
                 .foregroundStyle(Color.maplogOlive)
             HStack(spacing: 0) {
                 ForEach(visibilityOptions, id: \.self) { option in
@@ -1926,7 +1953,7 @@ struct UploadView: View {
                             .frame(maxWidth: .infinity)
                             .frame(height: 48)
                             .background(visibility == option ? .white : .clear)
-                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.small, style: .continuous))
                     }
                     .buttonStyle(.plain)
                 }
@@ -2047,10 +2074,10 @@ private struct CoverEditSheet: View {
             HStack {
                 VStack(alignment: .leading, spacing: 5) {
                     Text("대표 이미지")
-                        .font(.system(size: 24, weight: .black))
+                        .font(MaplogFont.screenTitle)
                         .foregroundStyle(Color.maplogInk)
                     Text("게시물 목록과 공유 카드에 표시될 컷을 선택하세요.")
-                        .font(.system(size: 14, weight: .medium))
+                        .font(MaplogFont.callout)
                         .foregroundStyle(Color.maplogMuted)
                 }
                 Spacer()
@@ -2068,14 +2095,14 @@ private struct CoverEditSheet: View {
             }
 
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
+                HStack(spacing: MaplogSpacing.small) {
                     ForEach(options, id: \.self) { style in
                         Button {
                             onSelect(style)
                             dismiss()
                         } label: {
-                            TravelImageView(style: style, height: 128, cornerRadius: 14, showsSymbol: false)
-                                .frame(width: 96)
+                            CaptureTravelImageView(style: style, cornerRadius: 14)
+                                .frame(width: 96, height: 128)
                                 .overlay(alignment: .topTrailing) {
                                     if selectedStyle == style {
                                         Image(systemName: "checkmark")
@@ -2084,7 +2111,7 @@ private struct CoverEditSheet: View {
                                             .frame(width: 26, height: 26)
                                             .background(Color.maplogLime)
                                             .clipShape(Circle())
-                                            .padding(8)
+                                            .padding(MaplogSpacing.xSmall)
                                     }
                                 }
                                 .overlay {
@@ -2097,8 +2124,8 @@ private struct CoverEditSheet: View {
                 }
             }
         }
-        .padding(24)
-        .background(Color.white)
+        .padding(MaplogSpacing.xLarge)
+        .background(Color.maplogSurface)
     }
 }
 
@@ -2110,11 +2137,11 @@ private struct LocationTagEditSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: MaplogSpacing.medium) {
             HStack {
                 VStack(alignment: .leading, spacing: 5) {
                     Text(title)
-                        .font(.system(size: 24, weight: .black))
+                        .font(MaplogFont.screenTitle)
                         .foregroundStyle(Color.maplogInk)
                     Text(currentTag.timeRange)
                         .font(.system(size: 14, weight: .bold))
@@ -2140,12 +2167,12 @@ private struct LocationTagEditSheet: View {
                         onSelect(candidate)
                         dismiss()
                     } label: {
-                        HStack(spacing: 12) {
-                            TravelImageView(style: candidate.style, height: 52, cornerRadius: 10, showsSymbol: false)
-                                .frame(width: 52)
+                        HStack(spacing: MaplogSpacing.small) {
+                            CaptureTravelImageView(style: candidate.style, cornerRadius: 10)
+                                .frame(width: 52, height: 52)
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(candidate.name)
-                                    .font(.system(size: 17, weight: .black))
+                                    .font(MaplogFont.cardTitle)
                                     .foregroundStyle(Color.maplogInk)
                                 Text(candidate.timeRange)
                                     .font(.system(size: 13, weight: .medium))
@@ -2154,7 +2181,7 @@ private struct LocationTagEditSheet: View {
                             Spacer()
                             if candidate.name == currentTag.name {
                                 Image(systemName: "checkmark.circle.fill")
-                                    .font(.system(size: 22, weight: .black))
+                                    .font(MaplogFont.screenTitle)
                                     .foregroundStyle(Color.maplogLime)
                             } else {
                                 Image(systemName: "chevron.right")
@@ -2174,9 +2201,9 @@ private struct LocationTagEditSheet: View {
                 }
             }
             .background(Color.maplogCanvas.opacity(0.6))
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.large, style: .continuous))
         }
-        .padding(24)
-        .background(Color.white)
+        .padding(MaplogSpacing.xLarge)
+        .background(Color.maplogSurface)
     }
 }

@@ -30,7 +30,7 @@ struct SettingsView: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: MaplogSpacing.xLarge) {
                     settingsSection("계정 설정") {
                         NavigationLink {
                             ProfileEditView {
@@ -107,21 +107,14 @@ struct SettingsView: View {
                         .buttonStyle(.plain)
                     }
                 }
-                .padding(.horizontal, 22)
-                .padding(.top, 16)
-                .padding(.bottom, 44)
+                .maplogPagePadding()
+                .padding(.top, MaplogSpacing.pageTop)
+                .padding(.bottom, MaplogSpacing.xxxLarge)
             }
 
             if showUpdateToast {
-                Text(toastText)
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(Color.maplogInk)
-                    .padding(.horizontal, 18)
-                    .frame(height: 48)
-                    .background(.white)
-                    .clipShape(Capsule())
-                    .shadow(color: .black.opacity(0.14), radius: 18, x: 0, y: 8)
-                    .padding(.bottom, 22)
+                MaplogToast(message: toastText)
+                    .padding(.bottom, MaplogSpacing.large)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
@@ -147,7 +140,8 @@ struct SettingsView: View {
         } message: {
             Text("탈퇴 시 저장된 기록은 복구할 수 없습니다.")
         }
-        .background(Color.white)
+        .maplogScreenSurface()
+        .maplogNavigationAppearance()
         .maplogTabBarHidden()
     }
 
@@ -172,21 +166,22 @@ struct SettingsView: View {
     }
 
     private func settingsSection<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
             Text(title)
-                .font(.system(size: 18, weight: .medium))
-                .foregroundStyle(Color.maplogMuted)
-                .padding(.horizontal, 8)
+                .font(MaplogFont.calloutStrong)
+                .foregroundStyle(Color.maplogTextSecondary)
+                .padding(.horizontal, MaplogSpacing.xxSmall)
 
             VStack(spacing: 0) {
                 content()
             }
-            .background(Color(.systemGray6).opacity(0.72))
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .background(Color.maplogSurface)
+            .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.large, style: .continuous))
             .overlay {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .stroke(Color.maplogLine.opacity(0.9), lineWidth: 1)
+                RoundedRectangle(cornerRadius: MaplogRadius.large, style: .continuous)
+                    .stroke(Color.maplogBorder.opacity(0.9), lineWidth: 1)
             }
+            .shadow(color: .black.opacity(0.035), radius: 6, x: 0, y: 2)
         }
     }
 
@@ -215,18 +210,18 @@ private struct SettingsNavigationRow: View {
     let title: String
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: MaplogSpacing.small) {
             Text(title)
-                .font(.system(size: 16, weight: .medium))
+                .font(MaplogFont.body)
                 .foregroundStyle(Color.maplogInk)
 
             Spacer()
 
             Image(systemName: "chevron.right")
-                .font(.system(size: 14, weight: .semibold))
+                .font(MaplogFont.calloutStrong)
                 .foregroundStyle(Color.maplogMuted.opacity(0.86))
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, MaplogSpacing.medium)
         .frame(height: 58)
         .contentShape(Rectangle())
     }
@@ -239,7 +234,7 @@ private struct SettingsToggleRow: View {
     var body: some View {
         HStack {
             Text(title)
-                .font(.system(size: 16, weight: .medium))
+                .font(MaplogFont.body)
                 .foregroundStyle(Color.maplogInk)
 
             Spacer()
@@ -248,7 +243,7 @@ private struct SettingsToggleRow: View {
                 .labelsHidden()
                 .tint(Color.maplogLime)
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, MaplogSpacing.medium)
         .frame(height: 58)
     }
 }
@@ -269,7 +264,7 @@ private struct SettingsValueRow: View {
                 .font(.system(size: 15, weight: .medium))
                 .foregroundStyle(Color.maplogMuted)
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, MaplogSpacing.medium)
         .frame(height: 58)
     }
 }
@@ -285,7 +280,7 @@ private struct SettingsActionRow: View {
                 .foregroundStyle(tint)
             Spacer()
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, MaplogSpacing.medium)
         .frame(height: 58)
         .contentShape(Rectangle())
     }
@@ -308,7 +303,7 @@ private struct SettingsDetailInfoRow: View {
                 .foregroundStyle(Color.maplogInk)
                 .multilineTextAlignment(.trailing)
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, MaplogSpacing.medium)
         .frame(minHeight: 54)
     }
 }
@@ -385,7 +380,7 @@ private struct SettingsDetailView: View {
 
                     VStack(alignment: .leading, spacing: 10) {
                         Text(route.detailTitle)
-                            .font(.system(size: 28, weight: .black))
+                            .font(MaplogFont.largeTitle)
                             .foregroundStyle(Color.maplogInk)
                         Text(route.detailBody)
                             .font(.system(size: 16, weight: .medium))
@@ -402,9 +397,9 @@ private struct SettingsDetailView: View {
                         }
                     }
                     .background(Color(.systemGray6).opacity(0.72))
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous))
                     .overlay {
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous)
                             .stroke(Color.maplogLine.opacity(0.9), lineWidth: 1)
                     }
 
@@ -412,7 +407,7 @@ private struct SettingsDetailView: View {
                         handlePrimaryAction()
                     }
                 }
-                .padding(20)
+                .padding(MaplogSpacing.large)
                 .padding(.bottom, 40)
             }
 
@@ -422,7 +417,7 @@ private struct SettingsDetailView: View {
                     .foregroundStyle(Color.maplogInk)
                     .padding(.horizontal, 18)
                     .frame(height: 48)
-                    .background(.white)
+                    .background(Color.maplogSurface)
                     .clipShape(Capsule())
                     .shadow(color: .black.opacity(0.14), radius: 18, x: 0, y: 8)
                     .padding(.bottom, 22)
@@ -431,7 +426,7 @@ private struct SettingsDetailView: View {
         }
         .navigationTitle(route.title)
         .navigationBarTitleDisplayMode(.inline)
-        .background(Color.white)
+        .background(Color.maplogSurface)
         .maplogTabBarHidden()
         .sheet(item: $activeSheet) { sheet in
             switch sheet {
@@ -511,7 +506,7 @@ private struct PasswordChangeSheet: View {
         VStack(alignment: .leading, spacing: 18) {
             sheetHeader(title: "비밀번호 변경", subtitle: "목데이터 계정의 비밀번호 변경 흐름을 확인합니다.")
 
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: MaplogSpacing.small) {
                 secureField(title: "현재 비밀번호", text: $currentPassword)
                 secureField(title: "새 비밀번호", text: $newPassword)
                 secureField(title: "새 비밀번호 확인", text: $confirmPassword)
@@ -519,7 +514,7 @@ private struct PasswordChangeSheet: View {
                 Label(helperText, systemImage: canSubmit ? "checkmark.circle.fill" : "info.circle.fill")
                     .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(canSubmit ? Color.maplogOlive : Color.maplogMuted)
-                    .padding(12)
+                    .padding(MaplogSpacing.small)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(Color.maplogCanvas.opacity(0.8))
                     .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
@@ -532,7 +527,7 @@ private struct PasswordChangeSheet: View {
                 }
             } label: {
                 Label("변경 완료", systemImage: "checkmark.seal.fill")
-                    .font(.system(size: 17, weight: .black))
+                    .font(MaplogFont.cardTitle)
                     .foregroundStyle(Color.maplogInk)
                     .frame(maxWidth: .infinity)
                     .frame(height: 54)
@@ -542,17 +537,17 @@ private struct PasswordChangeSheet: View {
             .buttonStyle(.plain)
             .disabled(!canSubmit)
         }
-        .padding(24)
+        .padding(MaplogSpacing.xLarge)
     }
 
     private func sheetHeader(title: String, subtitle: String) -> some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 5) {
                 Text(title)
-                    .font(.system(size: 24, weight: .black))
+                    .font(MaplogFont.screenTitle)
                     .foregroundStyle(Color.maplogInk)
                 Text(subtitle)
-                    .font(.system(size: 14, weight: .medium))
+                    .font(MaplogFont.callout)
                     .foregroundStyle(Color.maplogMuted)
             }
 
@@ -611,10 +606,10 @@ private struct SecuritySettingsSheet: View {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 5) {
                     Text("계정 보안")
-                        .font(.system(size: 24, weight: .black))
+                        .font(MaplogFont.screenTitle)
                         .foregroundStyle(Color.maplogInk)
                     Text("로그인 기기와 보안 알림 상태를 점검하세요.")
-                        .font(.system(size: 14, weight: .medium))
+                        .font(MaplogFont.callout)
                         .foregroundStyle(Color.maplogMuted)
                 }
 
@@ -643,7 +638,7 @@ private struct SecuritySettingsSheet: View {
 
             VStack(alignment: .leading, spacing: 10) {
                 Text("로그인 기기")
-                    .font(.system(size: 17, weight: .black))
+                    .font(MaplogFont.cardTitle)
                     .foregroundStyle(Color.maplogInk)
 
                 SecurityDeviceRow(name: "iPhone 17 Pro", detail: "현재 기기 · 서울 · 방금 전", isCurrent: true)
@@ -683,7 +678,7 @@ private struct SecuritySettingsSheet: View {
                 .buttonStyle(.plain)
             }
         }
-        .padding(24)
+        .padding(MaplogSpacing.xLarge)
     }
 }
 
@@ -693,7 +688,7 @@ private struct SecurityDeviceRow: View {
     let isCurrent: Bool
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: MaplogSpacing.small) {
             Image(systemName: isCurrent ? "iphone.gen3" : "laptopcomputer")
                 .font(.system(size: 20, weight: .bold))
                 .foregroundStyle(Color.maplogOlive)
@@ -716,14 +711,14 @@ private struct SecurityDeviceRow: View {
                 Text("현재")
                     .font(.system(size: 11, weight: .black))
                     .foregroundStyle(Color.maplogInk)
-                    .padding(.horizontal, 8)
+                    .padding(.horizontal, MaplogSpacing.xSmall)
                     .frame(height: 24)
                     .background(Color.maplogLime)
                     .clipShape(Capsule())
             }
         }
-        .padding(12)
-        .background(.white)
+        .padding(MaplogSpacing.small)
+        .background(Color.maplogSurface)
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 14, style: .continuous)

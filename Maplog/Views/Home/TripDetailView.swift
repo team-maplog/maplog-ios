@@ -12,7 +12,7 @@ struct TripDetailView: View {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 0) {
                     routeTopBar
-                    RouteDetailHeroMap(spots: trip.spots)
+                    RouteDetailHeroMap(spots: trip.spots, nearbySpots: trip.nearbySpots)
 
                     VStack(alignment: .leading, spacing: 22) {
                         routeSummary
@@ -22,7 +22,7 @@ struct TripDetailView: View {
                     .padding(.horizontal, MaplogSpacing.page)
                     .padding(.top, 22)
                     .padding(.bottom, 122)
-                    .background(.white)
+                    .background(Color.maplogSurface)
                     .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
                     .offset(y: -28)
                 }
@@ -36,7 +36,7 @@ struct TripDetailView: View {
                     .foregroundStyle(Color.maplogInk)
                     .padding(.horizontal, 18)
                     .frame(height: 48)
-                    .background(.white)
+                    .background(Color.maplogSurface)
                     .clipShape(Capsule())
                     .shadow(color: .black.opacity(0.14), radius: 18, x: 0, y: 8)
                     .padding(.bottom, 94)
@@ -46,7 +46,7 @@ struct TripDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden()
         .toolbar(.hidden, for: .navigationBar)
-        .background(Color.white)
+        .background(Color.maplogSurface)
         .maplogTabBarHidden()
         .sheet(isPresented: $showsShareSheet) {
             RouteShareSheet(trip: trip) { message in
@@ -87,18 +87,18 @@ struct TripDetailView: View {
             }
             .buttonStyle(.plain)
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, MaplogSpacing.medium)
         .frame(height: 58)
-        .background(.white)
+        .background(Color.maplogSurface)
         .overlay(alignment: .bottom) {
             Rectangle().fill(Color.maplogLine).frame(height: 1)
         }
     }
 
     private var routeSummary: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: MaplogSpacing.medium) {
             HStack(alignment: .top) {
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
                     Text(trip.title)
                         .font(.system(size: 25, weight: .black))
                         .foregroundStyle(Color.maplogInk)
@@ -163,7 +163,7 @@ struct TripDetailView: View {
 
                 VStack(alignment: .leading, spacing: 5) {
                     Text("이 루트에 기록 추가")
-                        .font(.system(size: 17, weight: .black))
+                        .font(MaplogFont.cardTitle)
                         .foregroundStyle(Color.maplogInk)
                     Text("첫 장소를 기준으로 새 맵로그를 작성합니다")
                         .font(.system(size: 13, weight: .medium))
@@ -175,7 +175,7 @@ struct TripDetailView: View {
                     .font(.system(size: 13, weight: .black))
                     .foregroundStyle(Color.maplogMuted)
             }
-            .padding(16)
+            .padding(MaplogSpacing.medium)
             .maplogCard()
         }
         .buttonStyle(.plain)
@@ -199,7 +199,7 @@ struct TripDetailView: View {
                 MapSearchView(query: trip.title)
             } label: {
                 Label("지도에서 따라가기", systemImage: "location.north.fill")
-                    .font(.system(size: 17, weight: .black))
+                    .font(MaplogFont.cardTitle)
                     .foregroundStyle(Color.maplogInk)
                     .frame(maxWidth: .infinity)
                     .frame(height: 56)
@@ -211,7 +211,7 @@ struct TripDetailView: View {
         .padding(.horizontal, MaplogSpacing.page)
         .padding(.top, 12)
         .padding(.bottom, 22)
-        .background(.white)
+        .background(Color.maplogSurface)
         .overlay(alignment: .top) {
             Rectangle().fill(Color.maplogLine).frame(height: 1)
         }
@@ -250,7 +250,11 @@ struct TripDetailView: View {
 }
 
 struct RouteDetailHeroMap: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let spots: [MaplogSpot]
+    var nearbySpots: [MaplogSpot] = []
+    var height: CGFloat = 430
+    var selectedSpotID: String? = nil
 
     var body: some View {
         GeometryReader { proxy in
@@ -268,26 +272,58 @@ struct RouteDetailHeroMap: View {
                     .stroke(Color.maplogLime, style: StrokeStyle(lineWidth: 5, lineCap: .round, lineJoin: .round))
                     .shadow(color: Color.maplogLime.opacity(0.45), radius: 8, x: 0, y: 0)
 
+                ForEach(nearbySpots) { spot in
+                    RouteNearbyMapPin(spot: spot)
+                        .position(nearbyPoint(for: spot, in: proxy.size))
+                        .zIndex(0)
+                }
+
                 ForEach(Array(spots.enumerated()), id: \.element.id) { index, spot in
                     let point = routePoint(for: spot, in: proxy.size)
+                    let hasSelection = selectedSpotID != nil
+                    let isSelected = selectedSpotID == spot.id
+                    let pinSize: CGFloat = hasSelection ? (isSelected ? 68 : 50) : 58
+
                     ZStack(alignment: .topTrailing) {
-                        TravelImageView(style: spot.imageStyle, height: 58, cornerRadius: 29, showsSymbol: false)
-                            .frame(width: 58)
-                            .overlay(Circle().stroke(.white, lineWidth: 4))
-                            .shadow(color: .black.opacity(0.18), radius: 12, x: 0, y: 6)
+                        MaplogSpotImageView(
+                            spot: spot,
+                            height: pinSize,
+                            cornerRadius: pinSize / 2
+                        )
+                        .frame(width: pinSize)
+                            .overlay(
+                                Circle().stroke(
+                                    isSelected ? Color.maplogLime : .white,
+                                    lineWidth: isSelected ? 5 : 4
+                                )
+                            )
+                            .shadow(
+                                color: .black.opacity(isSelected ? 0.26 : 0.14),
+                                radius: isSelected ? 16 : 9,
+                                x: 0,
+                                y: isSelected ? 8 : 4
+                            )
                         Text("\(index + 1)")
                             .font(.system(size: 12, weight: .black))
                             .foregroundStyle(Color.maplogInk)
                             .frame(width: 26, height: 26)
-                            .background(Color.maplogLime)
+                            .background(isSelected || !hasSelection ? Color.maplogLime : Color.white.opacity(0.92))
                             .clipShape(Circle())
                             .offset(x: 9, y: -9)
                     }
+                    .opacity(hasSelection && !isSelected ? 0.66 : 1)
+                    .zIndex(isSelected ? 2 : 1)
                     .position(point)
                 }
             }
+            .scaleEffect(selectedSpotID == nil ? 1 : 1.06)
+            .offset(focusOffset(in: proxy.size))
+            .animation(
+                reduceMotion ? nil : .spring(response: 0.42, dampingFraction: 0.88),
+                value: selectedSpotID
+            )
         }
-        .frame(height: 430)
+        .frame(height: height)
         .clipped()
     }
 
@@ -295,6 +331,30 @@ struct RouteDetailHeroMap: View {
         CGPoint(
             x: size.width * min(max(spot.pinX, 0.16), 0.84),
             y: size.height * min(max(spot.pinY, 0.18), 0.78)
+        )
+    }
+
+    private func nearbyPoint(for spot: MaplogSpot, in size: CGSize) -> CGPoint {
+        CGPoint(
+            x: size.width * min(max(spot.pinX, 0.10), 0.90),
+            y: size.height * min(max(spot.pinY, 0.14), 0.88)
+        )
+    }
+
+    private func focusOffset(in size: CGSize) -> CGSize {
+        guard
+            let selectedSpotID,
+            let selectedSpot = spots.first(where: { $0.id == selectedSpotID })
+        else {
+            return .zero
+        }
+
+        let point = routePoint(for: selectedSpot, in: size)
+        let target = CGPoint(x: size.width * 0.50, y: size.height * 0.43)
+
+        return CGSize(
+            width: (target.x - point.x) * 0.72,
+            height: (target.y - point.y) * 0.58
         )
     }
 
@@ -338,17 +398,86 @@ struct RouteDetailHeroMap: View {
     }
 }
 
+private struct RouteNearbyMapPin: View {
+    let spot: MaplogSpot
+
+    private var tint: Color {
+        switch spot.mapPinStyle {
+        case .recorded: return Color.maplogInk
+        case .cafe: return Color(red: 0.45, green: 0.28, blue: 0.16)
+        case .restaurant: return Color(red: 0.90, green: 0.30, blue: 0.20)
+        case .event: return Color(red: 0.40, green: 0.28, blue: 0.76)
+        case .festival: return Color.maplogLime
+        }
+    }
+
+    private var symbol: String {
+        switch spot.mapPinStyle {
+        case .recorded: return "play.fill"
+        case .cafe: return "cup.and.saucer.fill"
+        case .restaurant: return "fork.knife"
+        case .event: return "calendar"
+        case .festival: return "party.popper.fill"
+        }
+    }
+
+    private var foreground: Color {
+        spot.mapPinStyle == .festival ? Color.maplogInk : .white
+    }
+
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            MapPinPointer()
+                .fill(tint)
+                .frame(width: 14, height: 10)
+                .offset(y: -1)
+
+            pinFace
+                .offset(y: -6)
+        }
+        .frame(width: 38, height: 42)
+        .shadow(color: .black.opacity(0.18), radius: 5, x: 0, y: 3)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("주변 \(spot.category) \(spot.name)")
+    }
+
+    private var pinFace: some View {
+        Circle()
+            .fill(tint)
+            .frame(width: 30, height: 30)
+            .overlay(pinSymbol)
+            .overlay(Circle().stroke(.white.opacity(0.92), lineWidth: 2))
+    }
+
+    private var pinSymbol: some View {
+        Image(systemName: symbol)
+            .font(.system(size: 12, weight: .bold))
+            .foregroundStyle(foreground)
+    }
+}
+
+private struct MapPinPointer: Shape {
+    func path(in rect: CGRect) -> Path {
+        Path { path in
+            path.move(to: CGPoint(x: rect.minX, y: rect.minY))
+            path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+            path.addLine(to: CGPoint(x: rect.midX, y: rect.maxY))
+            path.closeSubpath()
+        }
+    }
+}
+
 struct RouteShareSheet: View {
     let trip: MaplogTrip
     let onAction: (String) -> Void
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: MaplogSpacing.large) {
             HStack {
                 VStack(alignment: .leading, spacing: 5) {
                     Text("루트 공유")
-                        .font(.system(size: 24, weight: .black))
+                        .font(MaplogFont.screenTitle)
                         .foregroundStyle(Color.maplogInk)
                     Text(trip.title)
                         .font(.system(size: 14, weight: .bold))
@@ -411,14 +540,14 @@ struct RouteShareSheet: View {
                 .buttonStyle(.plain)
             }
         }
-        .padding(24)
+        .padding(MaplogSpacing.xLarge)
     }
 
     private func routeShareOption(title: String, systemImage: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             VStack(spacing: 9) {
                 Image(systemName: systemImage)
-                    .font(.system(size: 20, weight: .black))
+                    .font(MaplogFont.sectionTitle)
                     .foregroundStyle(Color.maplogInk)
                     .frame(width: 54, height: 54)
                     .background(Color.maplogCanvas)
@@ -450,8 +579,8 @@ struct RouteTimelineRow: View {
     var isActive = false
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            VStack(spacing: 8) {
+        HStack(alignment: .top, spacing: MaplogSpacing.small) {
+            VStack(spacing: MaplogSpacing.xSmall) {
                 Text(timeText)
                     .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(isHighlighted ? Color.maplogInk : Color.maplogMuted)
@@ -469,13 +598,13 @@ struct RouteTimelineRow: View {
             }
             .frame(width: 50)
 
-            HStack(spacing: 12) {
-                TravelImageView(style: spot.imageStyle, height: 74, cornerRadius: 8, showsSymbol: false)
+            HStack(spacing: MaplogSpacing.small) {
+                TravelImageView(style: spot.imageStyle, height: 74, cornerRadius: MaplogRadius.small, showsSymbol: false)
                     .frame(width: 92)
 
                 VStack(alignment: .leading, spacing: 6) {
                     Text(spot.name)
-                        .font(.system(size: 17, weight: .black))
+                        .font(MaplogFont.cardTitle)
                         .foregroundStyle(Color.maplogInk)
                         .lineLimit(1)
                     Text(spot.summary)
@@ -489,8 +618,8 @@ struct RouteTimelineRow: View {
 
                 Spacer()
             }
-            .padding(12)
-            .background(.white)
+            .padding(MaplogSpacing.small)
+            .background(Color.maplogSurface)
             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
@@ -519,7 +648,7 @@ struct InfoBadge: View {
         Label(title, systemImage: systemImage)
             .font(.system(size: 13, weight: .bold))
             .foregroundStyle(Color.maplogInk)
-            .padding(.horizontal, 12)
+            .padding(.horizontal, MaplogSpacing.small)
             .padding(.vertical, 9)
             .background(Color.maplogCanvas)
             .clipShape(Capsule())

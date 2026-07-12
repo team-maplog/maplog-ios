@@ -5,14 +5,14 @@ struct TripCardView: View {
     var isLarge = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: MaplogSpacing.small) {
             TravelImageView(style: trip.coverStyle, height: isLarge ? 180 : 136)
                 .overlay(alignment: .topLeading) {
                     MaplogStatusBadge(title: trip.duration)
-                        .padding(10)
+                        .padding(MaplogSpacing.xSmall)
                 }
 
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: MaplogSpacing.xxSmall) {
                 Text(trip.title)
                     .font(isLarge ? MaplogFont.screenTitle : MaplogFont.cardTitle)
                     .foregroundStyle(Color.maplogInk)
@@ -31,7 +31,7 @@ struct TripCardView: View {
             .padding(.bottom, MaplogSpacing.stack)
         }
         .frame(width: isLarge ? nil : 236)
-        .maplogCard()
+        .maplogCard(style: .photo)
     }
 }
 
@@ -42,20 +42,20 @@ struct SavedRouteActionCard: View {
     let onRemove: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: MaplogSpacing.small) {
             NavigationLink {
                 RouteDetailView(trip: trip)
             } label: {
                 TripCardView(trip: trip, isLarge: true)
                     .overlay(alignment: .topTrailing) {
                         Text(statusText)
-                            .font(.system(size: 12, weight: .black))
+                            .font(MaplogFont.badge)
                             .foregroundStyle(Color.maplogInk)
-                            .padding(.horizontal, 10)
+                            .padding(.horizontal, MaplogSpacing.small)
                             .frame(height: 28)
                             .background(Color.maplogLime)
                             .clipShape(Capsule())
-                            .padding(12)
+                            .padding(MaplogSpacing.small)
                     }
             }
             .buttonStyle(.plain)
@@ -70,9 +70,9 @@ struct SavedRouteActionCard: View {
                     MapSearchView(query: trip.location)
                 } label: {
                     Label("지도 보기", systemImage: "map.fill")
-                        .font(.system(size: 12, weight: .black))
+                        .font(MaplogFont.caption)
                         .foregroundStyle(Color.maplogInk)
-                        .padding(.horizontal, 12)
+                        .padding(.horizontal, MaplogSpacing.small)
                         .frame(height: 34)
                         .background(Color.maplogLime)
                         .clipShape(Capsule())
@@ -82,9 +82,9 @@ struct SavedRouteActionCard: View {
 
                 Button(action: onRemove) {
                     Label("저장 해제", systemImage: "bookmark.slash")
-                        .font(.system(size: 12, weight: .black))
+                        .font(MaplogFont.caption)
                         .foregroundStyle(Color.maplogInk)
-                        .padding(.horizontal, 12)
+                        .padding(.horizontal, MaplogSpacing.small)
                         .frame(height: 34)
                         .background(Color.maplogCanvas)
                         .clipShape(Capsule())
@@ -92,7 +92,7 @@ struct SavedRouteActionCard: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("\(trip.title) 저장 해제")
             }
-            .font(.system(size: 12, weight: .bold))
+            .font(MaplogFont.caption)
             .foregroundStyle(Color.maplogMuted)
             .padding(.horizontal, 2)
         }
@@ -107,21 +107,21 @@ struct SavedConfirmationCard<Destination: View>: View {
     @ViewBuilder let destination: () -> Destination
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 12) {
+        VStack(alignment: .leading, spacing: MaplogSpacing.stack) {
+            HStack(spacing: MaplogSpacing.small) {
                 Image(systemName: systemImage)
-                    .font(.system(size: 19, weight: .black))
+                    .font(.system(size: MaplogSize.iconMedium, weight: .semibold))
                     .foregroundStyle(Color.maplogInk)
                     .frame(width: 42, height: 42)
                     .background(Color.maplogLime)
                     .clipShape(Circle())
 
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: MaplogSpacing.xxSmall) {
                     Text(title)
-                        .font(.system(size: 17, weight: .black))
+                        .font(MaplogFont.cardTitle)
                         .foregroundStyle(Color.maplogInk)
                     Text(subtitle)
-                        .font(.system(size: 13, weight: .medium))
+                        .font(MaplogFont.callout)
                         .foregroundStyle(Color.maplogMuted)
                         .lineLimit(2)
                 }
@@ -133,17 +133,17 @@ struct SavedConfirmationCard<Destination: View>: View {
                 destination()
             } label: {
                 Label(buttonTitle, systemImage: "tray.full.fill")
-                    .font(.system(size: 15, weight: .black))
+                    .font(MaplogFont.bodyStrong)
                     .foregroundStyle(Color.maplogInk)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 48)
+                    .frame(height: MaplogSize.controlHeight)
                     .background(Color.maplogCanvas)
-                    .clipShape(Capsule())
+                    .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous))
             }
             .buttonStyle(.plain)
         }
         .padding(MaplogSpacing.cardPadding)
-        .maplogCard()
+        .maplogCard(style: .elevated)
     }
 }
 
@@ -151,33 +151,33 @@ struct SpotRowCard: View {
     let spot: MaplogSpot
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: MaplogSpacing.small) {
             TravelImageView(style: spot.imageStyle, height: MaplogSize.listThumbnail, cornerRadius: MaplogSpacing.smallRadius)
                 .frame(width: MaplogSize.listThumbnail)
 
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
                 HStack {
                     Text(spot.category)
-                        .font(.system(size: 11, weight: .bold))
+                        .font(MaplogFont.badge)
                         .foregroundStyle(Color.maplogInk)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
+                        .padding(.horizontal, MaplogSpacing.xSmall)
+                        .padding(.vertical, MaplogSpacing.xxSmall)
                         .background(Color.maplogLime)
                         .clipShape(Capsule())
                     Spacer()
                     Label(String(format: "%.1f", spot.rating), systemImage: "star.fill")
-                        .font(.system(size: 12, weight: .bold))
+                        .font(MaplogFont.caption)
                         .foregroundStyle(Color.maplogInk)
                 }
                 Text(spot.name)
-                    .font(.system(size: 17, weight: .bold))
+                    .font(MaplogFont.cardTitle)
                     .foregroundStyle(Color.maplogInk)
                 Text(spot.area)
-                    .font(.system(size: 13, weight: .medium))
+                    .font(MaplogFont.callout)
                     .foregroundStyle(Color.maplogMuted)
             }
         }
-        .padding(10)
+        .padding(MaplogSpacing.xSmall)
         .maplogCard()
     }
 }

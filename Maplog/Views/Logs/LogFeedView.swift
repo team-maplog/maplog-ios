@@ -2,15 +2,18 @@ import SwiftUI
 
 struct LogFeedView: View {
     @Environment(\.maplogSelectTab) private var selectTab
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @EnvironmentObject private var sessionStore: MaplogSessionStore
     @State private var selectedMode = "추천"
     @State private var currentPost = MockMaplogData.posts[0]
+    @State private var logScrollPosition: String? = MockMaplogData.posts[0].id
     @State private var selectedPlaceForSheet: MaplogSpot?
     @State private var selectedProfilePost: VlogPost?
     @State private var selectedCommentPost: VlogPost?
     @State private var sharePost: VlogPost?
     @State private var activeClipIndex = 0
     @State private var actionToast: String?
+    @State private var selectedReelPage = 0
 
     private var feedPosts: [VlogPost] {
         sessionStore.publishedLogs.map(post(from:)) + MockMaplogData.posts
@@ -27,67 +30,52 @@ struct LogFeedView: View {
         return unblockedPosts
     }
 
-    private var backgroundPost: VlogPost {
-        visiblePosts.first ?? currentPost
-    }
-
-    private var currentPostIsMine: Bool {
-        currentPost.author == "@\(sessionStore.profile.displayName)"
-    }
-
     var body: some View {
         GeometryReader { proxy in
             ZStack {
-                TravelImageView(style: backgroundPost.imageStyle, height: proxy.size.height + 20, cornerRadius: 0)
-                    .ignoresSafeArea()
-                LinearGradient(colors: [.black.opacity(0.12), .black.opacity(0.74)], startPoint: .top, endPoint: .bottom)
-                    .ignoresSafeArea()
-
-                VStack(spacing: 0) {
-                    topBar
-                    if visiblePosts.isEmpty {
+                if visiblePosts.isEmpty {
+                    Color.black
+                    VStack(spacing: 0) {
+                        clipProgress
+                        topBar(for: currentPost)
                         Spacer()
                         emptyFeedState
                             .padding(.horizontal, MaplogSpacing.page)
-                            .padding(.bottom, 132)
-                    } else {
-                        Spacer()
-                        postMeta
-                            .frame(width: max(min(proxy.size.width - 148, 240), 188), alignment: .leading)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, MaplogSpacing.page)
-                        .padding(.bottom, 108)
+                            .padding(.bottom, proxy.safeAreaInsets.bottom + MaplogSpacing.reelTabBarClearance)
                     }
-                }
-
-                if !visiblePosts.isEmpty {
-                    sideActions
-                        .frame(width: 56)
-                        .position(x: proxy.size.width - 48, y: proxy.size.height - 300)
+                    .padding(.top, max(proxy.safeAreaInsets.top, MaplogSpacing.reelTopClearance) + 8)
+                } else {
+                    ScrollView(.vertical, showsIndicators: false) {
+                        LazyVStack(spacing: 0) {
+                            ForEach(visiblePosts) { post in
+                                logReelPager(post: post, proxy: proxy)
+                                    .frame(width: proxy.size.width, height: proxy.size.height)
+                                    .id(post.id)
+                            }
+                        }
+                        .scrollTargetLayout()
+                    }
+                    .scrollPosition(id: $logScrollPosition, anchor: .top)
+                    .scrollTargetBehavior(.paging)
+                    .background(Color.black)
                 }
 
                 if let actionToast {
                     Text(actionToast)
-                        .font(.system(size: 14, weight: .bold))
+                        .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.white)
                         .padding(.horizontal, 18)
-                        .padding(.vertical, 12)
-                        .background(.black.opacity(0.78))
+                        .frame(minHeight: 48)
+                        .background(.ultraThinMaterial)
                         .clipShape(Capsule())
                         .frame(maxHeight: .infinity, alignment: .bottom)
-                        .padding(.bottom, 34)
+                        .padding(.bottom, proxy.safeAreaInsets.bottom + MaplogSpacing.reelTabBarClearance)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
-            .contentShape(Rectangle())
-            .gesture(
-                DragGesture(minimumDistance: 36)
-                    .onEnded { value in
-                        guard abs(value.translation.height) > abs(value.translation.width) else { return }
-                        switchPost(by: value.translation.height < 0 ? 1 : -1)
-                    }
-            )
         }
+        .ignoresSafeArea(.container, edges: [.top, .bottom])
+        .maplogReelTabBarStyle()
         .toolbar(.hidden, for: .navigationBar)
         .navigationDestination(item: $selectedProfilePost) { post in
             OtherProfileView(post: post)
@@ -121,30 +109,151 @@ struct LogFeedView: View {
         .onChange(of: sessionStore.publishedLogs) { _, _ in
             moveToFirstVisiblePost(preferFirst: selectedMode == "추천")
         }
+        .onChange(of: logScrollPosition) { _, newPostID in
+            guard
+                let newPostID,
+                let post = visiblePosts.first(where: { $0.id == newPostID })
+            else {
+                return
+            }
+
+            currentPost = post
+            activeClipIndex = 0
+            selectedReelPage = 0
+        }
         .onAppear {
             moveToFirstVisiblePost(preferFirst: selectedMode == "추천")
         }
     }
 
-    private var topBar: some View {
-        HStack {
-            Spacer()
-            HStack(spacing: 28) {
-                modeButton("팔로잉")
-                modeButton("추천")
+    private func logReelPager(post: VlogPost, proxy: GeometryProxy) -> some View {
+        TabView(selection: $selectedReelPage) {
+            reelVideoPage(post: post, proxy: proxy)
+                .tag(0)
+
+            MaplogReelRoutePage(post: post, trip: routeTrip(for: post))
+                .tag(1)
+        }
+        .tabViewStyle(.page(indexDisplayMode: .never))
+        .frame(width: proxy.size.width, height: proxy.size.height)
+        .background(Color.black)
+        .overlay(alignment: .top) {
+            MaplogReelPageCue(selectedPage: selectedReelPage)
+                .padding(.top, max(proxy.safeAreaInsets.top, MaplogSpacing.reelTopClearance) + 92)
+        }
+        .accessibilityHint("좌우로 넘기면 영상과 전체 루트를 전환합니다")
+    }
+
+    private func reelVideoPage(post: VlogPost, proxy: GeometryProxy) -> some View {
+        ZStack {
+            VlogPostImageView(post: post)
+                .frame(width: proxy.size.width, height: proxy.size.height + 2)
+                .ignoresSafeArea(.container, edges: .top)
+
+            LinearGradient(
+                colors: [.black.opacity(0.28), .clear, .black.opacity(0.18), .black.opacity(0.88)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea(.container, edges: .top)
+
+            Color.clear
+                .frame(width: max(proxy.size.width * 0.24, 76), height: max(proxy.size.height * 0.26, 140))
+                .contentShape(Rectangle())
+                .position(x: proxy.size.width * 0.87, y: proxy.size.height * 0.42)
+                .onTapGesture {
+                    showNextPost(after: post)
+                }
+                .accessibilityElement()
+                .accessibilityLabel("다음 Maplog")
+                .accessibilityAddTraits(.isButton)
+
+            VStack(spacing: 0) {
+                clipProgress
+                topBar(for: post)
+                Spacer()
+
+                HStack(alignment: .bottom, spacing: 14) {
+                    postMeta(for: post)
+                        .layoutPriority(1)
+                    sideActions(for: post)
+                        .frame(width: 48)
+                }
+                .padding(.horizontal, MaplogSpacing.page)
+                .padding(.bottom, proxy.safeAreaInsets.bottom + MaplogSpacing.reelTabBarClearance)
             }
-            Spacer()
+            .padding(.top, max(proxy.safeAreaInsets.top, MaplogSpacing.reelTopClearance) + 8)
+        }
+        .frame(width: proxy.size.width, height: proxy.size.height)
+        .clipped()
+    }
+
+    private var clipProgress: some View {
+        Button {
+            activeClipIndex = (activeClipIndex + 1) % 4
+            showToast("\(activeClipIndex + 1)번째 클립 재생 중")
+        } label: {
+            HStack(spacing: 5) {
+                ForEach(0..<4, id: \.self) { index in
+                    Capsule()
+                        .fill(index <= activeClipIndex ? Color.white : Color.white.opacity(0.34))
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 3)
+                }
+            }
+            .padding(.horizontal, MaplogSpacing.page)
+            .frame(height: 20)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("클립 진행 상태, 4개 중 \(activeClipIndex + 1)번째")
+        .accessibilityHint("다음 클립으로 이동합니다")
+    }
+
+    private func topBar(for post: VlogPost) -> some View {
+        HStack(spacing: MaplogSpacing.small) {
             NavigationLink {
                 SearchView()
             } label: {
                 Image(systemName: "magnifyingglass")
-                    .font(.system(size: 26, weight: .bold))
+                    .font(.body.weight(.semibold))
                     .foregroundStyle(.white)
+                    .frame(width: 44, height: 44)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("검색")
+
+            Spacer(minLength: 0)
+
+            HStack(spacing: 22) {
+                modeButton("팔로잉")
+                modeButton("추천")
+            }
+
+            Spacer(minLength: 0)
+
+            Menu {
+                Button {
+                    sharePost = post
+                } label: {
+                    Label("공유", systemImage: "square.and.arrow.up")
+                }
+
+                Button {
+                    selectedPlaceForSheet = post.place
+                } label: {
+                    Label("장소 정보", systemImage: "mappin.and.ellipse")
+                }
+            } label: {
+                Image(systemName: "ellipsis")
+                    .font(.body.weight(.bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 44, height: 44)
+            }
+            .accessibilityLabel("더보기")
         }
         .padding(.horizontal, MaplogSpacing.page)
-        .padding(.top, 54)
+        .frame(height: 48)
     }
 
     private func modeButton(_ title: String) -> some View {
@@ -155,21 +264,22 @@ struct LogFeedView: View {
                 showToast("팔로우한 맵로거가 아직 없어요")
             }
         } label: {
-            VStack(spacing: 8) {
+            VStack(spacing: MaplogSpacing.xSmall) {
                 Text(title)
-                    .font(.system(size: 19, weight: selectedMode == title ? .bold : .medium))
+                    .font(.headline.weight(selectedMode == title ? .bold : .medium))
                     .foregroundStyle(selectedMode == title ? .white : .white.opacity(0.62))
-                Circle()
+                Capsule()
                     .fill(selectedMode == title ? Color.maplogLime : .clear)
-                    .frame(width: 6, height: 6)
+                    .frame(width: 22, height: 3)
             }
+            .frame(minHeight: 44)
         }
         .buttonStyle(.plain)
     }
 
     private var emptyFeedState: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: MaplogSpacing.medium) {
+            VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
                 Text(selectedMode == "팔로잉" ? "팔로우한 맵로거가 아직 없어요" : "표시할 맵로그가 없어요")
                     .font(.system(size: 25, weight: .black))
                     .foregroundStyle(.white)
@@ -213,8 +323,9 @@ struct LogFeedView: View {
     }
 
     private func suggestedAuthorRow(_ post: VlogPost) -> some View {
-        HStack(spacing: 12) {
-            TravelImageView(style: post.imageStyle, height: 48, cornerRadius: 24, showsSymbol: false)
+        HStack(spacing: MaplogSpacing.small) {
+            VlogPostImageView(post: post, cornerRadius: 24)
+                .frame(height: 48)
                 .frame(width: 48)
 
             VStack(alignment: .leading, spacing: 3) {
@@ -236,7 +347,7 @@ struct LogFeedView: View {
                 Text("팔로우")
                     .font(.system(size: 12, weight: .black))
                     .foregroundStyle(Color.maplogInk)
-                    .padding(.horizontal, 12)
+                    .padding(.horizontal, MaplogSpacing.small)
                     .frame(height: 34)
                     .background(Color.maplogLime)
                     .clipShape(Capsule())
@@ -249,179 +360,128 @@ struct LogFeedView: View {
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
-    private var postMeta: some View {
-        VStack(alignment: .leading, spacing: 13) {
-            if currentPostIsMine {
+    private func postMeta(for post: VlogPost) -> some View {
+        VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
+            HStack(spacing: 10) {
                 Button {
-                    selectTab(.profile)
+                    if post.author == "@\(sessionStore.profile.displayName)" {
+                        selectTab(.profile)
+                    } else {
+                        selectedProfilePost = post
+                    }
                 } label: {
-                    Text(currentPost.author)
-                        .font(.system(size: 21, weight: .black))
-                        .foregroundStyle(.white)
+                    HStack(spacing: MaplogSpacing.xSmall) {
+                        Image(systemName: "person.crop.circle.fill")
+                            .font(.title2)
+                        Text(post.author)
+                            .font(.headline)
+                    }
+                    .foregroundStyle(.white)
                 }
                 .buttonStyle(.plain)
-            } else {
-                Button {
-                    selectedProfilePost = currentPost
-                } label: {
-                    Text(currentPost.author)
-                        .font(.system(size: 21, weight: .black))
-                        .foregroundStyle(.white)
+
+                if post.author != "@\(sessionStore.profile.displayName)" {
+                    Button {
+                        toggleFollow(for: post)
+                    } label: {
+                        Text(sessionStore.isFollowing(author: post.author) ? "팔로잉" : "팔로우")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(sessionStore.isFollowing(author: post.author) ? .white : Color.maplogInk)
+                            .padding(.horizontal, 11)
+                            .frame(minHeight: 30)
+                            .background(
+                                sessionStore.isFollowing(author: post.author)
+                                    ? Color.white.opacity(0.18)
+                                    : Color.maplogLime,
+                                in: Capsule()
+                            )
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
 
-            Text(currentPost.title)
-                .font(.system(size: 17, weight: .bold))
+            Text(post.title)
+                .font(.headline.weight(.bold))
                 .foregroundStyle(.white)
-            Text(currentPost.caption)
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(.white.opacity(0.9))
-                .lineLimit(2)
+                .lineLimit(1)
+            Text(post.caption)
+                .font(.subheadline)
+                .foregroundStyle(.white.opacity(0.86))
+                .lineLimit(1)
 
-            HStack(spacing: 8) {
-                ForEach(currentPost.hashtags, id: \.self) { tag in
-                    Text("#\(tag)")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 7)
-                        .background(.white.opacity(0.18))
-                        .clipShape(Capsule())
-                }
-            }
+            Text(post.hashtags.map { "#\($0)" }.joined(separator: "  "))
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.white.opacity(0.76))
+                .lineLimit(1)
 
             Button {
-                selectedPlaceForSheet = currentPost.place
+                selectedPlaceForSheet = post.place
             } label: {
-                HStack(spacing: 10) {
-                    TravelImageView(style: currentPost.place.imageStyle, height: 52, cornerRadius: 8)
-                        .frame(width: 52)
+                HStack(spacing: 9) {
+                    Image(systemName: "mappin.circle.fill")
+                        .font(.title3)
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(currentPost.place.name)
-                            .font(.system(size: 14, weight: .black))
-                        Text(currentPost.place.area)
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(Color.maplogMuted)
+                        Text(post.place.name)
+                            .font(.subheadline.weight(.semibold))
+                        Text(post.place.area)
+                            .font(.caption)
+                            .foregroundStyle(.white.opacity(0.68))
                     }
+                    Spacer(minLength: 0)
                     Image(systemName: "chevron.right")
-                        .font(.system(size: 12, weight: .black))
+                        .font(.caption.weight(.bold))
                 }
-                .foregroundStyle(Color.maplogInk)
-                .padding(9)
-                .background(.white.opacity(0.92))
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .foregroundStyle(.white)
+                .padding(.horizontal, MaplogSpacing.small)
+                .frame(minHeight: 44)
+                .background(.ultraThinMaterial)
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             }
             .buttonStyle(.plain)
 
-            NavigationLink {
-                PopularMaplogDetailView(post: currentPost, trip: routeTrip(for: currentPost))
-            } label: {
-                Label("이 루트 지도에서 보기", systemImage: "map.fill")
-                    .font(.system(size: 19, weight: .black))
-                    .foregroundStyle(Color.maplogInk)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.82)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 56)
-                    .background(Color.maplogLime)
-                    .clipShape(Capsule())
-            }
-            .buttonStyle(.plain)
+            routeAction(for: post)
         }
     }
 
-    private var sideActions: some View {
-        VStack(spacing: 22) {
-            Button {
-                if currentPostIsMine {
-                    selectTab(.profile)
-                    showToast("내 프로필을 열었어요")
-                } else {
-                    toggleFollow(for: currentPost)
-                }
-            } label: {
-                VStack(spacing: -4) {
-                    Circle()
-                        .fill(.white)
-                        .frame(width: 52, height: 52)
-                        .overlay {
-                            Image(systemName: "person.crop.circle.fill")
-                                .font(.system(size: 42))
-                                .foregroundStyle(.gray)
-                        }
-                    Image(systemName: authorBadgeSystemImage)
-                        .font(.system(size: 24, weight: .black))
-                        .foregroundStyle(authorBadgeForegroundColor)
-                        .background(Circle().fill(authorBadgeBackgroundColor))
-                }
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(authorActionAccessibilityLabel)
+    private func routeAction(for post: VlogPost) -> some View {
+        NavigationLink {
+            PopularMaplogDetailView(post: post, trip: routeTrip(for: post))
+        } label: {
+            Label("루트 따라가기", systemImage: "location.north.fill")
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(Color.maplogInk)
+                .padding(.horizontal, 14)
+                .frame(minHeight: 40)
+                .background(Color.maplogLime)
+                .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
+    }
 
+    private func sideActions(for post: VlogPost) -> some View {
+        VStack(spacing: MaplogSpacing.xSmall) {
             actionButton(
-                icon: sessionStore.hasLikedVlogPost(currentPost) ? "heart.fill" : "heart",
-                count: likeCountText(for: currentPost),
-                tint: sessionStore.hasLikedVlogPost(currentPost) ? Color.maplogLime : .white
+                icon: sessionStore.hasLikedVlogPost(post) ? "heart.fill" : "heart",
+                count: likeCountText(for: post),
+                tint: sessionStore.hasLikedVlogPost(post) ? Color.maplogLime : .white
             ) {
-                toggleLike(for: currentPost)
+                toggleLike(for: post)
             }
-            actionButton(icon: "message.fill", count: commentCountText(for: currentPost)) {
-                selectedCommentPost = currentPost
-            }
-            actionButton(
-                icon: sessionStore.hasSavedRoute(routeTrip(for: currentPost)) ? "bookmark.fill" : "bookmark",
-                count: "저장",
-                tint: sessionStore.hasSavedRoute(routeTrip(for: currentPost)) ? Color.maplogLime : .white
-            ) {
-                toggleSave(for: currentPost)
+            actionButton(icon: "message.fill", count: commentCountText(for: post)) {
+                selectedCommentPost = post
             }
             actionButton(icon: "square.and.arrow.up", count: "공유") {
-                sharePost = currentPost
+                sharePost = post
             }
-            ZStack {
-                Circle()
-                    .fill(.black.opacity(0.34))
-                    .frame(width: 52, height: 52)
-                Circle()
-                    .stroke(Color.maplogMuted, lineWidth: 4)
-                    .frame(width: 42, height: 42)
-                Circle()
-                    .fill(Color(red: 0.95, green: 0.20, blue: 0.08))
-                    .frame(width: 12, height: 12)
-                    .offset(
-                        x: CGFloat(activeClipIndex % 2 == 0 ? 0 : 8),
-                        y: CGFloat(activeClipIndex % 2 == 0 ? 0 : -6)
-                    )
-            }
-            .onTapGesture {
-                activeClipIndex = (activeClipIndex + 1) % 4
-                showToast("\(activeClipIndex + 1)번째 클립 재생 중")
+            actionButton(
+                icon: sessionStore.hasSavedRoute(routeTrip(for: post)) ? "bookmark.fill" : "bookmark",
+                count: "저장",
+                tint: sessionStore.hasSavedRoute(routeTrip(for: post)) ? Color.maplogLime : .white
+            ) {
+                toggleSave(for: post)
             }
         }
         .foregroundStyle(.white)
-    }
-
-    private var authorBadgeSystemImage: String {
-        if currentPostIsMine {
-            return "checkmark.seal.fill"
-        }
-        return sessionStore.isFollowing(author: currentPost.author) ? "checkmark.circle.fill" : "plus.circle.fill"
-    }
-
-    private var authorBadgeForegroundColor: Color {
-        currentPostIsMine || sessionStore.isFollowing(author: currentPost.author) ? .white : Color.maplogLime
-    }
-
-    private var authorBadgeBackgroundColor: Color {
-        currentPostIsMine || sessionStore.isFollowing(author: currentPost.author) ? Color.maplogLime : .clear
-    }
-
-    private var authorActionAccessibilityLabel: String {
-        if currentPostIsMine {
-            return "내 프로필 열기"
-        }
-        return sessionStore.isFollowing(author: currentPost.author) ? "\(currentPost.author) 언팔로우" : "\(currentPost.author) 팔로우"
     }
 
     private func actionButton(icon: String, count: String, tint: Color = .white, action: @escaping () -> Void) -> some View {
@@ -430,11 +490,14 @@ struct LogFeedView: View {
         } label: {
             VStack(spacing: 5) {
                 Image(systemName: icon)
-                    .font(.system(size: 30, weight: .bold))
+                    .font(.system(size: 25, weight: .semibold))
                     .foregroundStyle(tint)
                 Text(count)
-                    .font(.system(size: 12, weight: .bold))
+                    .font(.caption2.weight(.bold))
             }
+            .frame(width: 48)
+            .frame(minHeight: 48)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
     }
@@ -557,14 +620,14 @@ struct LogFeedView: View {
             .filter { !$0.isEmpty }
     }
 
-    private func switchPost(by offset: Int) {
+    private func showNextPost(after post: VlogPost) {
         let posts = visiblePosts
         guard !posts.isEmpty else { return }
-        let currentIndex = posts.firstIndex(where: { $0.id == currentPost.id }) ?? 0
-        let nextIndex = (currentIndex + offset + posts.count) % posts.count
-        currentPost = posts[nextIndex]
-        activeClipIndex = 0
-        showToast(offset > 0 ? "다음 맵로그를 보고 있어요" : "이전 맵로그를 보고 있어요")
+        let currentIndex = posts.firstIndex(where: { $0.id == post.id }) ?? 0
+        let nextIndex = (currentIndex + 1) % posts.count
+        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.3)) {
+            logScrollPosition = posts[nextIndex].id
+        }
     }
 
     private func moveToFirstVisiblePost(preferFirst: Bool = false) {
@@ -576,8 +639,12 @@ struct LogFeedView: View {
             return
         }
 
-        currentPost = firstPost
-        activeClipIndex = 0
+        withAnimation(reduceMotion ? nil : .easeOut(duration: 0.22)) {
+            currentPost = firstPost
+            logScrollPosition = firstPost.id
+            activeClipIndex = 0
+            selectedReelPage = 0
+        }
     }
 
     private func showToast(_ message: String) {
@@ -651,7 +718,7 @@ struct PopularMaplogDetailView: View {
                     .foregroundStyle(Color.maplogInk)
                     .padding(.horizontal, 18)
                     .frame(height: 50)
-                    .background(.white)
+                    .background(Color.maplogSurface)
                     .clipShape(Capsule())
                     .shadow(color: .black.opacity(0.14), radius: 18, x: 0, y: 8)
                     .padding(.bottom, 106)
@@ -661,7 +728,7 @@ struct PopularMaplogDetailView: View {
         .overlay(alignment: .top) {
             routeTopBar
         }
-        .background(Color.white)
+        .background(Color.maplogSurface)
         .navigationBarBackButtonHidden()
         .toolbar(.hidden, for: .navigationBar)
         .maplogTabBarHidden()
@@ -705,15 +772,15 @@ struct PopularMaplogDetailView: View {
         .padding(.horizontal, 14)
         .padding(.top, 48)
         .frame(height: 106)
-        .background(.white)
+        .background(Color.maplogSurface)
     }
 
     private var header: some View {
-        TravelImageView(style: post.imageStyle, height: 286, cornerRadius: 0, showsSymbol: false)
-            .padding(.top, 106)
+        VlogPostImageView(post: post, cornerRadius: MaplogRadius.xLarge)
+            .frame(height: 286)
             .overlay {
                 LinearGradient(colors: [.clear, .black.opacity(0.72)], startPoint: .top, endPoint: .bottom)
-                    .padding(.top, 106)
+                    .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.xLarge, style: .continuous))
             }
             .overlay {
                 Image(systemName: "play.fill")
@@ -722,7 +789,6 @@ struct PopularMaplogDetailView: View {
                     .frame(width: 82, height: 82)
                     .background(.ultraThinMaterial)
                     .clipShape(Circle())
-                    .padding(.top, 106)
             }
             .overlay(alignment: .bottomLeading) {
                 VStack(alignment: .leading, spacing: 10) {
@@ -730,7 +796,7 @@ struct PopularMaplogDetailView: View {
                         .font(.system(size: 26, weight: .black))
                         .foregroundStyle(.white)
                         .lineLimit(2)
-                    HStack(spacing: 12) {
+                    HStack(spacing: MaplogSpacing.small) {
                         Label("\(routeStops.count)개 장소", systemImage: "mappin.and.ellipse")
                         Label("2.5km", systemImage: "point.topleft.down.curvedto.point.bottomright.up")
                         Label(trip.duration, systemImage: "clock")
@@ -738,19 +804,21 @@ struct PopularMaplogDetailView: View {
                     .font(.system(size: 14, weight: .bold))
                     .foregroundStyle(.white.opacity(0.92))
                 }
-                .padding(20)
+                .padding(MaplogSpacing.large)
             }
+            .padding(.horizontal, MaplogSpacing.page)
+            .padding(.top, 118)
     }
 
     private var itinerary: some View {
         VStack(alignment: .leading, spacing: 18) {
             Text("루트 일정")
-                .font(.system(size: 20, weight: .black))
+                .font(MaplogFont.sectionTitle)
                 .foregroundStyle(Color.maplogInk)
 
             VStack(spacing: 0) {
                 ForEach(Array(routeStops.enumerated()), id: \.element.id) { index, stop in
-                    HStack(alignment: .top, spacing: 16) {
+                    HStack(alignment: .top, spacing: MaplogSpacing.medium) {
                         VStack(spacing: 0) {
                             Circle()
                                 .fill(index == 0 ? Color.maplogLime : Color.maplogLine)
@@ -766,7 +834,7 @@ struct PopularMaplogDetailView: View {
                             SpotDetailView(spot: stop.spot)
                         } label: {
                             HStack(spacing: 14) {
-                                TravelImageView(style: stop.spot.imageStyle, height: 78, cornerRadius: 8, showsSymbol: false)
+                                TravelImageView(style: stop.spot.imageStyle, height: 78, cornerRadius: MaplogRadius.small, showsSymbol: false)
                                     .frame(width: 78)
 
                                 VStack(alignment: .leading, spacing: 7) {
@@ -786,7 +854,7 @@ struct PopularMaplogDetailView: View {
                                     }
 
                                     Text(stop.subtitle)
-                                        .font(.system(size: 14, weight: .medium))
+                                        .font(MaplogFont.callout)
                                         .foregroundStyle(Color.maplogMuted)
                                         .lineLimit(1)
 
@@ -796,7 +864,7 @@ struct PopularMaplogDetailView: View {
                                 }
                             }
                             .padding(14)
-                            .background(.white)
+                            .background(Color.maplogSurface)
                             .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
                             .shadow(color: .black.opacity(0.06), radius: 18, x: 0, y: 8)
                             .overlay {
@@ -838,7 +906,7 @@ struct PopularMaplogDetailView: View {
     }
 
     private var bottomBar: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: MaplogSpacing.small) {
             Button {
                 toggleSavedRoute()
             } label: {
@@ -859,7 +927,7 @@ struct PopularMaplogDetailView: View {
                 RouteDetailView(trip: trip)
             } label: {
                 Label("따라가기 시작", systemImage: "play.circle.fill")
-                    .font(.system(size: 17, weight: .black))
+                    .font(MaplogFont.cardTitle)
                     .foregroundStyle(Color.maplogInk)
                     .frame(maxWidth: .infinity)
                     .frame(height: 82)
@@ -871,7 +939,7 @@ struct PopularMaplogDetailView: View {
         .padding(.horizontal, MaplogSpacing.page)
         .padding(.top, 16)
         .padding(.bottom, 24)
-        .background(.white)
+        .background(Color.maplogSurface)
         .overlay(alignment: .top) {
             Rectangle().fill(Color.maplogLine).frame(height: 1)
         }
@@ -956,7 +1024,7 @@ struct VlogPlaceInfoSheet: View {
                         .foregroundStyle(Color.maplogInk)
                         .padding(.horizontal, 18)
                         .frame(height: 48)
-                        .background(.white)
+                        .background(Color.maplogSurface)
                         .clipShape(Capsule())
                         .shadow(color: .black.opacity(0.14), radius: 16, x: 0, y: 8)
                         .padding(.bottom, 94)
@@ -1032,7 +1100,7 @@ struct VlogPlaceInfoSheet: View {
                         .foregroundStyle(Color.maplogInk)
                     Spacer()
                     Label(String(format: "%.1f", spot.rating), systemImage: "star.fill")
-                        .font(.system(size: 17, weight: .black))
+                        .font(MaplogFont.cardTitle)
                         .foregroundStyle(Color.maplogInk)
                         .padding(.horizontal, 11)
                         .padding(.vertical, 8)
@@ -1044,7 +1112,7 @@ struct VlogPlaceInfoSheet: View {
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(Color.maplogMuted)
 
-                HStack(spacing: 8) {
+                HStack(spacing: MaplogSpacing.xSmall) {
                     ForEach(spot.tags.prefix(3), id: \.self) { tag in
                         Text("#\(tag)")
                             .font(.system(size: 12, weight: .bold))
@@ -1073,24 +1141,24 @@ struct VlogPlaceInfoSheet: View {
                     .frame(maxWidth: .infinity)
                     .frame(height: 54)
                     .background(Color.maplogCanvas)
-                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.small, style: .continuous))
             }
             .buttonStyle(.plain)
             .padding(.horizontal, MaplogSpacing.page)
             .padding(.bottom, 18)
         }
-        .background(.white)
+        .background(Color.maplogSurface)
         .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
         .shadow(color: .black.opacity(0.24), radius: 28, x: 0, y: -10)
     }
 
     private var reviewBlock: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: MaplogSpacing.small) {
             Rectangle()
                 .fill(Color.maplogLine)
                 .frame(height: 1)
 
-            HStack(alignment: .top, spacing: 12) {
+            HStack(alignment: .top, spacing: MaplogSpacing.small) {
                 Circle()
                     .fill(Color.maplogCanvas)
                     .frame(width: 42, height: 42)
@@ -1105,7 +1173,7 @@ struct VlogPlaceInfoSheet: View {
                         .font(.system(size: 17, weight: .bold))
                         .foregroundStyle(Color.maplogInk)
                     Text("평일 오전에 갔는데도 사람이 많았지만, \(spot.category) 특유의 분위기가 정말 좋았어요. 근처 루트까지 이어서 보기 좋아요.")
-                        .font(.system(size: 14, weight: .medium))
+                        .font(MaplogFont.callout)
                         .lineSpacing(3)
                         .foregroundStyle(Color.maplogInk)
                 }
@@ -1123,13 +1191,13 @@ struct VlogPlaceInfoSheet: View {
                 .font(.system(size: 18, weight: .black))
                 .foregroundStyle(Color.maplogInk)
 
-            HStack(spacing: 12) {
+            HStack(spacing: MaplogSpacing.small) {
                 ForEach(relatedPosts.prefix(2)) { item in
                     NavigationLink {
                         PopularMaplogDetailView(post: item, trip: MockMaplogData.routeTrip(for: item))
                     } label: {
-                        VStack(alignment: .leading, spacing: 8) {
-                            TravelImageView(style: item.imageStyle, height: 122, cornerRadius: 12, showsSymbol: false)
+                        VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
+                            TravelImageView(style: item.imageStyle, height: 122, cornerRadius: MaplogRadius.medium, showsSymbol: false)
                             Text(item.title)
                                 .font(.system(size: 13, weight: .bold))
                                 .foregroundStyle(Color.maplogInk)
@@ -1152,7 +1220,7 @@ struct VlogPlaceInfoSheet: View {
                 toggleRouteAdded()
             } label: {
                 Label(routeAdded ? "내 루트에 추가됨" : "내 루트에 추가", systemImage: routeAdded ? "checkmark" : "plus")
-                    .font(.system(size: 20, weight: .black))
+                    .font(MaplogFont.sectionTitle)
                     .foregroundStyle(Color.maplogInk)
                     .frame(maxWidth: .infinity)
                     .frame(height: 58)
@@ -1164,7 +1232,7 @@ struct VlogPlaceInfoSheet: View {
             }
             .buttonStyle(.plain)
         }
-        .background(.white)
+        .background(Color.maplogSurface)
     }
 
     private func toggleRouteAdded() {
@@ -1184,7 +1252,7 @@ struct VlogPlaceInfoSheet: View {
     private func sheetCircleButton(systemImage: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: systemImage)
-                .font(.system(size: 17, weight: .black))
+                .font(MaplogFont.cardTitle)
                 .foregroundStyle(.white)
                 .frame(width: 44, height: 44)
                 .background(.black.opacity(0.54))
@@ -1207,18 +1275,23 @@ struct VlogPlaceInfoSheet: View {
     }
 }
 
-private struct VlogCommentsSheet: View {
+struct VlogCommentsSheet: View {
     let post: VlogPost
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var sessionStore: MaplogSessionStore
     @State private var draft = ""
+    @FocusState private var isComposerFocused: Bool
+    @State private var replyTarget: VlogComment?
+    @State private var likedCommentIDs: Set<String> = []
+    @State private var localReplies: [String: [VlogComment]] = [:]
+    @State private var expandedReplyIDs: Set<String> = []
 
     private var baseCommentCount: Int {
         Int(post.comments.filter(\.isNumber)) ?? 0
     }
 
     private var totalCommentCount: Int {
-        baseCommentCount + sessionStore.vlogCommentCount(for: post.id)
+        baseCommentCount + sessionStore.vlogCommentCount(for: post.id) + localReplies.values.reduce(0) { $0 + $1.count }
     }
 
     private var comments: [VlogComment] {
@@ -1233,115 +1306,369 @@ private struct VlogCommentsSheet: View {
         ]
     }
 
+    private var seededReplies: [String: [VlogComment]] {
+        guard let firstComment = defaultComments.first else { return [:] }
+        return [
+            firstComment.id: [
+                VlogComment(
+                    id: "\(post.id)-seeded-reply-1",
+                    author: "maplover",
+                    body: "저도 다음 주에 이 코스로 걸어보려고요.",
+                    timeText: "방금 전",
+                    isMine: false
+                )
+            ]
+        ]
+    }
+
     private let avatarLetters = [
         "채", "민", "서", "준", "아"
     ]
 
     var body: some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: 0) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("댓글")
-                            .font(.system(size: 24, weight: .black))
-                            .foregroundStyle(Color.maplogInk)
-                        Text("\(totalCommentCount)개의 반응")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(Color.maplogMuted)
-                    }
-                    Spacer()
-                    Button {
-                        dismiss()
-                    } label: {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 14, weight: .black))
-                            .foregroundStyle(Color.maplogInk)
-                            .frame(width: 36, height: 36)
-                            .background(Color.maplogCanvas)
-                            .clipShape(Circle())
-                    }
-                    .buttonStyle(.plain)
-                }
-                .padding(20)
+            ScrollView(showsIndicators: false) {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    header
 
-                ScrollView(showsIndicators: false) {
-                    VStack(spacing: 14) {
-                        ForEach(Array(comments.enumerated()), id: \.element.id) { index, comment in
-                            HStack(alignment: .top, spacing: 12) {
-                                Circle()
-                                    .fill(Color.maplogCanvas)
-                                    .frame(width: 40, height: 40)
-                                    .overlay {
-                                        Text(comment.isMine ? String(sessionStore.profile.displayName.prefix(1)) : avatarLetters[index % avatarLetters.count])
-                                            .font(.system(size: 15, weight: .black))
-                                            .foregroundStyle(Color.maplogInk)
-                                    }
+                    postContext
+                        .padding(.vertical, MaplogSpacing.small)
 
-                                VStack(alignment: .leading, spacing: 5) {
-                                    Text(comment.author)
-                                        .font(.system(size: 13, weight: .black))
-                                        .foregroundStyle(Color.maplogInk)
-                                    Text(comment.body)
-                                        .font(.system(size: 15, weight: .medium))
-                                        .foregroundStyle(Color.maplogInk)
-                                }
-                                Spacer()
-                                Text(comment.timeText)
-                                    .font(.system(size: 11, weight: .bold))
-                                    .foregroundStyle(Color.maplogMuted)
-                            }
-                            .padding(.horizontal, MaplogSpacing.page)
-                        }
+                    Divider()
+                        .overlay(Color.maplogLine)
+
+                    Text("댓글 \(totalCommentCount)")
+                        .font(MaplogFont.cardTitle)
+                        .foregroundStyle(Color.maplogInk)
+                        .padding(.top, MaplogSpacing.large)
+                        .padding(.bottom, MaplogSpacing.small)
+
+                    ForEach(Array(comments.enumerated()), id: \.element.id) { index, comment in
+                        commentRow(comment, index: index)
+                            .padding(.vertical, MaplogSpacing.small)
                     }
-                    .padding(.bottom, 18)
                 }
-
-                HStack(spacing: 10) {
-                    TextField("댓글을 입력하세요", text: $draft)
-                        .font(.system(size: 15, weight: .medium))
-                        .padding(.horizontal, 14)
-                        .frame(height: 48)
-                        .background(Color.maplogCanvas)
-                        .clipShape(Capsule())
-
-                    Button {
-                        guard sessionStore.addVlogComment(postID: post.id, body: draft) != nil else { return }
-                        draft = ""
-                    } label: {
-                        Image(systemName: "arrow.up")
-                            .font(.system(size: 16, weight: .black))
-                            .foregroundStyle(Color.maplogInk)
-                            .frame(width: 48, height: 48)
-                            .background(Color.maplogLime)
-                            .clipShape(Circle())
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    .opacity(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.45 : 1)
-                }
-                .padding(20)
-                .background(.white)
-                .overlay(alignment: .top) {
-                    Rectangle().fill(Color.maplogLine).frame(height: 1)
-                }
+                .padding(.horizontal, MaplogSpacing.page)
+                .padding(.bottom, MaplogSpacing.large)
             }
-            .background(Color.white)
+            .scrollDismissesKeyboard(.interactively)
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                composer
+            }
+            .background(Color.maplogSurface)
             .toolbar(.hidden, for: .navigationBar)
         }
     }
+
+    private var header: some View {
+        HStack(alignment: .center, spacing: MaplogSpacing.small) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text("댓글")
+                    .font(MaplogFont.screenTitle)
+                    .foregroundStyle(Color.maplogInk)
+                Text("Maplog 여행자들의 짧은 기록")
+                    .font(MaplogFont.caption)
+                    .foregroundStyle(Color.maplogMuted)
+            }
+
+            Spacer()
+
+            Button {
+                dismiss()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(Color.maplogInk)
+                    .frame(width: MaplogSize.minimumTapTarget, height: MaplogSize.minimumTapTarget)
+                    .background(Color.maplogCanvas, in: Circle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("댓글 닫기")
+        }
+        .padding(.top, MaplogSpacing.large)
+        .padding(.bottom, MaplogSpacing.small)
+    }
+
+    private var postContext: some View {
+        HStack(spacing: MaplogSpacing.small) {
+            VlogPostImageView(post: post, cornerRadius: MaplogRadius.medium)
+                .frame(width: 46, height: 46)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(post.title)
+                    .font(MaplogFont.bodyStrong)
+                    .foregroundStyle(Color.maplogInk)
+                    .lineLimit(1)
+                Text("\(post.author) · \(post.place.name)")
+                    .font(MaplogFont.caption)
+                    .foregroundStyle(Color.maplogMuted)
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private func commentRow(_ comment: VlogComment, index: Int) -> some View {
+        let replies = replies(for: comment)
+        let isExpanded = expandedReplyIDs.contains(comment.id)
+
+        return VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
+            HStack(alignment: .top, spacing: MaplogSpacing.small) {
+                avatar(for: comment, index: index, size: 40)
+
+                VStack(alignment: .leading, spacing: 5) {
+                    HStack(alignment: .firstTextBaseline, spacing: MaplogSpacing.xSmall) {
+                        Text(comment.author)
+                            .font(MaplogFont.caption)
+                            .foregroundStyle(Color.maplogInk)
+                        Text(comment.timeText)
+                            .font(.caption2)
+                            .foregroundStyle(Color.maplogMuted)
+                        Spacer(minLength: 0)
+                        commentLikeButton(for: comment)
+                    }
+
+                    Text(comment.body)
+                        .font(MaplogFont.body)
+                        .foregroundStyle(Color.maplogInk)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    HStack(spacing: MaplogSpacing.small) {
+                        Button {
+                            startReply(to: comment)
+                        } label: {
+                            Text("답글")
+                                .font(MaplogFont.caption)
+                                .foregroundStyle(Color.maplogMuted)
+                                .frame(minHeight: 32)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("\(comment.author)에게 답글 달기")
+
+                        if !replies.isEmpty {
+                            Button {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    if isExpanded {
+                                        expandedReplyIDs.remove(comment.id)
+                                    } else {
+                                        expandedReplyIDs.insert(comment.id)
+                                    }
+                                }
+                            } label: {
+                                Label(
+                                    isExpanded ? "답글 숨기기" : "답글 \(replies.count)개 보기",
+                                    systemImage: isExpanded ? "chevron.up" : "chevron.down"
+                                )
+                                .font(MaplogFont.caption)
+                                .foregroundStyle(Color.maplogOlive)
+                                .frame(minHeight: 32)
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+            }
+
+            if isExpanded {
+                VStack(alignment: .leading, spacing: MaplogSpacing.small) {
+                    ForEach(replies) { reply in
+                        replyRow(reply)
+                    }
+                }
+                .padding(.leading, 52)
+                .padding(.top, 2)
+                .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+    }
+
+    private func replyRow(_ reply: VlogComment) -> some View {
+        HStack(alignment: .top, spacing: MaplogSpacing.inline) {
+            avatar(for: reply, index: 0, size: 28)
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .firstTextBaseline, spacing: MaplogSpacing.xSmall) {
+                    Text(reply.author)
+                        .font(MaplogFont.caption)
+                        .foregroundStyle(Color.maplogInk)
+                    Text(reply.timeText)
+                        .font(.caption2)
+                        .foregroundStyle(Color.maplogMuted)
+                    Spacer(minLength: 0)
+                    commentLikeButton(for: reply, compact: true)
+                }
+                Text(reply.body)
+                    .font(MaplogFont.callout)
+                    .foregroundStyle(Color.maplogInk)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func avatar(for comment: VlogComment, index: Int, size: CGFloat) -> some View {
+        if comment.isMine {
+            Image("home_profile_avatar")
+                .resizable()
+                .scaledToFill()
+                .frame(width: size, height: size)
+                .clipShape(Circle())
+        } else {
+            Circle()
+                .fill(Color.maplogCanvas)
+                .frame(width: size, height: size)
+                .overlay {
+                    Text(avatarLetters[index % avatarLetters.count])
+                        .font(.system(size: size * 0.36, weight: .bold))
+                        .foregroundStyle(Color.maplogOlive)
+                }
+        }
+    }
+
+    private func commentLikeButton(for comment: VlogComment, compact: Bool = false) -> some View {
+        let isLiked = likedCommentIDs.contains(comment.id)
+        let count = baseLikeCount(for: comment) + (isLiked ? 1 : 0)
+
+        return Button {
+            withAnimation(.easeOut(duration: 0.18)) {
+                if isLiked {
+                    likedCommentIDs.remove(comment.id)
+                } else {
+                    likedCommentIDs.insert(comment.id)
+                }
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: isLiked ? "heart.fill" : "heart")
+                    .font(.system(size: compact ? 12 : 13, weight: .semibold))
+                if count > 0 {
+                    Text("\(count)")
+                        .font(.caption2.weight(.semibold))
+                }
+            }
+            .foregroundStyle(isLiked ? Color.maplogOlive : Color.maplogMuted)
+            .frame(minHeight: 32)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(isLiked ? "댓글 좋아요 취소" : "댓글 좋아요")
+        .accessibilityValue(count > 0 ? "\(count)개" : "좋아요 없음")
+    }
+
+    private var composer: some View {
+        VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
+            if let replyTarget {
+                HStack(spacing: MaplogSpacing.xSmall) {
+                    Text("@\(replyTarget.author)님에게 답글 작성 중")
+                        .font(MaplogFont.caption)
+                        .foregroundStyle(Color.maplogOlive)
+                    Spacer(minLength: 0)
+                    Button {
+                        self.replyTarget = nil
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.body)
+                            .foregroundStyle(Color.maplogMuted)
+                            .frame(width: MaplogSize.minimumTapTarget, height: 28)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("답글 취소")
+                }
+            }
+
+            HStack(spacing: MaplogSpacing.xSmall) {
+                Image("home_profile_avatar")
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 36, height: 36)
+                    .clipShape(Circle())
+
+                TextField(replyTarget == nil ? "댓글을 입력하세요" : "답글을 입력하세요", text: $draft)
+                    .font(MaplogFont.body)
+                    .focused($isComposerFocused)
+                    .submitLabel(.send)
+                    .onSubmit(sendComment)
+                    .padding(.horizontal, 14)
+                    .frame(minHeight: 46)
+                    .background(Color.maplogCanvas, in: Capsule())
+
+                Button(action: sendComment) {
+                    Image(systemName: "arrow.up")
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(Color.maplogInk)
+                        .frame(width: 46, height: 46)
+                        .background(Color.maplogLime, in: Circle())
+                }
+                .buttonStyle(.plain)
+                .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .opacity(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.45 : 1)
+                .accessibilityLabel(replyTarget == nil ? "댓글 등록" : "답글 등록")
+            }
+        }
+        .padding(.horizontal, MaplogSpacing.page)
+        .padding(.top, MaplogSpacing.small)
+        .padding(.bottom, MaplogSpacing.small)
+        .background(Color.maplogSurface)
+        .overlay(alignment: .top) {
+            Rectangle().fill(Color.maplogLine).frame(height: 1)
+        }
+    }
+
+    private func replies(for comment: VlogComment) -> [VlogComment] {
+        seededReplies[comment.id, default: []] + localReplies[comment.id, default: []]
+    }
+
+    private func baseLikeCount(for comment: VlogComment) -> Int {
+        if comment.isMine { return 0 }
+        if comment.id.contains("default-1") { return 12 }
+        if comment.id.contains("default-2") { return 7 }
+        if comment.id.contains("default-3") { return 4 }
+        return 2
+    }
+
+    private func startReply(to comment: VlogComment) {
+        replyTarget = comment
+        DispatchQueue.main.async {
+            isComposerFocused = true
+        }
+    }
+
+    private func sendComment() {
+        let trimmedDraft = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedDraft.isEmpty else { return }
+
+        if let replyTarget {
+            let reply = VlogComment(
+                id: "reply-\(UUID().uuidString)",
+                author: sessionStore.profile.displayName,
+                body: trimmedDraft,
+                timeText: "방금",
+                isMine: true
+            )
+            localReplies[replyTarget.id, default: []].append(reply)
+            expandedReplyIDs.insert(replyTarget.id)
+            self.replyTarget = nil
+        } else {
+            guard sessionStore.addVlogComment(postID: post.id, body: trimmedDraft) != nil else { return }
+        }
+
+        draft = ""
+    }
 }
 
-private struct VlogShareSheet: View {
+struct VlogShareSheet: View {
     let post: VlogPost
     let onAction: (String) -> Void
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: MaplogSpacing.large) {
             HStack {
                 VStack(alignment: .leading, spacing: 5) {
                     Text("공유")
-                        .font(.system(size: 24, weight: .black))
+                        .font(MaplogFont.screenTitle)
                         .foregroundStyle(Color.maplogInk)
                     Text(post.title)
                         .font(.system(size: 14, weight: .bold))
@@ -1362,7 +1689,7 @@ private struct VlogShareSheet: View {
                 .buttonStyle(.plain)
             }
 
-            HStack(spacing: 12) {
+            HStack(spacing: MaplogSpacing.small) {
                 shareOption(title: "링크", systemImage: "link") {
                     complete("맵로그 링크를 복사했어요")
                 }
@@ -1377,8 +1704,8 @@ private struct VlogShareSheet: View {
                 }
             }
 
-            HStack(spacing: 12) {
-                TravelImageView(style: post.imageStyle, height: 92, cornerRadius: 12, showsSymbol: false)
+            HStack(spacing: MaplogSpacing.small) {
+                TravelImageView(style: post.imageStyle, height: 92, cornerRadius: MaplogRadius.medium, showsSymbol: false)
                     .frame(width: 92)
                 VStack(alignment: .leading, spacing: 7) {
                     Text(post.author)
@@ -1394,18 +1721,18 @@ private struct VlogShareSheet: View {
                 }
                 Spacer()
             }
-            .padding(12)
+            .padding(MaplogSpacing.small)
             .maplogCard()
         }
-        .padding(24)
-        .background(Color.white)
+        .padding(MaplogSpacing.xLarge)
+        .background(Color.maplogSurface)
     }
 
     private func shareOption(title: String, systemImage: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             VStack(spacing: 9) {
                 Image(systemName: systemImage)
-                    .font(.system(size: 20, weight: .black))
+                    .font(MaplogFont.sectionTitle)
                     .foregroundStyle(Color.maplogInk)
                     .frame(width: 52, height: 52)
                     .background(Color.maplogCanvas)
@@ -1480,7 +1807,7 @@ struct OtherProfileView: View {
                 VStack(spacing: 0) {
                     profileHero
 
-                    VStack(spacing: 20) {
+                    VStack(spacing: MaplogSpacing.large) {
                         actionButtons
                         if isBlocked {
                             blockedProfileState
@@ -1490,7 +1817,7 @@ struct OtherProfileView: View {
                             tabContent
                         }
                     }
-                    .padding(20)
+                    .padding(MaplogSpacing.large)
                 }
             }
             .ignoresSafeArea(edges: .top)
@@ -1501,7 +1828,7 @@ struct OtherProfileView: View {
                     .foregroundStyle(Color.maplogInk)
                     .padding(.horizontal, 18)
                     .frame(height: 48)
-                    .background(.white)
+                    .background(Color.maplogSurface)
                     .clipShape(Capsule())
                     .shadow(color: .black.opacity(0.14), radius: 18, x: 0, y: 8)
                     .padding(.bottom, 24)
@@ -1541,7 +1868,7 @@ struct OtherProfileView: View {
         } message: {
             Text(post.author)
         }
-        .background(Color.white)
+        .background(Color.maplogSurface)
         .navigationBarBackButtonHidden()
         .toolbar(.hidden, for: .navigationBar)
         .maplogTabBarHidden()
@@ -1573,7 +1900,7 @@ struct OtherProfileView: View {
                     .frame(width: 78)
                     .overlay(Circle().stroke(Color.maplogLime, lineWidth: 3))
 
-                HStack(spacing: 8) {
+                HStack(spacing: MaplogSpacing.xSmall) {
                     Text(post.author)
                         .font(.system(size: 29, weight: .black))
                         .foregroundStyle(.white)
@@ -1596,7 +1923,7 @@ struct OtherProfileView: View {
                     .foregroundStyle(.white.opacity(0.86))
                     .lineLimit(2)
             }
-            .padding(20)
+            .padding(MaplogSpacing.large)
         }
     }
 
@@ -1618,7 +1945,7 @@ struct OtherProfileView: View {
                     .frame(maxWidth: .infinity)
                     .frame(height: 50)
                     .background(isFollowing && !isBlocked ? Color.maplogCanvas : Color.maplogLime)
-                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.small, style: .continuous))
             }
             .buttonStyle(.plain)
 
@@ -1630,7 +1957,7 @@ struct OtherProfileView: View {
                     .foregroundStyle(isBlocked ? Color.maplogMuted : Color.maplogInk)
                     .frame(width: 54, height: 50)
                     .background(Color.maplogCanvas)
-                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.small, style: .continuous))
             }
             .buttonStyle(.plain)
             .accessibilityLabel("메시지")
@@ -1651,10 +1978,10 @@ struct OtherProfileView: View {
                 .font(.system(size: 34, weight: .bold))
                 .foregroundStyle(Color.maplogMuted)
             Text("차단한 사용자입니다")
-                .font(.system(size: 20, weight: .black))
+                .font(MaplogFont.sectionTitle)
                 .foregroundStyle(Color.maplogInk)
             Text("게시물과 저장 루트를 숨겼어요. 차단 해제하면 다시 볼 수 있습니다.")
-                .font(.system(size: 14, weight: .medium))
+                .font(MaplogFont.callout)
                 .foregroundStyle(Color.maplogMuted)
                 .multilineTextAlignment(.center)
                 .lineSpacing(3)
@@ -1696,7 +2023,7 @@ struct OtherProfileView: View {
                         selectedTab = tab
                     }
                 } label: {
-                    VStack(spacing: 8) {
+                    VStack(spacing: MaplogSpacing.xSmall) {
                         Text(tab)
                             .font(.system(size: 15, weight: .black))
                             .foregroundStyle(selectedTab == tab ? Color.maplogInk : Color.maplogMuted)
@@ -1711,7 +2038,7 @@ struct OtherProfileView: View {
                 .buttonStyle(.plain)
             }
         }
-        .background(Color.white)
+        .background(Color.maplogSurface)
         .zIndex(2)
         .padding(.bottom, 8)
         .overlay(alignment: .bottom) {
@@ -1722,12 +2049,12 @@ struct OtherProfileView: View {
     @ViewBuilder
     private var tabContent: some View {
         if selectedTab == "맵로그" {
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: MaplogSpacing.small) {
                 ForEach(authorPosts) { item in
                     NavigationLink {
                         PopularMaplogDetailView(post: item, trip: MockMaplogData.routeTrip(for: item))
                     } label: {
-                        VStack(alignment: .leading, spacing: 8) {
+                        VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
                             TravelImageView(style: item.imageStyle, height: 168, showsSymbol: false)
                             Text(item.title)
                                 .font(.system(size: 14, weight: .bold))
@@ -1737,14 +2064,14 @@ struct OtherProfileView: View {
                                 .font(.system(size: 12, weight: .semibold))
                                 .foregroundStyle(Color.maplogMuted)
                         }
-                        .padding(8)
+                        .padding(MaplogSpacing.xSmall)
                         .maplogCard()
                     }
                     .buttonStyle(.plain)
                 }
             }
         } else if selectedTab == "루트" {
-            VStack(spacing: 12) {
+            VStack(spacing: MaplogSpacing.small) {
                 ForEach(authorRoutes) { trip in
                     NavigationLink {
                         RouteDetailView(trip: trip)
@@ -1755,7 +2082,7 @@ struct OtherProfileView: View {
                 }
             }
         } else {
-            VStack(spacing: 12) {
+            VStack(spacing: MaplogSpacing.small) {
                 ForEach(authorSavedSpots) { spot in
                     NavigationLink {
                         SpotDetailView(spot: spot)
@@ -1783,7 +2110,7 @@ struct OtherProfileView: View {
     private func profileCircleButton(systemImage: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: systemImage)
-                .font(.system(size: 17, weight: .black))
+                .font(MaplogFont.cardTitle)
                 .foregroundStyle(.white)
                 .frame(width: 44, height: 44)
                 .background(.black.opacity(0.42))
@@ -1855,7 +2182,7 @@ private struct ProfileReportSheet: View {
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 5) {
                     Text("사용자 신고")
-                        .font(.system(size: 24, weight: .black))
+                        .font(MaplogFont.screenTitle)
                         .foregroundStyle(Color.maplogInk)
                     Text(author)
                         .font(.system(size: 14, weight: .bold))
@@ -1877,12 +2204,12 @@ private struct ProfileReportSheet: View {
                 .buttonStyle(.plain)
             }
 
-            VStack(spacing: 8) {
+            VStack(spacing: MaplogSpacing.xSmall) {
                 ForEach(reasons, id: \.self) { reason in
                     Button {
                         selectedReason = reason
                     } label: {
-                        HStack(spacing: 12) {
+                        HStack(spacing: MaplogSpacing.small) {
                             Image(systemName: selectedReason == reason ? "checkmark.circle.fill" : "circle")
                                 .font(.system(size: 19, weight: .bold))
                                 .foregroundStyle(selectedReason == reason ? Color.maplogOlive : Color.maplogMuted)
@@ -1914,8 +2241,8 @@ private struct ProfileReportSheet: View {
                 }
             }
         }
-        .padding(24)
-        .background(Color.white)
+        .padding(MaplogSpacing.xLarge)
+        .background(Color.maplogSurface)
     }
 }
 
@@ -1935,7 +2262,7 @@ private struct MessageComposerSheet: View {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("메시지 보내기")
-                        .font(.system(size: 22, weight: .black))
+                        .font(MaplogFont.screenTitle)
                         .foregroundStyle(Color.maplogInk)
                     Text(author)
                         .font(.system(size: 14, weight: .bold))
@@ -1960,7 +2287,7 @@ private struct MessageComposerSheet: View {
                 .font(.system(size: 16, weight: .medium))
                 .padding(14)
                 .background(Color.maplogCanvas)
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.small, style: .continuous))
 
             Button {
                 sendMessage()
@@ -1976,7 +2303,7 @@ private struct MessageComposerSheet: View {
             .buttonStyle(.plain)
             .disabled(trimmedMessage.isEmpty || didSend)
         }
-        .padding(24)
+        .padding(MaplogSpacing.xLarge)
     }
 
     private func sendMessage() {
@@ -1998,11 +2325,11 @@ private struct ProfileShareSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: MaplogSpacing.large) {
             HStack {
                 VStack(alignment: .leading, spacing: 5) {
                     Text("프로필 공유")
-                        .font(.system(size: 24, weight: .black))
+                        .font(MaplogFont.screenTitle)
                         .foregroundStyle(Color.maplogInk)
                     Text(post.author)
                         .font(.system(size: 14, weight: .bold))
@@ -2034,13 +2361,13 @@ private struct ProfileShareSheet: View {
                 }
             }
 
-            HStack(spacing: 12) {
+            HStack(spacing: MaplogSpacing.small) {
                 TravelImageView(style: post.place.imageStyle, height: 82, cornerRadius: 41, showsSymbol: false)
                     .frame(width: 82)
                     .overlay(Circle().stroke(Color.maplogLime, lineWidth: 3))
                 VStack(alignment: .leading, spacing: 6) {
                     Text(post.author)
-                        .font(.system(size: 20, weight: .black))
+                        .font(MaplogFont.sectionTitle)
                         .foregroundStyle(Color.maplogInk)
                     Text("도시의 짧은 동선과 장소 감도를 기록하는 맵로거")
                         .font(.system(size: 13, weight: .medium))
@@ -2052,18 +2379,18 @@ private struct ProfileShareSheet: View {
                 }
                 Spacer()
             }
-            .padding(12)
+            .padding(MaplogSpacing.small)
             .maplogCard()
         }
-        .padding(24)
-        .background(Color.white)
+        .padding(MaplogSpacing.xLarge)
+        .background(Color.maplogSurface)
     }
 
     private func shareOption(title: String, systemImage: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             VStack(spacing: 9) {
                 Image(systemName: systemImage)
-                    .font(.system(size: 20, weight: .black))
+                    .font(MaplogFont.sectionTitle)
                     .foregroundStyle(Color.maplogInk)
                     .frame(width: 54, height: 54)
                     .background(Color.maplogCanvas)
@@ -2114,7 +2441,7 @@ struct RouteDetailView: View {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 0) {
                     routeTopBar
-                    RouteDetailHeroMap(spots: trip.spots)
+                    RouteDetailHeroMap(spots: trip.spots, nearbySpots: trip.nearbySpots)
 
                     VStack(alignment: .leading, spacing: 22) {
                         routeSummary
@@ -2127,7 +2454,7 @@ struct RouteDetailView: View {
                     .padding(.horizontal, MaplogSpacing.page)
                     .padding(.top, 22)
                     .padding(.bottom, 122)
-                    .background(.white)
+                    .background(Color.maplogSurface)
                     .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
                     .offset(y: -28)
                 }
@@ -2141,14 +2468,14 @@ struct RouteDetailView: View {
                     .foregroundStyle(Color.maplogInk)
                     .padding(.horizontal, 18)
                     .frame(height: 48)
-                    .background(.white)
+                    .background(Color.maplogSurface)
                     .clipShape(Capsule())
                     .shadow(color: .black.opacity(0.14), radius: 18, x: 0, y: 8)
                     .padding(.bottom, 94)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
-        .background(Color.white)
+        .background(Color.maplogSurface)
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden()
         .toolbar(.hidden, for: .navigationBar)
@@ -2210,17 +2537,17 @@ struct RouteDetailView: View {
             }
             .buttonStyle(.plain)
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, MaplogSpacing.medium)
         .frame(height: 58)
-        .background(.white)
+        .background(Color.maplogSurface)
         .overlay(alignment: .bottom) {
             Rectangle().fill(Color.maplogLine).frame(height: 1)
         }
     }
 
     private var routeSummary: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: MaplogSpacing.medium) {
+            VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
                 Text(trip.title)
                     .font(.system(size: 25, weight: .black))
                     .foregroundStyle(Color.maplogInk)
@@ -2284,12 +2611,12 @@ struct RouteDetailView: View {
     private var nearbySpotGrid: some View {
         VStack(alignment: .leading, spacing: 14) {
             SectionHeader(title: "경로 주변 명소")
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                ForEach(trip.spots) { spot in
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: MaplogSpacing.small) {
+                ForEach(trip.nearbySpots.isEmpty ? trip.spots : trip.nearbySpots) { spot in
                     NavigationLink {
                         SpotDetailView(spot: spot)
                     } label: {
-                        VStack(alignment: .leading, spacing: 8) {
+                        VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
                             TravelImageView(style: spot.imageStyle, height: 120, showsSymbol: false)
                             Text(spot.name)
                                 .font(.system(size: 16, weight: .bold))
@@ -2300,7 +2627,7 @@ struct RouteDetailView: View {
                                 .foregroundStyle(Color.maplogMuted)
                                 .lineLimit(1)
                         }
-                        .padding(8)
+                        .padding(MaplogSpacing.xSmall)
                         .maplogCard()
                     }
                     .buttonStyle(.plain)
@@ -2327,7 +2654,7 @@ struct RouteDetailView: View {
                 showStartSheet = true
             } label: {
                 Label(isGuidingRoute ? "안내 중 · \(currentRouteIndex + 1)/\(trip.spots.count)" : "지도에서 따라가기", systemImage: "location.north.fill")
-                    .font(.system(size: 17, weight: .black))
+                    .font(MaplogFont.cardTitle)
                     .foregroundStyle(Color.maplogInk)
                     .frame(maxWidth: .infinity)
                     .frame(height: 56)
@@ -2339,7 +2666,7 @@ struct RouteDetailView: View {
         .padding(.horizontal, MaplogSpacing.page)
         .padding(.top, 12)
         .padding(.bottom, 22)
-        .background(.white)
+        .background(Color.maplogSurface)
         .overlay(alignment: .top) {
             Rectangle().fill(Color.maplogLine).frame(height: 1)
         }
@@ -2414,9 +2741,9 @@ private struct RouteStartSheet: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: MaplogSpacing.large) {
             HStack(spacing: 14) {
-                TravelImageView(style: trip.coverStyle, height: 86, cornerRadius: 8, showsSymbol: false)
+                TravelImageView(style: trip.coverStyle, height: 86, cornerRadius: MaplogRadius.small, showsSymbol: false)
                     .frame(width: 86)
                 VStack(alignment: .leading, spacing: 6) {
                     Text("루트 시작")
@@ -2427,7 +2754,7 @@ private struct RouteStartSheet: View {
                         .background(Color.maplogLime)
                         .clipShape(Capsule())
                     Text(trip.title)
-                        .font(.system(size: 22, weight: .black))
+                        .font(MaplogFont.screenTitle)
                         .foregroundStyle(Color.maplogInk)
                     Text("\(trip.spots.count)개 장소 · \(trip.duration)")
                         .font(.system(size: 14, weight: .bold))
@@ -2470,7 +2797,7 @@ private struct RouteStartSheet: View {
                 }
                 .padding(14)
                 .background(Color.maplogCanvas)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous))
             }
 
             PrimaryActionButton(isGuiding ? (isLastStop ? "안내 완료" : "다음 장소로") : "안내 시작", systemImage: isGuiding ? "arrow.turn.down.right" : "location.north.fill") {
@@ -2493,12 +2820,12 @@ private struct RouteStartSheet: View {
                         .frame(maxWidth: .infinity)
                         .frame(height: 44)
                         .background(Color.maplogCanvas)
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous))
                 }
                 .buttonStyle(.plain)
             }
         }
-        .padding(24)
+        .padding(MaplogSpacing.xLarge)
     }
 
     private func routeStatus(for index: Int) -> String {

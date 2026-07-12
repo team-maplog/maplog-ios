@@ -97,7 +97,7 @@ struct ThemeSpotsView: View {
                 topBar
 
                 ScrollView(showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 20) {
+                    VStack(alignment: .leading, spacing: MaplogSpacing.large) {
                         VStack(alignment: .leading, spacing: 10) {
                             Text("인기 테마")
                                 .font(.system(size: 13, weight: .black))
@@ -138,7 +138,7 @@ struct ThemeSpotsView: View {
                                         .clipShape(Circle())
                                 }
                                 .buttonStyle(.plain)
-                                .padding(16)
+                                .padding(MaplogSpacing.medium)
                             }
                         }
                     }
@@ -154,7 +154,7 @@ struct ThemeSpotsView: View {
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
-        .background(Color.white)
+        .background(Color.maplogSurface)
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden()
         .navigationBarHidden(true)
@@ -185,7 +185,7 @@ struct ThemeSpotsView: View {
 
             Spacer()
             Text("Maplog")
-                .font(.system(size: 20, weight: .black))
+                .font(MaplogFont.sectionTitle)
                 .foregroundStyle(Color.maplogOlive)
             Spacer()
 
@@ -250,11 +250,11 @@ private struct ThemeAlertSettingsSheet: View {
     private let options = ["오픈 전날", "오픈 1시간 전", "마감 전날"]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: MaplogSpacing.large) {
             HStack {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("팝업 알림")
-                        .font(.system(size: 24, weight: .black))
+                        .font(MaplogFont.screenTitle)
                         .foregroundStyle(Color.maplogInk)
                     Text("성수동 신상 테마가 열리거나 마감되기 전에 알려드릴게요.")
                         .font(.system(size: 14, weight: .semibold))
@@ -313,7 +313,7 @@ private struct ThemeAlertSettingsSheet: View {
                 }
             } label: {
                 Label("설정 완료", systemImage: "checkmark")
-                    .font(.system(size: 17, weight: .black))
+                    .font(MaplogFont.cardTitle)
                     .foregroundStyle(Color.maplogInk)
                     .frame(maxWidth: .infinity)
                     .frame(height: 54)
@@ -322,7 +322,7 @@ private struct ThemeAlertSettingsSheet: View {
             }
             .buttonStyle(.plain)
         }
-        .padding(24)
+        .padding(MaplogSpacing.xLarge)
     }
 }
 
@@ -437,7 +437,7 @@ struct NearbyRecommendationsView: View {
                         if filteredPlaces.isEmpty {
                             nearbyEmptyState
                         } else {
-                            VStack(spacing: 16) {
+                            VStack(spacing: MaplogSpacing.medium) {
                                 ForEach(filteredPlaces) { place in
                                     ZStack(alignment: .topTrailing) {
                                         NavigationLink {
@@ -480,7 +480,7 @@ struct NearbyRecommendationsView: View {
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
-        .background(Color.white)
+        .background(Color.maplogSurface)
         .navigationBarBackButtonHidden()
         .toolbar(.hidden, for: .navigationBar)
     }
@@ -499,7 +499,7 @@ struct NearbyRecommendationsView: View {
 
             Spacer()
             Text("맛집")
-                .font(.system(size: 20, weight: .black))
+                .font(MaplogFont.sectionTitle)
                 .foregroundStyle(Color.maplogOlive)
             Spacer()
 
@@ -522,7 +522,7 @@ struct NearbyRecommendationsView: View {
     }
 
     private var searchField: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: MaplogSpacing.small) {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 18, weight: .bold))
             TextField("지역, 식당 이름 검색", text: $query)
@@ -532,7 +532,7 @@ struct NearbyRecommendationsView: View {
         .foregroundStyle(Color.maplogMuted)
         .padding(.horizontal, 18)
         .frame(height: 58)
-        .background(.white)
+        .background(Color.maplogSurface)
         .clipShape(Capsule())
         .shadow(color: .black.opacity(0.04), radius: 16, x: 0, y: 8)
     }
@@ -578,7 +578,7 @@ struct NearbyRecommendationsView: View {
     }
 
     private var nearbyEmptyState: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: MaplogSpacing.small) {
             Image(systemName: "fork.knife.circle")
                 .font(.system(size: 34, weight: .bold))
                 .foregroundStyle(Color.maplogMuted)
@@ -586,7 +586,7 @@ struct NearbyRecommendationsView: View {
                 .font(.system(size: 19, weight: .black))
                 .foregroundStyle(Color.maplogInk)
             Text("다른 카테고리나 검색어로 다시 찾아보세요.")
-                .font(.system(size: 14, weight: .medium))
+                .font(MaplogFont.callout)
                 .foregroundStyle(Color.maplogMuted)
             Button {
                 withAnimation(.spring(response: 0.3, dampingFraction: 0.9)) {
@@ -607,8 +607,8 @@ struct NearbyRecommendationsView: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 32)
         .padding(.horizontal, 18)
-        .background(.white)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(Color.maplogSurface)
+        .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.large, style: .continuous))
         .shadow(color: .black.opacity(0.04), radius: 18, x: 0, y: 8)
     }
 
@@ -618,10 +618,10 @@ struct NearbyRecommendationsView: View {
                 .resizable()
                 .scaledToFill()
                 .frame(width: 112, height: 112)
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.small, style: .continuous))
                 .frame(width: 112)
 
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
                 HStack(alignment: .top) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(place.name)
@@ -638,7 +638,7 @@ struct NearbyRecommendationsView: View {
                 }
 
                 Text(place.summary)
-                    .font(.system(size: 14, weight: .medium))
+                    .font(MaplogFont.callout)
                     .foregroundStyle(Color.maplogMuted)
                     .lineLimit(1)
 
@@ -653,8 +653,8 @@ struct NearbyRecommendationsView: View {
             }
         }
         .padding(14)
-        .background(.white)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(Color.maplogSurface)
+        .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.large, style: .continuous))
         .shadow(color: .black.opacity(0.04), radius: 18, x: 0, y: 8)
     }
 
@@ -700,7 +700,7 @@ private struct DiscoveryToastView: View {
             .foregroundStyle(Color.maplogInk)
             .padding(.horizontal, 18)
             .frame(height: 48)
-            .background(.white)
+            .background(Color.maplogSurface)
             .clipShape(Capsule())
             .shadow(color: .black.opacity(0.14), radius: 18, x: 0, y: 8)
     }
@@ -714,7 +714,7 @@ private struct ThemeSpotCard: View {
         VStack(alignment: .leading, spacing: 0) {
             ZStack(alignment: .bottomTrailing) {
                 TravelImageView(style: theme.style, height: 264)
-                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.small, style: .continuous))
                 Text(theme.badge)
                     .font(.system(size: 13, weight: .black))
                     .foregroundStyle(Color.maplogInk)
@@ -723,7 +723,7 @@ private struct ThemeSpotCard: View {
                     .background(theme.badge == "마감임박" ? Color.white.opacity(0.92) : Color.maplogLime)
                     .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                    .padding(12)
+                    .padding(MaplogSpacing.small)
                 Label(theme.count, systemImage: "play.circle.fill")
                     .font(.system(size: 13, weight: .bold))
                     .foregroundStyle(Color.maplogInk)
@@ -731,7 +731,7 @@ private struct ThemeSpotCard: View {
                     .padding(.vertical, 6)
                     .background(.white.opacity(0.92))
                     .clipShape(Capsule())
-                    .padding(12)
+                    .padding(MaplogSpacing.small)
             }
             VStack(alignment: .leading, spacing: 9) {
                 Text(theme.title)
@@ -754,7 +754,7 @@ private struct ThemeSpotCard: View {
                 .font(.system(size: 14, weight: .semibold))
                 .foregroundStyle(Color.maplogMuted)
             }
-            .padding(16)
+            .padding(MaplogSpacing.medium)
         }
         .maplogCard()
     }
@@ -809,7 +809,7 @@ struct MapSearchView: View {
             MockMapCanvas(spots: searchResults, selectedSpot: $selectedSpot)
                 .ignoresSafeArea()
 
-            VStack(spacing: 12) {
+            VStack(spacing: MaplogSpacing.small) {
                 searchBar
                 filterChips
 
@@ -823,7 +823,7 @@ struct MapSearchView: View {
                     .foregroundStyle(Color.maplogInk)
                     .padding(.horizontal, 18)
                     .frame(height: 48)
-                    .background(.white)
+                    .background(Color.maplogSurface)
                     .clipShape(Capsule())
                     .shadow(color: .black.opacity(0.14), radius: 18, x: 0, y: 8)
                     .padding(.bottom, 338)
@@ -852,7 +852,7 @@ struct MapSearchView: View {
     }
 
     private var searchBar: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: MaplogSpacing.small) {
             Button {
                 dismiss()
             } label: {
@@ -881,7 +881,7 @@ struct MapSearchView: View {
         .foregroundStyle(Color.maplogMuted)
         .padding(.horizontal, 18)
         .frame(height: 58)
-        .background(.white)
+        .background(Color.maplogSurface)
         .clipShape(Capsule())
         .padding(.horizontal, MaplogSpacing.page)
         .padding(.top, 16)
@@ -940,16 +940,16 @@ struct MapSearchView: View {
                 }
             }
         }
-        .padding(20)
+        .padding(MaplogSpacing.large)
         .padding(.bottom, 22)
-        .background(.white)
+        .background(Color.maplogSurface)
         .clipShape(RoundedRectangle(cornerRadius: 26, style: .continuous))
         .shadow(color: .black.opacity(0.12), radius: 24, x: 0, y: -8)
     }
 
     private var resultStrip: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 12) {
+            HStack(spacing: MaplogSpacing.small) {
                 ForEach(searchResults) { spot in
                     Button {
                         selectedSpot = spot
@@ -966,7 +966,7 @@ struct MapSearchView: View {
     }
 
     private var emptyResultCard: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: MaplogSpacing.small) {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 28, weight: .bold))
                 .foregroundStyle(Color.maplogMuted)
@@ -974,7 +974,7 @@ struct MapSearchView: View {
                 .font(.system(size: 18, weight: .black))
                 .foregroundStyle(Color.maplogInk)
             Text("필터를 바꾸거나 다른 장소 이름으로 검색해보세요.")
-                .font(.system(size: 14, weight: .medium))
+                .font(MaplogFont.callout)
                 .foregroundStyle(Color.maplogMuted)
                 .multilineTextAlignment(.center)
 
@@ -988,7 +988,7 @@ struct MapSearchView: View {
                         .frame(maxWidth: .infinity)
                         .frame(height: 44)
                         .background(Color.maplogLime)
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous))
                 }
                 .buttonStyle(.plain)
 
@@ -1000,33 +1000,33 @@ struct MapSearchView: View {
                         .foregroundStyle(Color.maplogInk)
                         .frame(maxWidth: .infinity)
                         .frame(height: 44)
-                        .background(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .background(Color.maplogSurface)
+                        .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous))
                 }
                 .buttonStyle(.plain)
             }
             .padding(.top, 4)
         }
         .frame(maxWidth: .infinity)
-        .padding(.horizontal, 16)
+        .padding(.horizontal, MaplogSpacing.medium)
         .padding(.vertical, 28)
         .background(Color.maplogCanvas)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.large, style: .continuous))
     }
 
     private func selectedSpotCard(_ spot: MaplogSpot) -> some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 12) {
+            HStack(spacing: MaplogSpacing.small) {
                 TravelImageView(style: spot.imageStyle, height: 76, cornerRadius: 10, showsSymbol: false)
                     .frame(width: 76)
                 VStack(alignment: .leading, spacing: 6) {
                     Text(spot.name)
-                        .font(.system(size: 20, weight: .black))
+                        .font(MaplogFont.sectionTitle)
                         .foregroundStyle(Color.maplogInk)
                     Text("\(spot.category) · 도보 5분")
-                        .font(.system(size: 14, weight: .medium))
+                        .font(MaplogFont.callout)
                         .foregroundStyle(Color.maplogMuted)
-                    HStack(spacing: 12) {
+                    HStack(spacing: MaplogSpacing.small) {
                         Label(String(format: "%.1f", spot.rating), systemImage: "star.fill")
                         Label("999+", systemImage: "figure.walk")
                     }
@@ -1038,7 +1038,7 @@ struct MapSearchView: View {
                     toggleSave(spot)
                 } label: {
                     Image(systemName: sessionStore.hasSavedSpot(spot) ? "heart.fill" : "heart")
-                        .font(.system(size: 22, weight: .black))
+                        .font(MaplogFont.screenTitle)
                         .foregroundStyle(sessionStore.hasSavedSpot(spot) ? Color.maplogLime : Color.maplogInk)
                         .frame(width: 44, height: 44)
                         .background(Color.maplogCanvas)
@@ -1059,7 +1059,7 @@ struct MapSearchView: View {
                             .frame(maxWidth: .infinity)
                             .frame(height: 50)
                             .background(Color.maplogLime)
-                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous))
                     }
                     .buttonStyle(.plain)
                 } else {
@@ -1072,7 +1072,7 @@ struct MapSearchView: View {
                             .frame(maxWidth: .infinity)
                             .frame(height: 50)
                             .background(Color.maplogCanvas)
-                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous))
                     }
                     .buttonStyle(.plain)
                 }
@@ -1086,14 +1086,14 @@ struct MapSearchView: View {
                         .frame(maxWidth: .infinity)
                         .frame(height: 50)
                         .background(Color.maplogLime)
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous))
                 }
                 .buttonStyle(.plain)
             }
         }
-        .padding(12)
+        .padding(MaplogSpacing.small)
         .background(Color.maplogCanvas.opacity(0.7))
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.large, style: .continuous))
     }
 
     private func syncSelectedSpot() {
@@ -1159,8 +1159,8 @@ private struct MapSearchResultCard: View {
     let isSelected: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            TravelImageView(style: spot.imageStyle, height: 86, cornerRadius: 12, showsSymbol: false)
+        VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
+            TravelImageView(style: spot.imageStyle, height: 86, cornerRadius: MaplogRadius.medium, showsSymbol: false)
                 .frame(width: 118)
                 .overlay(alignment: .topTrailing) {
                     if isSelected {
@@ -1170,7 +1170,7 @@ private struct MapSearchResultCard: View {
                             .frame(width: 24, height: 24)
                             .background(Color.maplogLime)
                             .clipShape(Circle())
-                            .padding(8)
+                            .padding(MaplogSpacing.xSmall)
                     }
                 }
 
@@ -1183,7 +1183,7 @@ private struct MapSearchResultCard: View {
                 .foregroundStyle(Color.maplogMuted)
                 .lineLimit(1)
         }
-        .padding(8)
+        .padding(MaplogSpacing.xSmall)
         .frame(width: 134, alignment: .leading)
         .background(isSelected ? Color.maplogLime.opacity(0.18) : Color.maplogCanvas)
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
@@ -1241,7 +1241,7 @@ struct RouteLibraryView: View {
                     .foregroundStyle(Color.maplogInk)
                     .padding(.horizontal, 18)
                     .frame(height: 48)
-                    .background(.white)
+                    .background(Color.maplogSurface)
                     .clipShape(Capsule())
                     .shadow(color: .black.opacity(0.14), radius: 18, x: 0, y: 8)
                     .padding(.bottom, 28)
@@ -1282,7 +1282,7 @@ struct RouteLibraryView: View {
                     .presentationDragIndicator(.visible)
             }
         }
-        .background(Color.white)
+        .background(Color.maplogSurface)
         .confirmationDialog("루트를 삭제하시겠어요?", isPresented: $showClearDialog, titleVisibility: .visible) {
             Button("삭제", role: .destructive) {
                 clearRoutes()
@@ -1311,7 +1311,7 @@ struct RouteLibraryView: View {
 
             Spacer()
             Text("루트 보관함")
-                .font(.system(size: 20, weight: .black))
+                .font(MaplogFont.sectionTitle)
             Spacer()
             Button {
                 activeSheet = .options
@@ -1334,7 +1334,7 @@ struct RouteLibraryView: View {
         VStack {
             Spacer()
 
-            VStack(spacing: 24) {
+            VStack(spacing: MaplogSpacing.xLarge) {
                 ZStack(alignment: .bottomTrailing) {
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
                         .fill(.white)
@@ -1403,13 +1403,13 @@ struct RouteLibraryView: View {
     private var savedRouteContent: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 18) {
-                HStack(spacing: 12) {
+                HStack(spacing: MaplogSpacing.small) {
                     VStack(alignment: .leading, spacing: 6) {
                         Text("저장한 루트 \(sessionStore.savedRoutes.count)개")
                             .font(.system(size: 27, weight: .black))
                             .foregroundStyle(Color.maplogInk)
                         Text(routeAlertsEnabled ? "출발 전 알림이 켜져 있어요" : "알림 없이 조용히 저장합니다")
-                            .font(.system(size: 14, weight: .medium))
+                            .font(MaplogFont.callout)
                             .foregroundStyle(Color.maplogMuted)
                     }
 
@@ -1427,7 +1427,7 @@ struct RouteLibraryView: View {
                 Button {
                     activeSheet = .suggestion
                 } label: {
-                    HStack(spacing: 12) {
+                    HStack(spacing: MaplogSpacing.small) {
                         Image(systemName: "plus")
                             .font(.system(size: 15, weight: .black))
                             .foregroundStyle(Color.maplogInk)
@@ -1449,7 +1449,7 @@ struct RouteLibraryView: View {
                     }
                     .padding(14)
                     .background(Color.maplogCanvas)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous))
                 }
                 .buttonStyle(.plain)
 
@@ -1525,7 +1525,7 @@ private struct RouteLibraryOptionsSheet: View {
         VStack(alignment: .leading, spacing: 18) {
             HStack {
                 Text("보관함 관리")
-                    .font(.system(size: 24, weight: .black))
+                    .font(MaplogFont.screenTitle)
                     .foregroundStyle(Color.maplogInk)
                 Spacer()
                 Button {
@@ -1566,7 +1566,7 @@ private struct RouteLibraryOptionsSheet: View {
                 .tint(Color.maplogLime)
                 .padding(14)
                 .background(Color.maplogCanvas)
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.small, style: .continuous))
 
                 RouteLibraryOptionRow(
                     title: "보관함 비우기",
@@ -1577,7 +1577,7 @@ private struct RouteLibraryOptionsSheet: View {
                 }
             }
         }
-        .padding(24)
+        .padding(MaplogSpacing.xLarge)
     }
 }
 
@@ -1589,7 +1589,7 @@ private struct RouteLibraryOptionRow: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 12) {
+            HStack(spacing: MaplogSpacing.small) {
                 Image(systemName: systemImage)
                     .font(.system(size: 17, weight: .bold))
                     .foregroundStyle(Color.maplogInk)
@@ -1614,7 +1614,7 @@ private struct RouteLibraryOptionRow: View {
             }
             .padding(14)
             .background(Color.maplogCanvas)
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.small, style: .continuous))
         }
         .buttonStyle(.plain)
     }
@@ -1628,7 +1628,7 @@ struct SuggestedRouteSheet: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 20) {
+            VStack(spacing: MaplogSpacing.large) {
                 HStack(spacing: 14) {
                     TravelImageView(style: trip.coverStyle, height: 88)
                         .frame(width: 88)
@@ -1668,11 +1668,11 @@ struct SuggestedRouteSheet: View {
                         .frame(maxWidth: .infinity)
                     }
                 }
-                .padding(12)
+                .padding(MaplogSpacing.small)
                 .background(Color.maplogCanvas)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous))
 
-                HStack(spacing: 12) {
+                HStack(spacing: MaplogSpacing.small) {
                     Button {
                         onSave()
                         dismiss()
@@ -1683,7 +1683,7 @@ struct SuggestedRouteSheet: View {
                             .frame(maxWidth: .infinity)
                             .frame(height: 58)
                             .background(isAlreadySaved ? Color.maplogLime.opacity(0.62) : Color.maplogCanvas)
-                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous))
                     }
                     .buttonStyle(.plain)
                     .disabled(isAlreadySaved)
@@ -1697,12 +1697,12 @@ struct SuggestedRouteSheet: View {
                             .frame(maxWidth: .infinity)
                             .frame(height: 58)
                             .background(Color.maplogLime)
-                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous))
                     }
                     .buttonStyle(.plain)
                 }
             }
-            .padding(24)
+            .padding(MaplogSpacing.xLarge)
             .toolbar(.hidden, for: .navigationBar)
         }
     }
