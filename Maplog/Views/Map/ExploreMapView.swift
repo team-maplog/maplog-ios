@@ -80,7 +80,8 @@ struct ExploreMapView: View {
             let currentSheetHeight = interactiveSheetHeight(for: proxy.size.height)
 
             ZStack(alignment: .bottom) {
-                KakaoMapCanvas()
+//                KakaoMapCanvas()
+                PracticeKakaoMapView()
                     .ignoresSafeArea()
 
                 ExploreMapSpotLayer(
