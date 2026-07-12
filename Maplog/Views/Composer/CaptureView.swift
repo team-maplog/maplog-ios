@@ -751,7 +751,7 @@ struct CaptureView: View {
         }
         .buttonStyle(.plain)
         .padding(.top, 22)
-        .padding(.bottom, 105)
+        .padding(.bottom, 32)
         .navigationDestination(isPresented: $showsPlaceMatching) {
             PlaceMatchingView(capturedStyles: capturedStyles, initialPlaceName: initialPlaceName)
         }
