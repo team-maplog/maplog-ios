@@ -9,25 +9,26 @@ struct ComposerView: View {
 
     var body: some View {
         ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 22) {
-                VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: MaplogSpacing.xLarge) {
+                VStack(alignment: .leading, spacing: MaplogSpacing.xxSmall) {
                     Text("새 기록")
-                        .font(.system(size: 28, weight: .black))
+                        .font(MaplogFont.largeTitle)
+                        .tracking(-0.4)
                         .foregroundStyle(Color.maplogInk)
                     Text("사진과 감정, 별점으로 여행 순간을 정리해보세요.")
-                        .font(.system(size: 14, weight: .medium))
+                        .font(MaplogFont.callout)
                         .foregroundStyle(Color.maplogMuted)
                 }
 
                 TravelImageView(style: viewModel.selectedSpot?.imageStyle ?? .city, height: 210)
                     .overlay(alignment: .topTrailing) {
                         Image(systemName: "camera.fill")
-                            .font(.system(size: 18, weight: .bold))
+                            .font(.system(size: MaplogSize.iconMedium, weight: .semibold))
                             .foregroundStyle(Color.maplogInk)
                             .frame(width: 42, height: 42)
                             .background(Color.maplogLime)
                             .clipShape(Circle())
-                            .padding(12)
+                            .padding(MaplogSpacing.small)
                     }
 
                 placePicker
@@ -38,29 +39,25 @@ struct ComposerView: View {
                 NavigationLink {
                     LogPreviewView(draft: viewModel.draft)
                 } label: {
-                    HStack {
+                    HStack(spacing: MaplogSpacing.xSmall) {
                         Text("미리보기")
-                            .fontWeight(.bold)
                         Image(systemName: "arrow.right")
                     }
-                    .foregroundStyle(Color.maplogInk)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 52)
-                    .background(Color.maplogLime)
-                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(MaplogButtonStyle(variant: .primary, size: .large, fullWidth: true))
             }
-            .padding(MaplogSpacing.page)
-            .padding(.bottom, 28)
+            .maplogPagePadding()
+            .padding(.top, MaplogSpacing.pageTop)
+            .padding(.bottom, MaplogSpacing.xxLarge)
         }
         .navigationTitle("기록하기")
         .navigationBarTitleDisplayMode(.inline)
-        .background(Color.white)
+        .maplogScreenSurface()
+        .maplogNavigationAppearance()
     }
 
     private var placePicker: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: MaplogSpacing.small) {
             SectionHeader(title: "장소")
             Menu {
                 ForEach(MockMaplogData.spots) { spot in
@@ -73,44 +70,46 @@ struct ComposerView: View {
                     Image(systemName: "mappin.circle.fill")
                         .foregroundStyle(Color.maplogLime)
                     Text(viewModel.selectedSpot?.name ?? "장소 선택")
-                        .font(.system(size: 16, weight: .bold))
+                        .font(MaplogFont.bodyStrong)
                     Spacer()
                     Image(systemName: "chevron.down")
-                        .font(.system(size: 13, weight: .black))
+                        .font(MaplogFont.caption)
                 }
                 .foregroundStyle(Color.maplogInk)
-                .padding(14)
+                .padding(MaplogSpacing.medium)
                 .maplogCard()
             }
         }
     }
 
     private var moodPicker: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: MaplogSpacing.small) {
             SectionHeader(title: "오늘의 감정")
-            HStack {
-                ForEach(viewModel.moods, id: \.self) { mood in
-                    Button {
-                        viewModel.selectedMood = mood
-                    } label: {
-                        ChipView(title: mood, isSelected: viewModel.selectedMood == mood)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: MaplogSpacing.xSmall) {
+                    ForEach(viewModel.moods, id: \.self) { mood in
+                        Button {
+                            viewModel.selectedMood = mood
+                        } label: {
+                            ChipView(title: mood, isSelected: viewModel.selectedMood == mood)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
             }
         }
     }
 
     private var ratingPicker: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: MaplogSpacing.small) {
             SectionHeader(title: "별점")
-            HStack(spacing: 10) {
+            HStack(spacing: MaplogSpacing.small) {
                 ForEach(1...5, id: \.self) { value in
                     Button {
                         viewModel.rating = value
                     } label: {
                         Image(systemName: value <= viewModel.rating ? "star.fill" : "star")
-                            .font(.system(size: 28))
+                            .font(.system(size: 26, weight: .medium))
                             .foregroundStyle(value <= viewModel.rating ? Color.maplogLime : Color.maplogLine)
                     }
                     .buttonStyle(.plain)
@@ -120,13 +119,13 @@ struct ComposerView: View {
     }
 
     private var noteEditor: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: MaplogSpacing.small) {
             SectionHeader(title: "메모")
             TextEditor(text: $viewModel.note)
-                .font(.system(size: 15, weight: .medium))
+                .font(MaplogFont.body)
                 .foregroundStyle(Color.maplogInk)
                 .frame(minHeight: 130)
-                .padding(10)
+                .padding(MaplogSpacing.small)
                 .scrollContentBackground(.hidden)
                 .maplogCard()
         }

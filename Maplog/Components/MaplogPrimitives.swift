@@ -19,12 +19,12 @@ struct MaplogSectionHeader<Action: View>: View {
     }
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline) {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 8) {
+        HStack(alignment: .firstTextBaseline, spacing: MaplogSpacing.medium) {
+            VStack(alignment: .leading, spacing: MaplogSpacing.xxSmall) {
+                HStack(spacing: MaplogSpacing.xSmall) {
                     if let systemImage {
                         Image(systemName: systemImage)
-                            .font(.system(size: 19, weight: .bold))
+                            .font(.system(size: MaplogSize.iconMedium, weight: .semibold))
                     }
 
                     Text(title)
@@ -36,6 +36,7 @@ struct MaplogSectionHeader<Action: View>: View {
                     Text(subtitle)
                         .font(MaplogFont.callout)
                         .foregroundStyle(Color.maplogMuted)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
 
@@ -69,21 +70,21 @@ struct MaplogSearchButton<Destination: View>: View {
         NavigationLink {
             destination()
         } label: {
-            HStack(spacing: 10) {
+            HStack(spacing: MaplogSpacing.small) {
                 Image(systemName: "magnifyingglass")
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(.system(size: MaplogSize.iconMedium, weight: .semibold))
                 Text(placeholder)
-                    .font(.system(size: 16, weight: .medium))
+                    .font(MaplogFont.body)
                     .lineLimit(1)
                 Spacer(minLength: 0)
             }
             .foregroundStyle(Color.maplogMuted.opacity(0.82))
-            .padding(.horizontal, 16)
+            .padding(.horizontal, MaplogSpacing.medium)
             .frame(height: MaplogSize.searchHeight)
-            .background(.white)
+            .background(Color.maplogSurface)
             .clipShape(Capsule())
-            .overlay(Capsule().stroke(Color.maplogLine.opacity(0.62), lineWidth: 1))
-            .shadow(color: .black.opacity(0.035), radius: 12, x: 0, y: 6)
+            .overlay(Capsule().stroke(Color.maplogBorder.opacity(0.9), lineWidth: 1))
+            .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("\(placeholder) 검색")
@@ -96,17 +97,16 @@ struct MaplogFilterChip: View {
 
     var body: some View {
         Text(title)
-            .font(.system(size: 15, weight: .semibold))
+            .font(MaplogFont.calloutStrong)
             .foregroundStyle(isSelected ? Color.maplogInk : Color.maplogMuted)
-            .padding(.horizontal, 18)
+            .padding(.horizontal, MaplogSpacing.medium)
             .frame(height: MaplogSize.chipHeight)
-            .background(isSelected ? Color.maplogLime : .white)
+            .background(isSelected ? Color.maplogPrimary : Color.maplogSurface)
             .clipShape(Capsule())
             .overlay {
                 Capsule()
-                    .stroke(isSelected ? Color.maplogLime : Color.maplogMuted.opacity(0.32), lineWidth: 1)
+                    .stroke(isSelected ? Color.maplogPrimary : Color.maplogBorder, lineWidth: 1)
             }
-            .shadow(color: isSelected ? Color.maplogLime.opacity(0.22) : .clear, radius: 10, x: 0, y: 4)
             .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
@@ -118,9 +118,9 @@ struct MaplogStatusBadge: View {
 
     var body: some View {
         Text(title)
-            .font(MaplogFont.caption.weight(.black))
+            .font(MaplogFont.badge)
             .foregroundStyle(foreground)
-            .padding(.horizontal, 10)
+            .padding(.horizontal, MaplogSpacing.small)
             .frame(minHeight: 24)
             .background(background)
             .clipShape(Capsule())
@@ -131,14 +131,14 @@ struct MaplogIconButton: View {
     let systemName: String
     var accessibilityLabel: String
     var size: CGFloat = MaplogSize.minimumTapTarget
-    var background = Color.white.opacity(0.82)
+    var background = Color.maplogSurface.opacity(0.9)
     var foreground = Color.maplogInk
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             Image(systemName: systemName)
-                .font(.system(size: 20, weight: .semibold))
+                .font(.system(size: MaplogSize.iconMedium, weight: .semibold))
                 .foregroundStyle(foreground)
                 .frame(width: size, height: size)
                 .background(background)
@@ -146,5 +146,22 @@ struct MaplogIconButton: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(accessibilityLabel)
+    }
+}
+
+struct MaplogToast: View {
+    let message: String
+
+    var body: some View {
+        Text(message)
+            .font(MaplogFont.calloutStrong)
+            .foregroundStyle(Color.maplogTextPrimary)
+            .padding(.horizontal, MaplogSpacing.medium)
+            .frame(minHeight: MaplogSize.controlHeight)
+            .background(Color.maplogSurface)
+            .clipShape(Capsule())
+            .overlay(Capsule().stroke(Color.maplogBorder.opacity(0.72), lineWidth: 1))
+            .shadow(color: .black.opacity(0.12), radius: 14, x: 0, y: 6)
+            .accessibilityAddTraits(.isStaticText)
     }
 }

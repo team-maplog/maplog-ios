@@ -23,7 +23,7 @@ struct LocationPermissionView: View {
             .padding(.bottom, 26)
         }
         .padding(.horizontal, MaplogSpacing.page)
-        .background(Color.white)
+        .background(Color.maplogSurface)
     }
 }
 
@@ -64,7 +64,7 @@ struct LocationPermissionPromptSheet: View {
         }
         .padding(.horizontal, MaplogSpacing.page)
         .padding(.bottom, 18)
-        .background(Color.white)
+        .background(Color.maplogSurface)
     }
 }
 
@@ -91,18 +91,18 @@ private struct LocationPermissionArtwork: View {
 
 private struct LocationPermissionCopy: View {
     var body: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: MaplogSpacing.small) {
             Text("내 주변 여행 로그를 찾을까요?")
                 .font(.system(size: 22, weight: .medium))
                 .foregroundStyle(Color.maplogInk)
                 .multilineTextAlignment(.center)
             Text("현재 위치를 기준으로 가까운 행사와 Maplog 루트를 추천해드려요.")
-                .font(.system(size: 14, weight: .medium))
+                .font(MaplogFont.callout)
                 .foregroundStyle(Color.maplogMuted)
                 .multilineTextAlignment(.center)
                 .lineSpacing(3)
         }
-        .padding(.horizontal, 24)
+        .padding(.horizontal, MaplogSpacing.xLarge)
     }
 }
 
@@ -126,7 +126,7 @@ private struct LocationPermissionActions: View {
             .buttonStyle(.plain)
 
             Button("나중에 하기", action: onSkip)
-                .font(.system(size: 14, weight: .medium))
+                .font(MaplogFont.callout)
                 .foregroundStyle(Color.maplogMuted)
                 .buttonStyle(.plain)
         }
@@ -230,7 +230,7 @@ struct NotificationsView: View {
                         }
                     }
                 }
-                .padding(20)
+                .padding(MaplogSpacing.large)
                 .padding(.bottom, 104)
             }
 
@@ -240,7 +240,7 @@ struct NotificationsView: View {
                     .foregroundStyle(Color.maplogInk)
                     .padding(.horizontal, 18)
                     .frame(height: 48)
-                    .background(.white)
+                    .background(Color.maplogSurface)
                     .clipShape(Capsule())
                     .shadow(color: .black.opacity(0.14), radius: 18, x: 0, y: 8)
                     .padding(.bottom, 26)
@@ -251,7 +251,7 @@ struct NotificationsView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                HStack(spacing: 12) {
+                HStack(spacing: MaplogSpacing.small) {
                     Button {
                         markAllRead()
                     } label: {
@@ -292,7 +292,7 @@ struct NotificationsView: View {
     }
 
     private var notificationSummary: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: MaplogSpacing.small) {
             Image(systemName: notificationSummaryIcon)
                 .font(.system(size: 20, weight: .bold))
                 .foregroundStyle(Color.maplogInk)
@@ -302,7 +302,7 @@ struct NotificationsView: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(notificationSummaryTitle)
-                    .font(.system(size: 17, weight: .black))
+                    .font(MaplogFont.cardTitle)
                     .foregroundStyle(Color.maplogInk)
                 Text(notificationSummarySubtitle)
                     .font(.system(size: 12, weight: .medium))
@@ -313,8 +313,8 @@ struct NotificationsView: View {
             Spacer()
         }
         .padding(14)
-        .background(.white)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .background(Color.maplogSurface)
+        .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.large, style: .continuous))
         .shadow(color: .black.opacity(0.04), radius: 16, x: 0, y: 6)
     }
 
@@ -343,7 +343,7 @@ struct NotificationsView: View {
     }
 
     private var emptyNotifications: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: MaplogSpacing.small) {
             Image(systemName: "bell.slash")
                 .font(.system(size: 34, weight: .bold))
                 .foregroundStyle(Color.maplogMuted)
@@ -351,7 +351,7 @@ struct NotificationsView: View {
                 .font(.system(size: 19, weight: .black))
                 .foregroundStyle(Color.maplogInk)
             Text(emptyNotificationSubtitle)
-                .font(.system(size: 14, weight: .medium))
+                .font(MaplogFont.callout)
                 .foregroundStyle(Color.maplogMuted)
                 .multilineTextAlignment(.center)
             Button {
@@ -369,9 +369,9 @@ struct NotificationsView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 32)
-        .padding(.horizontal, 16)
-        .background(.white)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .padding(.horizontal, MaplogSpacing.medium)
+        .background(Color.maplogSurface)
+        .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.large, style: .continuous))
         .shadow(color: .black.opacity(0.04), radius: 16, x: 0, y: 6)
     }
 
@@ -468,7 +468,7 @@ private struct NoticeCard: View {
                     .foregroundStyle(Color.maplogInk)
                     .lineLimit(2)
                 Text(notice.message)
-                    .font(.system(size: 14, weight: .medium))
+                    .font(MaplogFont.callout)
                     .foregroundStyle(Color.maplogMuted)
                     .lineLimit(2)
                 Text(notice.time)
@@ -487,8 +487,8 @@ private struct NoticeCard: View {
                     .frame(width: 28)
             }
         }
-        .padding(16)
-        .background(.white)
+        .padding(MaplogSpacing.medium)
+        .background(Color.maplogSurface)
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .shadow(color: .black.opacity(0.04), radius: 16, x: 0, y: 6)
     }
@@ -533,7 +533,7 @@ private struct NotificationDetailView: View {
                         .clipShape(Capsule())
                 }
 
-                VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: MaplogSpacing.small) {
                     Text(notice.title)
                         .font(.system(size: 26, weight: .black))
                         .foregroundStyle(Color.maplogInk)
@@ -552,12 +552,12 @@ private struct NotificationDetailView: View {
                         destinationView
                     } label: {
                         Label("관련 화면 보기", systemImage: "arrow.right.circle.fill")
-                            .font(.system(size: 17, weight: .black))
+                            .font(MaplogFont.cardTitle)
                             .foregroundStyle(Color.maplogInk)
                             .frame(maxWidth: .infinity)
                             .frame(height: 56)
                             .background(Color.maplogLime)
-                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.small, style: .continuous))
                     }
                     .buttonStyle(.plain)
 
@@ -570,16 +570,16 @@ private struct NotificationDetailView: View {
                             .frame(maxWidth: .infinity)
                             .frame(height: 52)
                             .background(Color.maplogCanvas)
-                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.small, style: .continuous))
                     }
                     .buttonStyle(.plain)
                 }
             }
-            .padding(20)
+            .padding(MaplogSpacing.large)
         }
         .navigationTitle("알림 상세")
         .navigationBarTitleDisplayMode(.inline)
-        .background(Color.white)
+        .background(Color.maplogSurface)
         .maplogTabBarHidden()
         .onAppear {
             sessionStore.markNoticeRead(id: notice.id)
@@ -678,7 +678,7 @@ struct ServiceDetailView: View {
                     .foregroundStyle(Color.maplogInk)
                     .padding(.horizontal, 18)
                     .frame(height: 48)
-                    .background(.white)
+                    .background(Color.maplogSurface)
                     .clipShape(Capsule())
                     .shadow(color: .black.opacity(0.14), radius: 18, x: 0, y: 8)
                     .padding(.bottom, 26)
@@ -739,7 +739,7 @@ struct ServiceDetailView: View {
         }
         .padding(.horizontal, 14)
         .frame(height: 64)
-        .background(.white)
+        .background(Color.maplogSurface)
         .overlay(alignment: .bottom) {
             Rectangle().fill(Color.maplogLine).frame(height: 1)
         }
@@ -760,7 +760,7 @@ struct ServiceDetailView: View {
                     Text(profile.badge)
                         .font(.system(size: 13, weight: .black))
                         .foregroundStyle(Color.maplogInk)
-                        .padding(.horizontal, 12)
+                        .padding(.horizontal, MaplogSpacing.small)
                         .padding(.vertical, 7)
                         .background(Color.maplogLime)
                         .clipShape(Capsule())
@@ -812,7 +812,7 @@ struct ServiceDetailView: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .lastTextBaseline) {
                 Text("혜택 받는 장소 찾기")
-                    .font(.system(size: 20, weight: .black))
+                    .font(MaplogFont.sectionTitle)
                     .foregroundStyle(Color.maplogInk)
                 Spacer()
                 Text("\(visibleBenefits.count)곳")
@@ -869,12 +869,12 @@ struct ServiceDetailView: View {
     }
 
     private var howToUseSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: MaplogSpacing.small) {
             SectionHeader(title: "이용 방법", subtitle: "발급부터 혜택 확인까지 한눈에 정리했어요.")
 
             VStack(spacing: 10) {
                 ForEach(Array(profile.steps.enumerated()), id: \.offset) { index, step in
-                    HStack(spacing: 12) {
+                    HStack(spacing: MaplogSpacing.small) {
                         Text("\(index + 1)")
                             .font(.system(size: 14, weight: .black))
                             .foregroundStyle(Color.maplogInk)
@@ -893,8 +893,8 @@ struct ServiceDetailView: View {
                         Spacer()
                     }
                     .padding(14)
-                    .background(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .background(Color.maplogSurface)
+                    .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous))
                 }
             }
         }
@@ -914,7 +914,7 @@ struct ServiceDetailView: View {
 
                 VStack(alignment: .leading, spacing: 5) {
                     Text("지도에서 혜택 루트 보기")
-                        .font(.system(size: 17, weight: .black))
+                        .font(MaplogFont.cardTitle)
                         .foregroundStyle(Color.maplogInk)
                     Text(profile.routeSummary)
                         .font(.system(size: 13, weight: .medium))
@@ -926,9 +926,9 @@ struct ServiceDetailView: View {
                     .font(.system(size: 13, weight: .black))
                     .foregroundStyle(Color.maplogMuted)
             }
-            .padding(16)
-            .background(.white)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .padding(MaplogSpacing.medium)
+            .background(Color.maplogSurface)
+            .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.large, style: .continuous))
             .shadow(color: .black.opacity(0.04), radius: 16, x: 0, y: 8)
         }
         .buttonStyle(.plain)
@@ -1212,7 +1212,7 @@ private struct ServiceBenefitCard: View {
                         Text("#\(tag)")
                             .font(.system(size: 11, weight: .bold))
                             .foregroundStyle(Color.maplogMuted)
-                            .padding(.horizontal, 8)
+                            .padding(.horizontal, MaplogSpacing.xSmall)
                             .frame(height: 24)
                             .background(Color.maplogCanvas)
                             .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
@@ -1222,11 +1222,11 @@ private struct ServiceBenefitCard: View {
 
             Spacer(minLength: 42)
         }
-        .padding(12)
-        .background(.white)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .padding(MaplogSpacing.small)
+        .background(Color.maplogSurface)
+        .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.large, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
+            RoundedRectangle(cornerRadius: MaplogRadius.large, style: .continuous)
                 .stroke(isSaved ? Color.maplogLime : .clear, lineWidth: 2)
         }
         .shadow(color: .black.opacity(0.04), radius: 18, x: 0, y: 8)
@@ -1243,7 +1243,7 @@ private struct ServiceIssueSheet: View {
         VStack(alignment: .leading, spacing: 18) {
             HStack {
                 Text(profile.title)
-                    .font(.system(size: 24, weight: .black))
+                    .font(MaplogFont.screenTitle)
                     .foregroundStyle(Color.maplogInk)
                 Spacer()
                 Button {
@@ -1295,12 +1295,12 @@ private struct ServiceIssueSheet: View {
                 }
             } label: {
                 Label(isIssued ? "패스 확인 완료" : "발급 완료하기", systemImage: isIssued ? "checkmark" : "checkmark.seal.fill")
-                    .font(.system(size: 17, weight: .black))
+                    .font(MaplogFont.cardTitle)
                     .foregroundStyle(Color.maplogInk)
                     .frame(maxWidth: .infinity)
                     .frame(height: 54)
                     .background(Color.maplogLime)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous))
             }
             .buttonStyle(.plain)
 
@@ -1315,12 +1315,12 @@ private struct ServiceIssueSheet: View {
                         .frame(maxWidth: .infinity)
                         .frame(height: 46)
                         .background(Color.maplogCanvas)
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous))
                 }
                 .buttonStyle(.plain)
             }
         }
-        .padding(24)
+        .padding(MaplogSpacing.xLarge)
     }
 
     private func complete(_ message: String) {
@@ -1342,7 +1342,7 @@ private struct ServiceShareSheet: View {
             HStack {
                 VStack(alignment: .leading, spacing: 5) {
                     Text("서비스 공유")
-                        .font(.system(size: 24, weight: .black))
+                        .font(MaplogFont.screenTitle)
                         .foregroundStyle(Color.maplogInk)
                     Text(profile.title)
                         .font(.system(size: 14, weight: .bold))
@@ -1377,7 +1377,7 @@ private struct ServiceShareSheet: View {
                 }
             }
 
-            HStack(spacing: 12) {
+            HStack(spacing: MaplogSpacing.small) {
                 TravelImageView(style: profile.heroStyle, height: 76, cornerRadius: 14, showsSymbol: false)
                     .frame(width: 92)
 
@@ -1401,18 +1401,18 @@ private struct ServiceShareSheet: View {
 
                 Spacer(minLength: 0)
             }
-            .padding(12)
+            .padding(MaplogSpacing.small)
             .background(Color.maplogCanvas.opacity(0.82))
             .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
-        .padding(24)
+        .padding(MaplogSpacing.xLarge)
     }
 
     private func shareOption(title: String, systemImage: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             VStack(spacing: 9) {
                 Image(systemName: systemImage)
-                    .font(.system(size: 20, weight: .black))
+                    .font(MaplogFont.sectionTitle)
                     .foregroundStyle(Color.maplogInk)
                     .frame(width: 54, height: 54)
                     .background(Color.maplogCanvas)
@@ -1488,8 +1488,55 @@ struct FeaturedEventDetailView: View {
             location: event.location,
             duration: "약 1시간",
             coverStyle: event.imageStyle,
-            spots: [eventVenueSpot, eventNearbySpot]
+            spots: [eventVenueSpot, eventNearbySpot],
+            nearbySpots: eventRouteNearbySpots
         )
+    }
+
+    private var eventRouteNearbySpots: [MaplogSpot] {
+        let isJinju = event.location == "진주"
+        let festivalName = isJinju ? "진주성 야외무대" : "\(event.location) 야외무대"
+        let diningName = isJinju ? "남강 로컬 다이닝" : "\(event.location) 로컬 다이닝"
+        let walkName = isJinju ? "남강 산책길" : "\(event.location) 산책길"
+
+        return [
+            MaplogSpot(
+                id: "event-nearby-festival-\(event.id)",
+                name: festivalName,
+                category: "축제",
+                area: event.location,
+                summary: "행사장과 함께 즐기기 좋은 공연과 체험 공간입니다.",
+                rating: 4.7,
+                imageStyle: .festival,
+                tags: ["공연", "체험"],
+                pinX: 0.30,
+                pinY: 0.58
+            ),
+            MaplogSpot(
+                id: "event-nearby-dining-\(event.id)",
+                name: diningName,
+                category: "맛집",
+                area: event.location,
+                summary: "행사 전후로 식사하기 좋은 가까운 로컬 맛집입니다.",
+                rating: 4.6,
+                imageStyle: .market,
+                tags: ["식사", "로컬"],
+                pinX: 0.76,
+                pinY: 0.52
+            ),
+            MaplogSpot(
+                id: "event-nearby-walk-\(event.id)",
+                name: walkName,
+                category: "산책",
+                area: event.location,
+                summary: "행사 후 잠시 걸으며 쉬어가기 좋은 물가 산책 구간입니다.",
+                rating: 4.8,
+                imageStyle: .forest,
+                tags: ["산책", "휴식"],
+                pinX: 0.54,
+                pinY: 0.80
+            )
+        ]
     }
 
     private var isRouteSaved: Bool {
@@ -1521,6 +1568,12 @@ struct FeaturedEventDetailView: View {
         event.location == "서울" ? "서울 종로구 세종대로 172" : "\(event.location) 중심가 일대"
     }
 
+    private var heroAssetName: String {
+        event.thumbnailAssetName == "event_ocean_film"
+            ? "event_ocean_film_hero"
+            : (event.thumbnailAssetName ?? event.imageStyle.assetName)
+    }
+
     var body: some View {
         ZStack(alignment: .bottom) {
             ScrollView(showsIndicators: false) {
@@ -1541,19 +1594,33 @@ struct FeaturedEventDetailView: View {
                     infoGrid
                     locationCard
                 }
-                .padding(.bottom, 128)
+                .padding(.bottom, 24)
             }
 
-            HStack(spacing: 10) {
+            if showActionToast {
+                Text(toastText)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .padding(.horizontal, 18)
+                    .frame(minHeight: 48)
+                    .background(.regularMaterial)
+                    .clipShape(Capsule())
+                    .shadow(color: .black.opacity(0.12), radius: 16, x: 0, y: 6)
+                    .padding(.bottom, 12)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            HStack(spacing: MaplogSpacing.small) {
                 Button {
                     showsRouteSuggestion = true
                 } label: {
                     Label("길찾기", systemImage: "location.north.line.fill")
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(Color.maplogInk)
-                        .frame(width: 124, height: 52)
-                        .background(Color.maplogCanvas)
-                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                        .frame(minWidth: 112, minHeight: 54)
+                        .background(Color(uiColor: .secondarySystemBackground))
+                        .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.large, style: .continuous))
                 }
                 .buttonStyle(.plain)
 
@@ -1561,32 +1628,25 @@ struct FeaturedEventDetailView: View {
                     RouteDetailView(trip: eventRouteTrip)
                 } label: {
                     Label("지도 보기", systemImage: "point.topleft.down.curvedto.point.bottomright.up")
-                        .font(.system(size: 16, weight: .bold))
+                        .font(.headline)
                         .foregroundStyle(Color.maplogInk)
                         .frame(maxWidth: .infinity)
-                        .frame(height: 52)
+                        .frame(minHeight: 54)
                         .background(Color.maplogLime)
-                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.large, style: .continuous))
                 }
                 .buttonStyle(.plain)
             }
             .padding(.horizontal, MaplogSpacing.page)
-            .padding(.bottom, 22)
-            .background(.white)
-
-            if showActionToast {
-                Text(toastText)
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(Color.maplogInk)
-                    .padding(.horizontal, 18)
-                    .frame(height: 48)
-                    .background(.white)
-                    .clipShape(Capsule())
-                    .shadow(color: .black.opacity(0.14), radius: 18, x: 0, y: 8)
-                    .padding(.bottom, 94)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            .padding(.vertical, 12)
+            .background(.bar)
+            .overlay(alignment: .top) {
+                Rectangle()
+                    .fill(Color(uiColor: .separator).opacity(0.25))
+                    .frame(height: 1)
             }
         }
+        .background(Color(uiColor: .systemBackground))
         .ignoresSafeArea(edges: .top)
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden()
@@ -1617,7 +1677,19 @@ struct FeaturedEventDetailView: View {
     }
 
     private var eventHero: some View {
-        TravelImageView(style: event.imageStyle, height: 292, cornerRadius: 0)
+        Image(heroAssetName)
+            .resizable()
+            .scaledToFill()
+            .frame(maxWidth: .infinity)
+            .frame(height: 390)
+            .clipped()
+            .overlay {
+                LinearGradient(
+                    colors: [.black.opacity(0.10), .clear, .black.opacity(0.76)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            }
             .overlay(alignment: .top) {
                 HStack {
                     EventCircleButton(systemImage: "chevron.left") {
@@ -1632,50 +1704,60 @@ struct FeaturedEventDetailView: View {
                     }
                 }
                 .padding(.horizontal, MaplogSpacing.page)
-                .padding(.top, 52)
+                .padding(.top, 54)
             }
             .overlay(alignment: .bottomLeading) {
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 10) {
                     Text("오늘 진행 중")
-                        .font(.system(size: 13, weight: .black))
+                        .font(.caption.weight(.bold))
                         .foregroundStyle(Color.maplogInk)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 7)
+                        .padding(.horizontal, MaplogSpacing.small)
+                        .frame(minHeight: 28)
                         .background(Color.maplogLime)
                         .clipShape(Capsule())
                     Text(event.title)
-                        .font(.system(size: 24, weight: .black))
+                        .font(.title2.weight(.bold))
                         .foregroundStyle(.white)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
                     Label(event.period, systemImage: "calendar")
-                        .font(.system(size: 14, weight: .bold))
+                        .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.white.opacity(0.92))
+                        .lineLimit(2)
                 }
-                .padding(22)
+                .padding(MaplogSpacing.page)
             }
     }
 
     private var introCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text(eventIntroTitle)
-                .font(.system(size: 22, weight: .bold))
-                .foregroundStyle(Color.maplogInk)
+                .font(.title3.weight(.bold))
+                .foregroundStyle(.primary)
             Text(eventIntroBody)
-                .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(Color.maplogMuted)
-                .lineSpacing(6)
-            HStack {
-                ChipView(title: "#미디어아트")
-                ChipView(title: "#야간관광")
-                ChipView(title: "#데이트코스")
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .lineSpacing(4)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: MaplogSpacing.xSmall) {
+                    ChipView(title: "#미디어아트")
+                    ChipView(title: "#야간관광")
+                    ChipView(title: "#데이트코스")
+                }
             }
         }
-        .padding(18)
-        .maplogCard()
+        .padding(MaplogSpacing.large)
+        .background(Color(uiColor: .secondarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.xLarge, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: MaplogRadius.xLarge, style: .continuous)
+                .stroke(Color(uiColor: .separator).opacity(0.22), lineWidth: 1)
+        }
         .padding(.horizontal, MaplogSpacing.page)
     }
 
     private var infoGrid: some View {
-        HStack(spacing: 14) {
+        HStack(alignment: .top, spacing: MaplogSpacing.small) {
             EventInfoCard(icon: "clock.fill", title: "운영 시간", primary: "18:00 -\n22:00", secondary: "매시 정각 10분 쇼 진행")
             EventInfoCard(icon: "mappin.circle.fill", title: "장소", primary: venueName, secondary: "주요 입구 인근\n주차 혼잡 예상")
         }
@@ -1686,26 +1768,32 @@ struct FeaturedEventDetailView: View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
                 Text("위치 안내")
-                    .font(.system(size: 22, weight: .bold))
-                    .foregroundStyle(Color.maplogInk)
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(.primary)
                 Spacer()
                 Button {
                     showsRouteSuggestion = true
                 } label: {
                     Text("길찾기")
-                        .font(.system(size: 13, weight: .bold))
+                        .font(.subheadline.weight(.semibold))
                         .foregroundStyle(Color.maplogOlive)
+                        .frame(minHeight: 44)
                 }
                 .buttonStyle(.plain)
             }
             MiniMapCard(spots: [MockMaplogData.seoulTower])
             Text(eventAddress)
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(Color.maplogMuted)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .center)
         }
         .padding(18)
-        .maplogCard()
+        .background(Color(uiColor: .secondarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.xLarge, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: MaplogRadius.xLarge, style: .continuous)
+                .stroke(Color(uiColor: .separator).opacity(0.22), lineWidth: 1)
+        }
         .padding(.horizontal, MaplogSpacing.page)
     }
 
@@ -1741,11 +1829,15 @@ private struct EventCircleButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: systemImage)
-                .font(.system(size: 19, weight: .bold))
-                .foregroundStyle(Color.maplogInk)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(.primary)
                 .frame(width: 44, height: 44)
-                .background(.white.opacity(0.88))
+                .background(.regularMaterial)
                 .clipShape(Circle())
+                .overlay {
+                    Circle()
+                        .stroke(.white.opacity(0.28), lineWidth: 1)
+                }
         }
         .buttonStyle(.plain)
     }
@@ -1760,20 +1852,26 @@ private struct EventInfoCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Label(title, systemImage: icon)
-                .font(.system(size: 13, weight: .bold))
+                .font(.subheadline.weight(.semibold))
                 .foregroundStyle(Color.maplogOlive)
             Text(primary)
-                .font(.system(size: 22, weight: .black))
-                .foregroundStyle(Color.maplogInk)
+                .font(.title3.weight(.bold))
+                .foregroundStyle(.primary)
+                .fixedSize(horizontal: false, vertical: true)
             Text(secondary)
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(Color.maplogMuted)
-                .lineSpacing(4)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .lineSpacing(3)
             Spacer(minLength: 0)
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, minHeight: 210, alignment: .topLeading)
-        .maplogCard()
+        .padding(MaplogSpacing.medium)
+        .frame(maxWidth: .infinity, minHeight: 176, alignment: .topLeading)
+        .background(Color(uiColor: .secondarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Color(uiColor: .separator).opacity(0.22), lineWidth: 1)
+        }
     }
 }
 
@@ -1797,17 +1895,10 @@ struct FestivalListView: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 22) {
+                LazyVStack(alignment: .leading, spacing: MaplogSpacing.section) {
                     filterRow
-                    HStack(alignment: .firstTextBaseline) {
-                        Text("전국 축제 · 공연")
-                            .font(.system(size: 22, weight: .black))
-                            .foregroundStyle(Color.maplogInk)
-                        Spacer()
-                        Text("\(visibleEvents.count)개 행사")
-                            .font(.system(size: 14, weight: .bold))
-                            .foregroundStyle(Color.maplogMuted)
-                    }
+
+                    festivalListHeader
 
                     ForEach(visibleEvents) { event in
                         ZStack(alignment: .topTrailing) {
@@ -1825,14 +1916,20 @@ struct FestivalListView: View {
                                 toggleSave(event)
                             } label: {
                                 Image(systemName: sessionStore.hasSavedEvent(event) ? "heart.fill" : "heart")
-                                    .font(.system(size: 23, weight: .bold))
-                                    .foregroundStyle(sessionStore.hasSavedEvent(event) ? Color.maplogLime : Color.maplogInk)
-                                    .frame(width: 46, height: 46)
-                                    .background(.white.opacity(0.9))
+                                    .font(.system(size: 16, weight: .bold))
+                                    .foregroundStyle(sessionStore.hasSavedEvent(event) ? AnyShapeStyle(Color.maplogOlive) : AnyShapeStyle(.primary))
+                                    .frame(width: 34, height: 34)
+                                    .background(.regularMaterial)
                                     .clipShape(Circle())
+                                    .overlay {
+                                        Circle()
+                                            .stroke(.white.opacity(0.25), lineWidth: 1)
+                                    }
                             }
+                            .frame(width: MaplogSize.minimumTapTarget, height: MaplogSize.minimumTapTarget)
                             .buttonStyle(.plain)
-                            .padding(16)
+                            .padding(MaplogSpacing.small)
+                            .accessibilityLabel(sessionStore.hasSavedEvent(event) ? "\(event.title) 관심 행사 저장 해제" : "\(event.title) 관심 행사 저장")
                         }
                     }
                 }
@@ -1843,11 +1940,11 @@ struct FestivalListView: View {
 
             if let toastText {
                 Text(toastText)
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(Color.maplogInk)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
                     .padding(.horizontal, 18)
-                    .frame(height: 48)
-                    .background(.white)
+                    .frame(minHeight: 48)
+                    .background(.regularMaterial)
                     .clipShape(Capsule())
                     .shadow(color: .black.opacity(0.14), radius: 18, x: 0, y: 8)
                     .padding(.bottom, 26)
@@ -1857,6 +1954,30 @@ struct FestivalListView: View {
         .navigationTitle("축제")
         .navigationBarTitleDisplayMode(.inline)
         .maplogTabBarHidden()
+        .background(Color(uiColor: .systemBackground))
+    }
+
+    private var festivalListHeader: some View {
+        HStack(alignment: .bottom) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("전국 축제 · 공연")
+                    .font(MaplogFont.screenTitle)
+                    .foregroundStyle(Color.maplogInk)
+                Text("지금 떠나기 좋은 행사를 골라보세요")
+                    .font(MaplogFont.callout)
+                    .foregroundStyle(Color.maplogMuted)
+            }
+
+            Spacer()
+
+            Text("\(visibleEvents.count)개")
+                .font(MaplogFont.calloutStrong)
+                .foregroundStyle(Color.maplogOlive)
+                .padding(.horizontal, 10)
+                .frame(height: 30)
+                .background(Color.maplogLime.opacity(0.32))
+                .clipShape(Capsule())
+        }
     }
 
     private var filterRow: some View {
@@ -1873,12 +1994,19 @@ struct FestivalListView: View {
                                     .font(.system(size: 10, weight: .bold))
                             }
                         }
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(selectedFilter == filter ? Color.maplogInk : Color.maplogMuted)
-                        .padding(.horizontal, 16)
-                        .padding(.vertical, 10)
-                        .background(selectedFilter == filter ? Color.maplogLime : Color.maplogCanvas)
+                        .font(MaplogFont.calloutStrong)
+                        .foregroundStyle(selectedFilter == filter ? AnyShapeStyle(Color.maplogInk) : AnyShapeStyle(.secondary))
+                        .padding(.horizontal, 14)
+                        .frame(height: MaplogSize.chipHeight)
+                        .background(selectedFilter == filter ? Color.maplogLime : Color(uiColor: .secondarySystemBackground))
                         .clipShape(Capsule())
+                        .overlay {
+                            Capsule()
+                                .stroke(
+                                    selectedFilter == filter ? Color.clear : Color(uiColor: .separator).opacity(0.25),
+                                    lineWidth: 1
+                                )
+                        }
                     }
                     .buttonStyle(.plain)
                 }
@@ -1914,49 +2042,60 @@ private struct FestivalCard: View {
     let event: FeaturedEvent
     let isSaved: Bool
 
+    private var imageName: String {
+        event.thumbnailAssetName ?? event.imageStyle.assetName
+    }
+
+    private var venueName: String {
+        event.location == "서울" ? "광화문광장" : "\(event.location) 행사장"
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            ZStack(alignment: .topLeading) {
-                TravelImageView(style: event.imageStyle, height: 258)
-                Text(event.title.contains("서울") ? "D-2" : "진행 중")
-                    .font(.system(size: 13, weight: .black))
-                    .foregroundStyle(Color.maplogInk)
-                    .padding(.horizontal, 11)
-                    .padding(.vertical, 7)
-                    .background(Color.maplogLime)
-                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                    .padding(16)
-                if isSaved {
-                    Text("저장됨")
-                        .font(.system(size: 12, weight: .black))
-                        .foregroundStyle(Color.maplogInk)
-                        .padding(.horizontal, 10)
-                        .frame(height: 28)
-                        .background(.white.opacity(0.92))
-                        .clipShape(Capsule())
-                        .frame(maxWidth: .infinity, alignment: .topTrailing)
-                        .padding(16)
+        ZStack(alignment: .topLeading) {
+            Image(imageName)
+                .resizable()
+                .scaledToFill()
+                .frame(maxWidth: .infinity)
+                .frame(height: 276)
+                .clipped()
+                .overlay {
+                    LinearGradient(
+                        colors: [.black.opacity(0.06), .clear, .black.opacity(0.72)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
                 }
-            }
-            VStack(alignment: .leading, spacing: 10) {
+
+            Text(event.title.contains("서울") ? "D-2" : "진행 중")
+                .font(MaplogFont.badge)
+                .foregroundStyle(Color.maplogInk)
+                .padding(.horizontal, 10)
+                .frame(height: 26)
+                .background(Color.maplogLime)
+                .clipShape(Capsule())
+                .padding(MaplogSpacing.medium)
+
+            VStack(alignment: .leading, spacing: 8) {
+                Spacer()
+
                 Text(event.title)
-                    .font(.system(size: 21, weight: .black))
-                    .foregroundStyle(Color.maplogInk)
-                Label(event.period, systemImage: "calendar")
-                Label(event.location == "서울" ? "광화문광장" : "\(event.location) 행사장", systemImage: "mappin.and.ellipse")
-                Label("지도에서 보기", systemImage: "map.fill")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(Color.maplogInk)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 46)
-                    .background(Color.maplogCanvas)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .padding(.top, 8)
+                    .font(.title2.weight(.bold))
+                    .foregroundStyle(.white)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Label(event.period, systemImage: "calendar")
+                    Label(venueName, systemImage: "mappin.and.ellipse")
+                }
+                .font(MaplogFont.caption)
+                .foregroundStyle(.white.opacity(0.88))
+                .lineLimit(1)
             }
-            .font(.system(size: 15, weight: .medium))
-            .foregroundStyle(Color.maplogMuted)
-            .padding(16)
+            .padding(MaplogSpacing.large)
         }
-        .maplogCard()
+        .frame(maxWidth: .infinity, minHeight: 276)
+        .maplogCard(cornerRadius: MaplogRadius.hero, style: .photo)
+        .accessibilityValue(isSaved ? "저장됨" : "저장 안 됨")
     }
 }

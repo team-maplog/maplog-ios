@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct HomeView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.maplogSelectTab) private var selectTab
     @EnvironmentObject private var sessionStore: MaplogSessionStore
     @StateObject private var viewModel = HomeViewModel()
@@ -9,8 +10,10 @@ struct HomeView: View {
     @State private var showsThemeSpots = false
     @State private var showsNearbyRecommendations = false
     @State private var showsLocationPermissionPrompt = false
+    @State private var showsCurrentLocationSearch = false
     @State private var categoryDestination: HomeCategoryDestination?
     @State private var chipDestination: HomeChipDestination?
+    @State private var homeScrollPosition: String? = "home-intro"
 
     private let categories = ["여행", "추천", "AI", "테마", "지역", "관광"]
     private let chips = ["전체", "축제", "맛집", "야경", "가족", "자연", "카페", "포토스팟"]
@@ -22,24 +25,67 @@ struct HomeView: View {
     ]
     private let aiDigests = MockMaplogData.aiDigests
     private let spotlightEvent = MockMaplogData.spotlightEvent
-    private let homeVideos = HomeMaplogClip.samples
+    private let homeVideos = HomeMaplogThumbnailItem.samples
+    private let homePosts = MockMaplogData.posts
     private let nearbyPlaces = HomeNearbyPlace.samples
 
+    private var featuredPost: VlogPost? {
+        homePosts.first
+    }
+
+    private var discoveryPosts: [VlogPost] {
+        Array(homePosts.dropFirst())
+    }
+
+    private var homeFestivalEvents: [FeaturedEvent] {
+        [spotlightEvent] + MockMaplogData.events
+    }
+
+    private var isHomeReelActive: Bool {
+        guard let homeScrollPosition else { return false }
+        return homeScrollPosition != "home-intro"
+    }
+
     var body: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 26) {
-                homeHeader
-                searchField
-                horizontalChips
-                weekendRecommendation
-                maplogClipSection
-                nearbyRecommendationSection
+        ScrollViewReader { scrollProxy in
+            ScrollView(showsIndicators: false) {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    homeIntro
+                        .id("home-intro")
+
+                    ForEach(homePosts) { post in
+                        homeMaplogPage(for: post)
+                            .frame(maxWidth: .infinity)
+                            .containerRelativeFrame(.vertical)
+                            .id(post.id)
+                    }
+                }
+                .scrollTargetLayout()
+                .padding(.top, 12)
             }
-            .padding(.horizontal, MaplogSpacing.page)
-            .padding(.top, 8)
-            .maplogListBottomPadding()
+            .scrollPosition(id: $homeScrollPosition, anchor: .top)
+            .scrollTargetBehavior(.viewAligned(limitBehavior: .always))
+            .ignoresSafeArea(
+                .container,
+                edges: isHomeReelActive ? [.top, .bottom] : []
+            )
+            .onChange(of: homeScrollPosition) { previousPosition, newPosition in
+                guard
+                    previousPosition == "home-intro",
+                    let newPosition,
+                    newPosition != "home-intro"
+                else {
+                    return
+                }
+
+                withAnimation(reduceMotion ? nil : .easeOut(duration: 0.24)) {
+                    scrollProxy.scrollTo(newPosition, anchor: .top)
+                }
+            }
         }
-        .background(Color.white)
+        .background(isHomeReelActive ? Color.black : Color(uiColor: .systemBackground))
+        .preferredColorScheme(isHomeReelActive ? .dark : nil)
+        .maplogReelTabBarStyle(isHomeReelActive)
         .toolbar(.hidden, for: .navigationBar)
         .navigationDestination(isPresented: $showsThemeSpots) {
             ThemeSpotsView {
@@ -57,10 +103,14 @@ struct HomeView: View {
         .navigationDestination(item: $chipDestination) { destination in
             chipDestinationView(for: destination)
         }
+        .navigationDestination(isPresented: $showsCurrentLocationSearch) {
+            MapSearchView(query: "서울 성수동")
+        }
         .sheet(isPresented: $showsLocationPermissionPrompt) {
             LocationPermissionPromptSheet(
                 onAllow: {
                     sessionStore.allowLocationPermission()
+                    showsCurrentLocationSearch = true
                 },
                 onSkip: {
                     sessionStore.skipLocationPermission()
@@ -71,58 +121,79 @@ struct HomeView: View {
         }
     }
 
-    private var homeHeader: some View {
-        HStack(spacing: 12) {
-            Button {
-                selectTab(.profile)
-            } label: {
-                Image("home_profile_avatar")
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: 34, height: 34)
-                    .clipShape(Circle())
-                    .overlay(Circle().stroke(Color.maplogLine, lineWidth: 1))
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("마이페이지로 이동")
+    @ViewBuilder
+    private var homeIntro: some View {
+        if reduceMotion {
+            homeIntroContent
+        } else {
+            homeIntroContent
+                .scrollTransition(.interactive, axis: .vertical) { content, phase in
+                    content
+                        .opacity(phase.isIdentity ? 1 : 0.12)
+                }
+        }
+    }
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text("좋은 저녁이에요")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(Color.maplogMuted)
+    private var homeIntroContent: some View {
+        VStack(alignment: .leading, spacing: MaplogSpacing.xLarge) {
+            homeHeader
+                .padding(.horizontal, MaplogSpacing.page)
+            weekendFestivalCarousel
+        }
+        .padding(.bottom, 24)
+    }
+
+    private var homeHeader: some View {
+        HStack(spacing: MaplogSpacing.small) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Maplog")
+                    .font(.title2.weight(.bold))
+                    .foregroundStyle(.primary)
+
                 Button {
                     if !sessionStore.locationPermissionStatus.isAllowed {
                         showsLocationPermissionPrompt = true
                     }
                 } label: {
                     HStack(spacing: 3) {
-                        Text("서울 성수동")
+                        Image(systemName: "mappin.and.ellipse")
+                        Text(sessionStore.locationPermissionStatus.isAllowed ? "서울 성수동" : "위치 설정")
                         Image(systemName: "chevron.down")
                             .font(.system(size: 10, weight: .bold))
                     }
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(Color.maplogInk)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
+                .accessibilityHint("현재 위치 권한 설정을 엽니다")
             }
 
             Spacer()
 
             NavigationLink {
-                NotificationsView()
+                SearchView()
             } label: {
-                Image(systemName: "bell")
-                    .font(.system(size: 21, weight: .semibold))
-                    .foregroundStyle(Color.maplogMuted)
+                Image(systemName: "magnifyingglass")
+                    .font(.system(size: 19, weight: .semibold))
+                    .foregroundStyle(.secondary)
                     .frame(width: 42, height: 42)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("검색")
+        }
+    }
+
+    private func openCurrentLocation() {
+        if sessionStore.locationPermissionStatus.isAllowed {
+            showsCurrentLocationSearch = true
+        } else {
+            showsLocationPermissionPrompt = true
         }
     }
 
     private var topCategoryBar: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 22) {
+            HStack(spacing: 18) {
                 Image(systemName: "flag.fill")
                     .font(.system(size: 20, weight: .bold))
                     .foregroundStyle(Color.maplogInk)
@@ -136,8 +207,9 @@ struct HomeView: View {
                     .buttonStyle(.plain)
                 }
             }
-            .padding(.top, 14)
+            .padding(.vertical, 2)
         }
+        .contentMargins(.horizontal, 1, for: .scrollContent)
     }
 
     private func openCategory(_ category: String) {
@@ -173,7 +245,7 @@ struct HomeView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 3, style: .continuous))
                 }
             }
-            .font(.system(size: 17, weight: selectedCategory == category ? .bold : .semibold))
+            .font(.headline.weight(selectedCategory == category ? .bold : .semibold))
             .foregroundStyle(selectedCategory == category ? Color.maplogInk : Color.maplogMuted)
 
             Rectangle()
@@ -231,6 +303,52 @@ struct HomeView: View {
         }
     }
 
+    private var discoverySection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            MaplogSectionHeader(
+                "더 둘러보기",
+                subtitle: "검색하거나 관심 있는 여행 테마를 골라보세요"
+            )
+            searchField
+            horizontalChips
+            secondaryCategoryMenu
+        }
+        .padding(18)
+        .background(Color(uiColor: .secondarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.xLarge, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: MaplogRadius.xLarge, style: .continuous)
+                .stroke(Color(uiColor: .separator).opacity(0.18), lineWidth: 1)
+        }
+    }
+
+    private var secondaryCategoryMenu: some View {
+        Menu {
+            ForEach(categories, id: \.self) { category in
+                Button(category) {
+                    openCategory(category)
+                }
+            }
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "sparkles")
+                    .foregroundStyle(Color.maplogOlive)
+                Text("여행 아이디어 더 보기")
+                Spacer()
+                Image(systemName: "chevron.down")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.secondary)
+            }
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(.primary)
+            .padding(.horizontal, 14)
+            .frame(minHeight: 48)
+            .background(Color(uiColor: .tertiarySystemFill))
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+        .accessibilityHint("여행, AI, 테마, 지역, 관광 메뉴를 엽니다")
+    }
+
     private var horizontalChips: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 10) {
@@ -268,10 +386,51 @@ struct HomeView: View {
         }
     }
 
+    private var weekendFestivalCarousel: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            MaplogSectionHeader(
+                "기록하기 좋은 주말 축제",
+                systemImage: "sparkles",
+                subtitle: "짧은 클립으로 남기기 좋은 행사"
+            ) {
+                Button {
+                    chipDestination = .festivals
+                } label: {
+                    HStack(spacing: 4) {
+                        Text("전체보기")
+                        Image(systemName: "chevron.right")
+                            .font(.caption2.weight(.bold))
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, MaplogSpacing.page)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(spacing: 14) {
+                    ForEach(homeFestivalEvents) { event in
+                        NavigationLink {
+                            FeaturedEventDetailView(event: event)
+                        } label: {
+                            HomeFestivalCarouselCard(
+                                event: event,
+                                isSpotlight: event.id == spotlightEvent.id
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .scrollTargetLayout()
+            }
+            .contentMargins(.horizontal, MaplogSpacing.page, for: .scrollContent)
+            .scrollTargetBehavior(.viewAligned)
+        }
+    }
+
     private var weekendRecommendation: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: MaplogSpacing.small) {
             Text("이번 주말, 여기 어때요?")
-                .font(MaplogFont.screenTitle)
+                .font(.title2.weight(.bold))
                 .foregroundStyle(Color.maplogInk)
 
             ZStack(alignment: .topTrailing) {
@@ -293,13 +452,42 @@ struct HomeView: View {
                         .clipShape(Circle())
                 }
                 .buttonStyle(.plain)
-                .padding(16)
+                .padding(MaplogSpacing.medium)
             }
         }
     }
 
+    private var maplogClipSection: some View {
+        VStack(alignment: .leading, spacing: MaplogSpacing.small) {
+            MaplogSectionHeader("릴스 피드", systemImage: "play.rectangle.fill") {
+                Button {
+                    categoryDestination = .routes
+                } label: {
+                    Label("전체보기", systemImage: "chevron.right")
+                        .font(MaplogFont.caption)
+                }
+                .buttonStyle(MaplogPressFeedbackStyle(pressedScale: 0.98))
+            }
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: MaplogSpacing.medium) {
+                    ForEach(homeVideos) { clip in
+                        NavigationLink {
+                            SpotDetailView(spot: clip.spot)
+                        } label: {
+                            HomeMaplogThumbnailCard(clip: clip)
+                        }
+                        .buttonStyle(MaplogPressFeedbackStyle(pressedScale: 0.98))
+                    }
+                }
+                .padding(.trailing, MaplogSpacing.xLarge)
+            }
+            .padding(.trailing, -MaplogSpacing.page)
+        }
+    }
+
     private var serviceShortcuts: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: MaplogSpacing.medium) {
             ForEach(services, id: \.0) { item in
                 if item.0.contains("맛집") {
                     Button {
@@ -320,41 +508,40 @@ struct HomeView: View {
         }
     }
 
-    private var maplogClipSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            MaplogSectionHeader("Maplog", systemImage: "film.stack") {
-                Button {
-                    categoryDestination = .routes
-                } label: {
-                    HStack(spacing: 4) {
-                        Text("전체보기")
-                        Image(systemName: "chevron.right")
-                            .font(.system(size: 10, weight: .bold))
-                    }
-                }
-                .buttonStyle(.plain)
+    @ViewBuilder
+    private func homeMaplogPage(for post: VlogPost) -> some View {
+        if reduceMotion {
+            HomeMaplogClipPager(post: post) {
+                showNextHomePost(after: post)
             }
+        } else {
+            HomeMaplogClipPager(post: post) {
+                showNextHomePost(after: post)
+            }
+            .scrollTransition(.interactive, axis: .vertical) { content, phase in
+                content.opacity(phase.isIdentity ? 1 : 0.18)
+            }
+        }
+    }
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 16) {
-                    ForEach(homeVideos) { clip in
-                        NavigationLink {
-                            SpotDetailView(spot: clip.spot)
-                        } label: {
-                            HomeMaplogClipCard(clip: clip)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding(.trailing, 18)
-            }
-            .padding(.trailing, -MaplogSpacing.page)
+    private func showNextHomePost(after post: VlogPost) {
+        guard let currentIndex = homePosts.firstIndex(where: { $0.id == post.id }) else {
+            return
+        }
+
+        let nextIndex = (currentIndex + 1) % homePosts.count
+        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.32)) {
+            homeScrollPosition = homePosts[nextIndex].id
         }
     }
 
     private var nearbyRecommendationSection: some View {
         VStack(alignment: .leading, spacing: 14) {
-            MaplogSectionHeader("내 주변 추천 장소")
+            MaplogSectionHeader(
+                "추천 장소",
+                systemImage: "mappin.and.ellipse",
+                subtitle: "서울 성수동에서 지금 가볼 만한 곳"
+            )
 
             VStack(spacing: 14) {
                 ForEach(nearbyPlaces) { place in
@@ -377,7 +564,7 @@ struct HomeView: View {
                 .font(.system(size: 24, weight: .bold))
                 .foregroundStyle(Color.maplogOlive)
                 .frame(width: 58, height: 58)
-                .background(.white)
+                .background(Color.maplogSurface)
                 .clipShape(Circle())
                 .overlay(Circle().stroke(Color.maplogLine, lineWidth: 1))
             Text(title)
@@ -461,8 +648,71 @@ struct HomeView: View {
 
 }
 
+private struct HomeFestivalCarouselCard: View {
+    let event: FeaturedEvent
+    let isSpotlight: Bool
+
+    private var imageName: String {
+        if isSpotlight {
+            return "home_gwanghwamun_photo"
+        }
+        return event.thumbnailAssetName ?? event.imageStyle.assetName
+    }
+
+    var body: some View {
+        ZStack(alignment: .bottomLeading) {
+            Image(imageName)
+                .resizable()
+                .scaledToFill()
+                .frame(width: 264, height: 172)
+                .clipped()
+
+            LinearGradient(
+                colors: [.black.opacity(0.04), .clear, .black.opacity(0.82)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+
+            VStack(alignment: .leading, spacing: 7) {
+                Text("이번 주말")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(Color.maplogInk)
+                    .padding(.horizontal, 10)
+                    .frame(minHeight: 26)
+                    .background(Color.maplogLime, in: Capsule())
+
+                Spacer()
+
+                Text(event.title)
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                    .lineLimit(2)
+
+                HStack(spacing: 10) {
+                    Label(event.location, systemImage: "mappin.and.ellipse")
+                    Label(event.period, systemImage: "calendar")
+                        .lineLimit(1)
+                }
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.white.opacity(0.84))
+            }
+            .padding(14)
+        }
+        .frame(width: 264, height: 172)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(.white.opacity(0.16), lineWidth: 1)
+        }
+        .shadow(color: .black.opacity(0.09), radius: 10, x: 0, y: 5)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(event.title), \(event.location), \(event.period)")
+    }
+}
+
 private struct HomeWeekendCard: View {
     let event: FeaturedEvent
+    @ScaledMetric(relativeTo: .body) private var heroHeight: CGFloat = 410
 
     var body: some View {
         ZStack(alignment: .bottomLeading) {
@@ -470,23 +720,23 @@ private struct HomeWeekendCard: View {
                 .resizable()
                 .scaledToFill()
                 .frame(maxWidth: .infinity)
-                .frame(height: 438)
+                .frame(height: min(heroHeight, 500))
                 .clipped()
-                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.xLarge, style: .continuous))
                 .overlay {
                     LinearGradient(
                         colors: [.clear, .black.opacity(0.24), .black.opacity(0.88)],
                         startPoint: .top,
                         endPoint: .bottom
                     )
-                    .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.xLarge, style: .continuous))
                 }
 
             VStack(alignment: .leading, spacing: 11) {
                 Text("오늘 진행 중")
-                    .font(.system(size: 12, weight: .black))
+                    .font(.caption.weight(.bold))
                     .foregroundStyle(Color.maplogInk)
-                    .padding(.horizontal, 12)
+                    .padding(.horizontal, MaplogSpacing.small)
                     .frame(height: 25)
                     .background(Color.maplogLime)
                     .clipShape(Capsule())
@@ -494,16 +744,17 @@ private struct HomeWeekendCard: View {
                 Spacer()
 
                 Text("서울라이트 광화문")
-                    .font(.system(size: 22, weight: .semibold))
+                    .font(.title2.weight(.bold))
                     .foregroundStyle(.white)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 Text("전통과 현대가 만나는 빛의 축제. 이번 주말까지만 진행되는 특별한 야경을 놓치지 마세요.")
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.body)
                     .foregroundStyle(.white.opacity(0.9))
                     .lineSpacing(4)
-                    .lineLimit(2)
+                    .lineLimit(3)
 
-                HStack(spacing: 8) {
+                HStack(spacing: MaplogSpacing.xSmall) {
                     Label("4.9", systemImage: "star.fill")
                         .foregroundStyle(Color.maplogLime)
                     Text("•")
@@ -511,7 +762,7 @@ private struct HomeWeekendCard: View {
                     Text("서울 종로구")
                         .foregroundStyle(.white.opacity(0.86))
                 }
-                .font(.system(size: 14, weight: .semibold))
+                .font(.subheadline.weight(.semibold))
             }
             .padding(18)
         }
@@ -519,7 +770,297 @@ private struct HomeWeekendCard: View {
     }
 }
 
-private struct HomeMaplogClip: Identifiable {
+private struct HomeMaplogClipPager: View {
+    let post: VlogPost
+    let onNext: () -> Void
+    @State private var selectedPage = 0
+
+    private var trip: MaplogTrip {
+        MockMaplogData.routeTrip(for: post)
+    }
+
+    var body: some View {
+        GeometryReader { proxy in
+            TabView(selection: $selectedPage) {
+                HomeMaplogClipCard(post: post, onNext: onNext)
+                    .tag(0)
+
+                MaplogReelRoutePage(post: post, trip: trip)
+                    .tag(1)
+            }
+            .tabViewStyle(.page(indexDisplayMode: .never))
+            .background(Color.black)
+            .overlay(alignment: .top) {
+                MaplogReelPageCue(selectedPage: selectedPage)
+                    .padding(.top, max(proxy.safeAreaInsets.top, MaplogSpacing.reelTopClearance) + MaplogSpacing.small)
+            }
+            .accessibilityHint("좌우로 넘기면 영상과 전체 루트를 전환합니다")
+        }
+    }
+}
+
+private struct HomeMaplogClipCard: View {
+    @EnvironmentObject private var sessionStore: MaplogSessionStore
+    let post: VlogPost
+    let onNext: () -> Void
+    @State private var showsComments = false
+    @State private var showsShareSheet = false
+    @State private var actionToast: String?
+    @State private var isCaptionExpanded = false
+
+    private var trip: MaplogTrip {
+        MockMaplogData.routeTrip(for: post)
+    }
+
+    var body: some View {
+        GeometryReader { proxy in
+            ZStack(alignment: .bottomLeading) {
+                VlogPostImageView(post: post)
+                    .frame(width: proxy.size.width, height: proxy.size.height)
+
+                LinearGradient(
+                    colors: [.black.opacity(0.18), .clear, .black.opacity(0.86)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+
+                Color.clear
+                    .frame(width: max(proxy.size.width * 0.22, 72), height: max(proxy.size.height * 0.24, 132))
+                    .contentShape(Rectangle())
+                    .position(x: proxy.size.width * 0.87, y: proxy.size.height * 0.40)
+                    .onTapGesture(perform: onNext)
+                    .accessibilityElement()
+                    .accessibilityLabel("다음 Maplog")
+                    .accessibilityAddTraits(.isButton)
+
+                VStack(alignment: .leading, spacing: 0) {
+                    Spacer(minLength: 24)
+
+                    HStack(alignment: .bottom, spacing: MaplogSpacing.small) {
+                        VStack(alignment: .leading, spacing: 10) {
+                            HStack(spacing: MaplogSpacing.xSmall) {
+                                Image(systemName: "person.crop.circle.fill")
+                                    .font(.title2)
+                                Text(post.author)
+                                    .font(.headline)
+                            }
+
+                            Text(fullCaptionText)
+                                .font(.subheadline)
+                                .foregroundStyle(.white.opacity(0.84))
+                                .lineLimit(isCaptionExpanded ? nil : 2)
+
+                            if shouldShowCaptionExpansion {
+                                Button {
+                                    withAnimation(.easeInOut(duration: 0.2)) {
+                                        isCaptionExpanded.toggle()
+                                    }
+                                } label: {
+                                    Text(isCaptionExpanded ? "접기" : "더보기")
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundStyle(Color.maplogLime)
+                                        .frame(minHeight: 28)
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel(isCaptionExpanded ? "본문 접기" : "본문 더보기")
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                        actionRail
+                    }
+                    .foregroundStyle(.white)
+                }
+                .padding(.horizontal, MaplogSpacing.page)
+                .padding(.top, max(proxy.safeAreaInsets.top, MaplogSpacing.reelTopClearance) + MaplogSpacing.small)
+                .padding(.bottom, proxy.safeAreaInsets.bottom + MaplogSpacing.reelTabBarClearance)
+
+                if let actionToast {
+                    Text(actionToast)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 16)
+                        .frame(minHeight: 44)
+                        .background(.ultraThinMaterial, in: Capsule())
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+                        .padding(.bottom, proxy.safeAreaInsets.bottom + MaplogSpacing.reelTabBarClearance + 64)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .background(Color.black)
+        .sheet(isPresented: $showsComments) {
+            VlogCommentsSheet(post: post)
+                .presentationDetents([.height(430), .large])
+                .presentationDragIndicator(.visible)
+        }
+        .sheet(isPresented: $showsShareSheet) {
+            VlogShareSheet(post: post) { message in
+                showToast(message)
+            }
+            .presentationDetents([.height(360)])
+            .presentationDragIndicator(.visible)
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("\(post.author)의 \(post.title), \(post.place.name) 경로, \(trip.duration)")
+    }
+
+    private var actionRail: some View {
+        VStack(spacing: MaplogSpacing.small) {
+            actionMetric(
+                systemImage: sessionStore.hasLikedVlogPost(post) ? "heart.fill" : "heart",
+                text: likeCountText,
+                tint: sessionStore.hasLikedVlogPost(post) ? Color.maplogLime : .white,
+                accessibilityLabel: sessionStore.hasLikedVlogPost(post) ? "좋아요 취소" : "좋아요"
+            ) {
+                toggleLike()
+            }
+            actionMetric(systemImage: "message.fill", text: commentCountText, accessibilityLabel: "댓글 보기") {
+                showsComments = true
+            }
+            actionMetric(systemImage: "square.and.arrow.up", text: "공유", accessibilityLabel: "공유") {
+                showsShareSheet = true
+            }
+            actionMetric(
+                systemImage: sessionStore.hasSavedRoute(trip) ? "bookmark.fill" : "bookmark",
+                text: "저장",
+                tint: sessionStore.hasSavedRoute(trip) ? Color.maplogLime : .white,
+                accessibilityLabel: sessionStore.hasSavedRoute(trip) ? "저장 해제" : "저장"
+            ) {
+                toggleSave()
+            }
+        }
+        .frame(width: 44)
+        .shadow(color: .black.opacity(0.34), radius: 5, y: 2)
+    }
+
+    private var shouldShowCaptionExpansion: Bool {
+        fullCaptionText.count > 44
+    }
+
+    private var fullCaptionText: String {
+        let hashtags = post.hashtags.map { "#\($0)" }.joined(separator: " ")
+        return hashtags.isEmpty ? post.caption : "\(post.caption) \(hashtags)"
+    }
+
+    /// 장소 카드 UI는 다음 릴스 확장 시 다시 사용할 수 있도록 유지합니다.
+    private var routeAction: some View {
+        NavigationLink {
+            PopularMaplogDetailView(post: post, trip: trip)
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "mappin.circle.fill")
+                Text(post.place.name)
+                Spacer(minLength: 8)
+                Text("루트 보기")
+                Image(systemName: "chevron.right")
+            }
+            .font(.subheadline.weight(.semibold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 13)
+            .frame(minHeight: 54)
+            .background(.ultraThinMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.large, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint("Maplog 경로 상세를 엽니다")
+    }
+
+    private func actionMetric(
+        systemImage: String,
+        text: String,
+        tint: Color = .white,
+        accessibilityLabel: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            VStack(spacing: 3) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 21, weight: .medium))
+                    .foregroundStyle(tint)
+                Text(text)
+                    .font(.caption2.weight(.medium))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+            .frame(width: 44)
+            .frame(minHeight: 45)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityValue(text)
+    }
+
+    private var commentCountText: String {
+        let baseCount = Int(post.comments.filter(\.isNumber)) ?? 0
+        let totalCount = baseCount + sessionStore.vlogCommentCount(for: post.id)
+        return compactCountText(totalCount)
+    }
+
+    private var likeCountText: String {
+        guard let baseCount = compactCountValue(from: post.likes) else {
+            return post.likes
+        }
+
+        let wasInitiallyLiked = sessionStore.wasInitiallyLikedVlogPost(post)
+        let isLiked = sessionStore.hasLikedVlogPost(post)
+        let adjustment = isLiked == wasInitiallyLiked ? 0 : (isLiked ? 1 : -1)
+        return compactCountText(max(baseCount + adjustment, 0))
+    }
+
+    private func toggleLike() {
+        withAnimation(.easeOut(duration: 0.18)) {
+            if sessionStore.hasLikedVlogPost(post) {
+                sessionStore.unlikeVlogPost(post)
+            } else {
+                sessionStore.likeVlogPost(post)
+            }
+        }
+    }
+
+    private func toggleSave() {
+        if sessionStore.hasSavedRoute(trip) {
+            sessionStore.removeSavedRoute(trip)
+            showToast("저장을 해제했어요")
+        } else {
+            sessionStore.saveRoute(trip)
+            showToast("루트를 저장했어요")
+        }
+    }
+
+    private func compactCountValue(from text: String) -> Int? {
+        let normalized = text.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if normalized.hasSuffix("k") {
+            guard let value = Double(String(normalized.dropLast())) else { return nil }
+            return Int((value * 1_000).rounded())
+        }
+        return Int(normalized.filter(\.isNumber))
+    }
+
+    private func compactCountText(_ count: Int) -> String {
+        guard count >= 1_000 else { return "\(count)" }
+        let formatted = String(format: "%.1f", Double(count) / 1_000)
+        return "\(formatted.replacingOccurrences(of: ".0", with: ""))k"
+    }
+
+    private func showToast(_ message: String) {
+        withAnimation(.easeOut(duration: 0.2)) {
+            actionToast = message
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            withAnimation(.easeOut(duration: 0.2)) {
+                if actionToast == message {
+                    actionToast = nil
+                }
+            }
+        }
+    }
+}
+
+private struct HomeMaplogThumbnailItem: Identifiable {
     let id: String
     let title: String
     let author: String
@@ -528,8 +1069,8 @@ private struct HomeMaplogClip: Identifiable {
     let style: PhotoStyle
     let spot: MaplogSpot
 
-    static let samples: [HomeMaplogClip] = [
-        HomeMaplogClip(
+    static let samples: [HomeMaplogThumbnailItem] = [
+        HomeMaplogThumbnailItem(
             id: "home-vlog-cafe",
             title: "성수동 카페거리 완벽 가이드",
             author: "@seoul_vibe",
@@ -538,7 +1079,7 @@ private struct HomeMaplogClip: Identifiable {
             style: .cafe,
             spot: MockMaplogData.forestCafe
         ),
-        HomeMaplogClip(
+        HomeMaplogThumbnailItem(
             id: "home-vlog-night",
             title: "남산 로맨틱 야경 코스",
             author: "@night_walker",
@@ -547,7 +1088,7 @@ private struct HomeMaplogClip: Identifiable {
             style: .night,
             spot: MockMaplogData.seoulTower
         ),
-        HomeMaplogClip(
+        HomeMaplogThumbnailItem(
             id: "home-vlog-date",
             title: "주말 데이트 산책 루트",
             author: "@date_map",
@@ -559,14 +1100,15 @@ private struct HomeMaplogClip: Identifiable {
     ]
 }
 
-private struct HomeMaplogClipCard: View {
-    let clip: HomeMaplogClip
+private struct HomeMaplogThumbnailCard: View {
+    let clip: HomeMaplogThumbnailItem
+
     private var imageName: String {
         clip.assetName ?? clip.style.assetName
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 9) {
+        VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
             ZStack(alignment: .topTrailing) {
                 Image(imageName)
                     .resizable()
@@ -574,31 +1116,27 @@ private struct HomeMaplogClipCard: View {
                     .frame(width: 140, height: 250)
                     .background(Color.maplogCanvas)
                     .clipped()
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .stroke(.white.opacity(0.18), lineWidth: 1)
-                    }
+                    .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous))
 
                 Label(clip.duration, systemImage: "play.fill")
-                    .font(.system(size: 11, weight: .black))
+                    .font(MaplogFont.badge)
                     .foregroundStyle(.white)
-                    .padding(.horizontal, 8)
+                    .padding(.horizontal, MaplogSpacing.xSmall)
                     .frame(height: 24)
                     .background(.black.opacity(0.44))
                     .clipShape(Capsule())
-                    .padding(8)
+                    .padding(MaplogSpacing.xSmall)
             }
 
             Text(clip.title)
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(Color.maplogInk)
+                .font(MaplogFont.callout)
+                .foregroundStyle(Color.maplogTextPrimary)
                 .lineLimit(2)
                 .frame(width: 140, alignment: .leading)
 
             Text(clip.author)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(Color.maplogMuted)
+                .font(MaplogFont.caption)
+                .foregroundStyle(Color.maplogTextSecondary)
                 .frame(width: 140, alignment: .leading)
         }
     }
@@ -667,7 +1205,7 @@ private struct HomeNearbyPlaceCard: View {
     let place: HomeNearbyPlace
 
     var body: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: MaplogSpacing.medium) {
             Group {
                 if let assetName = place.assetName {
                     Image(assetName)
@@ -680,20 +1218,20 @@ private struct HomeNearbyPlaceCard: View {
                 }
             }
             .frame(width: 80, height: 80)
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.small, style: .continuous))
 
             VStack(alignment: .leading, spacing: 7) {
                 Text(place.title)
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.headline)
                     .foregroundStyle(Color.maplogInk)
-                    .lineLimit(1)
+                    .lineLimit(2)
 
                 Text(place.summary)
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.subheadline)
                     .foregroundStyle(Color.maplogMuted)
-                    .lineLimit(1)
+                    .lineLimit(2)
 
-                HStack(spacing: 8) {
+                HStack(spacing: MaplogSpacing.xSmall) {
                     Label(place.rating, systemImage: "star.fill")
                         .foregroundStyle(Color.maplogLime)
                     Text("•")
@@ -701,13 +1239,14 @@ private struct HomeNearbyPlaceCard: View {
                     Text(place.distance)
                         .foregroundStyle(Color.maplogMuted)
                 }
-                .font(.system(size: 12, weight: .semibold))
+                .font(.caption.weight(.semibold))
             }
+            .layoutPriority(1)
 
             Spacer(minLength: 0)
 
             Text(place.category)
-                .font(.system(size: 12, weight: .semibold))
+                .font(.caption.weight(.semibold))
                 .foregroundStyle(Color.maplogOlive)
                 .padding(.horizontal, 9)
                 .frame(height: 25)
@@ -715,8 +1254,8 @@ private struct HomeNearbyPlaceCard: View {
                 .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
                 .frame(maxHeight: .infinity, alignment: .top)
         }
-        .padding(12)
-        .background(.white)
+        .padding(MaplogSpacing.small)
+        .background(Color(uiColor: .secondarySystemBackground))
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
@@ -760,11 +1299,11 @@ private struct SummaryCard: View {
     let digest: AIDigest
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: MaplogSpacing.small) {
             Text(digest.badge)
                 .font(.system(size: 12, weight: .black))
                 .foregroundStyle(.white)
-                .padding(.horizontal, 8)
+                .padding(.horizontal, MaplogSpacing.xSmall)
                 .padding(.vertical, 5)
                 .background(Color.blue)
                 .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
@@ -775,7 +1314,7 @@ private struct SummaryCard: View {
                 .lineLimit(2)
 
             Text(digest.summary)
-                .font(.system(size: 14, weight: .medium))
+                .font(MaplogFont.callout)
                 .foregroundStyle(Color.maplogMuted)
                 .lineSpacing(5)
                 .lineLimit(6)
@@ -786,7 +1325,7 @@ private struct SummaryCard: View {
                 .font(.system(size: 12, weight: .black))
                 .foregroundStyle(Color.maplogInk)
         }
-        .padding(16)
+        .padding(MaplogSpacing.medium)
         .frame(width: 250, height: 230, alignment: .topLeading)
         .maplogCard()
     }
@@ -820,7 +1359,7 @@ private struct AIDigestHubView: View {
             .padding(MaplogSpacing.page)
             .padding(.bottom, 116)
         }
-        .background(Color.white)
+        .background(Color.maplogSurface)
         .navigationTitle("AI")
         .navigationBarTitleDisplayMode(.inline)
         .maplogTabBarHidden()
@@ -841,16 +1380,16 @@ private struct AIDigestListCard: View {
                         .frame(height: 28)
                         .background(Color.maplogLime)
                         .clipShape(Capsule())
-                        .padding(12)
+                        .padding(MaplogSpacing.small)
                 }
 
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
                 Text(digest.title)
-                    .font(.system(size: 22, weight: .black))
+                    .font(MaplogFont.screenTitle)
                     .foregroundStyle(Color.maplogInk)
                     .lineLimit(2)
                 Text(digest.summary)
-                    .font(.system(size: 14, weight: .medium))
+                    .font(MaplogFont.callout)
                     .foregroundStyle(Color.maplogMuted)
                     .lineSpacing(4)
                     .lineLimit(3)
@@ -908,14 +1447,14 @@ struct AIDigestDetailView: View {
                     .foregroundStyle(Color.maplogInk)
                     .padding(.horizontal, 18)
                     .frame(height: 48)
-                    .background(.white)
+                    .background(Color.maplogSurface)
                     .clipShape(Capsule())
                     .shadow(color: .black.opacity(0.14), radius: 18, x: 0, y: 8)
                     .padding(.bottom, 24)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
-        .background(Color.white)
+        .background(Color.maplogSurface)
         .navigationTitle("AI 여행 요약")
         .navigationBarTitleDisplayMode(.inline)
         .maplogTabBarHidden()
@@ -970,7 +1509,7 @@ struct AIDigestDetailView: View {
 
             VStack(spacing: 10) {
                 ForEach(Array(digest.points.enumerated()), id: \.offset) { index, point in
-                    HStack(alignment: .top, spacing: 12) {
+                    HStack(alignment: .top, spacing: MaplogSpacing.small) {
                         Text("\(index + 1)")
                             .font(.system(size: 13, weight: .black))
                             .foregroundStyle(Color.maplogInk)
@@ -987,7 +1526,7 @@ struct AIDigestDetailView: View {
                     }
                     .padding(14)
                     .background(Color.maplogCanvas)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous))
                 }
             }
         }
@@ -1019,7 +1558,7 @@ struct AIDigestDetailView: View {
                         .font(.system(size: 13, weight: .black))
                         .foregroundStyle(Color.maplogMuted)
                 }
-                .padding(12)
+                .padding(MaplogSpacing.small)
                 .maplogCard()
             }
             .buttonStyle(.plain)
@@ -1031,7 +1570,7 @@ struct AIDigestDetailView: View {
             MapSearchView(query: digest.query)
         } label: {
             Label("지도에서 관련 루트 보기", systemImage: "map.fill")
-                .font(.system(size: 17, weight: .black))
+                .font(MaplogFont.cardTitle)
                 .foregroundStyle(Color.maplogInk)
                 .frame(maxWidth: .infinity)
                 .frame(height: 56)

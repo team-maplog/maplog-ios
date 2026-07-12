@@ -1,0 +1,16 @@
+{
+  "ok": true,
+  "spriteVersionNumber": 2,
+  "run_dir": "/Users/chaerim/workspace/maplog/.codex-pets/mapi-20260711",
+  "spritesheet": "/Users/chaerim/workspace/maplog/.codex-pets/mapi-20260711/final/spritesheet-extended.webp",
+  "validation": "/Users/chaerim/workspace/maplog/.codex-pets/mapi-20260711/final/validation-extended.json",
+  "chroma_despill": "/Users/chaerim/workspace/maplog/.codex-pets/mapi-20260711/qa/chroma-despill-extended.json",
+  "contact_sheet": "/Users/chaerim/workspace/maplog/.codex-pets/mapi-20260711/qa/contact-sheet-extended.png",
+  "direction_sheet": "/Users/chaerim/workspace/maplog/.codex-pets/mapi-20260711/qa/look-directions.png",
+  "direction_semantics": "/Users/chaerim/workspace/maplog/.codex-pets/mapi-20260711/qa/direction-semantics.json",
+  "blind_direction_validation": "/Users/chaerim/workspace/maplog/.codex-pets/mapi-20260711/qa/direction-blind-validation.json",
+  "blind_review_resolution": null,
+  "continuity": "/Users/chaerim/workspace/maplog/.codex-pets/mapi-20260711/qa/look-continuity.json",
+  "review": "/Users/chaerim/workspace/maplog/.codex-pets/mapi-20260711/qa/review.json",
+  "package": "/Users/chaerim/.codex/pets/mapi"
+}

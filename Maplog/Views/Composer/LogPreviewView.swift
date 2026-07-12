@@ -28,8 +28,7 @@ struct LogPreviewView: View {
     }
 
     private var durationText: String {
-        let totalSeconds = safeClipCount * 15
-        return String(format: "%02d:%02d", totalSeconds / 60, totalSeconds % 60)
+        "\(safeClipCount)–\(safeClipCount * 2)초"
     }
 
     private var previewLocationTags: [MaplogDraftLocationTag] {
@@ -41,7 +40,7 @@ struct LogPreviewView: View {
             MaplogDraftLocationTag(
                 id: "preview-primary",
                 name: draft.displayPlace,
-                timeRange: "00:00 - 00:15",
+                timeRange: "00:00 - 00:02",
                 style: draft.imageStyle
             )
         ]
@@ -71,7 +70,7 @@ struct LogPreviewView: View {
                     .foregroundStyle(Color.maplogInk)
                     .padding(.horizontal, 18)
                     .frame(height: 48)
-                    .background(.white)
+                    .background(Color.maplogSurface)
                     .clipShape(Capsule())
                     .shadow(color: .black.opacity(0.14), radius: 18, x: 0, y: 8)
                     .padding(.bottom, isPublished ? 26 : 94)
@@ -80,7 +79,7 @@ struct LogPreviewView: View {
         }
         .navigationTitle(isPublished ? "게시 완료" : "게시 전 확인")
         .navigationBarTitleDisplayMode(.inline)
-        .background(Color.white)
+        .background(Color(uiColor: .systemBackground))
         .maplogTabBarHidden()
         .sheet(isPresented: $showsShareSheet) {
             PublishedShareSheet(draft: draft) { message in
@@ -93,16 +92,17 @@ struct LogPreviewView: View {
 
     private var reviewState: some View {
         VStack(alignment: .leading, spacing: 22) {
-            TravelImageView(style: draft.imageStyle, height: 330, cornerRadius: 14, showsSymbol: false)
+            CaptureTravelImageView(style: draft.imageStyle, cornerRadius: MaplogRadius.xLarge)
+                .frame(height: 330)
                 .overlay(alignment: .topTrailing) {
                     Label(durationText, systemImage: "circle.fill")
                         .font(.system(size: 13, weight: .bold))
                         .foregroundStyle(.white)
-                        .padding(.horizontal, 12)
+                        .padding(.horizontal, MaplogSpacing.small)
                         .frame(height: 34)
                         .background(.black.opacity(0.62))
                         .clipShape(Capsule())
-                        .padding(12)
+                        .padding(MaplogSpacing.small)
                 }
 
             VStack(alignment: .leading, spacing: 14) {
@@ -129,15 +129,15 @@ struct LogPreviewView: View {
                     .foregroundStyle(Color.maplogMuted)
                     .lineSpacing(5)
 
-                HStack(spacing: 8) {
+                HStack(spacing: MaplogSpacing.xSmall) {
                     InfoBadge(title: "전체 공개", systemImage: "eye.fill")
                     InfoBadge(title: "\(safeClipCount)개 클립", systemImage: "play.rectangle.fill")
                 }
             }
-            .padding(16)
+            .padding(MaplogSpacing.medium)
             .maplogCard()
 
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: MaplogSpacing.small) {
                 SectionHeader(title: "위치 태그", subtitle: "게시 후 장소 상세와 지도에 연결됩니다")
                 VStack(spacing: 0) {
                     ForEach(Array(previewLocationTags.enumerated()), id: \.element.id) { index, tag in
@@ -169,7 +169,7 @@ struct LogPreviewView: View {
             }
             .frame(maxWidth: .infinity)
 
-            VStack(spacing: 8) {
+            VStack(spacing: MaplogSpacing.xSmall) {
                 Text("맵로그가 게시됐어요")
                     .font(.system(size: 27, weight: .black))
                     .foregroundStyle(Color.maplogInk)
@@ -181,17 +181,18 @@ struct LogPreviewView: View {
             }
             .padding(.horizontal, 22)
 
-            TravelImageView(style: draft.imageStyle, height: 220, cornerRadius: 14, showsSymbol: false)
+            CaptureTravelImageView(style: draft.imageStyle, cornerRadius: MaplogRadius.xLarge)
+                .frame(height: 220)
                 .overlay(alignment: .bottomLeading) {
                     VStack(alignment: .leading, spacing: 6) {
                         Text(draft.displayTitle)
-                            .font(.system(size: 22, weight: .black))
+                            .font(MaplogFont.screenTitle)
                         Text(draft.note)
                             .font(.system(size: 14, weight: .bold))
                             .lineLimit(2)
                     }
                     .foregroundStyle(.white)
-                    .padding(16)
+                    .padding(MaplogSpacing.medium)
                 }
 
             VStack(spacing: 10) {
@@ -201,7 +202,7 @@ struct LogPreviewView: View {
                     }
                 } label: {
                     Label("내 기록 보기", systemImage: "play.circle.fill")
-                        .font(.system(size: 17, weight: .black))
+                        .font(MaplogFont.cardTitle)
                         .foregroundStyle(Color.maplogInk)
                         .frame(maxWidth: .infinity)
                         .frame(height: 56)
@@ -225,9 +226,9 @@ struct LogPreviewView: View {
                     .buttonStyle(.plain)
 
                     Button {
-                        selectTab(.logs)
+                        selectTab(.home)
                     } label: {
-                        Label("로그 피드에서 보기", systemImage: "play.rectangle.fill")
+                        Label("홈 피드에서 보기", systemImage: "house.fill")
                             .font(.system(size: 15, weight: .black))
                             .foregroundStyle(Color.maplogInk)
                             .lineLimit(1)
@@ -285,7 +286,7 @@ struct LogPreviewView: View {
                 publishCurrentDraft()
             } label: {
                 Label("게시 완료", systemImage: "checkmark")
-                    .font(.system(size: 17, weight: .black))
+                    .font(MaplogFont.cardTitle)
                     .foregroundStyle(Color.maplogInk)
                     .frame(maxWidth: .infinity)
                     .frame(height: 56)
@@ -297,14 +298,14 @@ struct LogPreviewView: View {
         .padding(.horizontal, MaplogSpacing.page)
         .padding(.top, 12)
         .padding(.bottom, 22)
-        .background(.white)
+        .background(Color(uiColor: .systemBackground))
         .overlay(alignment: .top) {
             Rectangle().fill(Color.maplogLine).frame(height: 1)
         }
     }
 
     private func previewLocationRow(index: Int, title: String, time: String) -> some View {
-        HStack(spacing: 12) {
+        HStack(spacing: MaplogSpacing.small) {
             Text("\(index)")
                 .font(.system(size: 13, weight: .black))
                 .foregroundStyle(Color.maplogInk)
@@ -358,11 +359,11 @@ private struct PublishedShareSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: MaplogSpacing.large) {
             HStack {
                 VStack(alignment: .leading, spacing: 5) {
                     Text("공유하기")
-                        .font(.system(size: 24, weight: .black))
+                        .font(MaplogFont.screenTitle)
                         .foregroundStyle(Color.maplogInk)
                     Text(draft.displayTitle)
                         .font(.system(size: 14, weight: .bold))
@@ -400,7 +401,7 @@ private struct PublishedShareSheet: View {
                 complete("내 지도에 고정했어요")
             } label: {
                 Label("내 지도 상단에 고정", systemImage: "pin.fill")
-                    .font(.system(size: 17, weight: .black))
+                    .font(MaplogFont.cardTitle)
                     .foregroundStyle(Color.maplogInk)
                     .frame(maxWidth: .infinity)
                     .frame(height: 54)
@@ -409,14 +410,14 @@ private struct PublishedShareSheet: View {
             }
             .buttonStyle(.plain)
         }
-        .padding(24)
+        .padding(MaplogSpacing.xLarge)
     }
 
     private func shareOption(title: String, systemImage: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             VStack(spacing: 9) {
                 Image(systemName: systemImage)
-                    .font(.system(size: 20, weight: .black))
+                    .font(MaplogFont.sectionTitle)
                     .foregroundStyle(Color.maplogInk)
                     .frame(width: 54, height: 54)
                     .background(Color.maplogCanvas)

@@ -10,6 +10,7 @@ private enum SearchResultTab: String, CaseIterable {
 
 struct SearchView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @EnvironmentObject private var sessionStore: MaplogSessionStore
     @State private var query = "부산 야경"
     @State private var selectedTab: SearchResultTab = .all
@@ -36,7 +37,7 @@ struct SearchView: View {
     var body: some View {
         ZStack(alignment: .bottom) {
             ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 22) {
+                LazyVStack(alignment: .leading, spacing: MaplogSpacing.xLarge) {
                     topSearchBar
                     tabBar
                     recentSearchSection
@@ -57,50 +58,50 @@ struct SearchView: View {
                         placesSection
                     }
                 }
-                .padding(.horizontal, MaplogSpacing.page)
-                .padding(.top, 14)
-                .padding(.bottom, 56)
+                .padding(.top, 12)
+                .padding(.bottom, MaplogSpacing.xxLarge)
             }
+            .contentMargins(.horizontal, MaplogSpacing.page, for: .scrollContent)
 
             if let toastText {
                 Text(toastText)
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(Color.maplogInk)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
                     .padding(.horizontal, 18)
-                    .frame(height: 48)
-                    .background(.white)
+                    .frame(minHeight: 48)
+                    .background(.regularMaterial)
                     .clipShape(Capsule())
                     .shadow(color: .black.opacity(0.14), radius: 18, x: 0, y: 8)
                     .padding(.bottom, 24)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
-        .background(Color.white)
+        .background(Color.maplogCanvas)
         .navigationBarBackButtonHidden()
         .toolbar(.hidden, for: .navigationBar)
         .maplogTabBarHidden()
     }
 
     private var topSearchBar: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: MaplogSpacing.small) {
             Button {
                 dismiss()
             } label: {
                 Image(systemName: "chevron.left")
-                    .font(.system(size: 23, weight: .bold))
-                    .foregroundStyle(Color.maplogInk)
-                    .frame(width: 34, height: 48)
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .frame(width: 40, height: 48)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(MaplogPressFeedbackStyle())
 
             HStack(spacing: 10) {
                 Image(systemName: "magnifyingglass")
-                    .font(.system(size: 19, weight: .bold))
-                    .foregroundStyle(Color.maplogMuted)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.secondary)
 
                 TextField("검색어를 입력하세요", text: $query)
-                    .font(.system(size: 17, weight: .medium))
-                    .foregroundStyle(Color.maplogInk)
+                    .font(.body)
+                    .foregroundStyle(.primary)
                     .textInputAutocapitalization(.never)
                     .submitLabel(.search)
                     .onSubmit {
@@ -112,53 +113,59 @@ struct SearchView: View {
                     selectedTab = .all
                 } label: {
                     Image(systemName: "xmark")
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(Color.maplogMuted)
-                        .frame(width: 30, height: 30)
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 44, height: 44)
+                        .background(Color(uiColor: .tertiarySystemFill), in: Circle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(MaplogPressFeedbackStyle())
                 .opacity(query.isEmpty ? 0 : 1)
                 .disabled(query.isEmpty)
             }
             .padding(.horizontal, 14)
-            .frame(height: 50)
-            .background(Color(red: 0.97, green: 0.97, blue: 0.98))
-            .clipShape(Capsule())
+            .frame(minHeight: 48)
+            .background(Color.maplogSurface)
+            .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.large, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: MaplogRadius.large, style: .continuous)
+                    .stroke(Color.maplogBorder.opacity(0.82), lineWidth: 1)
+            }
         }
     }
 
     private var tabBar: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 22) {
-                ForEach(SearchResultTab.allCases, id: \.self) { tab in
-                    Button {
-                        selectedTab = tab
-                    } label: {
-                        VStack(spacing: 9) {
-                            Text(tab.rawValue)
-                                .font(.system(size: 16, weight: selectedTab == tab ? .bold : .semibold))
-                                .foregroundStyle(selectedTab == tab ? Color.maplogInk : Color.maplogMuted)
-                            Capsule()
-                                .fill(selectedTab == tab ? Color.maplogLime : .clear)
-                                .frame(width: tab == .all ? 36 : 30, height: 3)
-                        }
-                    }
-                    .buttonStyle(.plain)
+        HStack(spacing: 4) {
+            ForEach(SearchResultTab.allCases, id: \.self) { tab in
+                Button {
+                    selectedTab = tab
+                } label: {
+                    Text(tab.rawValue)
+                        .font(.caption.weight(selectedTab == tab ? .bold : .semibold))
+                        .foregroundStyle(selectedTab == tab ? Color.maplogInk : Color.maplogMuted)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.82)
+                        .frame(maxWidth: .infinity)
+                        .frame(minHeight: 36)
+                        .background(
+                            selectedTab == tab ? Color.maplogLime : .clear,
+                            in: RoundedRectangle(cornerRadius: MaplogRadius.small, style: .continuous)
+                        )
                 }
+                .buttonStyle(MaplogPressFeedbackStyle(pressedScale: 0.98))
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: 44)
             }
         }
-        .padding(.top, 4)
-        .padding(.bottom, 10)
-        .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(Color.maplogLine)
-                .frame(height: 1)
-                .padding(.horizontal, -MaplogSpacing.page)
+        .padding(4)
+        .background(Color.maplogSurface, in: RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous)
+                .stroke(Color.maplogBorder.opacity(0.78), lineWidth: 1)
         }
     }
 
     private var festivalSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: MaplogSpacing.small) {
             SearchSectionHeader(title: "축제", systemImage: "building.columns.fill") {
                 selectedTab = .festival
             }
@@ -176,18 +183,19 @@ struct SearchView: View {
                                 isSaved: sessionStore.hasSavedEvent(event)
                             )
                         }
-                        .buttonStyle(.plain)
+                            .buttonStyle(MaplogPressFeedbackStyle())
 
                         Button {
                             toggleEventSave(event)
                         } label: {
                             Image(systemName: sessionStore.hasSavedEvent(event) ? "bookmark.fill" : "bookmark")
-                                .font(.system(size: 21, weight: .bold))
-                                .foregroundStyle(sessionStore.hasSavedEvent(event) ? Color.maplogInk : Color.maplogMuted)
-                                .frame(width: 42, height: 42)
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(sessionStore.hasSavedEvent(event) ? AnyShapeStyle(Color.maplogOlive) : AnyShapeStyle(.secondary))
+                                .frame(width: 44, height: 44)
+                                .background(.regularMaterial, in: Circle())
                                 .contentShape(Circle())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(MaplogPressFeedbackStyle())
                         .padding(.top, 14)
                         .padding(.trailing, 12)
                     }
@@ -197,8 +205,8 @@ struct SearchView: View {
     }
 
     private var routeSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            SearchSectionHeader(title: "Maplog", systemImage: "figure.walk.motion") {
+        VStack(alignment: .leading, spacing: MaplogSpacing.small) {
+            SearchSectionHeader(title: "릴스 루트", systemImage: "play.rectangle.fill") {
                 selectedTab = .route
             }
 
@@ -214,21 +222,21 @@ struct SearchView: View {
                             isSaved: sessionStore.hasSavedRoute(routeTrip)
                         )
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(MaplogPressFeedbackStyle())
 
                     Button {
                         toggleRouteSave()
                     } label: {
                         Image(systemName: sessionStore.hasSavedRoute(routeTrip) ? "bookmark.fill" : "bookmark")
-                            .font(.system(size: 18, weight: .black))
-                            .foregroundStyle(Color.maplogInk)
-                            .frame(width: 38, height: 38)
-                            .background(.white.opacity(0.92))
+                            .font(.body.weight(.bold))
+                            .foregroundStyle(.primary)
+                            .frame(width: 44, height: 44)
+                            .background(.regularMaterial)
                             .clipShape(Circle())
                             .shadow(color: .black.opacity(0.12), radius: 8, x: 0, y: 4)
                     }
-                    .buttonStyle(.plain)
-                    .padding(12)
+                    .buttonStyle(MaplogPressFeedbackStyle())
+                    .padding(MaplogSpacing.small)
                 }
 
                 if sessionStore.hasSavedRoute(routeTrip) {
@@ -237,14 +245,14 @@ struct SearchView: View {
                     } label: {
                         SearchSavedShortcut(title: "루트가 보관함에 저장됨")
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(MaplogPressFeedbackStyle())
                 }
             }
         }
     }
 
     private var userSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: MaplogSpacing.small) {
             SearchSectionHeader(title: "사용자", systemImage: "person") {
                 selectedTab = .user
             }
@@ -263,7 +271,7 @@ struct SearchView: View {
     }
 
     private var placesSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: MaplogSpacing.small) {
             SearchSectionHeader(title: selectedTab == .place ? "장소 결과" : "장소", systemImage: "mappin.and.ellipse") {
                 selectedTab = .place
             }
@@ -276,20 +284,21 @@ struct SearchView: View {
                         NavigationLink {
                             SpotDetailView(spot: spot)
                         } label: {
-                            SpotRowCard(spot: spot)
+                            SearchPlaceCard(spot: spot)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(MaplogPressFeedbackStyle())
 
                         Button {
                             toggleSpotSave(spot)
                         } label: {
-                            Image(systemName: sessionStore.hasSavedSpot(spot) ? "heart.fill" : "heart")
-                                .font(.system(size: 19, weight: .bold))
-                                .foregroundStyle(sessionStore.hasSavedSpot(spot) ? Color.maplogLime : Color.maplogMuted)
-                                .frame(width: 42, height: 42)
+                                Image(systemName: sessionStore.hasSavedSpot(spot) ? "heart.fill" : "heart")
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(sessionStore.hasSavedSpot(spot) ? AnyShapeStyle(Color.maplogOlive) : AnyShapeStyle(.secondary))
+                                .frame(width: 44, height: 44)
+                                .background(.regularMaterial, in: Circle())
                                 .contentShape(Circle())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(MaplogPressFeedbackStyle())
                         .padding(.top, 12)
                         .padding(.trailing, 10)
                     }
@@ -303,10 +312,10 @@ struct SearchView: View {
     }
 
     private var quickSearchTerms: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: MaplogSpacing.small) {
             Text("추천 검색어")
-                .font(.system(size: 16, weight: .black))
-                .foregroundStyle(Color.maplogInk)
+                .font(.headline)
+                .foregroundStyle(.primary)
 
             FlowChips(items: quickTerms, selectedItem: query.isEmpty ? nil : query) { term in
                 performSearch(term, message: "\(term) 결과를 다시 정렬했어요")
@@ -318,11 +327,11 @@ struct SearchView: View {
     @ViewBuilder
     private var recentSearchSection: some View {
         if query.isEmpty && !sessionStore.recentSearchTerms.isEmpty {
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: MaplogSpacing.small) {
                 HStack {
                     Text("최근 검색")
-                        .font(.system(size: 16, weight: .black))
-                        .foregroundStyle(Color.maplogInk)
+                        .font(.headline)
+                        .foregroundStyle(.primary)
 
                     Spacer()
 
@@ -331,10 +340,11 @@ struct SearchView: View {
                         showToast("최근 검색어를 비웠어요")
                     } label: {
                         Text("전체 삭제")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(Color.maplogMuted)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                            .frame(minHeight: 44)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(MaplogPressFeedbackStyle())
                 }
 
                 FlowChips(items: sessionStore.recentSearchTerms, selectedItem: nil) { term in
@@ -396,49 +406,47 @@ struct SearchView: View {
     }
 
     private var emptySearchState: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: MaplogSpacing.small) {
             Image(systemName: "magnifyingglass")
-                .font(.system(size: 30, weight: .bold))
-                .foregroundStyle(Color.maplogMuted)
+                .font(.largeTitle.weight(.semibold))
+                .foregroundStyle(.secondary)
             Text("검색 결과가 없어요")
-                .font(.system(size: 19, weight: .black))
-                .foregroundStyle(Color.maplogInk)
+                .font(.title3.weight(.bold))
+                .foregroundStyle(.primary)
             Text("추천 검색어를 눌러 다시 탐색해보세요.")
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(Color.maplogMuted)
+                .font(.body)
+                .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
             Button {
                 performSearch("부산 야경", message: "부산 야경 결과로 돌아왔어요")
             } label: {
                 Text("추천 결과 보기")
-                    .font(.system(size: 14, weight: .black))
+                    .font(.headline)
                     .foregroundStyle(Color.maplogInk)
                     .padding(.horizontal, 18)
-                    .frame(height: 42)
+                    .frame(minHeight: 48)
                     .background(Color.maplogLime)
                     .clipShape(Capsule())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(MaplogPressFeedbackStyle())
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 28)
-        .padding(.horizontal, 16)
-        .background(Color.maplogCanvas)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .padding(.horizontal, MaplogSpacing.medium)
+        .maplogCard(cornerRadius: MaplogRadius.xLarge)
     }
 
     private func emptySection(message: String) -> some View {
         HStack(spacing: 10) {
             Image(systemName: "tray")
-                .font(.system(size: 18, weight: .bold))
+                .font(.body.weight(.semibold))
             Text(message)
-                .font(.system(size: 14, weight: .bold))
+                .font(.subheadline.weight(.semibold))
             Spacer()
         }
-        .foregroundStyle(Color.maplogMuted)
-        .padding(16)
-        .background(Color.maplogCanvas)
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .foregroundStyle(.secondary)
+        .padding(MaplogSpacing.medium)
+        .maplogCard(cornerRadius: MaplogRadius.medium)
     }
 
     private func searchMatches(_ values: [String]) -> Bool {
@@ -502,11 +510,11 @@ struct SearchView: View {
     }
 
     private func showToast(_ text: String) {
-        withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
+        withAnimation(reduceMotion ? nil : .easeOut(duration: 0.18)) {
             toastText = text
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.4) {
-            withAnimation(.easeOut(duration: 0.2)) {
+            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.16)) {
                 toastText = nil
             }
         }
@@ -521,8 +529,8 @@ private struct SearchSectionHeader: View {
     var body: some View {
         HStack {
             Label(title, systemImage: systemImage)
-                .font(.system(size: 20, weight: .black))
-                .foregroundStyle(Color.maplogInk)
+                .font(.title3.weight(.bold))
+                .foregroundStyle(.primary)
 
             Spacer()
 
@@ -534,10 +542,11 @@ private struct SearchSectionHeader: View {
                     Image(systemName: "chevron.right")
                         .font(.system(size: 10, weight: .black))
                 }
-                .font(.system(size: 14, weight: .bold))
-                .foregroundStyle(Color.maplogMuted)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .frame(minHeight: 44)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(MaplogPressFeedbackStyle())
         }
     }
 }
@@ -547,45 +556,45 @@ private struct SearchFestivalCard: View {
     let isSaved: Bool
 
     var body: some View {
-        HStack(spacing: 14) {
-            TravelImageView(style: .festival, height: 80, cornerRadius: 8, showsSymbol: false)
-                .frame(width: 80)
+        HStack(alignment: .top, spacing: MaplogSpacing.xLarge) {
+            Image("event_ocean_film_hero")
+                .resizable()
+                .scaledToFill()
+                .frame(width: 88, height: 108)
+                .clipped()
+                .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous))
 
-            VStack(alignment: .leading, spacing: 7) {
-                HStack(spacing: 8) {
-                    Text("진행중")
-                        .font(.system(size: 12, weight: .black))
-                        .foregroundStyle(Color.maplogOlive)
-                        .padding(.horizontal, 9)
-                        .padding(.vertical, 5)
-                        .background(Color.maplogLime.opacity(0.32))
-                        .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
-
-                    Text("해운대해수욕장 일원")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(Color.maplogMuted)
-                        .lineLimit(1)
-                }
+            VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
+                Text("진행 중")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(Color.maplogOlive)
+                    .padding(.horizontal, MaplogSpacing.xSmall)
+                    .frame(height: 24)
+                    .background(Color.maplogLime.opacity(0.32), in: Capsule())
 
                 Text(event.location == "부산" ? "부산 바다축제" : event.title)
-                    .font(.system(size: 18, weight: .black))
-                    .foregroundStyle(Color.maplogInk)
+                    .font(.headline)
+                    .foregroundStyle(.primary)
                     .lineLimit(1)
 
-                Text("한여름 밤의 짜릿한 축제, 다채로운 공연과 야경을 함께 즐겨보세요.")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(Color.maplogMuted)
+                Label("해운대해수욕장 일원", systemImage: "mappin.and.ellipse")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+
+                Text("야외 영화와 밤바다를 즐기는 특별 프로그램")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                     .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-
-            Spacer(minLength: 6)
-
-            Image(systemName: isSaved ? "bookmark.fill" : "bookmark")
-                .font(.system(size: 21, weight: .bold))
-                .foregroundStyle(isSaved ? Color.maplogInk : Color.maplogMuted)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, 2)
         }
-        .padding(14)
-        .maplogCard()
+        .padding(MaplogSpacing.small)
+        .padding(.trailing, 50)
+        .maplogCard(cornerRadius: MaplogRadius.large)
+        .accessibilityValue(isSaved ? "저장됨" : "저장 안 됨")
     }
 }
 
@@ -594,63 +603,58 @@ private struct SearchRouteCard: View {
     let isSaved: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            GeometryReader { proxy in
+        GeometryReader { proxy in
+            ZStack(alignment: .bottomLeading) {
                 Image("search_busan_route")
                     .resizable()
                     .scaledToFill()
-                    .frame(width: proxy.size.width, height: 168)
+                    .frame(width: proxy.size.width, height: proxy.size.height)
                     .clipped()
-            }
-            .frame(height: 168)
-            .clipShape(RoundedRectangle(cornerRadius: MaplogSpacing.cardRadius, style: .continuous))
-                .overlay {
-                    LinearGradient(colors: [.clear, .black.opacity(0.66)], startPoint: .center, endPoint: .bottom)
-                }
-                .overlay(alignment: .bottomLeading) {
-                    VStack(alignment: .leading, spacing: 7) {
-                        Text(post.title)
-                            .font(.system(size: 19, weight: .black))
-                            .foregroundStyle(.white)
-                        HStack(spacing: 8) {
-                            Label("3컷", systemImage: "camera")
-                            Text("2.4km")
-                            Text("40분")
-                        }
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(.white.opacity(0.92))
-                    }
-                    .padding(18)
-                }
-                .overlay(alignment: .bottomTrailing) {
-                    Image(systemName: isSaved ? "bookmark.fill" : "person.crop.circle.fill")
-                        .font(.system(size: isSaved ? 18 : 26, weight: .bold))
-                        .foregroundStyle(isSaved ? Color.maplogInk : .white)
-                        .frame(width: 34, height: 34)
-                        .background(isSaved ? Color.maplogLime : .black.opacity(0.34))
-                        .clipShape(Circle())
-                        .padding(14)
-                }
 
-            HStack(spacing: 10) {
-                Label("4.8", systemImage: "star.fill")
-                    .foregroundStyle(Color.maplogLime)
-                Text("조회 1.2k")
-                Text("야경명소")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(Color.maplogMuted)
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 5)
-                    .background(Color.maplogCanvas)
-                    .clipShape(Capsule())
-                Spacer()
+                LinearGradient(
+                    colors: [.clear, .black.opacity(0.16), .black.opacity(0.78)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+
+                Label("1~2초 릴스", systemImage: "play.fill")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(Color.maplogInk)
+                    .padding(.horizontal, MaplogSpacing.xSmall)
+                    .frame(height: 28)
+                    .background(.white.opacity(0.92), in: Capsule())
+                    .padding(MaplogSpacing.small)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+
+                VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
+                    Text(post.title)
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(.white)
+                        .lineLimit(2)
+
+                    HStack(spacing: MaplogSpacing.xSmall) {
+                        Label("3개 장소", systemImage: "mappin.and.ellipse")
+                        Text("2.4km")
+                        Text("40분")
+                    }
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.90))
+                }
+                .padding(MaplogSpacing.medium)
+
+                Image(systemName: "person.crop.circle.fill")
+                    .font(.title2.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .shadow(color: .black.opacity(0.34), radius: 4, y: 2)
+                    .padding(MaplogSpacing.medium)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
             }
-            .font(.system(size: 14, weight: .bold))
-            .foregroundStyle(Color.maplogMuted)
-            .padding(16)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .maplogCard()
+        .frame(maxWidth: .infinity)
+        .frame(height: 216)
+        .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.large, style: .continuous))
+        .maplogCard(cornerRadius: MaplogRadius.large, style: .photo)
+        .accessibilityValue(isSaved ? "저장됨" : "저장 안 됨")
     }
 }
 
@@ -660,23 +664,27 @@ private struct SearchSavedShortcut: View {
     var body: some View {
         HStack(spacing: 10) {
             Label(title, systemImage: "bookmark.fill")
-                .font(.system(size: 13, weight: .black))
-                .foregroundStyle(Color.maplogInk)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.primary)
                 .lineLimit(1)
 
             Spacer(minLength: 8)
 
             Text("보관함")
-                .font(.system(size: 13, weight: .black))
-                .foregroundStyle(Color.maplogMuted)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.secondary)
             Image(systemName: "chevron.right")
                 .font(.system(size: 12, weight: .black))
                 .foregroundStyle(Color.maplogMuted)
         }
         .padding(.horizontal, 14)
-        .frame(height: 42)
-        .background(Color.maplogCanvas)
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .frame(minHeight: 48)
+        .background(Color.maplogSurfaceRaised)
+        .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous)
+                .stroke(Color.maplogBorder.opacity(0.72), lineWidth: 1)
+        }
     }
 }
 
@@ -686,7 +694,7 @@ private struct SearchUserRow: View {
     let onFollowTapped: () -> Void
 
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: MaplogSpacing.small) {
             NavigationLink {
                 OtherProfileView(post: post)
             } label: {
@@ -702,15 +710,15 @@ private struct SearchUserRow: View {
 
                     VStack(alignment: .leading, spacing: 5) {
                         Text("부산야경러버")
-                            .font(.system(size: 18, weight: .black))
-                            .foregroundStyle(Color.maplogInk)
+                            .font(.headline)
+                            .foregroundStyle(.primary)
                         Text("팔로워 3.4k · 루트 42")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(Color.maplogMuted)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
                     }
                 }
             }
-            .buttonStyle(.plain)
+            .buttonStyle(MaplogPressFeedbackStyle())
 
             Spacer()
 
@@ -718,16 +726,63 @@ private struct SearchUserRow: View {
                 onFollowTapped()
             } label: {
                 Text(isFollowing ? "팔로잉" : "팔로우")
-                    .font(.system(size: 13, weight: .black))
+                    .font(.subheadline.weight(.bold))
                     .foregroundStyle(isFollowing ? Color.maplogInk : .white)
-                    .frame(width: 78, height: 38)
+                    .padding(.horizontal, MaplogSpacing.medium)
+                    .frame(minHeight: 44)
                     .background(isFollowing ? Color.maplogLime : Color.maplogInk)
                     .clipShape(Capsule())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(MaplogPressFeedbackStyle())
         }
-        .padding(18)
-        .maplogCard()
+        .padding(MaplogSpacing.medium)
+        .maplogCard(cornerRadius: MaplogRadius.large)
+    }
+}
+
+private struct SearchPlaceCard: View {
+    let spot: MaplogSpot
+
+    var body: some View {
+        HStack(spacing: 14) {
+            TravelImageView(
+                style: spot.imageStyle,
+                height: MaplogSize.listThumbnail,
+                cornerRadius: MaplogRadius.medium,
+                showsSymbol: false
+            )
+            .frame(width: MaplogSize.listThumbnail)
+
+            VStack(alignment: .leading, spacing: 7) {
+                HStack(spacing: MaplogSpacing.xSmall) {
+                    Text(spot.category)
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(Color.maplogOlive)
+                        .padding(.horizontal, 9)
+                        .frame(minHeight: 26)
+                        .background(Color.maplogLime.opacity(0.25), in: Capsule())
+
+                    Label(String(format: "%.1f", spot.rating), systemImage: "star.fill")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+
+                Text(spot.name)
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+
+                Text(spot.area)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            .layoutPriority(1)
+
+            Spacer(minLength: 44)
+        }
+        .padding(MaplogSpacing.small)
+        .maplogCard(cornerRadius: MaplogRadius.large)
     }
 }
 
@@ -737,14 +792,14 @@ struct FlowChips: View {
     let onSelect: (String) -> Void
 
     var body: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 82), spacing: 8)], alignment: .leading, spacing: 8) {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 82), spacing: MaplogSpacing.xSmall)], alignment: .leading, spacing: MaplogSpacing.xSmall) {
             ForEach(items, id: \.self) { item in
                 Button {
                     onSelect(item)
                 } label: {
                     ChipView(title: item, isSelected: selectedItem == item)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(MaplogPressFeedbackStyle())
             }
         }
     }

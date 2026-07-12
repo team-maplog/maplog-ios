@@ -5,6 +5,19 @@ private enum ProfileContentTab: String, CaseIterable {
     case savedRoutes = "저장된 경로"
 }
 
+private struct ProfileAvatarImage: View {
+    let size: CGFloat
+
+    var body: some View {
+        Image("home_profile_avatar")
+            .resizable()
+            .scaledToFill()
+            .frame(width: size, height: size)
+            .clipShape(Circle())
+            .accessibilityLabel("프로필 사진")
+    }
+}
+
 struct ProfileView: View {
     @Environment(\.maplogSelectTab) private var selectTab
     @EnvironmentObject private var sessionStore: MaplogSessionStore
@@ -16,15 +29,23 @@ struct ProfileView: View {
         sessionStore.publishedLogs + viewModel.logs
     }
 
+    private var profileStats: [(String, String)] {
+        [
+            ("맵로그", "\(profileLogs.count)"),
+            ("짧은 클립", "\(profileLogs.reduce(0) { $0 + $1.clips })"),
+            ("저장 경로", "\(sessionStore.savedRoutes.count)")
+        ]
+    }
+
     private static func durationText(for clips: Int) -> String {
-        let totalSeconds = max(clips, 1) * 15
-        return String(format: "%02d:%02d", totalSeconds / 60, totalSeconds % 60)
+        let safeClips = max(clips, 1)
+        return "약 \(safeClips)–\(safeClips * 2)초"
     }
 
     var body: some View {
         ZStack(alignment: .bottom) {
             ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: MaplogSpacing.xLarge) {
                     topBar
                     profileHeader
                     NavigationLink {
@@ -33,12 +54,16 @@ struct ProfileView: View {
                         }
                     } label: {
                         Label("프로필 편집", systemImage: "pencil")
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundStyle(Color.maplogInk)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.primary)
                             .frame(maxWidth: .infinity)
-                            .frame(height: 52)
-                            .background(Color.maplogLime)
-                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            .frame(minHeight: 44)
+                            .background(Color(uiColor: .secondarySystemBackground))
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                            .overlay {
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .stroke(Color(uiColor: .separator).opacity(0.22), lineWidth: 1)
+                            }
                     }
                     .buttonStyle(.plain)
                     profileTabs
@@ -56,7 +81,6 @@ struct ProfileView: View {
                         }
                     } else {
                         routeLibraryShortcut
-                        savedPlacesShortcut
                         if sessionStore.savedRoutes.isEmpty {
                             emptySavedRoutes
                         } else {
@@ -70,69 +94,63 @@ struct ProfileView: View {
 
             if let toastText {
                 Text(toastText)
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(Color.maplogInk)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
                     .padding(.horizontal, 18)
-                    .frame(height: 48)
-                    .background(.white)
+                    .frame(minHeight: 48)
+                    .background(.regularMaterial)
                     .clipShape(Capsule())
                     .shadow(color: .black.opacity(0.14), radius: 18, x: 0, y: 8)
                     .padding(.bottom, 92)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
-        .background(Color.white)
+        .background(Color(uiColor: .systemBackground))
         .toolbar(.hidden, for: .navigationBar)
     }
 
     private var topBar: some View {
-        HStack {
-           
-            Text("Maplog")
-                .font(.system(size: 21, weight: .black))
-                .foregroundStyle(Color.maplogOlive)
+        VStack(alignment: .leading, spacing: 3) {
+            Text("내 Maplog")
+                .font(.title2.weight(.bold))
+                .foregroundStyle(.primary)
+            Text("짧은 클립으로 쌓은 여행 기록")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
-        .font(.system(size: 21, weight: .bold))
-        .foregroundStyle(Color.maplogOlive)
-        .padding(.top, 18)
+        .padding(.top, 12)
     }
 
     private var profileHeader: some View {
         VStack(alignment: .leading, spacing: 18) {
-            HStack(spacing: 22) {
-                ZStack(alignment: .bottomTrailing) {
-                    TravelImageView(style: sessionStore.profile.avatarStyle, height: 78, cornerRadius: 39)
-                        .frame(width: 78)
-                        .overlay(Circle().stroke(Color.maplogLime, lineWidth: 3))
-                    Image(systemName: sessionStore.profile.isPublic ? "checkmark.seal.fill" : "lock.circle.fill")
-                        .font(.system(size: 21))
-                        .foregroundStyle(Color.maplogLime)
-                        .background(Circle().fill(.white))
-                }
+            HStack(spacing: MaplogSpacing.medium) {
+                ProfileAvatarImage(size: 72)
 
-                ForEach(viewModel.stats(logCount: profileLogs.count), id: \.0) { stat in
+                ForEach(profileStats, id: \.0) { stat in
                     VStack(spacing: 4) {
                         Text(stat.1)
-                            .font(.system(size: 22, weight: .black))
-                            .foregroundStyle(Color.maplogInk)
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(.primary)
                         Text(stat.0)
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(Color.maplogMuted)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
                     }
                     .frame(maxWidth: .infinity)
                 }
             }
 
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
                 Text(sessionStore.profile.displayName)
-                    .font(.system(size: 25, weight: .bold))
-                    .foregroundStyle(Color.maplogInk)
+                    .font(.title2.weight(.bold))
+                    .foregroundStyle(.primary)
                 Label(sessionStore.profile.location, systemImage: "mappin.and.ellipse")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(Color.maplogMuted)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.secondary)
                 Text(sessionStore.profile.bio)
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(Color.maplogMuted)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
             }
         }
     }
@@ -147,22 +165,22 @@ struct ProfileView: View {
                 } label: {
                     VStack(spacing: 10) {
                         Text(tab.rawValue)
-                            .font(.system(size: 16, weight: selectedTab == tab ? .black : .medium))
-                            .foregroundStyle(selectedTab == tab ? Color.maplogInk : Color.maplogMuted)
+                            .font(.subheadline.weight(selectedTab == tab ? .semibold : .regular))
+                            .foregroundStyle(selectedTab == tab ? Color.primary : Color.secondary)
                         Capsule()
                             .fill(selectedTab == tab ? Color.maplogLime : .clear)
                             .frame(height: 3)
                     }
                     .frame(maxWidth: .infinity)
                     .frame(height: 58)
-                    .background(Color.white.opacity(0.001))
+                    .background(Color(uiColor: .systemBackground).opacity(0.001))
                     .contentShape(Rectangle())
                 }
                 .accessibilityLabel("\(tab.rawValue) 탭")
                 .buttonStyle(.plain)
             }
         }
-        .background(Color.white)
+        .background(Color(uiColor: .systemBackground))
         .zIndex(2)
         .padding(.bottom, 8)
         .overlay(alignment: .bottom) {
@@ -173,27 +191,37 @@ struct ProfileView: View {
     }
 
     private var logGrid: some View {
-        LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 18) {
+        LazyVGrid(columns: [GridItem(.flexible(), spacing: MaplogSpacing.small), GridItem(.flexible(), spacing: MaplogSpacing.small)], spacing: MaplogSpacing.large) {
             ForEach(profileLogs) { log in
                 NavigationLink {
                     MyLogDetailView(log: log) { deletedLog in
                         deleteLog(deletedLog)
                     }
                 } label: {
-                    VStack(alignment: .leading, spacing: 9) {
-                        TravelImageView(style: log.imageStyle, height: 180)
+                    VStack(alignment: .leading, spacing: 0) {
+                        TravelLogImageView(log: log, cornerRadius: 14)
+                            .frame(height: 174)
                             .overlay(alignment: .bottomLeading) {
                                 Label("\(log.city) · \(Self.durationText(for: log.clips))", systemImage: "mappin.circle.fill")
-                                    .font(.system(size: 11, weight: .bold))
+                                    .font(.caption2.weight(.semibold))
                                     .foregroundStyle(.white)
-                                    .padding(8)
+                                    .padding(.horizontal, 9)
+                                    .frame(minHeight: 28)
+                                    .background(.black.opacity(0.38), in: Capsule())
+                                    .padding(9)
                             }
-                        Text(log.title)
-                            .font(.system(size: 18, weight: .bold))
-                            .foregroundStyle(Color.maplogInk)
-                        Text("\(log.clips) clips · \(log.date)")
-                            .font(.system(size: 12, weight: .medium))
-                            .foregroundStyle(Color.maplogMuted)
+
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text(log.title)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.primary)
+                                .lineLimit(1)
+                            Text("\(log.clips)개 클립 · \(log.date)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding(.horizontal, 1)
+                        .padding(.top, 9)
                     }
                 }
                 .buttonStyle(.plain)
@@ -202,9 +230,9 @@ struct ProfileView: View {
     }
 
     private var draftSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: MaplogSpacing.small) {
             SectionHeader(title: "작성 중", subtitle: "\(sessionStore.savedDrafts.count)개 임시저장 로그")
-            VStack(spacing: 12) {
+            VStack(spacing: MaplogSpacing.small) {
                 ForEach(sessionStore.savedDrafts) { draft in
                     DraftActionRow(
                         draft: draft,
@@ -223,10 +251,10 @@ struct ProfileView: View {
                 .font(.system(size: 34, weight: .bold))
                 .foregroundStyle(Color.maplogMuted)
             Text("아직 남아있는 로그가 없어요")
-                .font(.system(size: 20, weight: .black))
+                .font(MaplogFont.sectionTitle)
                 .foregroundStyle(Color.maplogInk)
             Text("촬영 탭에서 새 맵로그를 만들면 여기에 다시 쌓입니다.")
-                .font(.system(size: 14, weight: .medium))
+                .font(MaplogFont.callout)
                 .foregroundStyle(Color.maplogMuted)
                 .multilineTextAlignment(.center)
             Button {
@@ -253,7 +281,7 @@ struct ProfileView: View {
         NavigationLink {
             RouteLibraryView()
         } label: {
-            HStack(spacing: 12) {
+            HStack(spacing: MaplogSpacing.small) {
                 Image(systemName: "bookmark.fill")
                     .font(.system(size: 22, weight: .bold))
                     .foregroundStyle(Color.maplogInk)
@@ -285,7 +313,7 @@ struct ProfileView: View {
         NavigationLink {
             SavedView()
         } label: {
-            HStack(spacing: 12) {
+            HStack(spacing: MaplogSpacing.small) {
                 Image(systemName: "heart.fill")
                     .font(.system(size: 21, weight: .bold))
                     .foregroundStyle(Color.maplogInk)
@@ -314,7 +342,7 @@ struct ProfileView: View {
     }
 
     private var savedRoutes: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: MaplogSpacing.small) {
             SectionHeader(title: "저장된 경로", subtitle: "\(sessionStore.savedRoutes.count)개 루트가 프로필에 표시됩니다")
             ForEach(sessionStore.savedRoutes) { trip in
                 SavedRouteActionCard(
@@ -334,10 +362,10 @@ struct ProfileView: View {
                 .font(.system(size: 32, weight: .bold))
                 .foregroundStyle(Color.maplogMuted)
             Text("저장한 경로가 아직 없어요")
-                .font(.system(size: 20, weight: .black))
+                .font(MaplogFont.sectionTitle)
                 .foregroundStyle(Color.maplogInk)
             Text("루트 상세에서 저장하면 이 탭과 루트 보관함에 바로 표시됩니다.")
-                .font(.system(size: 14, weight: .medium))
+                .font(MaplogFont.callout)
                 .foregroundStyle(Color.maplogMuted)
                 .multilineTextAlignment(.center)
             NavigationLink {
@@ -406,13 +434,13 @@ private struct DraftActionRow: View {
                 UploadView(draft: draft)
             } label: {
                 HStack(spacing: 13) {
-                    TravelImageView(style: draft.imageStyle, height: 86, cornerRadius: 8, showsSymbol: false)
+                    TravelImageView(style: draft.imageStyle, height: 86, cornerRadius: MaplogRadius.small, showsSymbol: false)
                         .frame(width: 86)
                         .overlay(alignment: .topLeading) {
                             Text("작성 중")
                                 .font(.system(size: 10, weight: .black))
                                 .foregroundStyle(Color.maplogInk)
-                                .padding(.horizontal, 8)
+                                .padding(.horizontal, MaplogSpacing.xSmall)
                                 .frame(height: 24)
                                 .background(Color.maplogLime)
                                 .clipShape(Capsule())
@@ -421,7 +449,7 @@ private struct DraftActionRow: View {
 
                     VStack(alignment: .leading, spacing: 6) {
                         Text(draft.title)
-                            .font(.system(size: 17, weight: .black))
+                            .font(MaplogFont.cardTitle)
                             .foregroundStyle(Color.maplogInk)
                             .lineLimit(1)
                         Label(draft.placeName, systemImage: "mappin.circle.fill")
@@ -453,7 +481,7 @@ private struct DraftActionRow: View {
             .buttonStyle(.plain)
             .accessibilityLabel("\(draft.title) 임시저장 삭제")
         }
-        .padding(12)
+        .padding(MaplogSpacing.small)
         .maplogCard()
     }
 }
@@ -484,8 +512,8 @@ struct MyLogDetailView: View {
     }
 
     private var durationText: String {
-        let totalSeconds = max(log.clips, 1) * 15
-        return String(format: "%02d:%02d", totalSeconds / 60, totalSeconds % 60)
+        let safeClips = max(log.clips, 1)
+        return "약 \(safeClips)–\(safeClips * 2)초"
     }
 
     var body: some View {
@@ -494,7 +522,7 @@ struct MyLogDetailView: View {
                 VStack(alignment: .leading, spacing: 22) {
                     header
 
-                    VStack(alignment: .leading, spacing: 20) {
+                    VStack(alignment: .leading, spacing: MaplogSpacing.large) {
                         summaryCard
                         clipStrip
                         relatedPlaceCard
@@ -510,11 +538,11 @@ struct MyLogDetailView: View {
 
             if let toastText {
                 Text(toastText)
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(Color.maplogInk)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
                     .padding(.horizontal, 18)
-                    .frame(height: 48)
-                    .background(.white)
+                    .frame(minHeight: 48)
+                    .background(.regularMaterial)
                     .clipShape(Capsule())
                     .shadow(color: .black.opacity(0.14), radius: 18, x: 0, y: 8)
                     .padding(.bottom, 98)
@@ -536,7 +564,7 @@ struct MyLogDetailView: View {
         } message: {
             Text("삭제된 기록은 복구할 수 없습니다.")
         }
-        .background(Color.white)
+        .background(Color(uiColor: .systemBackground))
         .navigationBarBackButtonHidden()
         .toolbar(.hidden, for: .navigationBar)
         .maplogTabBarHidden()
@@ -579,14 +607,14 @@ struct MyLogDetailView: View {
                         .font(.system(size: 16, weight: .bold))
                         .foregroundStyle(.white.opacity(0.88))
                 }
-                .padding(20)
+                .padding(MaplogSpacing.large)
             }
     }
 
     private var summaryCard: some View {
         VStack(alignment: .leading, spacing: 13) {
             HStack {
-                Label("\(log.clips) clips", systemImage: "play.rectangle.fill")
+                Label("\(log.clips)개의 1~2초", systemImage: "play.rectangle.fill")
                 Spacer()
                 Label(durationText, systemImage: "clock.fill")
                 Spacer()
@@ -600,29 +628,29 @@ struct MyLogDetailView: View {
                 .foregroundStyle(Color.maplogInk)
                 .lineSpacing(5)
 
-            HStack(spacing: 8) {
+            HStack(spacing: MaplogSpacing.xSmall) {
                 ChipView(title: "#\(log.city)", isSelected: true)
                 ChipView(title: "#여행기록")
                 ChipView(title: "#루트")
             }
         }
-        .padding(16)
+        .padding(MaplogSpacing.medium)
         .maplogCard()
         .padding(.top, -36)
     }
 
     private var clipStrip: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "클립", subtitle: "선택한 클립은 대표 미리보기로 표시됩니다")
+        VStack(alignment: .leading, spacing: MaplogSpacing.small) {
+            SectionHeader(title: "이어 붙인 1~2초 클립", subtitle: "각 장면을 눌러 대표 이미지를 확인하세요")
 
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
+                HStack(spacing: MaplogSpacing.small) {
                     ForEach(0..<log.clips, id: \.self) { index in
                         Button {
                             selectedClip = index
                             showToast("\(index + 1)번째 클립을 선택했어요")
                         } label: {
-                            TravelImageView(style: clipStyle(for: index), height: 132, cornerRadius: 12, showsSymbol: false)
+                            TravelImageView(style: clipStyle(for: index), height: 132, cornerRadius: MaplogRadius.medium, showsSymbol: false)
                                 .frame(width: 96)
                                 .overlay(alignment: .topLeading) {
                                     Text("\(index + 1)")
@@ -631,10 +659,10 @@ struct MyLogDetailView: View {
                                         .frame(width: 24, height: 24)
                                         .background(selectedClip == index ? Color.maplogLime : .white)
                                         .clipShape(Circle())
-                                        .padding(8)
+                                        .padding(MaplogSpacing.xSmall)
                                 }
                                 .overlay {
-                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous)
                                         .stroke(selectedClip == index ? Color.maplogLime : .clear, lineWidth: 4)
                                 }
                         }
@@ -646,7 +674,7 @@ struct MyLogDetailView: View {
     }
 
     private var relatedPlaceCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: MaplogSpacing.small) {
             SectionHeader(title: "기록한 장소")
 
             NavigationLink {
@@ -659,8 +687,8 @@ struct MyLogDetailView: View {
     }
 
     private var routeCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "함께 보기 좋은 루트")
+        VStack(alignment: .leading, spacing: MaplogSpacing.small) {
+            SectionHeader(title: "이 로그의 이동 경로")
 
             NavigationLink {
                 RouteDetailView(trip: MockMaplogData.trips[0])
@@ -672,7 +700,7 @@ struct MyLogDetailView: View {
     }
 
     private var bottomActionBar: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: MaplogSpacing.small) {
             Button {
                 showDeleteDialog = true
             } label: {
@@ -688,8 +716,8 @@ struct MyLogDetailView: View {
             NavigationLink {
                 LogPreviewView(draft: previewDraft)
             } label: {
-                Label("미리보기 열기", systemImage: "play.circle.fill")
-                    .font(.system(size: 17, weight: .black))
+                Label("완성 영상 보기", systemImage: "play.circle.fill")
+                    .font(MaplogFont.cardTitle)
                     .foregroundStyle(Color.maplogInk)
                     .frame(maxWidth: .infinity)
                     .frame(height: 56)
@@ -701,7 +729,7 @@ struct MyLogDetailView: View {
         .padding(.horizontal, MaplogSpacing.page)
         .padding(.top, 12)
         .padding(.bottom, 22)
-        .background(.white)
+        .background(Color(uiColor: .systemBackground))
         .overlay(alignment: .top) {
             Rectangle().fill(Color.maplogLine).frame(height: 1)
         }
@@ -710,7 +738,7 @@ struct MyLogDetailView: View {
     private func detailCircleButton(systemImage: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: systemImage)
-                .font(.system(size: 17, weight: .black))
+                .font(MaplogFont.cardTitle)
                 .foregroundStyle(.white)
                 .frame(width: 44, height: 44)
                 .background(.black.opacity(0.42))
@@ -749,11 +777,11 @@ private struct LogShareSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: MaplogSpacing.large) {
             HStack {
                 VStack(alignment: .leading, spacing: 5) {
                     Text("기록 공유")
-                        .font(.system(size: 24, weight: .black))
+                        .font(MaplogFont.screenTitle)
                         .foregroundStyle(Color.maplogInk)
                     Text(log.title)
                         .font(.system(size: 14, weight: .bold))
@@ -786,8 +814,8 @@ private struct LogShareSheet: View {
                 }
             }
 
-            HStack(spacing: 12) {
-                TravelImageView(style: log.imageStyle, height: 86, cornerRadius: 12, showsSymbol: false)
+            HStack(spacing: MaplogSpacing.small) {
+                TravelImageView(style: log.imageStyle, height: 86, cornerRadius: MaplogRadius.medium, showsSymbol: false)
                     .frame(width: 86)
                 VStack(alignment: .leading, spacing: 6) {
                     Text("\(log.city) · \(log.date)")
@@ -803,18 +831,18 @@ private struct LogShareSheet: View {
                 }
                 Spacer()
             }
-            .padding(12)
+            .padding(MaplogSpacing.small)
             .maplogCard()
         }
-        .padding(24)
-        .background(Color.white)
+        .padding(MaplogSpacing.xLarge)
+        .background(Color.maplogSurface)
     }
 
     private func shareOption(title: String, systemImage: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             VStack(spacing: 9) {
                 Image(systemName: systemImage)
-                    .font(.system(size: 20, weight: .black))
+                    .font(MaplogFont.sectionTitle)
                     .foregroundStyle(Color.maplogInk)
                     .frame(width: 54, height: 54)
                     .background(Color.maplogCanvas)
@@ -854,10 +882,8 @@ struct ProfileEditView: View {
         ZStack(alignment: .bottom) {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 22) {
-                    VStack(spacing: 12) {
-                        TravelImageView(style: avatarStyle, height: 96, cornerRadius: 48)
-                            .frame(width: 96)
-                            .overlay(Circle().stroke(Color.maplogLime, lineWidth: 3))
+                    VStack(spacing: MaplogSpacing.small) {
+                        ProfileAvatarImage(size: 96)
                         Button {
                             rotateAvatarStyle()
                         } label: {
@@ -876,7 +902,7 @@ struct ProfileEditView: View {
                     editField(title: "이름", text: $displayName)
                     editField(title: "지역", text: $location)
 
-                    VStack(alignment: .leading, spacing: 8) {
+                    VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
                         Text("소개")
                             .font(.system(size: 14, weight: .bold))
                             .foregroundStyle(Color.maplogMuted)
@@ -885,7 +911,7 @@ struct ProfileEditView: View {
                             .font(.system(size: 16, weight: .medium))
                             .padding(14)
                             .background(Color.maplogCanvas)
-                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                            .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.small, style: .continuous))
                     }
 
                     Toggle(isOn: $isPublic) {
@@ -899,21 +925,21 @@ struct ProfileEditView: View {
                         }
                     }
                     .tint(Color.maplogLime)
-                    .padding(16)
+                    .padding(MaplogSpacing.medium)
                     .maplogCard()
                 }
-                .padding(20)
+                .padding(MaplogSpacing.large)
                 .padding(.bottom, 110)
             }
 
-            VStack(spacing: 8) {
+            VStack(spacing: MaplogSpacing.xSmall) {
                 if showsSavedToast {
                     Text(editToastText)
                         .font(.system(size: 13, weight: .bold))
                         .foregroundStyle(Color.maplogInk)
-                        .padding(.horizontal, 16)
+                        .padding(.horizontal, MaplogSpacing.medium)
                         .frame(height: 44)
-                        .background(.white)
+                        .background(Color.maplogSurface)
                         .clipShape(Capsule())
                         .shadow(color: .black.opacity(0.10), radius: 16, x: 0, y: 8)
                 }
@@ -927,13 +953,13 @@ struct ProfileEditView: View {
         }
         .navigationTitle("프로필 편집")
         .navigationBarTitleDisplayMode(.inline)
-        .background(Color.white)
+        .background(Color.maplogSurface)
         .maplogTabBarHidden()
         .onAppear(perform: loadProfile)
     }
 
     private func editField(title: String, text: Binding<String>) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
             Text(title)
                 .font(.system(size: 14, weight: .bold))
                 .foregroundStyle(Color.maplogMuted)
@@ -942,7 +968,7 @@ struct ProfileEditView: View {
                 .padding(.horizontal, 14)
                 .frame(height: 52)
                 .background(Color.maplogCanvas)
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.small, style: .continuous))
         }
     }
 

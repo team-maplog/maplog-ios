@@ -80,6 +80,14 @@ struct RootView: View {
     @State private var requestedTab: MaplogTab?
     @State private var requestedCapturePlaceName: String?
 
+    init() {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-MaplogSkipOnboarding") {
+            _phase = State(initialValue: .app)
+        }
+        #endif
+    }
+
     var body: some View {
         Group {
             switch phase {
@@ -112,6 +120,7 @@ struct RootView: View {
             }
         }
         .tint(.maplogLime)
+        .font(MaplogFont.body)
         .environment(\.maplogLogout) {
             withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) {
                 phase = .login
@@ -140,7 +149,6 @@ struct RootView: View {
 
 enum MaplogTab: String, CaseIterable, Identifiable {
     case home
-    case logs
     case capture
     case map
     case profile
@@ -150,7 +158,6 @@ enum MaplogTab: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .home: return "홈"
-        case .logs: return "로그"
         case .capture: return "촬영"
         case .map: return "지도"
         case .profile: return "마이"
@@ -160,7 +167,6 @@ enum MaplogTab: String, CaseIterable, Identifiable {
     var icon: String {
         switch self {
         case .home: return "house.fill"
-        case .logs: return "play.rectangle.fill"
         case .capture: return "camera.fill"
         case .map: return "map.fill"
         case .profile: return "person.fill"
@@ -169,12 +175,14 @@ enum MaplogTab: String, CaseIterable, Identifiable {
 }
 
 struct MainTabView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Binding private var requestedTab: MaplogTab?
     @Binding private var requestedCapturePlaceName: String?
 
     @State private var selectedTab: MaplogTab
     @State private var previousTab: MaplogTab
     @State private var isTabBarHidden = false
+    @State private var prefersReelTabBarStyle = false
     @State private var activeCapturePlaceName: String?
 
     init(
@@ -194,13 +202,23 @@ struct MainTabView: View {
         )
     }
 
+    private var usesCompactTabBar: Bool {
+        selectedTab != .capture
+    }
+
+    private var usesReelTabBarStyle: Bool {
+        selectedTab == .home && prefersReelTabBarStyle
+    }
+
+    private var tabBarMorphAnimation: Animation? {
+        reduceMotion ? nil : .smooth(duration: 0.4)
+    }
+
     var body: some View {
         Group {
             switch selectedTab {
             case .home:
                 NavigationStack { HomeView() }
-            case .logs:
-                NavigationStack { LogFeedView() }
             case .capture:
                 NavigationStack {
                     CaptureView(initialPlaceName: activeCapturePlaceName) {
@@ -218,15 +236,33 @@ struct MainTabView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if !isTabBarHidden {
-                MaplogTabBar(selectedTab: tabSelection)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            if !isTabBarHidden && !usesReelTabBarStyle {
+                Color.clear
+                    .frame(height: usesCompactTabBar ? MaplogSize.tabBarHeight : 0)
             }
         }
-        .background(Color.white)
+        .overlay(alignment: .bottom) {
+            if !isTabBarHidden {
+                MaplogTabBar(
+                    selectedTab: tabSelection,
+                    isCompact: usesCompactTabBar,
+                    isReelStyle: usesReelTabBarStyle
+                )
+                .padding(.horizontal, usesCompactTabBar ? (usesReelTabBarStyle ? 54 : 28) : 0)
+                .padding(.bottom, usesCompactTabBar ? (usesReelTabBarStyle ? 2 : 6) : 0)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .animation(tabBarMorphAnimation, value: usesReelTabBarStyle)
+            }
+        }
+        .background(Color(uiColor: .systemBackground))
         .onPreferenceChange(MaplogTabBarHiddenPreferenceKey.self) { hidden in
             withAnimation(.spring(response: 0.32, dampingFraction: 0.9)) {
                 isTabBarHidden = hidden
+            }
+        }
+        .onPreferenceChange(MaplogTabBarReelStylePreferenceKey.self) { prefersReelStyle in
+            withAnimation(tabBarMorphAnimation) {
+                prefersReelTabBarStyle = prefersReelStyle
             }
         }
         .onAppear(perform: applyPendingRequestedTab)
@@ -279,22 +315,44 @@ private struct MaplogTabBarHiddenPreferenceKey: PreferenceKey {
     }
 }
 
+private struct MaplogTabBarReelStylePreferenceKey: PreferenceKey {
+    static var defaultValue = false
+
+    static func reduce(value: inout Bool, nextValue: () -> Bool) {
+        value = value || nextValue()
+    }
+}
+
 extension View {
     func maplogTabBarHidden(_ hidden: Bool = true) -> some View {
         preference(key: MaplogTabBarHiddenPreferenceKey.self, value: hidden)
     }
+
+    func maplogReelTabBarStyle(_ active: Bool = true) -> some View {
+        preference(key: MaplogTabBarReelStylePreferenceKey.self, value: active)
+    }
 }
 
 struct MaplogTabBar: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Binding var selectedTab: MaplogTab
+    var isCompact = false
+    var isReelStyle = false
 
+    @ViewBuilder
     var body: some View {
+        if isCompact {
+            compactTabBar
+        } else {
+            standardTabBar
+        }
+    }
+
+    private var standardTabBar: some View {
         HStack(spacing: 0) {
             ForEach(MaplogTab.allCases) { tab in
                 Button {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
-                        selectedTab = tab
-                    }
+                    select(tab, response: 0.35, dampingFraction: 0.86)
                 } label: {
                     MaplogTabBarItem(
                         tab: tab,
@@ -307,7 +365,7 @@ struct MaplogTabBar: View {
                 .accessibilityAddTraits(selectedTab == tab ? .isSelected : [])
             }
         }
-        .padding(.horizontal, 8)
+        .padding(.horizontal, MaplogSpacing.xSmall)
         .padding(.top, 7)
         .padding(.bottom, 5)
         .frame(maxWidth: .infinity)
@@ -324,8 +382,72 @@ struct MaplogTabBar: View {
         }
     }
 
+    private var compactTabBar: some View {
+        HStack(spacing: 4) {
+            ForEach(MaplogTab.allCases) { tab in
+                Button {
+                    select(tab, response: 0.32, dampingFraction: 0.88)
+                } label: {
+                    Image(systemName: tab.icon)
+                        .font(.system(size: isReelStyle ? 18 : 19, weight: .semibold))
+                        .foregroundStyle(isReelStyle ? Color.white : Color.primary)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: MaplogSize.minimumTapTarget)
+                        .background {
+                            if selectedTab == tab {
+                                Capsule()
+                                    .fill(isReelStyle ? Color.white.opacity(0.18) : Color.maplogPrimary.opacity(0.24))
+                                    .padding(.horizontal, 2)
+                                    .padding(.vertical, 4)
+                            }
+                        }
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(tab.title)
+                .accessibilityAddTraits(selectedTab == tab ? .isSelected : [])
+            }
+        }
+        .padding(.horizontal, isReelStyle ? MaplogSpacing.xxSmall : MaplogSpacing.xSmall)
+        .frame(maxWidth: isReelStyle ? 286 : 330)
+        .frame(height: isReelStyle ? 48 : 54)
+        .background {
+            Capsule()
+                .fill(
+                    isReelStyle
+                        ? AnyShapeStyle(Color.black.opacity(0.34))
+                        : AnyShapeStyle(Color.maplogSurface.opacity(0.96))
+                )
+        }
+        .clipShape(Capsule())
+        .overlay {
+            Capsule()
+                .stroke(
+                    isReelStyle ? Color.white.opacity(0.18) : Color.maplogBorder,
+                    lineWidth: 1
+                )
+        }
+        .shadow(
+            color: .black.opacity(isReelStyle ? 0.18 : 0.12),
+            radius: isReelStyle ? 8 : 12,
+            x: 0,
+            y: isReelStyle ? 3 : 5
+        )
+        .animation(reduceMotion ? nil : .smooth(duration: 0.4), value: isReelStyle)
+    }
+
     private func itemColor(for tab: MaplogTab) -> Color {
         selectedTab == tab ? .maplogLime : .maplogMuted
+    }
+
+    private func select(_ tab: MaplogTab, response: Double, dampingFraction: Double) {
+        if reduceMotion {
+            selectedTab = tab
+        } else {
+            withAnimation(.spring(response: response, dampingFraction: dampingFraction)) {
+                selectedTab = tab
+            }
+        }
     }
 }
 
@@ -338,7 +460,7 @@ private struct MaplogTabBarItem: View {
         VStack(spacing: 4) {
             ZStack {
                 if isSelected {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous)
                         .fill(tab == .capture ? Color.maplogLime : Color.maplogLime.opacity(0.16))
                         .frame(width: 42, height: 30)
                 }

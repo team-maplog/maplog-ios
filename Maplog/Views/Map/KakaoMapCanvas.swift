@@ -25,6 +25,7 @@ struct KakaoMapCanvas: View {
 private struct KakaoMapRepresentable: UIViewRepresentable {
     @Binding var shouldDrawMap: Bool
 
+    // 실제 KMViewContainer 생성, Coordinator에 연결하고, 엔진 준비 시작하고 swiftUI에 반환
     func makeUIView(context: Context) -> KMViewContainer {
         let view = KMViewContainer()
         view.sizeToFit()
@@ -33,6 +34,7 @@ private struct KakaoMapRepresentable: UIViewRepresentable {
         return view
     }
 
+    // swiftUI 상태가 바뀔 때 호출, 엔진 활성화, 렌더링 멈춤
     func updateUIView(_ uiView: KMViewContainer, context: Context) {
         if shouldDrawMap {
             context.coordinator.activateEngineIfNeeded()
@@ -41,11 +43,13 @@ private struct KakaoMapRepresentable: UIViewRepresentable {
         }
     }
 
+    // swiftUI가 UIKit View를 완전히 제거할 때 호출, pauseEngine()후 resetEngine()으로 SDK 리소스 정리
     static func dismantleUIView(_ uiView: KMViewContainer, coordinator: Coordinator) {
         coordinator.controller?.pauseEngine()
         coordinator.controller?.resetEngine()
     }
 
+    // swiftUI가 보관할 Coordinator 객체 생성
     func makeCoordinator() -> Coordinator {
         Coordinator()
     }
@@ -138,7 +142,7 @@ private struct KakaoMapSetupPlaceholder: View {
         ZStack {
             Color(red: 0.86, green: 0.92, blue: 0.88)
 
-            VStack(spacing: 12) {
+            VStack(spacing: MaplogSpacing.small) {
                 Image(systemName: "map")
                     .font(.system(size: 32, weight: .black))
                     .foregroundStyle(Color.maplogInk)
