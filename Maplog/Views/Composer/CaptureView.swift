@@ -380,12 +380,26 @@ struct CaptureView: View {
     @State private var countdown: Int?
     @State private var countdownTask: Task<Void, Never>?
     @State private var showsPlaceMatching = false
+    @State private var recordingStartedAt: Date?
+    @State private var activeRecordingDuration: TimeInterval = 1
+    @State private var selectedEditorClip: CaptureEditorClip?
 
     private let durations = [".5s", "1s", "2s"]
     private let nextClipStyles: [PhotoStyle] = [.cafe, .city, .palace, .alley, .festival]
 
     private var capturedStyles: [PhotoStyle] {
         camera.recordedClips.map(\.style)
+    }
+
+    private var editorClips: [CaptureEditorClip] {
+        camera.recordedClips.map {
+            CaptureEditorClip(
+                id: $0.id,
+                style: $0.style,
+                durationLabel: $0.durationLabel,
+                isImported: $0.isImported
+            )
+        }
     }
 
     private var selectedDurationSeconds: TimeInterval {
@@ -482,6 +496,22 @@ struct CaptureView: View {
         .onChange(of: camera.recordedClips.count) { _, newValue in
             guard newValue > 0 else { return }
             showToast("\(newValue)번째 클립을 저장했어요")
+        }
+        .onChange(of: camera.isRecording) { _, isRecording in
+            if isRecording {
+                activeRecordingDuration = selectedDurationSeconds
+                recordingStartedAt = .now
+            } else {
+                recordingStartedAt = nil
+            }
+        }
+        .navigationDestination(item: $selectedEditorClip) { selectedClip in
+            CaptureEditorView(
+                clips: editorClips,
+                initialClipID: selectedClip.id
+            ) {
+                showToast("클립 편집을 적용했어요")
+            }
         }
         .sheet(item: $activeToolSheet) { sheet in
             switch sheet {
@@ -628,31 +658,42 @@ struct CaptureView: View {
         ScrollView(.horizontal, showsIndicators: false) {
             LazyHStack(spacing: 10) {
                 ForEach(Array(camera.recordedClips.enumerated()), id: \.element.id) { index, clip in
-                    CaptureTravelImageView(style: clip.style, cornerRadius: MaplogRadius.medium)
-                        .frame(width: 68, height: 88)
-                        .overlay {
-                            RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous)
-                                .stroke(Color.maplogLime, lineWidth: 2)
-                        }
-                        .overlay(alignment: .topTrailing) {
-                            Text("\(index + 1)")
-                                .font(.caption2.weight(.bold))
-                                .foregroundStyle(Color.maplogInk)
-                                .frame(width: 22, height: 22)
-                                .background(Color.maplogLime)
-                                .clipShape(Circle())
-                                .padding(5)
-                        }
-                        .overlay(alignment: .bottomLeading) {
-                            Text(clip.durationLabel)
-                                .font(.caption2.weight(.bold))
-                                .foregroundStyle(.white)
-                                .padding(.horizontal, 7)
-                                .frame(minHeight: 22)
-                                .background(.black.opacity(0.56), in: Capsule())
-                                .padding(6)
-                        }
-                        .accessibilityLabel("\(index + 1)번째 \(clip.durationLabel) 클립")
+                    Button {
+                        selectedEditorClip = CaptureEditorClip(
+                            id: clip.id,
+                            style: clip.style,
+                            durationLabel: clip.durationLabel,
+                            isImported: clip.isImported
+                        )
+                    } label: {
+                        CaptureTravelImageView(style: clip.style, cornerRadius: MaplogRadius.medium)
+                            .frame(width: 68, height: 88)
+                            .overlay {
+                                RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous)
+                                    .stroke(Color.maplogCaptureAccent, lineWidth: 2)
+                            }
+                            .overlay(alignment: .topTrailing) {
+                                Text("\(index + 1)")
+                                    .font(.caption2.weight(.bold))
+                                    .foregroundStyle(Color.maplogInk)
+                                    .frame(width: 22, height: 22)
+                                    .background(Color.maplogCaptureAccent)
+                                    .clipShape(Circle())
+                                    .padding(5)
+                            }
+                            .overlay(alignment: .bottomLeading) {
+                                Text(clip.durationLabel)
+                                    .font(.caption2.weight(.bold))
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 7)
+                                    .frame(minHeight: 22)
+                                    .background(.black.opacity(0.56), in: Capsule())
+                                    .padding(6)
+                            }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("\(index + 1)번째 \(clip.durationLabel) 클립")
+                    .accessibilityHint("탭하면 클립 편집 화면을 엽니다.")
                 }
 
                 Button {
@@ -708,22 +749,12 @@ struct CaptureView: View {
                 activeToolSheet = .gallery
             }
             Spacer()
-            Button {
-                handleShutter()
-            } label: {
-                ZStack {
-                    Circle()
-                        .stroke(.white, lineWidth: 6)
-                        .frame(width: 84, height: 84)
-                    Circle()
-                        .fill(camera.isRecording ? Color.red : Color.maplogLime)
-                        .frame(width: camera.isRecording ? 48 : 66, height: camera.isRecording ? 48 : 66)
-                        .clipShape(RoundedRectangle(cornerRadius: camera.isRecording ? 12 : 40, style: .continuous))
-                        .animation(.spring(response: 0.24, dampingFraction: 0.82), value: camera.isRecording)
-                }
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("촬영")
+            CaptureRecordingShutterButton(
+                isRecording: camera.isRecording,
+                startedAt: recordingStartedAt,
+                duration: activeRecordingDuration,
+                action: handleShutter
+            )
             Spacer()
             CameraCircleButton(systemImage: "arrow.triangle.2.circlepath.camera", size: 62) {
                 camera.switchCamera()
@@ -746,7 +777,7 @@ struct CaptureView: View {
                 .font(.system(size: 18, weight: .black))
                 .foregroundStyle(Color.maplogInk)
                 .frame(width: 112, height: 52)
-                .background(Color.maplogLime)
+                .background(Color.maplogCaptureAccent)
                 .clipShape(Capsule())
         }
         .buttonStyle(.plain)
@@ -759,7 +790,15 @@ struct CaptureView: View {
 
     private func handleShutter() {
         if camera.isRecording {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
             camera.stopRecording()
+            return
+        }
+
+        if countdown != nil {
+            countdownTask?.cancel()
+            countdown = nil
+            showToast("타이머를 취소했어요")
             return
         }
 
@@ -790,6 +829,7 @@ struct CaptureView: View {
 
     private func recordCurrentClip() {
         let transitionSuffix = selectedTransition == "컷" ? "" : " · \(selectedTransition)"
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
         showToast("\(selectedDuration) 녹화를 시작했어요\(transitionSuffix)")
         camera.recordClip(
             duration: selectedDurationSeconds,
@@ -945,9 +985,8 @@ private struct CaptureTimerSheet: View {
                 Image(systemName: "xmark")
                     .font(.system(size: 14, weight: .black))
                     .foregroundStyle(Color.maplogInk)
-                    .frame(width: 36, height: 36)
-                    .background(Color.maplogCanvas)
-                    .clipShape(Circle())
+                    .frame(width: MaplogSize.minimumTapTarget, height: MaplogSize.minimumTapTarget)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
         }
@@ -984,9 +1023,8 @@ private struct CaptureTransitionSheet: View {
                     Image(systemName: "xmark")
                         .font(.system(size: 14, weight: .black))
                         .foregroundStyle(Color.maplogInk)
-                        .frame(width: 36, height: 36)
-                        .background(Color.maplogCanvas)
-                        .clipShape(Circle())
+                        .frame(width: MaplogSize.minimumTapTarget, height: MaplogSize.minimumTapTarget)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
@@ -1052,9 +1090,8 @@ private struct CaptureTextStickerSheet: View {
                     Image(systemName: "xmark")
                         .font(.system(size: 14, weight: .black))
                         .foregroundStyle(Color.maplogInk)
-                        .frame(width: 36, height: 36)
-                        .background(Color.maplogCanvas)
-                        .clipShape(Circle())
+                        .frame(width: MaplogSize.minimumTapTarget, height: MaplogSize.minimumTapTarget)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
@@ -1130,9 +1167,8 @@ private struct CaptureGallerySheet: View {
                     Image(systemName: "xmark")
                         .font(.system(size: 14, weight: .black))
                         .foregroundStyle(Color.maplogInk)
-                        .frame(width: 36, height: 36)
-                        .background(Color.maplogCanvas)
-                        .clipShape(Circle())
+                        .frame(width: MaplogSize.minimumTapTarget, height: MaplogSize.minimumTapTarget)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
@@ -2087,9 +2123,8 @@ private struct CoverEditSheet: View {
                     Image(systemName: "xmark")
                         .font(.system(size: 14, weight: .black))
                         .foregroundStyle(Color.maplogInk)
-                        .frame(width: 36, height: 36)
-                        .background(Color.maplogCanvas)
-                        .clipShape(Circle())
+                        .frame(width: MaplogSize.minimumTapTarget, height: MaplogSize.minimumTapTarget)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
@@ -2154,9 +2189,8 @@ private struct LocationTagEditSheet: View {
                     Image(systemName: "xmark")
                         .font(.system(size: 14, weight: .black))
                         .foregroundStyle(Color.maplogInk)
-                        .frame(width: 36, height: 36)
-                        .background(Color.maplogCanvas)
-                        .clipShape(Circle())
+                        .frame(width: MaplogSize.minimumTapTarget, height: MaplogSize.minimumTapTarget)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }

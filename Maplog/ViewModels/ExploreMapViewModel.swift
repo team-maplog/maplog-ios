@@ -4,7 +4,7 @@ final class ExploreMapViewModel: ObservableObject {
     @Published var selectedFilter = "전체"
     @Published var selectedSpot: MaplogSpot? = MockMaplogData.spots.first
 
-    let filters = ["전체", "카페", "문화", "야경", "사진", "궁궐"]
+    let filters = ["전체", "카페", "음식점", "행사", "축제"]
     let spots = MockMaplogData.spots
 
     var visibleSpots: [MaplogSpot] {

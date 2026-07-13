@@ -1,10 +1,18 @@
 import SwiftUI
 
+private enum MapSheetDetent {
+    case compact
+    case expanded
+}
+
 struct ExploreMapView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @EnvironmentObject private var sessionStore: MaplogSessionStore
     @StateObject private var viewModel = ExploreMapViewModel()
     @State private var toastText: String?
     @State private var showsLocationPermissionPrompt = false
+    @State private var sheetDetent: MapSheetDetent = .compact
+    @State private var sheetDragTranslation: CGFloat = 0
     
     private var selectedTrip: MaplogTrip {
         guard let selectedSpot = viewModel.selectedSpot else {
@@ -60,7 +68,7 @@ struct ExploreMapView: View {
 
     var body: some View {
         GeometryReader { proxy in
-            let currentSheetHeight = routeSheetHeight(for: proxy.size.height)
+            let currentSheetHeight = interactiveRouteSheetHeight(for: proxy.size.height)
 
             ZStack(alignment: .bottom) {
 //                KakaoMapCanvas()
@@ -81,7 +89,7 @@ struct ExploreMapView: View {
                     
                 }
                 
-                routeSheet
+                routeSheet(for: proxy.size.height)
                     .frame(height: currentSheetHeight, alignment: .top)
             }
             .clipped()
@@ -140,9 +148,9 @@ struct ExploreMapView: View {
             } label: {
                 Image(systemName: "magnifyingglass")
                     .font(.body.weight(.semibold))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(Color.maplogInk)
                     .frame(width: 44, height: 44)
-                    .background(Color(uiColor: .secondarySystemBackground), in: Circle())
+                    .contentShape(Rectangle())
             }
             .buttonStyle(MaplogPressFeedbackStyle())
             .accessibilityLabel("지도 검색")
@@ -152,9 +160,9 @@ struct ExploreMapView: View {
             } label: {
                 Image(systemName: "rectangle.stack.fill")
                     .font(.body.weight(.semibold))
-                    .foregroundStyle(.primary)
+                    .foregroundStyle(Color.maplogInk)
                     .frame(width: 44, height: 44)
-                    .background(Color(uiColor: .secondarySystemBackground), in: Circle())
+                    .contentShape(Rectangle())
             }
             .buttonStyle(MaplogPressFeedbackStyle())
             .accessibilityLabel("저장한 경로")
@@ -208,6 +216,9 @@ struct ExploreMapView: View {
                     Button {
                         withAnimation(.spring(response: 0.28, dampingFraction: 0.9)) {
                             viewModel.selectFilter(filter)
+                            if viewModel.selectedSpot == nil {
+                                viewModel.selectedSpot = visibleNearbyMapSpots.first
+                            }
                         }
                     } label: {
                         ChipView(title: filter, isSelected: viewModel.selectedFilter == filter)
@@ -220,43 +231,109 @@ struct ExploreMapView: View {
         .contentMargins(.horizontal, MaplogSpacing.page, for: .scrollContent)
     }
     
-    private var routeSheet: some View {
-        ScrollView(.vertical, showsIndicators: true) {
-            VStack(alignment: .leading, spacing: MaplogSpacing.medium) {
-                systemSheetDragIndicator
+    private func routeSheet(for screenHeight: CGFloat) -> some View {
+        VStack(spacing: 0) {
+            systemSheetDragIndicator(for: screenHeight)
 
-                if let selectedSpot = viewModel.selectedSpot {
-                    routeSummaryHeader(for: selectedSpot)
-                    routePrimaryActions(for: selectedSpot)
+            ScrollView(.vertical, showsIndicators: true) {
+                VStack(alignment: .leading, spacing: MaplogSpacing.large) {
+                    if let selectedSpot = viewModel.selectedSpot {
+                        routeSummaryHeader(for: selectedSpot)
+                        routePrimaryActions(for: selectedSpot)
 
-                    routeSheetDetails(for: selectedSpot)
-                } else {
-                    mapEmptyState
+                        routeSheetDetails(for: selectedSpot)
+                    } else {
+                        mapEmptyState
+                    }
                 }
+                .padding(.top, MaplogSpacing.xxxSmall)
+                .padding(.horizontal, MaplogSpacing.page)
+                .padding(.bottom, MaplogSpacing.large)
             }
-            .padding(.top, MaplogSpacing.xSmall)
-            .padding(.horizontal, MaplogSpacing.page)
-            .padding(.bottom, MaplogSpacing.small)
+            .scrollIndicators(.visible)
+            .scrollBounceBehavior(.basedOnSize)
         }
-        .scrollIndicators(.visible)
-        .scrollBounceBehavior(.basedOnSize)
         .frame(maxWidth: .infinity, alignment: .topLeading)
         .background(Color(uiColor: .systemBackground))
         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
         .shadow(color: .black.opacity(0.10), radius: 20, x: 0, y: -6)
     }
 
-    private var systemSheetDragIndicator: some View {
+    private func systemSheetDragIndicator(for screenHeight: CGFloat) -> some View {
         Capsule()
-            .fill(Color(uiColor: .systemGray3))
-            .frame(width: 36, height: 5)
+            .fill(Color.secondary.opacity(0.32))
+            .frame(width: 32, height: 4)
             .frame(maxWidth: .infinity)
-            .padding(.bottom, -MaplogSpacing.xSmall)
-            .accessibilityHidden(true)
+            .frame(height: 20)
+            .contentShape(Rectangle())
+            .highPriorityGesture(routeSheetDragGesture(for: screenHeight))
+            .accessibilityElement()
+            .accessibilityLabel("장소 카드 높이 조절")
+            .accessibilityHint("위로 끌어 상세 정보를 펼치고 아래로 끌어 접습니다")
+            .accessibilityAdjustableAction { direction in
+                switch direction {
+                case .increment:
+                    setRouteSheetDetent(.expanded)
+                case .decrement:
+                    setRouteSheetDetent(.compact)
+                @unknown default:
+                    break
+                }
+            }
     }
 
-    private func routeSheetHeight(for screenHeight: CGFloat) -> CGFloat {
+    private func compactRouteSheetHeight(for screenHeight: CGFloat) -> CGFloat {
         min(max(screenHeight * 0.36, 280), 304)
+    }
+
+    private func expandedRouteSheetHeight(for screenHeight: CGFloat) -> CGFloat {
+        let compactHeight = compactRouteSheetHeight(for: screenHeight)
+        let candidate = max(screenHeight * 0.66, compactHeight + 160)
+        let maximum = max(compactHeight + 80, screenHeight * 0.78)
+        return min(candidate, maximum)
+    }
+
+    private func baseRouteSheetHeight(for screenHeight: CGFloat) -> CGFloat {
+        switch sheetDetent {
+        case .compact:
+            return compactRouteSheetHeight(for: screenHeight)
+        case .expanded:
+            return expandedRouteSheetHeight(for: screenHeight)
+        }
+    }
+
+    private func interactiveRouteSheetHeight(for screenHeight: CGFloat) -> CGFloat {
+        let compactHeight = compactRouteSheetHeight(for: screenHeight)
+        let expandedHeight = expandedRouteSheetHeight(for: screenHeight)
+        let draggedHeight = baseRouteSheetHeight(for: screenHeight) - sheetDragTranslation
+        return min(max(draggedHeight, compactHeight), expandedHeight)
+    }
+
+    private func routeSheetDragGesture(for screenHeight: CGFloat) -> some Gesture {
+        DragGesture(minimumDistance: 3)
+            .onChanged { value in
+                sheetDragTranslation = value.translation.height
+            }
+            .onEnded { value in
+                let compactHeight = compactRouteSheetHeight(for: screenHeight)
+                let expandedHeight = expandedRouteSheetHeight(for: screenHeight)
+                let projectedHeight = min(
+                    max(
+                        baseRouteSheetHeight(for: screenHeight) - value.predictedEndTranslation.height,
+                        compactHeight
+                    ),
+                    expandedHeight
+                )
+                let midpoint = (compactHeight + expandedHeight) / 2
+                setRouteSheetDetent(projectedHeight >= midpoint ? .expanded : .compact)
+            }
+    }
+
+    private func setRouteSheetDetent(_ detent: MapSheetDetent) {
+        withAnimation(reduceMotion ? .easeOut(duration: 0.18) : .spring(response: 0.32, dampingFraction: 0.82)) {
+            sheetDetent = detent
+            sheetDragTranslation = 0
+        }
     }
 
     private var savedRouteShortcut: some View {
@@ -265,23 +342,20 @@ struct ExploreMapView: View {
         } label: {
             HStack(spacing: 10) {
                 Label("경로가 보관함에 저장됨", systemImage: "bookmark.fill")
-                    .font(.system(size: 13, weight: .black))
-                    .foregroundStyle(Color.maplogInk)
+                    .font(.footnote.weight(.medium))
+                    .foregroundStyle(Color.maplogTextSecondary)
                     .lineLimit(1)
                 
                 Spacer(minLength: 8)
                 
                 Text("확인")
-                    .font(.system(size: 13, weight: .black))
-                    .foregroundStyle(Color.maplogMuted)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Color.maplogTextPrimary)
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .black))
-                    .foregroundStyle(Color.maplogMuted)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Color.maplogTextSecondary)
             }
-            .padding(.horizontal, 14)
-            .frame(height: 42)
-            .background(Color.maplogCanvas)
-            .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.small, style: .continuous))
+            .frame(minHeight: MaplogSize.minimumTapTarget)
         }
         .buttonStyle(.plain)
     }
@@ -300,9 +374,7 @@ struct ExploreMapView: View {
                 .multilineTextAlignment(.center)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 18)
-        .background(Color.maplogCanvas)
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .padding(.vertical, MaplogSpacing.large)
     }
 
     private func toggleRouteSaved() {
@@ -346,30 +418,34 @@ struct ExploreMapView: View {
         HStack(alignment: .top, spacing: MaplogSpacing.small) {
             MaplogSpotImageView(
                 spot: selectedSpot,
-                height: 92,
-                cornerRadius: MaplogRadius.medium
+                height: 80,
+                cornerRadius: 14
             )
-            .frame(width: 92)
+            .frame(width: 80)
 
-            VStack(alignment: .leading, spacing: MaplogSpacing.xxSmall) {
+            VStack(alignment: .leading, spacing: 5) {
                 Text(selectedSpot.name)
-                    .font(.system(size: 22, weight: .semibold, design: .rounded))
+                    .font(.title3.weight(.semibold))
                     .foregroundStyle(Color.maplogTextPrimary)
                     .lineLimit(2)
-                Label(selectedSpot.area, systemImage: "mappin.and.ellipse")
-                    .font(MaplogFont.callout)
+                Label(selectedSpot.area, systemImage: "mappin")
+                    .font(.subheadline)
                     .foregroundStyle(Color.maplogTextSecondary)
                     .lineLimit(1)
-                HStack(spacing: MaplogSpacing.xSmall) {
+                HStack(spacing: 6) {
                     if selectedSpot.mapPinStyle == .recorded {
-                        InfoBadge(title: "게시물 24개", systemImage: "camera")
-                        InfoBadge(title: "45분", systemImage: "figure.walk")
+                        Label("게시물 24개", systemImage: "camera")
+                        metadataSeparator
+                        Label("45분", systemImage: "figure.walk")
                     } else {
                         let detail = nearbyPinDetail(for: selectedSpot)
-                        InfoBadge(title: "주변 추천", systemImage: "location.fill")
-                        InfoBadge(title: detail.title, systemImage: detail.systemImage)
+                        Label("주변 추천", systemImage: "location.fill")
+                        metadataSeparator
+                        Label(detail.title, systemImage: detail.systemImage)
                     }
                 }
+                .font(.footnote.weight(.medium))
+                .foregroundStyle(Color.maplogTextSecondary)
             }
 
             Spacer(minLength: 0)
@@ -378,16 +454,19 @@ struct ExploreMapView: View {
                 toggleSpotSaved(selectedSpot)
             } label: {
                 Image(systemName: sessionStore.hasSavedSpot(selectedSpot) ? "bookmark.fill" : "bookmark")
-                    .font(.system(size: MaplogSize.iconLarge, weight: .semibold))
-                    .foregroundStyle(sessionStore.hasSavedSpot(selectedSpot) ? Color.maplogInk : Color.maplogMuted)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(sessionStore.hasSavedSpot(selectedSpot) ? Color.maplogOlive : Color.maplogTextSecondary)
                     .frame(width: MaplogSize.minimumTapTarget, height: MaplogSize.minimumTapTarget)
-                    .background(sessionStore.hasSavedSpot(selectedSpot) ? Color.maplogLime : Color.maplogCanvas)
-                    .clipShape(Circle())
             }
 
             .buttonStyle(MaplogPressFeedbackStyle())
             .accessibilityLabel(sessionStore.hasSavedSpot(selectedSpot) ? "장소 저장 해제" : "장소 저장")
         }
+    }
+
+    private var metadataSeparator: some View {
+        Text("·")
+            .foregroundStyle(Color.maplogSubtle)
     }
 
     private func nearbyPinDetail(for spot: MaplogSpot) -> (title: String, systemImage: String) {
@@ -407,17 +486,15 @@ struct ExploreMapView: View {
     
     
     private func routePrimaryActions(for selectedSpot: MaplogSpot) -> some View {
-        HStack(spacing: MaplogSpacing.small) {
+        HStack(spacing: 24) {
             NavigationLink {
                 MapSearchView(query: selectedSpot.name)
             } label: {
                 Label("주변 검색", systemImage: "magnifyingglass")
-                    .font(MaplogFont.calloutStrong)
-                    .foregroundStyle(Color.maplogInk)
+                    .font(.callout.weight(.semibold))
+                    .foregroundStyle(Color.maplogTextPrimary)
                     .frame(maxWidth: .infinity)
-                    .frame(height: max(MaplogSize.compactControlHeight, 46))
-                    .background(Color.maplogCanvas)
-                    .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.small, style: .continuous))
+                    .frame(minHeight: MaplogSize.minimumTapTarget)
             }
             .buttonStyle(MaplogPressFeedbackStyle())
 
@@ -425,12 +502,10 @@ struct ExploreMapView: View {
                 SpotDetailView(spot: selectedSpot)
             } label: {
                 Label("장소 상세", systemImage: "mappin.circle.fill")
-                    .font(MaplogFont.calloutStrong)
-                    .foregroundStyle(Color.maplogInk)
+                    .font(.callout.weight(.semibold))
+                    .foregroundStyle(Color.maplogTextPrimary)
                     .frame(maxWidth: .infinity)
-                    .frame(height: max(MaplogSize.compactControlHeight, 46))
-                    .background(Color.maplogCanvas)
-                    .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.small, style: .continuous))
+                    .frame(minHeight: MaplogSize.minimumTapTarget)
             }
             .buttonStyle(MaplogPressFeedbackStyle())
         }
@@ -438,41 +513,41 @@ struct ExploreMapView: View {
     
     
     private func routeSheetDetails(for selectedSpot: MaplogSpot) -> some View {
-        VStack(alignment: .leading, spacing: MaplogSpacing.medium) {
+        VStack(alignment: .leading, spacing: MaplogSpacing.small) {
             if sessionStore.hasSavedRoute(selectedTrip) {
                 savedRouteShortcut
             }
             Text("경로 주변 명소")
-                .font(.system(size: 15, weight: .bold))
-                .foregroundStyle(Color.maplogMuted)
+                .font(.headline)
+                .foregroundStyle(Color.maplogTextPrimary)
             
-            HStack(spacing: MaplogSpacing.small) {
-                ForEach(nearbySpots.prefix(2)) { spot in
-                    NavigationLink {
-                        SpotDetailView(spot: spot)
-                    } label: {
-                        VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
-                            MaplogSpotImageView(spot: spot, height: 104)
-                            Text(spot.name)
-                                .font(.system(size: 15, weight: .bold))
-                                .foregroundStyle(Color.maplogInk)
-                                .lineLimit(1)
-                            Text("\(spot.category) · 1.2KM")
-                                .font(.system(size: 12, weight: .medium))
-                                .foregroundStyle(Color.maplogMuted)
-                                .lineLimit(1)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(alignment: .top, spacing: MaplogSpacing.small) {
+                    ForEach(nearbySpots) { spot in
+                        NavigationLink {
+                            SpotDetailView(spot: spot)
+                        } label: {
+                            VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
+                                MaplogSpotImageView(spot: spot, height: 96, cornerRadius: 14)
+                                Text(spot.name)
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(Color.maplogTextPrimary)
+                                    .lineLimit(1)
+                                Text("\(spot.category) · 1.2KM")
+                                    .font(.footnote)
+                                    .foregroundStyle(Color.maplogTextSecondary)
+                                    .lineLimit(1)
+                            }
+                            .frame(width: 148, alignment: .leading)
                         }
-                        .padding(MaplogSpacing.xSmall)
-                        .frame(maxWidth: .infinity)
-                        .maplogCard()
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
             }
             
         }
-        .padding(.top, 2)
-        .padding(.bottom, MaplogSpacing.section)
+        .padding(.top, MaplogSpacing.xxxSmall)
+        .padding(.bottom, MaplogSpacing.small)
     }
     
 }
@@ -535,28 +610,43 @@ private struct ExploreMapSpotPin: View {
     }
 
     private var pinDiameter: CGFloat {
-        isSelected ? 42 : 34
+        switch spot.mapPinStyle {
+        case .recorded:
+            return isSelected ? 48 : 42
+        case .cafe, .restaurant, .event, .festival:
+            return isSelected ? 38 : 32
+        }
+    }
+
+    private var selectionRing: Color {
+        spot.mapPinStyle == .festival ? Color.maplogInk : Color.maplogLime
     }
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: -5) {
+            VStack(spacing: -7) {
                 pinFace
 
-                ExploreMapPinTail()
+                RoundedRectangle(cornerRadius: 3, style: .continuous)
                     .fill(tint)
-                    .frame(width: isSelected ? 18 : 15, height: 12)
+                    .frame(width: isSelected ? 12 : 10, height: isSelected ? 12 : 10)
+                    .rotationEffect(.degrees(45))
             }
-            .frame(width: MaplogSize.minimumTapTarget, height: 58)
-            .background(isSelected ? Color.maplogSurface.opacity(0.96) : .clear, in: Circle())
+            .frame(width: MaplogSize.minimumTapTarget, height: pinDiameter + 10, alignment: .top)
             .shadow(
-                color: isSelected ? tint.opacity(0.36) : .black.opacity(0.20),
-                radius: isSelected ? 10 : 5,
+                color: .black.opacity(isSelected ? 0.22 : 0.16),
+                radius: isSelected ? 7 : 4,
                 x: 0,
-                y: isSelected ? 5 : 3
+                y: isSelected ? 4 : 2
+            )
+            .shadow(
+                color: isSelected ? selectionRing.opacity(0.24) : .clear,
+                radius: 8,
+                x: 0,
+                y: 3
             )
         }
-        .buttonStyle(MaplogPressFeedbackStyle(pressedScale: 0.92))
+        .buttonStyle(MaplogPressFeedbackStyle(pressedScale: 0.96))
         .accessibilityLabel("\(spot.category) \(spot.name)")
         .accessibilityValue(isSelected ? "선택됨" : "")
         .accessibilityAddTraits(isSelected ? .isSelected : [])
@@ -572,8 +662,15 @@ private struct ExploreMapSpotPin: View {
                 cornerRadius: pinDiameter / 2
             )
             .frame(width: pinDiameter)
-            .overlay(Circle().stroke(tint, lineWidth: isSelected ? 4 : 3))
-            .overlay(Circle().stroke(.white, lineWidth: 1))
+            .clipShape(Circle())
+            .overlay(Circle().stroke(.white, lineWidth: 2))
+            .overlay {
+                if isSelected {
+                    Circle()
+                        .stroke(selectionRing, lineWidth: 3)
+                        .padding(-4)
+                }
+            }
         case .cafe, .restaurant, .event, .festival:
             Circle()
                 .fill(tint)
@@ -583,18 +680,14 @@ private struct ExploreMapSpotPin: View {
                         .font(.system(size: isSelected ? 16 : 13, weight: .bold))
                         .foregroundStyle(spot.mapPinStyle == .festival ? Color.maplogInk : .white)
                 }
-                .overlay(Circle().stroke(.white.opacity(0.92), lineWidth: 2))
-        }
-    }
-}
-
-private struct ExploreMapPinTail: Shape {
-    func path(in rect: CGRect) -> Path {
-        Path { path in
-            path.move(to: CGPoint(x: rect.minX, y: rect.minY))
-            path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
-            path.addLine(to: CGPoint(x: rect.midX, y: rect.maxY))
-            path.closeSubpath()
+                .overlay(Circle().stroke(.white, lineWidth: 2))
+                .overlay {
+                    if isSelected {
+                        Circle()
+                            .stroke(selectionRing, lineWidth: 3)
+                            .padding(-4)
+                    }
+                }
         }
     }
 }

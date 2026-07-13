@@ -405,8 +405,7 @@ private struct VisitChecklistSpotRow: View {
                     .font(.system(size: 14, weight: .black))
                     .foregroundStyle(Color.maplogMuted)
                     .frame(width: 42, height: 42)
-                    .background(Color.maplogCanvas)
-                    .clipShape(Circle())
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityLabel("\(spot.name) 방문 전 확인 해제")
@@ -478,10 +477,9 @@ private struct SavedSpotActionRow: View {
             } label: {
                 Image(systemName: "map.fill")
                     .font(.system(size: 17, weight: .bold))
-                    .foregroundStyle(Color.maplogInk)
+                    .foregroundStyle(Color.maplogPrimary)
                     .frame(width: 42, height: 42)
-                    .background(Color.maplogLime)
-                    .clipShape(Circle())
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityLabel("\(spot.name) 지도에서 보기")
@@ -489,10 +487,9 @@ private struct SavedSpotActionRow: View {
             Button(action: onToggleSave) {
                 Image(systemName: isSaved ? "bookmark.fill" : "bookmark")
                     .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(isSaved ? Color.maplogInk : Color.maplogMuted)
+                    .foregroundStyle(isSaved ? Color.maplogPrimary : Color.maplogMuted)
                     .frame(width: 42, height: 42)
-                    .background(isSaved ? Color.maplogLime : Color.maplogCanvas)
-                    .clipShape(Circle())
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityLabel(isSaved ? "장소 저장 해제" : "장소 저장")
@@ -543,8 +540,7 @@ private struct SavedDigestActionRow: View {
                     .font(.system(size: 18, weight: .bold))
                     .foregroundStyle(Color.maplogInk)
                     .frame(width: 42, height: 42)
-                    .background(Color.maplogCanvas)
-                    .clipShape(Circle())
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityLabel("\(digest.title) 저장 해제")
@@ -734,10 +730,9 @@ private struct SavedCollectionSpotRow: View {
             } label: {
                 Image(systemName: "map.fill")
                     .font(.system(size: 17, weight: .bold))
-                    .foregroundStyle(Color.maplogInk)
+                    .foregroundStyle(Color.maplogPrimary)
                     .frame(width: 42, height: 42)
-                    .background(Color.maplogLime)
-                    .clipShape(Circle())
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityLabel("\(spot.name) 지도에서 보기")
@@ -745,10 +740,9 @@ private struct SavedCollectionSpotRow: View {
             Button(action: onToggleSave) {
                 Image(systemName: isSaved ? "bookmark.fill" : "bookmark")
                     .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(isSaved ? Color.maplogInk : Color.maplogMuted)
+                    .foregroundStyle(isSaved ? Color.maplogPrimary : Color.maplogMuted)
                     .frame(width: 42, height: 42)
-                    .background(isSaved ? Color.maplogLime : Color.maplogCanvas)
-                    .clipShape(Circle())
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityLabel(isSaved ? "장소 저장 해제" : "장소 저장")
@@ -799,8 +793,7 @@ private struct SavedServicePassActionRow: View {
                     .font(.system(size: 14, weight: .black))
                     .foregroundStyle(Color.maplogMuted)
                     .frame(width: 42, height: 42)
-                    .background(Color.maplogCanvas)
-                    .clipShape(Circle())
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityLabel("\(pass.title) 패스 해제")

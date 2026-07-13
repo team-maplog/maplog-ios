@@ -295,10 +295,8 @@ struct NotificationsView: View {
         HStack(spacing: MaplogSpacing.small) {
             Image(systemName: notificationSummaryIcon)
                 .font(.system(size: 20, weight: .bold))
-                .foregroundStyle(Color.maplogInk)
-                .frame(width: 42, height: 42)
-                .background(Color.maplogLime)
-                .clipShape(Circle())
+                .foregroundStyle(Color.maplogPrimary)
+                .frame(width: MaplogSize.minimumTapTarget, height: MaplogSize.minimumTapTarget)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(notificationSummaryTitle)
@@ -907,10 +905,8 @@ struct ServiceDetailView: View {
             HStack(spacing: 14) {
                 Image(systemName: "map.fill")
                     .font(.system(size: 22, weight: .bold))
-                    .foregroundStyle(Color.maplogInk)
-                    .frame(width: 48, height: 48)
-                    .background(Color.maplogLime)
-                    .clipShape(Circle())
+                    .foregroundStyle(Color.maplogPrimary)
+                    .frame(width: MaplogSize.minimumTapTarget, height: MaplogSize.minimumTapTarget)
 
                 VStack(alignment: .leading, spacing: 5) {
                     Text("지도에서 혜택 루트 보기")
@@ -1252,9 +1248,8 @@ private struct ServiceIssueSheet: View {
                     Image(systemName: "xmark")
                         .font(.system(size: 13, weight: .black))
                         .foregroundStyle(Color.maplogInk)
-                        .frame(width: 36, height: 36)
-                        .background(Color.maplogCanvas)
-                        .clipShape(Circle())
+                        .frame(width: MaplogSize.minimumTapTarget, height: MaplogSize.minimumTapTarget)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
@@ -1358,9 +1353,8 @@ private struct ServiceShareSheet: View {
                     Image(systemName: "xmark")
                         .font(.system(size: 14, weight: .black))
                         .foregroundStyle(Color.maplogInk)
-                        .frame(width: 36, height: 36)
-                        .background(Color.maplogCanvas)
-                        .clipShape(Circle())
+                        .frame(width: MaplogSize.minimumTapTarget, height: MaplogSize.minimumTapTarget)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
@@ -1413,10 +1407,9 @@ private struct ServiceShareSheet: View {
             VStack(spacing: 9) {
                 Image(systemName: systemImage)
                     .font(MaplogFont.sectionTitle)
-                    .foregroundStyle(Color.maplogInk)
-                    .frame(width: 54, height: 54)
-                    .background(Color.maplogCanvas)
-                    .clipShape(Circle())
+                    .foregroundStyle(Color.maplogPrimary)
+                    .frame(width: MaplogSize.minimumTapTarget, height: MaplogSize.minimumTapTarget)
+                    .contentShape(Rectangle())
 
                 Text(title)
                     .font(.system(size: 12, weight: .bold))
@@ -1569,9 +1562,7 @@ struct FeaturedEventDetailView: View {
     }
 
     private var heroAssetName: String {
-        event.thumbnailAssetName == "event_ocean_film"
-            ? "event_ocean_film_hero"
-            : (event.thumbnailAssetName ?? event.imageStyle.assetName)
+        event.heroAssetName ?? event.thumbnailAssetName ?? event.imageStyle.assetName
     }
 
     var body: some View {
@@ -1581,14 +1572,20 @@ struct FeaturedEventDetailView: View {
                     eventHero
                     introCard
                     if isSaved {
-                        SavedConfirmationCard(
-                            title: "관심 행사에 저장됨",
-                            subtitle: "보관함에서 행사 정보와 추천 루트를 다시 열 수 있어요.",
-                            buttonTitle: "보관함에서 확인",
-                            systemImage: "bookmark.fill"
-                        ) {
+                        NavigationLink {
                             SavedView()
+                        } label: {
+                            HStack(spacing: 8) {
+                                Image(systemName: "bookmark.fill")
+                                Text("관심 행사에 저장됨")
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                            }
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(Color.maplogOlive)
+                            .frame(minHeight: 44)
                         }
+                        .buttonStyle(MaplogPressFeedbackStyle())
                         .padding(.horizontal, MaplogSpacing.page)
                     }
                     infoGrid
@@ -1617,12 +1614,10 @@ struct FeaturedEventDetailView: View {
                 } label: {
                     Label("길찾기", systemImage: "location.north.line.fill")
                         .font(.headline)
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(Color.maplogOlive)
                         .frame(minWidth: 112, minHeight: 54)
-                        .background(Color(uiColor: .secondarySystemBackground))
-                        .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.large, style: .continuous))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(MaplogPressFeedbackStyle())
 
                 NavigationLink {
                     RouteDetailView(trip: eventRouteTrip)
@@ -1635,7 +1630,7 @@ struct FeaturedEventDetailView: View {
                         .background(Color.maplogLime)
                         .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.large, style: .continuous))
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(MaplogPressFeedbackStyle())
             }
             .padding(.horizontal, MaplogSpacing.page)
             .padding(.vertical, 12)
@@ -1708,13 +1703,9 @@ struct FeaturedEventDetailView: View {
             }
             .overlay(alignment: .bottomLeading) {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("오늘 진행 중")
+                    Label("오늘 진행 중", systemImage: "sparkles")
                         .font(.caption.weight(.bold))
-                        .foregroundStyle(Color.maplogInk)
-                        .padding(.horizontal, MaplogSpacing.small)
-                        .frame(minHeight: 28)
-                        .background(Color.maplogLime)
-                        .clipShape(Capsule())
+                        .foregroundStyle(Color.maplogLime)
                     Text(event.title)
                         .font(.title2.weight(.bold))
                         .foregroundStyle(.white)
@@ -1730,7 +1721,7 @@ struct FeaturedEventDetailView: View {
     }
 
     private var introCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 12) {
             Text(eventIntroTitle)
                 .font(.title3.weight(.bold))
                 .foregroundStyle(.primary)
@@ -1738,28 +1729,17 @@ struct FeaturedEventDetailView: View {
                 .font(.body)
                 .foregroundStyle(.secondary)
                 .lineSpacing(4)
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: MaplogSpacing.xSmall) {
-                    ChipView(title: "#미디어아트")
-                    ChipView(title: "#야간관광")
-                    ChipView(title: "#데이트코스")
-                }
-            }
-        }
-        .padding(MaplogSpacing.large)
-        .background(Color(uiColor: .secondarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.xLarge, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: MaplogRadius.xLarge, style: .continuous)
-                .stroke(Color(uiColor: .separator).opacity(0.22), lineWidth: 1)
+            Text("#미디어아트  ·  #야간관광  ·  #데이트코스")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Color.maplogOlive)
         }
         .padding(.horizontal, MaplogSpacing.page)
     }
 
     private var infoGrid: some View {
-        HStack(alignment: .top, spacing: MaplogSpacing.small) {
-            EventInfoCard(icon: "clock.fill", title: "운영 시간", primary: "18:00 -\n22:00", secondary: "매시 정각 10분 쇼 진행")
-            EventInfoCard(icon: "mappin.circle.fill", title: "장소", primary: venueName, secondary: "주요 입구 인근\n주차 혼잡 예상")
+        VStack(alignment: .leading, spacing: 18) {
+            EventInfoRow(icon: "clock", title: "운영 시간", primary: "18:00 - 22:00", secondary: "매시 정각 10분 쇼 진행")
+            EventInfoRow(icon: "mappin", title: "장소", primary: venueName, secondary: "주요 입구 인근 · 주차 혼잡 예상")
         }
         .padding(.horizontal, MaplogSpacing.page)
     }
@@ -1774,25 +1754,17 @@ struct FeaturedEventDetailView: View {
                 Button {
                     showsRouteSuggestion = true
                 } label: {
-                    Text("길찾기")
+                    Label("길찾기", systemImage: "arrow.triangle.turn.up.right.diamond")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(Color.maplogOlive)
                         .frame(minHeight: 44)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(MaplogPressFeedbackStyle())
             }
             MiniMapCard(spots: [MockMaplogData.seoulTower])
             Text(eventAddress)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .center)
-        }
-        .padding(18)
-        .background(Color(uiColor: .secondarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.xLarge, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: MaplogRadius.xLarge, style: .continuous)
-                .stroke(Color(uiColor: .separator).opacity(0.22), lineWidth: 1)
         }
         .padding(.horizontal, MaplogSpacing.page)
     }
@@ -1830,48 +1802,40 @@ private struct EventCircleButton: View {
         Button(action: action) {
             Image(systemName: systemImage)
                 .font(.body.weight(.semibold))
-                .foregroundStyle(.primary)
+                .foregroundStyle(.white)
                 .frame(width: 44, height: 44)
-                .background(.regularMaterial)
-                .clipShape(Circle())
-                .overlay {
-                    Circle()
-                        .stroke(.white.opacity(0.28), lineWidth: 1)
-                }
+                .contentShape(Rectangle())
+                .shadow(color: .black.opacity(0.32), radius: 2, x: 0, y: 1)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(MaplogPressFeedbackStyle())
     }
 }
 
-private struct EventInfoCard: View {
+private struct EventInfoRow: View {
     let icon: String
     let title: String
     let primary: String
     let secondary: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Label(title, systemImage: icon)
-                .font(.subheadline.weight(.semibold))
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: icon)
+                .font(.body.weight(.semibold))
                 .foregroundStyle(Color.maplogOlive)
-            Text(primary)
-                .font(.title3.weight(.bold))
-                .foregroundStyle(.primary)
-                .fixedSize(horizontal: false, vertical: true)
-            Text(secondary)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .lineSpacing(3)
-            Spacer(minLength: 0)
+                .frame(width: 22, height: 22)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Text(primary)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.primary)
+                Text(secondary)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
         }
-        .padding(MaplogSpacing.medium)
-        .frame(maxWidth: .infinity, minHeight: 176, alignment: .topLeading)
-        .background(Color(uiColor: .secondarySystemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Color(uiColor: .separator).opacity(0.22), lineWidth: 1)
-        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

@@ -55,9 +55,9 @@ struct HomeView: View {
 
                     ForEach(homePosts) { post in
                         homeMaplogPage(for: post)
-                            .frame(maxWidth: .infinity)
-                            .containerRelativeFrame(.vertical)
-                            .id(post.id)
+                        .frame(maxWidth: .infinity)
+                        .containerRelativeFrame(.vertical)
+                        .id(post.id)
                     }
                 }
                 .scrollTargetLayout()
@@ -283,10 +283,9 @@ struct HomeView: View {
                 ZStack(alignment: .topTrailing) {
                     Image(systemName: "bell.fill")
                         .font(.system(size: 20, weight: .bold))
-                        .foregroundStyle(Color.maplogInk)
+                        .foregroundStyle(Color.maplogPrimary)
                         .frame(width: 46, height: 46)
-                        .background(Color.maplogCanvas)
-                        .clipShape(Circle())
+                        .contentShape(Rectangle())
                     Circle()
                         .fill(.red)
                         .frame(width: 9, height: 9)
@@ -511,16 +510,32 @@ struct HomeView: View {
     @ViewBuilder
     private func homeMaplogPage(for post: VlogPost) -> some View {
         if reduceMotion {
-            HomeMaplogClipPager(post: post) {
-                showNextHomePost(after: post)
-            }
+            HomeMaplogClipPager(
+                post: post,
+                onNext: {
+                    showNextHomePost(after: post)
+                },
+                onReturnHome: returnToHomeIntro
+            )
         } else {
-            HomeMaplogClipPager(post: post) {
-                showNextHomePost(after: post)
-            }
+            HomeMaplogClipPager(
+                post: post,
+                onNext: {
+                    showNextHomePost(after: post)
+                },
+                onReturnHome: returnToHomeIntro
+            )
             .scrollTransition(.interactive, axis: .vertical) { content, phase in
                 content.opacity(phase.isIdentity ? 1 : 0.18)
             }
+        }
+    }
+
+    private func returnToHomeIntro() {
+        guard homeScrollPosition != "home-intro" else { return }
+
+        withAnimation(reduceMotion ? nil : .easeOut(duration: 0.22)) {
+            homeScrollPosition = "home-intro"
         }
     }
 
@@ -562,11 +577,8 @@ struct HomeView: View {
         return VStack(spacing: 10) {
             Image(systemName: icon)
                 .font(.system(size: 24, weight: .bold))
-                .foregroundStyle(Color.maplogOlive)
-                .frame(width: 58, height: 58)
-                .background(Color.maplogSurface)
-                .clipShape(Circle())
-                .overlay(Circle().stroke(Color.maplogLine, lineWidth: 1))
+                .foregroundStyle(Color.maplogPrimary)
+                .frame(width: MaplogSize.minimumTapTarget, height: MaplogSize.minimumTapTarget)
             Text(title)
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(Color.maplogMuted)
@@ -773,6 +785,7 @@ private struct HomeWeekendCard: View {
 private struct HomeMaplogClipPager: View {
     let post: VlogPost
     let onNext: () -> Void
+    let onReturnHome: () -> Void
     @State private var selectedPage = 0
 
     private var trip: MaplogTrip {
@@ -782,7 +795,11 @@ private struct HomeMaplogClipPager: View {
     var body: some View {
         GeometryReader { proxy in
             TabView(selection: $selectedPage) {
-                HomeMaplogClipCard(post: post, onNext: onNext)
+                HomeMaplogClipCard(
+                    post: post,
+                    onNext: onNext,
+                    onReturnHome: onReturnHome
+                )
                     .tag(0)
 
                 MaplogReelRoutePage(post: post, trip: trip)
@@ -792,7 +809,7 @@ private struct HomeMaplogClipPager: View {
             .background(Color.black)
             .overlay(alignment: .top) {
                 MaplogReelPageCue(selectedPage: selectedPage)
-                    .padding(.top, max(proxy.safeAreaInsets.top, MaplogSpacing.reelTopClearance) + MaplogSpacing.small)
+                    .padding(.top, max(proxy.safeAreaInsets.top, MaplogSpacing.reelTopClearance) + MaplogSpacing.xxSmall)
             }
             .accessibilityHint("좌우로 넘기면 영상과 전체 루트를 전환합니다")
         }
@@ -803,10 +820,13 @@ private struct HomeMaplogClipCard: View {
     @EnvironmentObject private var sessionStore: MaplogSessionStore
     let post: VlogPost
     let onNext: () -> Void
+    let onReturnHome: () -> Void
     @State private var showsComments = false
     @State private var showsShareSheet = false
+    @State private var shareSheetDetent: PresentationDetent = .medium
     @State private var actionToast: String?
     @State private var isCaptionExpanded = false
+    @State private var isCaptionTruncated = false
 
     private var trip: MaplogTrip {
         MockMaplogData.routeTrip(for: post)
@@ -823,6 +843,19 @@ private struct HomeMaplogClipCard: View {
                     startPoint: .top,
                     endPoint: .bottom
                 )
+
+                Color.clear
+                    .frame(
+                        width: max(proxy.size.width * 0.64, 200),
+                        height: max(proxy.size.height * 0.5, 260)
+                    )
+                    .contentShape(Rectangle())
+                    .position(x: proxy.size.width * 0.38, y: proxy.size.height * 0.39)
+                    .onTapGesture(perform: onReturnHome)
+                    .accessibilityElement()
+                    .accessibilityLabel("홈 피드 처음으로")
+                    .accessibilityHint("탭하면 릴스를 닫고 홈 화면 처음으로 돌아갑니다.")
+                    .accessibilityAddTraits(.isButton)
 
                 Color.clear
                     .frame(width: max(proxy.size.width * 0.22, 72), height: max(proxy.size.height * 0.24, 132))
@@ -849,6 +882,10 @@ private struct HomeMaplogClipCard: View {
                                 .font(.subheadline)
                                 .foregroundStyle(.white.opacity(0.84))
                                 .lineLimit(isCaptionExpanded ? nil : 2)
+                                .background(captionMeasurement)
+                                .onPreferenceChange(CaptionTextMeasurementPreferenceKey.self) { measurements in
+                                    updateCaptionTruncation(with: measurements)
+                                }
 
                             if shouldShowCaptionExpansion {
                                 Button {
@@ -892,14 +929,14 @@ private struct HomeMaplogClipCard: View {
         .background(Color.black)
         .sheet(isPresented: $showsComments) {
             VlogCommentsSheet(post: post)
-                .presentationDetents([.height(430), .large])
-                .presentationDragIndicator(.visible)
+                .presentationDetents([.fraction(0.62), .large])
+                .presentationDragIndicator(.hidden)
         }
         .sheet(isPresented: $showsShareSheet) {
-            VlogShareSheet(post: post) { message in
-                showToast(message)
+            MaplogActivityShareSheet(post: post) {
+                showsShareSheet = false
             }
-            .presentationDetents([.height(360)])
+            .presentationDetents([.medium, .large], selection: $shareSheetDetent)
             .presentationDragIndicator(.visible)
         }
         .accessibilityElement(children: .contain)
@@ -920,6 +957,7 @@ private struct HomeMaplogClipCard: View {
                 showsComments = true
             }
             actionMetric(systemImage: "square.and.arrow.up", text: "공유", accessibilityLabel: "공유") {
+                shareSheetDetent = .medium
                 showsShareSheet = true
             }
             actionMetric(
@@ -936,7 +974,73 @@ private struct HomeMaplogClipCard: View {
     }
 
     private var shouldShowCaptionExpansion: Bool {
-        fullCaptionText.count > 44
+        isCaptionTruncated
+    }
+
+    private var captionMeasurement: some View {
+        GeometryReader { proxy in
+            VStack(spacing: 0) {
+                captionMeasurementText(
+                    lineLimit: 2,
+                    kind: .collapsed,
+                    width: proxy.size.width
+                )
+
+                captionMeasurementText(
+                    lineLimit: nil,
+                    kind: .full,
+                    width: proxy.size.width
+                )
+            }
+            .hidden()
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+        }
+    }
+
+    private func captionMeasurementText(
+        lineLimit: Int?,
+        kind: CaptionTextMeasurementKind,
+        width: CGFloat
+    ) -> some View {
+        Text(fullCaptionText)
+            .font(.subheadline)
+            .lineLimit(lineLimit)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(width: width, alignment: .leading)
+            .background {
+                GeometryReader { textProxy in
+                    Color.clear.preference(
+                        key: CaptionTextMeasurementPreferenceKey.self,
+                        value: [CaptionTextMeasurement(kind: kind, height: textProxy.size.height)]
+                    )
+                }
+            }
+    }
+
+    private func updateCaptionTruncation(with measurements: [CaptionTextMeasurement]) {
+        guard
+            let collapsedHeight = measurements
+                .filter({ $0.kind == .collapsed })
+                .map(\.height)
+                .max(),
+            let fullHeight = measurements
+                .filter({ $0.kind == .full })
+                .map(\.height)
+                .max(),
+            collapsedHeight > 0,
+            fullHeight > 0
+        else {
+            return
+        }
+
+        let needsExpansion = fullHeight > collapsedHeight + 0.5
+        guard needsExpansion != isCaptionTruncated else { return }
+
+        isCaptionTruncated = needsExpansion
+        if !needsExpansion {
+            isCaptionExpanded = false
+        }
     }
 
     private var fullCaptionText: String {
@@ -1057,6 +1161,24 @@ private struct HomeMaplogClipCard: View {
                 }
             }
         }
+    }
+}
+
+private enum CaptionTextMeasurementKind: Equatable {
+    case collapsed
+    case full
+}
+
+private struct CaptionTextMeasurement: Equatable {
+    let kind: CaptionTextMeasurementKind
+    let height: CGFloat
+}
+
+private struct CaptionTextMeasurementPreferenceKey: PreferenceKey {
+    static var defaultValue: [CaptionTextMeasurement] = []
+
+    static func reduce(value: inout [CaptionTextMeasurement], nextValue: () -> [CaptionTextMeasurement]) {
+        value.append(contentsOf: nextValue())
     }
 }
 

@@ -39,6 +39,10 @@
 		E1B3BAA0F6CB395742591F5D /* HomeSupportViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B3A6EE4CC60394A86768933 /* HomeSupportViews.swift */; };
 		E2AC0FC03000354E0005D226 /* PracticeKakaoMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2AC0FBF3000354E0005D226 /* PracticeKakaoMapView.swift */; };
 		E64345BB3CE1454CD256FE69 /* Cards.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82FCBC8A1A1F73D5ABD6442D /* Cards.swift */; };
+		C0D3E0010A2B3C4D5E6F7003 /* CaptureEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0D3E0010A2B3C4D5E6F7001 /* CaptureEditorView.swift */; };
+		C0D3E0010A2B3C4D5E6F7004 /* CaptureRecordingShutterButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0D3E0010A2B3C4D5E6F7002 /* CaptureRecordingShutterButton.swift */; };
+		C0D3E0010A2B3C4D5E6F7005 /* VlogCommentsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0D3E0010A2B3C4D5E6F7007 /* VlogCommentsSheet.swift */; };
+		C0D3E0010A2B3C4D5E6F7006 /* MaplogActivityShareSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0D3E0010A2B3C4D5E6F7008 /* MaplogActivityShareSheet.swift */; };
 		EDDF28EA911571C5A90929B3 /* CaptureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 691D6E56B0806BACA016DE02 /* CaptureView.swift */; };
 		FB89B8F9095093D254CFC7CE /* ProfileViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 030655D170DFF7F7C85ED748 /* ProfileViewModel.swift */; };
 		FDBA21967A87837768F80E5D /* SavedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC728AC0952CD66D16711F60 /* SavedView.swift */; };
@@ -75,6 +79,10 @@
 		BDDE9E21B157D66A4C02AC14 /* MaplogButtons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MaplogButtons.swift; sourceTree = "<group>"; };
 		C9D76282FF2FFEEC0209C7A9 /* Maplog.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Maplog.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CA24E71BC2577A1A15EBBAB7 /* ComposerViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComposerViewModel.swift; sourceTree = "<group>"; };
+		C0D3E0010A2B3C4D5E6F7001 /* CaptureEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureEditorView.swift; sourceTree = "<group>"; };
+		C0D3E0010A2B3C4D5E6F7002 /* CaptureRecordingShutterButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureRecordingShutterButton.swift; sourceTree = "<group>"; };
+		C0D3E0010A2B3C4D5E6F7007 /* VlogCommentsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VlogCommentsSheet.swift; sourceTree = "<group>"; };
+		C0D3E0010A2B3C4D5E6F7008 /* MaplogActivityShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MaplogActivityShareSheet.swift; sourceTree = "<group>"; };
 		D0C944E2B4B65B383EDBD76C /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
 		D653507D19A3EF33FCE581B8 /* SpotDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotDetailView.swift; sourceTree = "<group>"; };
 		E0640AE75B057F41C8A1BEC9 /* ComposerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComposerView.swift; sourceTree = "<group>"; };
@@ -119,6 +127,7 @@
 			isa = PBXGroup;
 			children = (
 				8768DFA90689F96DA18B14EF /* LogFeedView.swift */,
+				C0D3E0010A2B3C4D5E6F7007 /* VlogCommentsSheet.swift */,
 			);
 			path = Logs;
 			sourceTree = "<group>";
@@ -233,6 +242,7 @@
 				8B45817772DB8C538E6D5D16 /* MaplogLogoView.swift */,
 				1573A086114CD4D9DA1FBC0B /* MaplogPrimitives.swift */,
 				041F9B0198AC4A718A00360E /* TravelImageView.swift */,
+				C0D3E0010A2B3C4D5E6F7008 /* MaplogActivityShareSheet.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -249,6 +259,8 @@
 			isa = PBXGroup;
 			children = (
 				691D6E56B0806BACA016DE02 /* CaptureView.swift */,
+				C0D3E0010A2B3C4D5E6F7001 /* CaptureEditorView.swift */,
+				C0D3E0010A2B3C4D5E6F7002 /* CaptureRecordingShutterButton.swift */,
 				E0640AE75B057F41C8A1BEC9 /* ComposerView.swift */,
 				65ABBA241CCE59F34DF290A0 /* LogPreviewView.swift */,
 			);
@@ -361,6 +373,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C0D3E0010A2B3C4D5E6F7003 /* CaptureEditorView.swift in Sources */,
+				C0D3E0010A2B3C4D5E6F7004 /* CaptureRecordingShutterButton.swift in Sources */,
+				C0D3E0010A2B3C4D5E6F7005 /* VlogCommentsSheet.swift in Sources */,
+				C0D3E0010A2B3C4D5E6F7006 /* MaplogActivityShareSheet.swift in Sources */,
 				EDDF28EA911571C5A90929B3 /* CaptureView.swift in Sources */,
 				E64345BB3CE1454CD256FE69 /* Cards.swift in Sources */,
 				A00B2ABF9A8E2FC357C0A64C /* ComposerView.swift in Sources */,

@@ -111,10 +111,8 @@ struct SavedConfirmationCard<Destination: View>: View {
             HStack(spacing: MaplogSpacing.small) {
                 Image(systemName: systemImage)
                     .font(.system(size: MaplogSize.iconMedium, weight: .semibold))
-                    .foregroundStyle(Color.maplogInk)
-                    .frame(width: 42, height: 42)
-                    .background(Color.maplogLime)
-                    .clipShape(Circle())
+                    .foregroundStyle(Color.maplogPrimary)
+                    .frame(width: MaplogSize.minimumTapTarget, height: MaplogSize.minimumTapTarget)
 
                 VStack(alignment: .leading, spacing: MaplogSpacing.xxSmall) {
                     Text(title)

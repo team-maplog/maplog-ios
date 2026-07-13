@@ -261,6 +261,7 @@ struct FeaturedEvent: Identifiable, Hashable {
     let location: String
     let imageStyle: PhotoStyle
     let thumbnailAssetName: String?
+    let heroAssetName: String?
 
     init(
         id: String,
@@ -268,7 +269,8 @@ struct FeaturedEvent: Identifiable, Hashable {
         period: String,
         location: String,
         imageStyle: PhotoStyle,
-        thumbnailAssetName: String? = nil
+        thumbnailAssetName: String? = nil,
+        heroAssetName: String? = nil
     ) {
         self.id = id
         self.title = title
@@ -276,6 +278,7 @@ struct FeaturedEvent: Identifiable, Hashable {
         self.location = location
         self.imageStyle = imageStyle
         self.thumbnailAssetName = thumbnailAssetName
+        self.heroAssetName = heroAssetName
     }
 }
 
@@ -297,6 +300,23 @@ struct VlogComment: Identifiable, Hashable {
     let body: String
     let timeText: String
     let isMine: Bool
+    let attachmentData: Data?
+
+    init(
+        id: String,
+        author: String,
+        body: String,
+        timeText: String,
+        isMine: Bool,
+        attachmentData: Data? = nil
+    ) {
+        self.id = id
+        self.author = author
+        self.body = body
+        self.timeText = timeText
+        self.isMine = isMine
+        self.attachmentData = attachmentData
+    }
 }
 
 struct AIDigest: Identifiable, Hashable {
@@ -452,9 +472,13 @@ final class MaplogSessionStore: ObservableObject {
     }
 
     @discardableResult
-    func addVlogComment(postID: String, body: String) -> VlogComment? {
+    func addVlogComment(
+        postID: String,
+        body: String,
+        attachmentData: Data? = nil
+    ) -> VlogComment? {
         let trimmedBody = body.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedBody.isEmpty else {
+        guard !trimmedBody.isEmpty || attachmentData != nil else {
             return nil
         }
 
@@ -463,7 +487,8 @@ final class MaplogSessionStore: ObservableObject {
             author: profile.displayName,
             body: trimmedBody,
             timeText: "방금",
-            isMine: true
+            isMine: true,
+            attachmentData: attachmentData
         )
 
         vlogCommentsByPostID[postID, default: []].insert(comment, at: 0)

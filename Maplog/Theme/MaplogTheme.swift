@@ -3,9 +3,11 @@ import SwiftUI
 // MARK: - Color tokens
 
 extension Color {
-    // Primitive brand palette. The lime is Maplog's existing primary color.
+    // Maplog's original lime palette.
     static let maplogLime = Color(red: 0.76, green: 0.96, blue: 0.02)
     static let maplogLimePressed = Color(red: 0.64, green: 0.82, blue: 0.01)
+    // Capture uses the same brand accent as the rest of Maplog.
+    static let maplogCaptureAccent = maplogLime
     static let maplogInk = Color(red: 0.07, green: 0.08, blue: 0.08)
     static let maplogMuted = Color(red: 0.39, green: 0.41, blue: 0.42)
     static let maplogSubtle = Color(red: 0.53, green: 0.55, blue: 0.56)
@@ -15,6 +17,7 @@ extension Color {
     static let maplogSurfaceRaised = Color(red: 0.985, green: 0.987, blue: 0.982)
     static let maplogOlive = Color(red: 0.32, green: 0.42, blue: 0.02)
     static let maplogDanger = Color(red: 0.75, green: 0.16, blue: 0.12)
+    static let maplogOnPrimary = Color.white
 
     // Semantic aliases used by components.
     static let maplogPrimary = maplogLime
@@ -56,19 +59,19 @@ enum MaplogSpacing {
 }
 
 enum MaplogRadius {
-    static let small: CGFloat = 8
-    static let medium: CGFloat = 12
-    static let large: CGFloat = 20
-    static let xLarge: CGFloat = 24
-    static let hero: CGFloat = 28
+    static let small: CGFloat = 6
+    static let medium: CGFloat = 8
+    static let large: CGFloat = 12
+    static let xLarge: CGFloat = 16
+    static let hero: CGFloat = 24
 }
 
 enum MaplogSize {
     static let minimumTapTarget: CGFloat = 44
     static let compactControlHeight: CGFloat = 36
     static let controlHeight: CGFloat = 48
-    static let primaryButtonHeight: CGFloat = 52
-    static let searchHeight: CGFloat = 50
+    static let primaryButtonHeight: CGFloat = 48
+    static let searchHeight: CGFloat = 48
     static let chipHeight: CGFloat = 40
     static let listThumbnail: CGFloat = 82
     static let tabBarHeight: CGFloat = 66
@@ -80,18 +83,18 @@ enum MaplogSize {
 // MARK: - Typography tokens
 
 enum MaplogFont {
-    static let largeTitle = Font.system(size: 28, weight: .bold, design: .rounded)
-    static let screenTitle = Font.system(size: 22, weight: .bold, design: .rounded)
-    static let sectionTitle = Font.system(size: 20, weight: .semibold, design: .rounded)
-    static let cardTitle = Font.system(size: 17, weight: .semibold, design: .rounded)
-    static let button = Font.system(size: 16, weight: .semibold, design: .rounded)
-    static let body = Font.system(size: 15, weight: .regular, design: .rounded)
-    static let bodyStrong = Font.system(size: 15, weight: .semibold, design: .rounded)
-    static let callout = Font.system(size: 14, weight: .regular, design: .rounded)
-    static let calloutStrong = Font.system(size: 14, weight: .semibold, design: .rounded)
-    static let caption = Font.system(size: 12, weight: .medium, design: .rounded)
-    static let badge = Font.system(size: 11, weight: .semibold, design: .rounded)
-    static let tabLabel = Font.system(size: 11, weight: .semibold, design: .rounded)
+    static let largeTitle = Font.largeTitle.weight(.semibold)
+    static let screenTitle = Font.title2.weight(.semibold)
+    static let sectionTitle = Font.title3.weight(.semibold)
+    static let cardTitle = Font.headline
+    static let button = Font.headline
+    static let body = Font.body
+    static let bodyStrong = Font.body.weight(.semibold)
+    static let callout = Font.callout
+    static let calloutStrong = Font.callout.weight(.semibold)
+    static let caption = Font.caption.weight(.medium)
+    static let badge = Font.caption2.weight(.semibold)
+    static let tabLabel = Font.caption2.weight(.semibold)
 }
 
 enum MaplogCardStyle {
@@ -114,19 +117,15 @@ extension View {
                 .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
                 .overlay {
                     RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .stroke(Color.maplogBorder.opacity(0.82), lineWidth: 1)
+                        .stroke(Color.maplogBorder, lineWidth: 1)
                 }
-                .shadow(color: .black.opacity(0.025), radius: 1, x: 0, y: 0)
-                .shadow(color: .black.opacity(0.045), radius: 6, x: 0, y: 2)
         case .elevated:
-            background(Color.maplogSurface)
+            background(Color.maplogSurfaceRaised)
                 .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
                 .overlay {
                     RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .stroke(Color.maplogBorder.opacity(0.68), lineWidth: 1)
+                        .stroke(Color.maplogBorder, lineWidth: 1)
                 }
-                .shadow(color: .black.opacity(0.035), radius: 3, x: 0, y: 1)
-                .shadow(color: .black.opacity(0.09), radius: 12, x: 0, y: 5)
         case .photo:
             background(Color.maplogSurface)
                 .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
@@ -147,7 +146,6 @@ extension View {
 
     func maplogNavigationAppearance() -> some View {
         toolbarBackground(Color.maplogSurface, for: .navigationBar)
-            .toolbarColorScheme(.light, for: .navigationBar)
-            .tint(Color.maplogTextPrimary)
+            .tint(Color.maplogPrimary)
     }
 }

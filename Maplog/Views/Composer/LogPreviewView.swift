@@ -378,9 +378,8 @@ private struct PublishedShareSheet: View {
                     Image(systemName: "xmark")
                         .font(.system(size: 14, weight: .black))
                         .foregroundStyle(Color.maplogInk)
-                        .frame(width: 36, height: 36)
-                        .background(Color.maplogCanvas)
-                        .clipShape(Circle())
+                        .frame(width: MaplogSize.minimumTapTarget, height: MaplogSize.minimumTapTarget)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
@@ -418,10 +417,9 @@ private struct PublishedShareSheet: View {
             VStack(spacing: 9) {
                 Image(systemName: systemImage)
                     .font(MaplogFont.sectionTitle)
-                    .foregroundStyle(Color.maplogInk)
-                    .frame(width: 54, height: 54)
-                    .background(Color.maplogCanvas)
-                    .clipShape(Circle())
+                    .foregroundStyle(Color.maplogPrimary)
+                    .frame(width: MaplogSize.minimumTapTarget, height: MaplogSize.minimumTapTarget)
+                    .contentShape(Rectangle())
                 Text(title)
                     .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(Color.maplogMuted)

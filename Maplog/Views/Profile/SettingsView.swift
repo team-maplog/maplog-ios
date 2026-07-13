@@ -559,9 +559,8 @@ private struct PasswordChangeSheet: View {
                 Image(systemName: "xmark")
                     .font(.system(size: 14, weight: .black))
                     .foregroundStyle(Color.maplogInk)
-                    .frame(width: 36, height: 36)
-                    .background(Color.maplogCanvas)
-                    .clipShape(Circle())
+                    .frame(width: MaplogSize.minimumTapTarget, height: MaplogSize.minimumTapTarget)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
         }
@@ -621,9 +620,8 @@ private struct SecuritySettingsSheet: View {
                     Image(systemName: "xmark")
                         .font(.system(size: 14, weight: .black))
                         .foregroundStyle(Color.maplogInk)
-                        .frame(width: 36, height: 36)
-                        .background(Color.maplogCanvas)
-                        .clipShape(Circle())
+                        .frame(width: MaplogSize.minimumTapTarget, height: MaplogSize.minimumTapTarget)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
@@ -691,10 +689,8 @@ private struct SecurityDeviceRow: View {
         HStack(spacing: MaplogSpacing.small) {
             Image(systemName: isCurrent ? "iphone.gen3" : "laptopcomputer")
                 .font(.system(size: 20, weight: .bold))
-                .foregroundStyle(Color.maplogOlive)
+                .foregroundStyle(Color.maplogPrimary)
                 .frame(width: 44, height: 44)
-                .background(Color.maplogCanvas)
-                .clipShape(Circle())
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(name)

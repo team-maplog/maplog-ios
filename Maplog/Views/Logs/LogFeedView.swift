@@ -11,6 +11,7 @@ struct LogFeedView: View {
     @State private var selectedProfilePost: VlogPost?
     @State private var selectedCommentPost: VlogPost?
     @State private var sharePost: VlogPost?
+    @State private var shareSheetDetent: PresentationDetent = .medium
     @State private var activeClipIndex = 0
     @State private var actionToast: String?
     @State private var selectedReelPage = 0
@@ -87,15 +88,15 @@ struct LogFeedView: View {
         }
         .sheet(item: $selectedCommentPost) { post in
             VlogCommentsSheet(post: post)
-                .presentationDetents([.height(430), .large])
-                .presentationDragIndicator(.visible)
+                .presentationDetents([.fraction(0.62), .large])
+                .presentationDragIndicator(.hidden)
         }
         .sheet(item: $sharePost) { post in
-            VlogShareSheet(post: post) { message in
-                showToast(message)
+            MaplogActivityShareSheet(post: post) {
+                sharePost = nil
             }
-                .presentationDetents([.height(360)])
-                .presentationDragIndicator(.visible)
+            .presentationDetents([.medium, .large], selection: $shareSheetDetent)
+            .presentationDragIndicator(.visible)
         }
         .onChange(of: selectedMode) { _, _ in
             moveToFirstVisiblePost()
@@ -234,6 +235,7 @@ struct LogFeedView: View {
 
             Menu {
                 Button {
+                    shareSheetDetent = .medium
                     sharePost = post
                 } label: {
                     Label("공유", systemImage: "square.and.arrow.up")
@@ -471,6 +473,7 @@ struct LogFeedView: View {
                 selectedCommentPost = post
             }
             actionButton(icon: "square.and.arrow.up", count: "공유") {
+                shareSheetDetent = .medium
                 sharePost = post
             }
             actionButton(
@@ -1275,7 +1278,7 @@ struct VlogPlaceInfoSheet: View {
     }
 }
 
-struct VlogCommentsSheet: View {
+private struct LegacyVlogCommentsSheet: View {
     let post: VlogPost
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var sessionStore: MaplogSessionStore
@@ -1380,7 +1383,7 @@ struct VlogCommentsSheet: View {
                     .font(.system(size: 14, weight: .bold))
                     .foregroundStyle(Color.maplogInk)
                     .frame(width: MaplogSize.minimumTapTarget, height: MaplogSize.minimumTapTarget)
-                    .background(Color.maplogCanvas, in: Circle())
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityLabel("댓글 닫기")
@@ -1658,7 +1661,7 @@ struct VlogCommentsSheet: View {
     }
 }
 
-struct VlogShareSheet: View {
+private struct LegacyVlogShareSheet: View {
     let post: VlogPost
     let onAction: (String) -> Void
     @Environment(\.dismiss) private var dismiss
@@ -1682,9 +1685,8 @@ struct VlogShareSheet: View {
                     Image(systemName: "xmark")
                         .font(.system(size: 14, weight: .black))
                         .foregroundStyle(Color.maplogInk)
-                        .frame(width: 36, height: 36)
-                        .background(Color.maplogCanvas)
-                        .clipShape(Circle())
+                        .frame(width: MaplogSize.minimumTapTarget, height: MaplogSize.minimumTapTarget)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
@@ -1733,10 +1735,9 @@ struct VlogShareSheet: View {
             VStack(spacing: 9) {
                 Image(systemName: systemImage)
                     .font(MaplogFont.sectionTitle)
-                    .foregroundStyle(Color.maplogInk)
-                    .frame(width: 52, height: 52)
-                    .background(Color.maplogCanvas)
-                    .clipShape(Circle())
+                    .foregroundStyle(Color.maplogPrimary)
+                    .frame(width: MaplogSize.minimumTapTarget, height: MaplogSize.minimumTapTarget)
+                    .contentShape(Rectangle())
                 Text(title)
                     .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(Color.maplogMuted)
@@ -1954,9 +1955,9 @@ struct OtherProfileView: View {
             } label: {
                 Image(systemName: "paperplane.fill")
                     .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(isBlocked ? Color.maplogMuted : Color.maplogInk)
+                    .foregroundStyle(isBlocked ? Color.maplogMuted : Color.maplogOnPrimary)
                     .frame(width: 54, height: 50)
-                    .background(Color.maplogCanvas)
+                    .background(isBlocked ? Color.maplogSurfaceRaised : Color.maplogPrimary)
                     .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.small, style: .continuous))
             }
             .buttonStyle(.plain)
@@ -2197,9 +2198,8 @@ private struct ProfileReportSheet: View {
                     Image(systemName: "xmark")
                         .font(.system(size: 14, weight: .black))
                         .foregroundStyle(Color.maplogInk)
-                        .frame(width: 36, height: 36)
-                        .background(Color.maplogCanvas)
-                        .clipShape(Circle())
+                        .frame(width: MaplogSize.minimumTapTarget, height: MaplogSize.minimumTapTarget)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
@@ -2275,9 +2275,8 @@ private struct MessageComposerSheet: View {
                     Image(systemName: "xmark")
                         .font(.system(size: 14, weight: .black))
                         .foregroundStyle(Color.maplogInk)
-                        .frame(width: 36, height: 36)
-                        .background(Color.maplogCanvas)
-                        .clipShape(Circle())
+                        .frame(width: MaplogSize.minimumTapTarget, height: MaplogSize.minimumTapTarget)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
@@ -2342,9 +2341,8 @@ private struct ProfileShareSheet: View {
                     Image(systemName: "xmark")
                         .font(.system(size: 14, weight: .black))
                         .foregroundStyle(Color.maplogInk)
-                        .frame(width: 36, height: 36)
-                        .background(Color.maplogCanvas)
-                        .clipShape(Circle())
+                        .frame(width: MaplogSize.minimumTapTarget, height: MaplogSize.minimumTapTarget)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
@@ -2391,10 +2389,9 @@ private struct ProfileShareSheet: View {
             VStack(spacing: 9) {
                 Image(systemName: systemImage)
                     .font(MaplogFont.sectionTitle)
-                    .foregroundStyle(Color.maplogInk)
-                    .frame(width: 54, height: 54)
-                    .background(Color.maplogCanvas)
-                    .clipShape(Circle())
+                    .foregroundStyle(Color.maplogPrimary)
+                    .frame(width: MaplogSize.minimumTapTarget, height: MaplogSize.minimumTapTarget)
+                    .contentShape(Rectangle())
                 Text(title)
                     .font(.system(size: 12, weight: .bold))
                     .foregroundStyle(Color.maplogMuted)

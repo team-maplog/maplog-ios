@@ -6,7 +6,8 @@ enum MockMaplogData {
         title: "서울라이트 광화문 빛의 향연",
         period: "2026. 6. 19. ~ 2026. 6. 22.",
         location: "서울",
-        imageStyle: .palace
+        imageStyle: .palace,
+        heroAssetName: "event_seoul_light_gwanghwamun_hero"
     )
 
     static let seoulTower = MaplogSpot(
@@ -279,10 +280,10 @@ enum MockMaplogData {
     ]
 
     static let events: [FeaturedEvent] = [
-        FeaturedEvent(id: "event-1", title: "2026 진주 정원박람", period: "2026. 6. 18. ~ 2026. 6. 21.", location: "진주", imageStyle: .festival, thumbnailAssetName: "event_jinju_garden"),
-        FeaturedEvent(id: "event-2", title: "국제해양영화제", period: "2026. 6. 18. ~ 2026. 6. 21.", location: "부산", imageStyle: .ocean, thumbnailAssetName: "event_ocean_film"),
-        FeaturedEvent(id: "event-3", title: "강릉단오제", period: "2026. 6. 18. ~ 2026. 6. 25.", location: "강릉", imageStyle: .market, thumbnailAssetName: "event_gangneung_dano"),
-        FeaturedEvent(id: "event-4", title: "2026 부산바다도서", period: "2026. 6. 13. ~ 7. 5.", location: "부산", imageStyle: .temple, thumbnailAssetName: "event_busan_book")
+        FeaturedEvent(id: "event-1", title: "2026 진주 정원박람", period: "2026. 6. 18. ~ 2026. 6. 21.", location: "진주", imageStyle: .festival, thumbnailAssetName: "event_jinju_garden", heroAssetName: "event_jinju_garden_hero"),
+        FeaturedEvent(id: "event-2", title: "국제해양영화제", period: "2026. 6. 18. ~ 2026. 6. 21.", location: "부산", imageStyle: .ocean, thumbnailAssetName: "event_ocean_film", heroAssetName: "event_ocean_film_hero"),
+        FeaturedEvent(id: "event-3", title: "강릉단오제", period: "2026. 6. 18. ~ 2026. 6. 25.", location: "강릉", imageStyle: .market, thumbnailAssetName: "event_gangneung_dano", heroAssetName: "event_gangneung_dano_hero"),
+        FeaturedEvent(id: "event-4", title: "2026 부산바다도서", period: "2026. 6. 13. ~ 7. 5.", location: "부산", imageStyle: .temple, thumbnailAssetName: "event_busan_book", heroAssetName: "event_busan_book_hero")
     ]
 
     static let aiDigests: [AIDigest] = [

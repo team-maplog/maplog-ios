@@ -40,6 +40,7 @@ enum MaplogButtonSize {
 
 struct MaplogButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var variant: MaplogButtonVariant = .primary
     var size: MaplogButtonSize = .regular
@@ -57,18 +58,20 @@ struct MaplogButtonStyle: ButtonStyle {
             .overlay {
                 if variant.hasBorder {
                     RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous)
-                        .stroke(Color.maplogTextPrimary, lineWidth: 1)
+                        .stroke(Color.maplogBorder, lineWidth: 1)
                 }
             }
             .contentShape(RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous))
             .scaleEffect(configuration.isPressed && isEnabled ? 0.98 : 1)
             .opacity(isEnabled ? 1 : 0.48)
-            .animation(.easeOut(duration: 0.16), value: configuration.isPressed)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: configuration.isPressed)
     }
 
     private var foregroundColor: Color {
         switch variant {
-        case .primary, .secondary, .tonal, .text: return .maplogTextPrimary
+        case .primary: return .maplogOnPrimary
+        case .secondary, .tonal: return .maplogTextPrimary
+        case .text: return .maplogPrimary
         case .destructive: return .white
         case .brand(_, let foreground): return foreground
         }
@@ -82,9 +85,9 @@ struct MaplogButtonStyle: ButtonStyle {
         case .secondary:
             return isPressed ? .maplogCanvas : .maplogSurface
         case .tonal:
-            return isPressed ? .maplogBorder : .maplogCanvas
+            return isPressed ? .maplogLime.opacity(0.32) : .maplogLime.opacity(0.18)
         case .text:
-            return isPressed ? .maplogCanvas : .clear
+            return isPressed ? .maplogLime.opacity(0.18) : .clear
         case .destructive:
             return isPressed ? .maplogDanger.opacity(0.82) : .maplogDanger
         case .brand(let background, _):
@@ -95,13 +98,14 @@ struct MaplogButtonStyle: ButtonStyle {
 
 /// 아이콘 버튼과 지도 핀처럼 컴팩트한 컨트롤에 쓰는 짧은 누름 피드백입니다.
 struct MaplogPressFeedbackStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     var pressedScale: CGFloat = 0.96
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .scaleEffect(configuration.isPressed ? pressedScale : 1)
             .opacity(configuration.isPressed ? 0.86 : 1)
-            .animation(.easeOut(duration: 0.14), value: configuration.isPressed)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.14), value: configuration.isPressed)
     }
 }
 

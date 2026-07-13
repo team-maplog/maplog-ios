@@ -82,9 +82,11 @@ struct MaplogSearchButton<Destination: View>: View {
             .padding(.horizontal, MaplogSpacing.medium)
             .frame(height: MaplogSize.searchHeight)
             .background(Color.maplogSurface)
-            .clipShape(Capsule())
-            .overlay(Capsule().stroke(Color.maplogBorder.opacity(0.9), lineWidth: 1))
-            .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 3)
+            .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous)
+                    .stroke(Color.maplogBorder, lineWidth: 1)
+            }
         }
         .buttonStyle(.plain)
         .accessibilityLabel("\(placeholder) 검색")
@@ -98,7 +100,7 @@ struct MaplogFilterChip: View {
     var body: some View {
         Text(title)
             .font(MaplogFont.calloutStrong)
-            .foregroundStyle(isSelected ? Color.maplogInk : Color.maplogMuted)
+            .foregroundStyle(isSelected ? Color.maplogOnPrimary : Color.maplogMuted)
             .padding(.horizontal, MaplogSpacing.medium)
             .frame(height: MaplogSize.chipHeight)
             .background(isSelected ? Color.maplogPrimary : Color.maplogSurface)
@@ -113,8 +115,8 @@ struct MaplogFilterChip: View {
 
 struct MaplogStatusBadge: View {
     let title: String
-    var foreground = Color.maplogInk
-    var background = Color.maplogLime
+    var foreground = Color.maplogOnPrimary
+    var background = Color.maplogPrimary
 
     var body: some View {
         Text(title)
@@ -131,7 +133,6 @@ struct MaplogIconButton: View {
     let systemName: String
     var accessibilityLabel: String
     var size: CGFloat = MaplogSize.minimumTapTarget
-    var background = Color.maplogSurface.opacity(0.9)
     var foreground = Color.maplogInk
     let action: () -> Void
 
@@ -141,8 +142,7 @@ struct MaplogIconButton: View {
                 .font(.system(size: MaplogSize.iconMedium, weight: .semibold))
                 .foregroundStyle(foreground)
                 .frame(width: size, height: size)
-                .background(background)
-                .clipShape(Circle())
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(accessibilityLabel)
@@ -155,13 +155,11 @@ struct MaplogToast: View {
     var body: some View {
         Text(message)
             .font(MaplogFont.calloutStrong)
-            .foregroundStyle(Color.maplogTextPrimary)
+            .foregroundStyle(Color.maplogSurface)
             .padding(.horizontal, MaplogSpacing.medium)
             .frame(minHeight: MaplogSize.controlHeight)
-            .background(Color.maplogSurface)
+            .background(Color.maplogInk)
             .clipShape(Capsule())
-            .overlay(Capsule().stroke(Color.maplogBorder.opacity(0.72), lineWidth: 1))
-            .shadow(color: .black.opacity(0.12), radius: 14, x: 0, y: 6)
             .accessibilityAddTraits(.isStaticText)
     }
 }

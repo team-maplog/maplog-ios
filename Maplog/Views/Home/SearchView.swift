@@ -64,14 +64,7 @@ struct SearchView: View {
             .contentMargins(.horizontal, MaplogSpacing.page, for: .scrollContent)
 
             if let toastText {
-                Text(toastText)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.primary)
-                    .padding(.horizontal, 18)
-                    .frame(minHeight: 48)
-                    .background(.regularMaterial)
-                    .clipShape(Capsule())
-                    .shadow(color: .black.opacity(0.14), radius: 18, x: 0, y: 8)
+                MaplogToast(message: toastText)
                     .padding(.bottom, 24)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
@@ -116,7 +109,7 @@ struct SearchView: View {
                         .font(.subheadline.weight(.bold))
                         .foregroundStyle(.secondary)
                         .frame(width: 44, height: 44)
-                        .background(Color(uiColor: .tertiarySystemFill), in: Circle())
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(MaplogPressFeedbackStyle())
                 .opacity(query.isEmpty ? 0 : 1)
@@ -141,13 +134,13 @@ struct SearchView: View {
                 } label: {
                     Text(tab.rawValue)
                         .font(.caption.weight(selectedTab == tab ? .bold : .semibold))
-                        .foregroundStyle(selectedTab == tab ? Color.maplogInk : Color.maplogMuted)
+                        .foregroundStyle(selectedTab == tab ? Color.maplogOnPrimary : Color.maplogMuted)
                         .lineLimit(1)
                         .minimumScaleFactor(0.82)
                         .frame(maxWidth: .infinity)
                         .frame(minHeight: 36)
                         .background(
-                            selectedTab == tab ? Color.maplogLime : .clear,
+                            selectedTab == tab ? Color.maplogPrimary : .clear,
                             in: RoundedRectangle(cornerRadius: MaplogRadius.small, style: .continuous)
                         )
                 }
@@ -190,10 +183,9 @@ struct SearchView: View {
                         } label: {
                             Image(systemName: sessionStore.hasSavedEvent(event) ? "bookmark.fill" : "bookmark")
                                 .font(.body.weight(.semibold))
-                                .foregroundStyle(sessionStore.hasSavedEvent(event) ? AnyShapeStyle(Color.maplogOlive) : AnyShapeStyle(.secondary))
+                                .foregroundStyle(sessionStore.hasSavedEvent(event) ? AnyShapeStyle(Color.maplogPrimary) : AnyShapeStyle(Color.maplogTextSecondary))
                                 .frame(width: 44, height: 44)
-                                .background(.regularMaterial, in: Circle())
-                                .contentShape(Circle())
+                                .contentShape(Rectangle())
                         }
                         .buttonStyle(MaplogPressFeedbackStyle())
                         .padding(.top, 14)
@@ -229,11 +221,9 @@ struct SearchView: View {
                     } label: {
                         Image(systemName: sessionStore.hasSavedRoute(routeTrip) ? "bookmark.fill" : "bookmark")
                             .font(.body.weight(.bold))
-                            .foregroundStyle(.primary)
+                            .foregroundStyle(sessionStore.hasSavedRoute(routeTrip) ? Color.maplogPrimary : Color.maplogTextSecondary)
                             .frame(width: 44, height: 44)
-                            .background(.regularMaterial)
-                            .clipShape(Circle())
-                            .shadow(color: .black.opacity(0.12), radius: 8, x: 0, y: 4)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(MaplogPressFeedbackStyle())
                     .padding(MaplogSpacing.small)
@@ -293,10 +283,9 @@ struct SearchView: View {
                         } label: {
                                 Image(systemName: sessionStore.hasSavedSpot(spot) ? "heart.fill" : "heart")
                                 .font(.body.weight(.semibold))
-                                .foregroundStyle(sessionStore.hasSavedSpot(spot) ? AnyShapeStyle(Color.maplogOlive) : AnyShapeStyle(.secondary))
+                                .foregroundStyle(sessionStore.hasSavedSpot(spot) ? AnyShapeStyle(Color.maplogPrimary) : AnyShapeStyle(Color.maplogTextSecondary))
                                 .frame(width: 44, height: 44)
-                                .background(.regularMaterial, in: Circle())
-                                .contentShape(Circle())
+                                .contentShape(Rectangle())
                         }
                         .buttonStyle(MaplogPressFeedbackStyle())
                         .padding(.top, 12)
@@ -422,11 +411,11 @@ struct SearchView: View {
             } label: {
                 Text("추천 결과 보기")
                     .font(.headline)
-                    .foregroundStyle(Color.maplogInk)
+                    .foregroundStyle(Color.maplogOnPrimary)
                     .padding(.horizontal, 18)
                     .frame(minHeight: 48)
-                    .background(Color.maplogLime)
-                    .clipShape(Capsule())
+                    .background(Color.maplogPrimary)
+                    .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.small, style: .continuous))
             }
             .buttonStyle(MaplogPressFeedbackStyle())
         }
