@@ -255,6 +255,7 @@ struct MainTabView: View {
             }
         }
         .background(Color(uiColor: .systemBackground))
+        .preferredColorScheme(.light)
         .onPreferenceChange(MaplogTabBarHiddenPreferenceKey.self) { hidden in
             withAnimation(.spring(response: 0.32, dampingFraction: 0.9)) {
                 isTabBarHidden = hidden
@@ -390,13 +391,13 @@ struct MaplogTabBar: View {
                 } label: {
                     Image(systemName: tab.icon)
                         .font(.system(size: isReelStyle ? 18 : 19, weight: .semibold))
-                        .foregroundStyle(isReelStyle ? Color.white : Color.primary)
+                        .foregroundStyle(isReelStyle ? Color.maplogInk : Color.primary)
                         .frame(maxWidth: .infinity)
                         .frame(height: MaplogSize.minimumTapTarget)
                         .background {
                             if selectedTab == tab {
                                 Capsule()
-                                    .fill(isReelStyle ? Color.white.opacity(0.18) : Color.maplogPrimary.opacity(0.24))
+                                    .fill(Color.maplogPrimary.opacity(0.24))
                                     .padding(.horizontal, 2)
                                     .padding(.vertical, 4)
                             }
@@ -415,23 +416,16 @@ struct MaplogTabBar: View {
             Capsule()
                 .fill(
                     isReelStyle
-                        ? AnyShapeStyle(Color.black.opacity(0.34))
+                        ? AnyShapeStyle(Color.maplogSurface.opacity(0.94))
                         : AnyShapeStyle(Color.maplogSurface.opacity(0.96))
                 )
         }
         .clipShape(Capsule())
-        .overlay {
-            Capsule()
-                .stroke(
-                    isReelStyle ? Color.white.opacity(0.18) : Color.maplogBorder,
-                    lineWidth: 1
-                )
-        }
         .shadow(
-            color: .black.opacity(isReelStyle ? 0.18 : 0.12),
-            radius: isReelStyle ? 8 : 12,
+            color: .black.opacity(isReelStyle ? 0.10 : 0.12),
+            radius: isReelStyle ? 10 : 12,
             x: 0,
-            y: isReelStyle ? 3 : 5
+            y: isReelStyle ? 4 : 5
         )
         .animation(reduceMotion ? nil : .smooth(duration: 0.4), value: isReelStyle)
     }

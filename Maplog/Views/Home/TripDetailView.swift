@@ -59,15 +59,9 @@ struct TripDetailView: View {
 
     private var routeTopBar: some View {
         HStack {
-            Button {
+            MaplogNavigationButton(systemName: "chevron.left", accessibilityLabel: "뒤로 가기") {
                 dismiss()
-            } label: {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundStyle(Color.maplogInk)
-                    .frame(width: 44, height: 44)
             }
-            .buttonStyle(.plain)
 
             Spacer()
 
@@ -77,22 +71,13 @@ struct TripDetailView: View {
 
             Spacer()
 
-            Button {
+            MaplogNavigationButton(systemName: "square.and.arrow.up", accessibilityLabel: "루트 공유") {
                 showsShareSheet = true
-            } label: {
-                Image(systemName: "square.and.arrow.up")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(Color.maplogInk)
-                    .frame(width: 44, height: 44)
             }
-            .buttonStyle(.plain)
         }
         .padding(.horizontal, MaplogSpacing.medium)
         .frame(height: 58)
         .background(Color.maplogSurface)
-        .overlay(alignment: .bottom) {
-            Rectangle().fill(Color.maplogLine).frame(height: 1)
-        }
     }
 
     private var routeSummary: some View {
@@ -156,10 +141,8 @@ struct TripDetailView: View {
             HStack(spacing: 14) {
                 Image(systemName: "plus.circle.fill")
                     .font(.system(size: 26, weight: .bold))
-                    .foregroundStyle(Color.maplogInk)
+                    .foregroundStyle(Color.maplogOlive)
                     .frame(width: 52, height: 52)
-                    .background(Color.maplogLime)
-                    .clipShape(Circle())
 
                 VStack(alignment: .leading, spacing: 5) {
                     Text("이 루트에 기록 추가")
@@ -188,12 +171,10 @@ struct TripDetailView: View {
             } label: {
                 Label(sessionStore.hasSavedRoute(trip) ? "저장됨" : "루트 저장", systemImage: sessionStore.hasSavedRoute(trip) ? "bookmark.fill" : "bookmark")
                     .font(.system(size: 15, weight: .black))
-                    .foregroundStyle(Color.maplogInk)
-                    .frame(width: 126, height: 56)
-                    .background(Color.maplogCanvas)
-                    .clipShape(Capsule())
+                    .foregroundStyle(Color.maplogOlive)
+                    .frame(width: 94, height: 56)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(MaplogPressFeedbackStyle())
 
             NavigationLink {
                 MapSearchView(query: trip.title)
@@ -203,8 +184,7 @@ struct TripDetailView: View {
                     .foregroundStyle(Color.maplogInk)
                     .frame(maxWidth: .infinity)
                     .frame(height: 56)
-                    .background(Color.maplogLime)
-                    .clipShape(Capsule())
+                    .background(Color.maplogLime, in: RoundedRectangle(cornerRadius: MaplogRadius.large, style: .continuous))
             }
             .buttonStyle(.plain)
         }
@@ -212,9 +192,6 @@ struct TripDetailView: View {
         .padding(.top, 12)
         .padding(.bottom, 22)
         .background(Color.maplogSurface)
-        .overlay(alignment: .top) {
-            Rectangle().fill(Color.maplogLine).frame(height: 1)
-        }
     }
 
     private var estimatedDistance: String {
@@ -283,16 +260,17 @@ struct RouteDetailHeroMap: View {
                     let hasSelection = selectedSpotID != nil
                     let isSelected = selectedSpotID == spot.id
                     let pinSize: CGFloat = hasSelection ? (isSelected ? 68 : 50) : 58
+                    let pinCornerRadius = min(pinSize * 0.24, MaplogRadius.large)
 
                     ZStack(alignment: .topTrailing) {
                         MaplogSpotImageView(
                             spot: spot,
                             height: pinSize,
-                            cornerRadius: pinSize / 2
+                            cornerRadius: pinCornerRadius
                         )
                         .frame(width: pinSize)
                             .overlay(
-                                Circle().stroke(
+                                RoundedRectangle(cornerRadius: pinCornerRadius, style: .continuous).stroke(
                                     isSelected ? Color.maplogLime : .white,
                                     lineWidth: isSelected ? 5 : 4
                                 )
@@ -446,7 +424,6 @@ private struct RouteNearbyMapPin: View {
             .fill(tint)
             .frame(width: 30, height: 30)
             .overlay(pinSymbol)
-            .overlay(Circle().stroke(.white.opacity(0.92), lineWidth: 2))
     }
 
     private var pinSymbol: some View {
@@ -619,10 +596,6 @@ struct RouteTimelineRow: View {
             .padding(MaplogSpacing.small)
             .background(Color.maplogSurface)
             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(isActive ? Color.maplogLime : Color.maplogLine, lineWidth: isActive ? 2 : 1)
-            }
             .shadow(color: (isActive ? Color.maplogLime : .black).opacity(isActive ? 0.16 : 0.04), radius: isActive ? 16 : 12, x: 0, y: 6)
             .padding(.bottom, isLast ? 0 : 14)
         }
@@ -648,9 +621,5 @@ struct InfoBadge: View {
             .foregroundStyle(Color.maplogInk)
             .lineLimit(1)
             .fixedSize(horizontal: true, vertical: false)
-            .padding(.horizontal, 10)
-            .padding(.vertical, MaplogSpacing.xSmall)
-            .background(Color.maplogCanvas)
-            .clipShape(Capsule())
     }
 }

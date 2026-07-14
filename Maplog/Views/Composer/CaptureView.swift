@@ -431,6 +431,11 @@ struct CaptureView: View {
 
     var body: some View {
         GeometryReader { proxy in
+            // This full-screen view reports a zero safe-area inset on some devices.
+            // Retain the shared status-bar clearance, then add only a small gap.
+            let topControlInset = max(proxy.safeAreaInsets.top, MaplogSpacing.reelTopClearance) + MaplogSpacing.xSmall
+            let bottomControlInset = max(proxy.safeAreaInsets.bottom, 34) + MaplogSpacing.medium
+
             ZStack(alignment: .bottom) {
                 cameraSurface
                     .frame(width: proxy.size.width, height: proxy.size.height)
@@ -456,12 +461,12 @@ struct CaptureView: View {
                 }
 
                 VStack(spacing: 0) {
-                    captureTopBar
+                    captureTopBar(topInset: topControlInset)
                     Spacer()
                     toolsAndClips
                     durationPicker
                     shutterRow
-                    nextButton
+                    nextButton(bottomInset: bottomControlInset)
                 }
 
                 if let toastText {
@@ -473,7 +478,7 @@ struct CaptureView: View {
                         .background(Color.maplogSurface)
                         .clipShape(Capsule())
                         .shadow(color: .black.opacity(0.14), radius: 18, x: 0, y: 8)
-                        .padding(.bottom, 164)
+                        .padding(.bottom, bottomControlInset + 80)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
@@ -481,6 +486,7 @@ struct CaptureView: View {
             .background(Color.black)
             .clipped()
         }
+        .ignoresSafeArea(.container, edges: [.top, .bottom])
         .toolbar(.hidden, for: .navigationBar)
         .maplogTabBarHidden()
         .onAppear {
@@ -591,9 +597,9 @@ struct CaptureView: View {
         }
     }
 
-    private var captureTopBar: some View {
+    private func captureTopBar(topInset: CGFloat) -> some View {
         HStack {
-            CameraCircleButton(systemImage: "xmark") {
+            CameraCircleButton(systemImage: "xmark", accessibilityLabel: "촬영 닫기") {
                 if let onClose {
                     onClose()
                 } else {
@@ -613,18 +619,21 @@ struct CaptureView: View {
             .clipShape(Capsule())
             Spacer()
             HStack(spacing: MaplogSpacing.small) {
-                CameraCircleButton(systemImage: isFlashOff ? "bolt.slash.fill" : "bolt.fill") {
+                CameraCircleButton(
+                    systemImage: isFlashOff ? "bolt.slash.fill" : "bolt.fill",
+                    accessibilityLabel: isFlashOff ? "플래시 켜기" : "플래시 끄기"
+                ) {
                     isFlashOff.toggle()
                     showToast(isFlashOff ? "플래시를 껐어요" : "플래시를 켰어요")
                 }
-                CameraCircleButton(systemImage: "camera.rotate.fill") {
+                CameraCircleButton(systemImage: "camera.rotate.fill", accessibilityLabel: "카메라 전환") {
                     camera.switchCamera()
                     showToast(camera.isFrontCamera ? "전면 카메라 모드" : "후면 카메라 모드")
                 }
             }
         }
         .padding(.horizontal, MaplogSpacing.page)
-        .padding(.top, 50)
+        .padding(.top, topInset)
     }
 
     private var toolsAndClips: some View {
@@ -634,16 +643,32 @@ struct CaptureView: View {
                 .layoutPriority(1)
 
             VStack(spacing: MaplogSpacing.medium) {
-                CameraCircleButton(systemImage: "clock.arrow.circlepath", isSelected: selectedTimer != "끄기") {
+                CameraCircleButton(
+                    systemImage: "clock.arrow.circlepath",
+                    isSelected: selectedTimer != "끄기",
+                    accessibilityLabel: "타이머"
+                ) {
                     activeToolSheet = .timer
                 }
-                CameraCircleButton(systemImage: "goforward.plus", isSelected: selectedTransition != "컷") {
+                CameraCircleButton(
+                    systemImage: "goforward.plus",
+                    isSelected: selectedTransition != "컷",
+                    accessibilityLabel: "전환 효과"
+                ) {
                     activeToolSheet = .transition
                 }
-                CameraCircleButton(systemImage: "textformat", isSelected: !stickerText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) {
+                CameraCircleButton(
+                    systemImage: "textformat",
+                    isSelected: !stickerText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                    accessibilityLabel: "텍스트 스티커"
+                ) {
                     activeToolSheet = .textSticker
                 }
-                CameraCircleButton(systemImage: "square.grid.2x2.fill", isSelected: isGridOn) {
+                CameraCircleButton(
+                    systemImage: "square.grid.2x2.fill",
+                    isSelected: isGridOn,
+                    accessibilityLabel: "격자 가이드"
+                ) {
                     withAnimation(.easeInOut(duration: 0.18)) {
                         isGridOn.toggle()
                     }
@@ -745,7 +770,11 @@ struct CaptureView: View {
 
     private var shutterRow: some View {
         HStack {
-            CameraCircleButton(systemImage: "photo.on.rectangle.angled", size: 62) {
+            CameraCircleButton(
+                systemImage: "photo.on.rectangle.angled",
+                size: 62,
+                accessibilityLabel: "갤러리에서 클립 추가"
+            ) {
                 activeToolSheet = .gallery
             }
             Spacer()
@@ -756,7 +785,11 @@ struct CaptureView: View {
                 action: handleShutter
             )
             Spacer()
-            CameraCircleButton(systemImage: "arrow.triangle.2.circlepath.camera", size: 62) {
+            CameraCircleButton(
+                systemImage: "arrow.triangle.2.circlepath.camera",
+                size: 62,
+                accessibilityLabel: "카메라 전환"
+            ) {
                 camera.switchCamera()
                 showToast(camera.isFrontCamera ? "전면 카메라 모드" : "후면 카메라 모드")
             }
@@ -765,7 +798,7 @@ struct CaptureView: View {
         .padding(.top, 20)
     }
 
-    private var nextButton: some View {
+    private func nextButton(bottomInset: CGFloat) -> some View {
         Button {
             guard !capturedStyles.isEmpty else {
                 showToast("먼저 클립을 촬영해 주세요")
@@ -776,13 +809,13 @@ struct CaptureView: View {
             Text("다음")
                 .font(.system(size: 18, weight: .black))
                 .foregroundStyle(Color.maplogInk)
-                .frame(width: 112, height: 52)
+                .frame(width: 92, height: 44)
                 .background(Color.maplogCaptureAccent)
                 .clipShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(MaplogPressFeedbackStyle(pressedScale: 0.98))
         .padding(.top, 22)
-        .padding(.bottom, 32)
+        .padding(.bottom, bottomInset)
         .navigationDestination(isPresented: $showsPlaceMatching) {
             PlaceMatchingView(capturedStyles: capturedStyles, initialPlaceName: initialPlaceName)
         }
@@ -860,6 +893,7 @@ private struct CameraCircleButton: View {
     let systemImage: String
     var size: CGFloat = 44
     var isSelected = false
+    let accessibilityLabel: String
     let action: () -> Void
 
     var body: some View {
@@ -871,7 +905,8 @@ private struct CameraCircleButton: View {
                 .background(isSelected ? Color.maplogLime : .black.opacity(0.42))
                 .clipShape(Circle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(MaplogPressFeedbackStyle())
+        .accessibilityLabel(accessibilityLabel)
         .accessibilityValue(isSelected ? "선택됨" : "선택 안 됨")
     }
 }
@@ -1943,10 +1978,6 @@ struct UploadView: View {
                     .foregroundStyle(Color.maplogMuted)
                     .frame(maxWidth: .infinity)
                     .frame(height: 48)
-                    .background {
-                        RoundedRectangle(cornerRadius: MaplogRadius.small, style: .continuous)
-                            .stroke(Color.maplogLine, style: StrokeStyle(lineWidth: 1.4, dash: [4]))
-                    }
             }
             .buttonStyle(.plain)
         }

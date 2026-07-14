@@ -746,15 +746,9 @@ struct PopularMaplogDetailView: View {
 
     private var routeTopBar: some View {
         HStack {
-            Button {
+            MaplogNavigationButton(systemName: "chevron.left", accessibilityLabel: "뒤로 가기") {
                 close()
-            } label: {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundStyle(Color.maplogInk)
-                    .frame(width: 44, height: 44)
             }
-            .buttonStyle(.plain)
 
             Spacer()
             Text("루트 상세")
@@ -762,15 +756,9 @@ struct PopularMaplogDetailView: View {
                 .foregroundStyle(Color.maplogInk)
             Spacer()
 
-            Button {
+            MaplogNavigationButton(systemName: "square.and.arrow.up", accessibilityLabel: "루트 공유") {
                 showsShareSheet = true
-            } label: {
-                Image(systemName: "square.and.arrow.up")
-                    .font(.system(size: 19, weight: .bold))
-                    .foregroundStyle(Color.maplogInk)
-                    .frame(width: 44, height: 44)
             }
-            .buttonStyle(.plain)
         }
         .padding(.horizontal, 14)
         .padding(.top, 48)
@@ -784,14 +772,6 @@ struct PopularMaplogDetailView: View {
             .overlay {
                 LinearGradient(colors: [.clear, .black.opacity(0.72)], startPoint: .top, endPoint: .bottom)
                     .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.xLarge, style: .continuous))
-            }
-            .overlay {
-                Image(systemName: "play.fill")
-                    .font(.system(size: 30, weight: .black))
-                    .foregroundStyle(.white)
-                    .frame(width: 82, height: 82)
-                    .background(.ultraThinMaterial)
-                    .clipShape(Circle())
             }
             .overlay(alignment: .bottomLeading) {
                 VStack(alignment: .leading, spacing: 10) {
@@ -826,7 +806,6 @@ struct PopularMaplogDetailView: View {
                             Circle()
                                 .fill(index == 0 ? Color.maplogLime : Color.maplogLine)
                                 .frame(width: 14, height: 14)
-                                .overlay(Circle().stroke(.white, lineWidth: 3))
                             Rectangle()
                                 .fill(index == routeStops.count - 1 ? .clear : Color.maplogLine)
                                 .frame(width: 2, height: 104)
@@ -850,10 +829,6 @@ struct PopularMaplogDetailView: View {
                                         Text(stop.duration)
                                             .font(.system(size: 12, weight: .bold))
                                             .foregroundStyle(Color.maplogMuted)
-                                            .padding(.horizontal, 9)
-                                            .padding(.vertical, 6)
-                                            .background(Color.maplogCanvas)
-                                            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
                                     }
 
                                     Text(stop.subtitle)
@@ -870,10 +845,6 @@ struct PopularMaplogDetailView: View {
                             .background(Color.maplogSurface)
                             .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
                             .shadow(color: .black.opacity(0.06), radius: 18, x: 0, y: 8)
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                                    .stroke(Color.maplogLine, lineWidth: 1)
-                            }
                         }
                         .buttonStyle(.plain)
                     }
@@ -920,11 +891,9 @@ struct PopularMaplogDetailView: View {
                         .font(.system(size: 14, weight: .bold))
                 }
                 .foregroundStyle(Color.maplogInk)
-                .frame(width: 128, height: 82)
-                .background(Color.maplogCanvas)
-                .clipShape(Capsule())
+                .frame(width: 96, height: 68)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(MaplogPressFeedbackStyle())
 
             NavigationLink {
                 RouteDetailView(trip: trip)
@@ -933,9 +902,8 @@ struct PopularMaplogDetailView: View {
                     .font(MaplogFont.cardTitle)
                     .foregroundStyle(Color.maplogInk)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 82)
-                    .background(Color.maplogLime)
-                    .clipShape(Capsule())
+                    .frame(height: 64)
+                    .background(Color.maplogLime, in: RoundedRectangle(cornerRadius: MaplogRadius.large, style: .continuous))
             }
             .buttonStyle(.plain)
         }
@@ -943,9 +911,6 @@ struct PopularMaplogDetailView: View {
         .padding(.top, 16)
         .padding(.bottom, 24)
         .background(Color.maplogSurface)
-        .overlay(alignment: .top) {
-            Rectangle().fill(Color.maplogLine).frame(height: 1)
-        }
     }
 
     private func toggleSavedRoute() {
@@ -1034,7 +999,7 @@ struct VlogPlaceInfoSheet: View {
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
-            .background(Color.maplogInk)
+            .background(Color.maplogCanvas)
             .ignoresSafeArea(edges: .top)
             .toolbar(.hidden, for: .navigationBar)
         }
@@ -1050,7 +1015,7 @@ struct VlogPlaceInfoSheet: View {
     private var backgroundScene: some View {
         TravelImageView(style: post.imageStyle, height: 360, cornerRadius: 0, showsSymbol: false)
             .blur(radius: 9)
-            .overlay(Color.black.opacity(0.48))
+            .overlay(Color.maplogSurface.opacity(0.30))
             .ignoresSafeArea()
     }
 
@@ -1256,9 +1221,9 @@ struct VlogPlaceInfoSheet: View {
         Button(action: action) {
             Image(systemName: systemImage)
                 .font(MaplogFont.cardTitle)
-                .foregroundStyle(.white)
+                .foregroundStyle(Color.maplogInk)
                 .frame(width: 44, height: 44)
-                .background(.black.opacity(0.54))
+                .background(Color.maplogSurface.opacity(0.92))
                 .clipShape(Circle())
         }
         .buttonStyle(.plain)
@@ -2112,9 +2077,9 @@ struct OtherProfileView: View {
         Button(action: action) {
             Image(systemName: systemImage)
                 .font(MaplogFont.cardTitle)
-                .foregroundStyle(.white)
+                .foregroundStyle(Color.maplogInk)
                 .frame(width: 44, height: 44)
-                .background(.black.opacity(0.42))
+                .background(Color.maplogSurface.opacity(0.92))
                 .clipShape(Circle())
         }
         .buttonStyle(.plain)
@@ -2508,15 +2473,9 @@ struct RouteDetailView: View {
 
     private var routeTopBar: some View {
         HStack {
-            Button {
+            MaplogNavigationButton(systemName: "chevron.left", accessibilityLabel: "뒤로 가기") {
                 dismiss()
-            } label: {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundStyle(Color.maplogInk)
-                    .frame(width: 44, height: 44)
             }
-            .buttonStyle(.plain)
 
             Spacer()
             Text("루트 상세")
@@ -2524,22 +2483,13 @@ struct RouteDetailView: View {
                 .foregroundStyle(Color.maplogInk)
             Spacer()
 
-            Button {
+            MaplogNavigationButton(systemName: "square.and.arrow.up", accessibilityLabel: "루트 공유") {
                 showsShareSheet = true
-            } label: {
-                Image(systemName: "square.and.arrow.up")
-                    .font(.system(size: 18, weight: .bold))
-                    .foregroundStyle(Color.maplogInk)
-                    .frame(width: 44, height: 44)
             }
-            .buttonStyle(.plain)
         }
         .padding(.horizontal, MaplogSpacing.medium)
         .frame(height: 58)
         .background(Color.maplogSurface)
-        .overlay(alignment: .bottom) {
-            Rectangle().fill(Color.maplogLine).frame(height: 1)
-        }
     }
 
     private var routeSummary: some View {
@@ -2640,12 +2590,10 @@ struct RouteDetailView: View {
             } label: {
                 Label(sessionStore.hasSavedRoute(trip) ? "저장됨" : "루트 저장", systemImage: sessionStore.hasSavedRoute(trip) ? "bookmark.fill" : "bookmark")
                     .font(.system(size: 15, weight: .black))
-                    .foregroundStyle(Color.maplogInk)
-                    .frame(width: 126, height: 56)
-                    .background(Color.maplogCanvas)
-                    .clipShape(Capsule())
+                    .foregroundStyle(Color.maplogOlive)
+                    .frame(width: 94, height: 56)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(MaplogPressFeedbackStyle())
 
             Button {
                 showStartSheet = true
@@ -2655,8 +2603,7 @@ struct RouteDetailView: View {
                     .foregroundStyle(Color.maplogInk)
                     .frame(maxWidth: .infinity)
                     .frame(height: 56)
-                    .background(Color.maplogLime)
-                    .clipShape(Capsule())
+                    .background(Color.maplogLime, in: RoundedRectangle(cornerRadius: MaplogRadius.large, style: .continuous))
             }
             .buttonStyle(.plain)
         }
@@ -2664,9 +2611,6 @@ struct RouteDetailView: View {
         .padding(.top, 12)
         .padding(.bottom, 22)
         .background(Color.maplogSurface)
-        .overlay(alignment: .top) {
-            Rectangle().fill(Color.maplogLine).frame(height: 1)
-        }
     }
 
     private var estimatedDistance: String {

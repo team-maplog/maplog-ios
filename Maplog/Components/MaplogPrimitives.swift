@@ -81,12 +81,7 @@ struct MaplogSearchButton<Destination: View>: View {
             .foregroundStyle(Color.maplogMuted.opacity(0.82))
             .padding(.horizontal, MaplogSpacing.medium)
             .frame(height: MaplogSize.searchHeight)
-            .background(Color.maplogSurface)
-            .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous)
-                    .stroke(Color.maplogBorder, lineWidth: 1)
-            }
+            .background(Color.maplogCanvas, in: RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous))
         }
         .buttonStyle(.plain)
         .accessibilityLabel("\(placeholder) 검색")
@@ -103,12 +98,7 @@ struct MaplogFilterChip: View {
             .foregroundStyle(isSelected ? Color.maplogOnPrimary : Color.maplogMuted)
             .padding(.horizontal, MaplogSpacing.medium)
             .frame(height: MaplogSize.chipHeight)
-            .background(isSelected ? Color.maplogPrimary : Color.maplogSurface)
-            .clipShape(Capsule())
-            .overlay {
-                Capsule()
-                    .stroke(isSelected ? Color.maplogPrimary : Color.maplogBorder, lineWidth: 1)
-            }
+            .background(isSelected ? Color.maplogPrimary : .clear, in: RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous))
             .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
@@ -149,17 +139,60 @@ struct MaplogIconButton: View {
     }
 }
 
+/// Shared, unframed navigation action. The 44pt hit target stays intact while
+/// the visual remains as quiet as the rest of the interface.
+struct MaplogNavigationButton: View {
+    let systemName: String
+    let accessibilityLabel: String
+    var foreground = Color.maplogInk
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: MaplogSize.iconMedium, weight: .semibold))
+                .foregroundStyle(foreground)
+                .frame(width: MaplogSize.minimumTapTarget, height: MaplogSize.minimumTapTarget)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(MaplogPressFeedbackStyle())
+        .accessibilityLabel(accessibilityLabel)
+    }
+}
+
+/// Use over photography and video where contrast is needed without adding a
+/// decorative circular container.
+struct MaplogOverlayIconButton: View {
+    let systemName: String
+    let accessibilityLabel: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: MaplogSize.iconMedium, weight: .semibold))
+                .foregroundStyle(.white)
+                .shadow(color: .black.opacity(0.46), radius: 3, x: 0, y: 1)
+                .frame(width: MaplogSize.minimumTapTarget, height: MaplogSize.minimumTapTarget)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(MaplogPressFeedbackStyle())
+        .accessibilityLabel(accessibilityLabel)
+    }
+}
+
 struct MaplogToast: View {
     let message: String
 
     var body: some View {
         Text(message)
             .font(MaplogFont.calloutStrong)
-            .foregroundStyle(Color.maplogSurface)
+            .foregroundStyle(Color.maplogInk)
             .padding(.horizontal, MaplogSpacing.medium)
             .frame(minHeight: MaplogSize.controlHeight)
-            .background(Color.maplogInk)
+            .background(Color.maplogSurfaceRaised)
             .clipShape(Capsule())
+            .shadow(color: .black.opacity(0.10), radius: 10, y: 4)
             .accessibilityAddTraits(.isStaticText)
     }
 }

@@ -83,11 +83,8 @@ struct SavedRouteActionCard: View {
                 Button(action: onRemove) {
                     Label("저장 해제", systemImage: "bookmark.slash")
                         .font(MaplogFont.caption)
-                        .foregroundStyle(Color.maplogInk)
-                        .padding(.horizontal, MaplogSpacing.small)
+                        .foregroundStyle(Color.maplogMuted)
                         .frame(height: 34)
-                        .background(Color.maplogCanvas)
-                        .clipShape(Capsule())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("\(trip.title) 저장 해제")
@@ -132,11 +129,9 @@ struct SavedConfirmationCard<Destination: View>: View {
             } label: {
                 Label(buttonTitle, systemImage: "tray.full.fill")
                     .font(MaplogFont.bodyStrong)
-                    .foregroundStyle(Color.maplogInk)
+                    .foregroundStyle(Color.maplogOlive)
                     .frame(maxWidth: .infinity)
                     .frame(height: MaplogSize.controlHeight)
-                    .background(Color.maplogCanvas)
-                    .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous))
             }
             .buttonStyle(.plain)
         }

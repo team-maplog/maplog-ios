@@ -56,12 +56,15 @@ struct SpotDetailView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     headerImage
 
-                    spotSummaryCard
+                    spotSummary
                         .padding(.horizontal, MaplogSpacing.page)
-                        .padding(.top, -MaplogSpacing.xLarge)
+                        .padding(.top, MaplogSpacing.xLarge)
+
+                    quickActionRow
+                        .padding(.horizontal, MaplogSpacing.page)
+                        .padding(.top, MaplogSpacing.small)
 
                     VStack(alignment: .leading, spacing: MaplogSpacing.large) {
-                        actionRow
                         if sessionStore.hasVisitChecklistSpot(spot) {
                             visitChecklistConfirmation
                         }
@@ -87,9 +90,7 @@ struct SpotDetailView: View {
                     .foregroundStyle(Color.maplogTextPrimary)
                     .padding(.horizontal, MaplogSpacing.medium)
                     .frame(minHeight: MaplogSize.controlHeight)
-                    .background(Color.maplogSurface)
-                    .clipShape(Capsule())
-                    .overlay(Capsule().stroke(Color.maplogBorder.opacity(0.72), lineWidth: 1))
+                    .background(.regularMaterial, in: Capsule())
                     .shadow(color: .black.opacity(0.12), radius: 14, x: 0, y: 6)
                     .padding(.bottom, 110)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -152,10 +153,10 @@ struct SpotDetailView: View {
     }
 
     private var headerImage: some View {
-        MaplogSpotImageView(spot: spot, height: 326, cornerRadius: 0)
+        MaplogSpotImageView(spot: spot, height: 350, cornerRadius: 0)
             .overlay {
                 LinearGradient(
-                    colors: [.black.opacity(0.22), .clear, .black.opacity(0.12)],
+                    colors: [.black.opacity(0.22), .clear, .black.opacity(0.18)],
                     startPoint: .top,
                     endPoint: .bottom
                 )
@@ -163,23 +164,23 @@ struct SpotDetailView: View {
             }
             .overlay(alignment: .top) {
                 HStack {
-                    CircleOverlayButton(systemImage: "chevron.left") {
+                    MaplogOverlayIconButton(systemName: "chevron.left", accessibilityLabel: "뒤로 가기") {
                         dismiss()
                     }
                     Spacer()
-                    CircleOverlayButton(systemImage: "square.and.arrow.up") {
+                    MaplogOverlayIconButton(systemName: "square.and.arrow.up", accessibilityLabel: "공유") {
                         activeSheet = .share
                     }
-                    CircleOverlayButton(systemImage: isSaved ? "heart.fill" : "heart") {
+                    MaplogOverlayIconButton(systemName: isSaved ? "heart.fill" : "heart", accessibilityLabel: isSaved ? "장소 저장 해제" : "장소 저장") {
                         toggleSaved()
                     }
                 }
                 .padding(.horizontal, MaplogSpacing.page)
                 .padding(.top, 54)
-            }
+        }
     }
 
-    private var spotSummaryCard: some View {
+    private var spotSummary: some View {
         VStack(alignment: .leading, spacing: MaplogSpacing.small) {
             HStack(alignment: .firstTextBaseline, spacing: MaplogSpacing.small) {
                 Text("\(spot.category) · \(spot.area)")
@@ -196,7 +197,7 @@ struct SpotDetailView: View {
             }
 
             Text(spot.name)
-                .font(MaplogFont.largeTitle)
+                .font(MaplogFont.screenTitle)
                 .foregroundStyle(Color.maplogTextPrimary)
                 .fixedSize(horizontal: false, vertical: true)
 
@@ -206,43 +207,38 @@ struct SpotDetailView: View {
                 .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(MaplogSpacing.medium)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .maplogCard(cornerRadius: MaplogRadius.large, style: .elevated)
         .accessibilityElement(children: .combine)
     }
 
-    private var actionRow: some View {
-        HStack(spacing: 0) {
-            spotActionButton(title: "길찾기", systemImage: "diamond") {
+    private var quickActionRow: some View {
+        HStack(spacing: MaplogSpacing.small) {
+            quickActionButton(title: "길찾기", systemImage: MaplogSymbol.directions) {
                 activeSheet = .route
             }
-            Divider().frame(height: MaplogSize.controlHeight)
-            spotActionButton(title: "전화", systemImage: "phone") {
+            quickActionButton(title: "전화", systemImage: "phone") {
                 activeSheet = .contact
             }
-            Divider().frame(height: MaplogSize.controlHeight)
-            spotActionButton(title: "공유", systemImage: "square.and.arrow.up") {
+            quickActionButton(title: "공유", systemImage: "square.and.arrow.up") {
                 activeSheet = .share
             }
         }
-        .padding(.vertical, MaplogSpacing.xSmall)
-        .maplogCard(cornerRadius: MaplogRadius.medium)
     }
 
-    private func spotActionButton(title: String, systemImage: String, action: @escaping () -> Void) -> some View {
+    private func quickActionButton(
+        title: String,
+        systemImage: String,
+        action: @escaping () -> Void
+    ) -> some View {
         Button(action: action) {
-            VStack(spacing: MaplogSpacing.xxSmall) {
-                Image(systemName: systemImage)
-                    .font(.system(size: MaplogSize.iconMedium, weight: .semibold))
-                Text(title)
-                    .font(MaplogFont.caption)
-            }
-            .foregroundStyle(Color.maplogInk)
-            .frame(maxWidth: .infinity)
-            .frame(minHeight: MaplogSize.controlHeight)
+            Label(title, systemImage: systemImage)
+                .font(MaplogFont.calloutStrong)
+                .foregroundStyle(Color.maplogInk)
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: MaplogSize.minimumTapTarget)
+                .contentShape(Rectangle())
         }
-        .buttonStyle(MaplogPressFeedbackStyle())
+        .buttonStyle(MaplogPressFeedbackStyle(pressedScale: 0.98))
         .accessibilityLabel(title)
     }
 
@@ -279,11 +275,6 @@ struct SpotDetailView: View {
                 .accessibilityAddTraits(selectedTab == tab ? .isSelected : [])
             }
         }
-        .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(Color.maplogBorder)
-                .frame(height: 1)
-        }
     }
 
     @ViewBuilder
@@ -313,10 +304,6 @@ struct SpotDetailView: View {
                         .frame(minHeight: MaplogSize.minimumTapTarget)
                 }
             }
-            .overlay(alignment: .bottom) {
-                Rectangle().fill(Color.maplogBorder).frame(height: 1)
-            }
-
             VStack(alignment: .leading, spacing: MaplogSpacing.medium) {
                 Text("방문 전 확인")
                 detailLoadingRow
@@ -361,17 +348,14 @@ struct SpotDetailView: View {
             detailRow(icon: "mappin.and.ellipse", title: spot.area, subtitle: locationGuidance)
             detailRow(icon: "clock", title: "영업 중 21:00 종료", subtitle: "오늘 방문하기 좋은 시간대입니다")
 
-            HStack {
+            HStack(spacing: MaplogSpacing.medium) {
                 Label("방문자 리뷰 128", systemImage: "square.and.pencil")
-                Divider().frame(height: MaplogSpacing.medium)
                 Label("블로그 리뷰 342", systemImage: "doc.text")
                 Spacer()
             }
             .font(MaplogFont.caption)
             .foregroundStyle(Color.maplogMuted)
         }
-        .padding(MaplogSpacing.medium)
-        .maplogCard(cornerRadius: MaplogRadius.medium)
     }
 
     private var reviewList: some View {
@@ -426,13 +410,6 @@ struct SpotDetailView: View {
                 detailRow(icon: "phone.fill", title: "02-123-4567", subtitle: "방문 전 문의 가능한 대표 번호입니다")
                 detailRow(icon: "sparkles", title: "예약 · 포장 · 반려동물 동반", subtitle: "방문 전 현장 안내를 확인해 주세요")
             }
-            .padding(.horizontal, MaplogSpacing.medium)
-            .background(Color.maplogSurface)
-            .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous)
-                    .stroke(Color.maplogBorder.opacity(0.82), lineWidth: 1)
-            }
 
             HStack(spacing: MaplogSpacing.xSmall) {
                 ForEach(spot.tags, id: \.self) { tag in
@@ -461,9 +438,7 @@ struct SpotDetailView: View {
             Image(systemName: icon)
                 .font(.system(size: MaplogSize.iconMedium, weight: .semibold))
                 .foregroundStyle(Color.maplogMuted)
-                .frame(width: MaplogSize.iconLarge, height: MaplogSize.iconLarge)
-                .padding(MaplogSpacing.xxSmall)
-                .background(Color.maplogCanvas, in: Circle())
+                .frame(width: 36, height: 36)
             VStack(alignment: .leading, spacing: MaplogSpacing.xxSmall) {
                 Text(title)
                     .font(MaplogFont.bodyStrong)
@@ -474,8 +449,8 @@ struct SpotDetailView: View {
             }
             Spacer()
         }
-        .padding(.vertical, MaplogSpacing.xSmall)
-        .overlay(alignment: .bottom) { Rectangle().fill(Color.maplogLine).frame(height: 1) }
+        .padding(.vertical, MaplogSpacing.xxSmall)
+        .frame(minHeight: 56)
     }
 
     private var includedMaplogs: some View {
@@ -548,10 +523,12 @@ struct SpotDetailView: View {
             Button {
                 activeSheet = .route
             } label: {
-                Label("길찾기", systemImage: "diamond")
+                Label("길찾기", systemImage: MaplogSymbol.directions)
                     .font(MaplogFont.calloutStrong)
+                .foregroundStyle(Color.maplogInk)
+                .frame(minWidth: 82, minHeight: MaplogSize.primaryButtonHeight)
             }
-            .buttonStyle(MaplogButtonStyle(variant: .secondary, size: .large))
+            .buttonStyle(MaplogPressFeedbackStyle())
             .accessibilityLabel("길찾기")
 
             Button {
@@ -564,7 +541,9 @@ struct SpotDetailView: View {
             }
             .buttonStyle(
                 MaplogButtonStyle(
-                    variant: isInRoute ? .tonal : .primary,
+                    variant: isInRoute
+                        ? .tonal
+                        : .brand(background: .maplogLime, foreground: .maplogInk),
                     size: .large,
                     fullWidth: true
                 )
@@ -576,7 +555,9 @@ struct SpotDetailView: View {
         .padding(.bottom, MaplogSpacing.large)
         .background(Color.maplogSurface)
         .overlay(alignment: .top) {
-            Rectangle().fill(Color.maplogLine).frame(height: 1)
+            Rectangle()
+                .fill(Color.maplogLine.opacity(0.7))
+                .frame(height: 1)
         }
     }
 
@@ -680,13 +661,11 @@ private struct SpotContactSheet: View {
         VStack(alignment: .leading, spacing: 18) {
             sheetHeader(title: "장소 문의", subtitle: spot.name)
 
-            VStack(spacing: 0) {
+            VStack(spacing: MaplogSpacing.xSmall) {
                 contactInfoRow(icon: "phone.fill", title: phoneNumber, subtitle: "대표 번호")
                 contactInfoRow(icon: "clock.fill", title: "영업 중 · 21:00 종료", subtitle: "브레이크 타임 없이 운영")
                 contactInfoRow(icon: "mappin.and.ellipse", title: spot.area, subtitle: "지도에서 상세 위치를 확인하세요")
             }
-            .background(Color.maplogCanvas)
-            .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous))
 
             HStack(spacing: 10) {
                 SpotSheetActionButton(title: "전화", systemImage: "phone.fill") {
@@ -720,16 +699,9 @@ private struct SpotContactSheet: View {
 
             Spacer()
 
-            Button {
+            MaplogNavigationButton(systemName: "xmark", accessibilityLabel: "닫기") {
                 dismiss()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 14, weight: .black))
-                    .foregroundStyle(Color.maplogInk)
-                    .frame(width: MaplogSize.minimumTapTarget, height: MaplogSize.minimumTapTarget)
-                    .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
         }
     }
 
@@ -737,10 +709,8 @@ private struct SpotContactSheet: View {
         HStack(spacing: MaplogSpacing.small) {
             Image(systemName: icon)
                 .font(.system(size: 17, weight: .bold))
-                .foregroundStyle(Color.maplogInk)
+                .foregroundStyle(Color.maplogOlive)
                 .frame(width: 38, height: 38)
-                .background(Color.maplogLime.opacity(0.72))
-                .clipShape(Circle())
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
@@ -753,13 +723,7 @@ private struct SpotContactSheet: View {
 
             Spacer()
         }
-        .padding(14)
-        .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(Color.maplogLine.opacity(0.8))
-                .frame(height: 1)
-                .padding(.leading, 64)
-        }
+        .padding(.vertical, MaplogSpacing.xSmall)
     }
 
     private func complete(_ message: String) {
@@ -790,16 +754,9 @@ struct SpotShareSheet: View {
 
                 Spacer()
 
-                Button {
+                MaplogNavigationButton(systemName: "xmark", accessibilityLabel: "닫기") {
                     dismiss()
-                } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 14, weight: .black))
-                        .foregroundStyle(Color.maplogInk)
-                        .frame(width: MaplogSize.minimumTapTarget, height: MaplogSize.minimumTapTarget)
-                        .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
             }
 
             HStack(spacing: 10) {
@@ -861,33 +818,6 @@ private struct SpotSheetActionButton: View {
             .frame(maxWidth: .infinity)
         }
         .buttonStyle(.plain)
-    }
-}
-
-private struct CircleOverlayButton: View {
-    let systemImage: String
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: systemImage)
-                .font(.system(size: MaplogSize.iconMedium, weight: .semibold))
-                .foregroundStyle(Color.maplogInk)
-                .frame(width: 44, height: 44)
-                .background(Color.maplogSurface.opacity(0.9), in: Circle())
-                .overlay(Circle().stroke(.white.opacity(0.32), lineWidth: 1))
-        }
-        .buttonStyle(MaplogPressFeedbackStyle(pressedScale: 0.94))
-        .accessibilityLabel(accessibilityLabel)
-    }
-
-    private var accessibilityLabel: String {
-        switch systemImage {
-        case "chevron.left": return "뒤로 가기"
-        case "square.and.arrow.up": return "공유"
-        case "heart", "heart.fill": return "장소 저장"
-        default: return "장소 동작"
-        }
     }
 }
 

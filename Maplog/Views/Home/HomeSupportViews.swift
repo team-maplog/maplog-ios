@@ -1590,6 +1590,7 @@ struct FeaturedEventDetailView: View {
                     }
                     infoGrid
                     locationCard
+                    relatedRecommendationsSection
                 }
                 .padding(.bottom, 24)
             }
@@ -1612,7 +1613,7 @@ struct FeaturedEventDetailView: View {
                 Button {
                     showsRouteSuggestion = true
                 } label: {
-                    Label("길찾기", systemImage: "location.north.line.fill")
+                    Label("길찾기", systemImage: MaplogSymbol.directions)
                         .font(.headline)
                         .foregroundStyle(Color.maplogOlive)
                         .frame(minWidth: 112, minHeight: 54)
@@ -1635,11 +1636,6 @@ struct FeaturedEventDetailView: View {
             .padding(.horizontal, MaplogSpacing.page)
             .padding(.vertical, 12)
             .background(.bar)
-            .overlay(alignment: .top) {
-                Rectangle()
-                    .fill(Color(uiColor: .separator).opacity(0.25))
-                    .frame(height: 1)
-            }
         }
         .background(Color(uiColor: .systemBackground))
         .ignoresSafeArea(edges: .top)
@@ -1754,7 +1750,7 @@ struct FeaturedEventDetailView: View {
                 Button {
                     showsRouteSuggestion = true
                 } label: {
-                    Label("길찾기", systemImage: "arrow.triangle.turn.up.right.diamond")
+                    Label("길찾기", systemImage: MaplogSymbol.directions)
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(Color.maplogOlive)
                         .frame(minHeight: 44)
@@ -1767,6 +1763,55 @@ struct FeaturedEventDetailView: View {
                 .foregroundStyle(.secondary)
         }
         .padding(.horizontal, MaplogSpacing.page)
+    }
+
+    private var relatedRecommendations: [EventDetailRecommendation] {
+        let nearbyPlaces = [eventNearbySpot] + Array(eventRouteNearbySpots.prefix(1))
+        let similarEvent = MockMaplogData.events.first { $0.id != event.id }
+
+        return nearbyPlaces.map(EventDetailRecommendation.place)
+            + (similarEvent.map { [EventDetailRecommendation.event($0)] } ?? [])
+    }
+
+    private var relatedRecommendationsSection: some View {
+        VStack(alignment: .leading, spacing: MaplogSpacing.small) {
+            VStack(alignment: .leading, spacing: MaplogSpacing.xxxSmall) {
+                Text("이 근처, 함께 들러보세요")
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(Color.maplogInk)
+                Text("행사 전후로 이어가기 좋은 장소와 비슷한 행사예요")
+                    .font(.subheadline)
+                    .foregroundStyle(Color.maplogMuted)
+            }
+            .padding(.horizontal, MaplogSpacing.page)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                LazyHStack(spacing: MaplogSpacing.small) {
+                    ForEach(relatedRecommendations) { recommendation in
+                        NavigationLink {
+                            recommendationDestination(for: recommendation)
+                        } label: {
+                            EventDetailRecommendationCard(recommendation: recommendation)
+                        }
+                        .buttonStyle(MaplogPressFeedbackStyle())
+                    }
+                }
+                .scrollTargetLayout()
+            }
+            .contentMargins(.horizontal, MaplogSpacing.page, for: .scrollContent)
+            .scrollTargetBehavior(.viewAligned)
+        }
+        .padding(.top, MaplogSpacing.xSmall)
+    }
+
+    @ViewBuilder
+    private func recommendationDestination(for recommendation: EventDetailRecommendation) -> some View {
+        switch recommendation {
+        case .place(let spot):
+            SpotDetailView(spot: spot)
+        case .event(let relatedEvent):
+            FeaturedEventDetailView(event: relatedEvent)
+        }
     }
 
     private func showToast(_ text: String) {
@@ -1791,6 +1836,113 @@ struct FeaturedEventDetailView: View {
             sessionStore.saveEvent(event)
             showToast("관심 행사에 저장했어요")
         }
+    }
+}
+
+private enum EventDetailRecommendation: Identifiable {
+    case place(MaplogSpot)
+    case event(FeaturedEvent)
+
+    var id: String {
+        switch self {
+        case .place(let spot):
+            "place-\(spot.id)"
+        case .event(let event):
+            "event-\(event.id)"
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .place(let spot):
+            spot.name
+        case .event(let event):
+            event.title
+        }
+    }
+
+    var subtitle: String {
+        switch self {
+        case .place(let spot):
+            "\(spot.category) · \(spot.area)"
+        case .event(let event):
+            "\(event.location) · \(event.period)"
+        }
+    }
+
+    var badge: String {
+        switch self {
+        case .place:
+            "주변 장소"
+        case .event:
+            "비슷한 행사"
+        }
+    }
+
+    var imageName: String {
+        switch self {
+        case .place(let spot):
+            spot.imageAssetName ?? spot.imageStyle.assetName
+        case .event(let event):
+            event.thumbnailAssetName ?? event.heroAssetName ?? event.imageStyle.assetName
+        }
+    }
+
+    var accessibilityLabel: String {
+        "\(badge), \(title), \(subtitle)"
+    }
+}
+
+private struct EventDetailRecommendationCard: View {
+    let recommendation: EventDetailRecommendation
+    @ScaledMetric(relativeTo: .body) private var imageHeight: CGFloat = 128
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
+            ZStack(alignment: .topLeading) {
+                Image(recommendation.imageName)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 224, height: imageHeight)
+                    .clipped()
+
+                LinearGradient(
+                    colors: [.clear, .black.opacity(0.32)],
+                    startPoint: .center,
+                    endPoint: .bottom
+                )
+
+                Text(recommendation.badge)
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(Color.maplogInk)
+                    .padding(.horizontal, MaplogSpacing.xSmall)
+                    .frame(minHeight: 24)
+                    .background(Color.maplogLime, in: Capsule())
+                    .padding(MaplogSpacing.xSmall)
+            }
+            .frame(width: 224, height: imageHeight)
+
+            VStack(alignment: .leading, spacing: MaplogSpacing.xxxSmall) {
+                Text(recommendation.title)
+                    .font(.headline)
+                    .foregroundStyle(Color.maplogInk)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+
+                Text(recommendation.subtitle)
+                    .font(.caption)
+                    .foregroundStyle(Color.maplogMuted)
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, MaplogSpacing.small)
+            .padding(.bottom, MaplogSpacing.small)
+        }
+        .frame(width: 224, alignment: .leading)
+        .background(Color.maplogSurface, in: RoundedRectangle(cornerRadius: MaplogRadius.large, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.large, style: .continuous))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(recommendation.accessibilityLabel)
+        .accessibilityHint("탭하면 상세 정보를 엽니다")
     }
 }
 
@@ -1962,15 +2114,8 @@ struct FestivalListView: View {
                         .foregroundStyle(selectedFilter == filter ? AnyShapeStyle(Color.maplogInk) : AnyShapeStyle(.secondary))
                         .padding(.horizontal, 14)
                         .frame(height: MaplogSize.chipHeight)
-                        .background(selectedFilter == filter ? Color.maplogLime : Color(uiColor: .secondarySystemBackground))
+                        .background(selectedFilter == filter ? Color.maplogLime : .clear)
                         .clipShape(Capsule())
-                        .overlay {
-                            Capsule()
-                                .stroke(
-                                    selectedFilter == filter ? Color.clear : Color(uiColor: .separator).opacity(0.25),
-                                    lineWidth: 1
-                                )
-                        }
                     }
                     .buttonStyle(.plain)
                 }

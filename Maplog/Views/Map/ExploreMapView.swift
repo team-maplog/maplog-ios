@@ -167,10 +167,9 @@ struct ExploreMapView: View {
             .buttonStyle(MaplogPressFeedbackStyle())
             .accessibilityLabel("저장한 경로")
         }
-        .foregroundStyle(.primary)
+        .foregroundStyle(Color.maplogInk)
         .padding(MaplogSpacing.small)
         .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.xLarge, style: .continuous))
         .padding(.horizontal, MaplogSpacing.page)
         .padding(.top, 12)
     }
@@ -202,9 +201,7 @@ struct ExploreMapView: View {
                 .font(.system(size: 18, weight: .black))
                 .foregroundStyle(Color.maplogInk)
                 .frame(width: 48, height: 48)
-                .background(Color.maplogSurface)
-                .clipShape(Circle())
-                .shadow(color: .black.opacity(0.14), radius: 14, x: 0, y: 6)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous))
         }
         .buttonStyle(MaplogPressFeedbackStyle())
     }
@@ -663,7 +660,6 @@ private struct ExploreMapSpotPin: View {
             )
             .frame(width: pinDiameter)
             .clipShape(Circle())
-            .overlay(Circle().stroke(.white, lineWidth: 2))
             .overlay {
                 if isSelected {
                     Circle()
@@ -680,7 +676,6 @@ private struct ExploreMapSpotPin: View {
                         .font(.system(size: isSelected ? 16 : 13, weight: .bold))
                         .foregroundStyle(spot.mapPinStyle == .festival ? Color.maplogInk : .white)
                 }
-                .overlay(Circle().stroke(.white, lineWidth: 2))
                 .overlay {
                     if isSelected {
                         Circle()

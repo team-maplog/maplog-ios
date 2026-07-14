@@ -37,9 +37,22 @@ struct ProfileView: View {
         ]
     }
 
-    private static func durationText(for clips: Int) -> String {
-        let safeClips = max(clips, 1)
-        return "약 \(safeClips)–\(safeClips * 2)초"
+    private static func durationText(for log: TravelLog) -> String {
+        switch log.id {
+        case "log-1": return "42초"
+        case "log-2": return "36초"
+        case "log-3": return "30초"
+        default: return "약 \(max(log.clips, 1) * 6)초"
+        }
+    }
+
+    private static func cityName(for log: TravelLog) -> String {
+        switch log.city {
+        case "Busan": return "부산"
+        case "Seoul": return "서울"
+        case "Jeju": return "제주"
+        default: return log.city
+        }
     }
 
     var body: some View {
@@ -53,17 +66,13 @@ struct ProfileView: View {
                             showToast("프로필을 저장했어요")
                         }
                     } label: {
-                        Label("프로필 편집", systemImage: "pencil")
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.primary)
-                            .frame(maxWidth: .infinity)
-                            .frame(minHeight: 44)
-                            .background(Color(uiColor: .secondarySystemBackground))
-                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                            .overlay {
-                                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                    .stroke(Color(uiColor: .separator).opacity(0.22), lineWidth: 1)
-                            }
+                        HStack {
+                            Spacer()
+                            Label("프로필 편집", systemImage: "pencil")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(Color.maplogOlive)
+                                .frame(minHeight: MaplogSize.minimumTapTarget)
+                        }
                     }
                     .buttonStyle(.plain)
                     profileTabs
@@ -105,7 +114,7 @@ struct ProfileView: View {
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
-        .background(Color(uiColor: .systemBackground))
+        .background(Color.maplogSurface)
         .toolbar(.hidden, for: .navigationBar)
     }
 
@@ -173,21 +182,14 @@ struct ProfileView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .frame(height: 58)
-                    .background(Color(uiColor: .systemBackground).opacity(0.001))
                     .contentShape(Rectangle())
                 }
                 .accessibilityLabel("\(tab.rawValue) 탭")
                 .buttonStyle(.plain)
             }
         }
-        .background(Color(uiColor: .systemBackground))
         .zIndex(2)
         .padding(.bottom, 8)
-        .overlay(alignment: .bottom) {
-            Rectangle()
-                .fill(Color.maplogLine)
-                .frame(height: 1)
-        }
     }
 
     private var logGrid: some View {
@@ -202,7 +204,7 @@ struct ProfileView: View {
                         TravelLogImageView(log: log, cornerRadius: 14)
                             .frame(height: 174)
                             .overlay(alignment: .bottomLeading) {
-                                Label("\(log.city) · \(Self.durationText(for: log.clips))", systemImage: "mappin.circle.fill")
+                                Label("\(Self.cityName(for: log)) · \(Self.durationText(for: log))", systemImage: "mappin.circle.fill")
                                     .font(.caption2.weight(.semibold))
                                     .foregroundStyle(.white)
                                     .padding(.horizontal, 9)
@@ -508,43 +510,143 @@ struct MyLogDetailView: View {
         )
     }
 
+    private var clips: [LogDetailClip] {
+        switch log.id {
+        case "log-1":
+            return [
+                LogDetailClip(assetName: "log_busan_night", title: "광안 해변", timestamp: "00:00"),
+                LogDetailClip(assetName: "log_busan_night", title: "파도 가까이", timestamp: "00:06"),
+                LogDetailClip(assetName: "search_busan_route", title: "광안대교", timestamp: "00:12"),
+                LogDetailClip(assetName: "log_busan_night", title: "불빛 아래", timestamp: "00:18"),
+                LogDetailClip(assetName: "search_busan_route", title: "민락 산책로", timestamp: "00:25"),
+                LogDetailClip(assetName: "log_busan_night", title: "수변공원", timestamp: "00:32"),
+                LogDetailClip(assetName: "search_busan_route", title: "마지막 불빛", timestamp: "00:39")
+            ]
+        case "log-2":
+            return [
+                LogDetailClip(assetName: "log_seongsu_evening", title: "연무장길", timestamp: "00:00"),
+                LogDetailClip(assetName: "log_seongsu_evening", title: "골목의 빛", timestamp: "00:06"),
+                LogDetailClip(assetName: "photo_city", title: "서울숲 방향", timestamp: "00:12"),
+                LogDetailClip(assetName: "log_seongsu_evening", title: "카페 앞", timestamp: "00:18"),
+                LogDetailClip(assetName: "photo_city", title: "퇴근길", timestamp: "00:24"),
+                LogDetailClip(assetName: "log_seongsu_evening", title: "저녁 끝", timestamp: "00:30")
+            ]
+        case "log-3":
+            return [
+                LogDetailClip(assetName: "log_jeju_sunrise", title: "오름 입구", timestamp: "00:00"),
+                LogDetailClip(assetName: "photo_forest", title: "억새길", timestamp: "00:06"),
+                LogDetailClip(assetName: "log_jeju_sunrise", title: "능선 위", timestamp: "00:12"),
+                LogDetailClip(assetName: "photo_mountain", title: "노을빛", timestamp: "00:18"),
+                LogDetailClip(assetName: "log_jeju_sunrise", title: "하산길", timestamp: "00:24")
+            ]
+        default:
+            return (0..<max(log.clips, 1)).map {
+                LogDetailClip(
+                    assetName: log.imageStyle.assetName,
+                    title: "장면 \($0 + 1)",
+                    timestamp: String(format: "00:%02d", $0 * 6)
+                )
+            }
+        }
+    }
+
+    private var activeClip: LogDetailClip {
+        clips[min(selectedClip, clips.count - 1)]
+    }
+
     private var durationText: String {
-        let safeClips = max(log.clips, 1)
-        return "약 \(safeClips)–\(safeClips * 2)초"
+        switch log.id {
+        case "log-1": return "42초"
+        case "log-2": return "36초"
+        case "log-3": return "30초"
+        default: return "약 \(max(log.clips, 1) * 6)초"
+        }
+    }
+
+    private var cityName: String {
+        switch log.city {
+        case "Busan": return "부산"
+        case "Seoul": return "서울"
+        case "Jeju": return "제주"
+        default: return log.city
+        }
+    }
+
+    private var tags: [String] {
+        switch log.id {
+        case "log-1": return ["#광안리", "#광안대교", "#야경산책"]
+        case "log-2": return ["#성수", "#연무장길", "#퇴근후"]
+        case "log-3": return ["#새별오름", "#제주노을", "#억새길"]
+        default: return ["#\(cityName)", "#여행기록", "#루트"]
+        }
+    }
+
+    private var routeTrip: MaplogTrip {
+        switch log.id {
+        case "log-1":
+            return MockMaplogData.gwanganriNightWalk
+        case "log-2":
+            return MaplogTrip(
+                id: "trip-seongsu-after-work",
+                title: "퇴근 후 성수 산책",
+                subtitle: "연무장길에서 서울숲까지 이어지는 저녁 산책",
+                location: "서울 성동구",
+                duration: "약 1시간 20분",
+                coverStyle: .city,
+                spots: [MockMaplogData.seongsuAlley, MockMaplogData.seoulForest]
+            )
+        case "log-3":
+            return MockMaplogData.trips.first { $0.id == "trip-jeju-green" } ?? MockMaplogData.trips[0]
+        default:
+            return MockMaplogData.trips[0]
+        }
+    }
+
+    private var routeImageAssetName: String {
+        switch log.id {
+        case "log-1": return "search_busan_route"
+        case "log-2": return "log_seongsu_evening"
+        case "log-3": return "log_jeju_sunrise"
+        default: return log.imageStyle.assetName
+        }
     }
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 22) {
-                    header
+        GeometryReader { proxy in
+            ZStack(alignment: .bottom) {
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        header
+                            .padding(.top, -proxy.safeAreaInsets.top)
 
-                    VStack(alignment: .leading, spacing: MaplogSpacing.section) {
-                        summaryCard
-                        clipStrip
-                        relatedPlaceCard
-                        routeCard
+                        VStack(alignment: .leading, spacing: MaplogSpacing.xxLarge) {
+                            summaryCard
+                            clipStrip
+                            relatedPlaceCard
+                            routeCard
+                        }
+                        .padding(.horizontal, MaplogSpacing.page)
+                        .padding(.top, MaplogSpacing.xxLarge)
+                        .padding(.bottom, MaplogSpacing.xxxLarge)
                     }
-                    .padding(.horizontal, MaplogSpacing.page)
-                    .padding(.bottom, 116)
+                }
+
+                if let toastText {
+                    Text(toastText)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .padding(.horizontal, 18)
+                        .frame(minHeight: 48)
+                        .background(.regularMaterial)
+                        .clipShape(Capsule())
+                        .shadow(color: .black.opacity(0.14), radius: 18, x: 0, y: 8)
+                        .padding(.bottom, MaplogSpacing.large)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
-            .ignoresSafeArea(edges: .top)
-
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
             bottomActionBar
-
-            if let toastText {
-                Text(toastText)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.primary)
-                    .padding(.horizontal, 18)
-                    .frame(minHeight: 48)
-                    .background(.regularMaterial)
-                    .clipShape(Capsule())
-                    .shadow(color: .black.opacity(0.14), radius: 18, x: 0, y: 8)
-                    .padding(.bottom, 98)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-            }
         }
         .sheet(isPresented: $showsShareSheet) {
             LogShareSheet(log: log) { message in
@@ -568,7 +670,7 @@ struct MyLogDetailView: View {
     }
 
     private var header: some View {
-        TravelImageView(style: log.imageStyle, height: 360, cornerRadius: 0, showsSymbol: false)
+        LogDetailImage(assetName: activeClip.assetName, height: 344, cornerRadius: 0)
             .overlay {
                 LinearGradient(colors: [.black.opacity(0.36), .clear, .black.opacity(0.68)], startPoint: .top, endPoint: .bottom)
             }
@@ -586,12 +688,12 @@ struct MyLogDetailView: View {
                 .padding(.top, 54)
             }
             .overlay(alignment: .bottomLeading) {
-                VStack(alignment: .leading, spacing: 9) {
-                    Text("\(log.city) · \(log.date)")
+                VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
+                    Text("\(cityName) · \(log.date)")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.white.opacity(0.92))
                     Text(log.title)
-                        .font(.title.weight(.semibold))
+                        .font(.title2.weight(.semibold))
                         .foregroundStyle(.white)
                     Text(log.place)
                         .font(.subheadline.weight(.medium))
@@ -614,11 +716,11 @@ struct MyLogDetailView: View {
             .foregroundStyle(.secondary)
 
             Text(log.note)
-                .font(.body)
-                .foregroundStyle(.primary)
+                .font(MaplogFont.body)
+                .foregroundStyle(Color.maplogInk)
                 .lineSpacing(3)
 
-            Text("#\(log.city)  ·  #여행기록  ·  #루트")
+            Text(tags.joined(separator: "  ·  "))
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(Color.maplogOlive)
         }
@@ -626,30 +728,42 @@ struct MyLogDetailView: View {
 
     private var clipStrip: some View {
         VStack(alignment: .leading, spacing: MaplogSpacing.small) {
-            Text("클립 \(log.clips)개")
-                .font(.title3.weight(.semibold))
-            Text("장면을 탭해 대표 이미지를 볼 수 있어요")
+            Text("장면 \(clips.count)개")
+                .font(MaplogFont.sectionTitle)
+                .foregroundStyle(Color.maplogInk)
+            Text("장면을 누르면 상단 대표 이미지가 바뀌어요")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: MaplogSpacing.small) {
-                    ForEach(0..<log.clips, id: \.self) { index in
+                    ForEach(Array(clips.enumerated()), id: \.element.id) { index, clip in
                         Button {
                             selectedClip = index
-                            showToast("\(index + 1)번째 클립을 선택했어요")
+                            showToast("\(clip.title) 장면을 선택했어요")
                         } label: {
-                            VStack(alignment: .leading, spacing: 6) {
-                                TravelImageView(style: clipStyle(for: index), height: 148, cornerRadius: MaplogRadius.large, showsSymbol: false)
-                                    .frame(width: 112)
-                                Text("\(index + 1)번째 장면")
+                            VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
+                                LogDetailImage(assetName: clip.assetName, height: 116, cornerRadius: MaplogRadius.large)
+                                    .frame(width: 160)
+                                    .overlay(alignment: .bottomLeading) {
+                                        Text(clip.timestamp)
+                                            .font(.caption2.weight(.bold))
+                                            .foregroundStyle(.white)
+                                            .padding(.horizontal, 7)
+                                            .padding(.vertical, 4)
+                                            .background(.black.opacity(0.55), in: Capsule())
+                                            .padding(MaplogSpacing.xSmall)
+                                    }
+                                Text(clip.title)
                                     .font(.footnote.weight(.semibold))
-                                    .foregroundStyle(.primary)
+                                    .foregroundStyle(Color.maplogInk)
+                                    .lineLimit(1)
                             }
-                            .opacity(selectedClip == index ? 1 : 0.62)
+                            .padding(6)
+                            .background(Color.maplogSurfaceRaised, in: RoundedRectangle(cornerRadius: MaplogRadius.large, style: .continuous))
                         }
                         .buttonStyle(MaplogPressFeedbackStyle())
-                        .accessibilityLabel("\(index + 1)번째 클립")
+                        .accessibilityLabel("\(clip.title), \(clip.timestamp)")
                         .accessibilityValue(selectedClip == index ? "선택됨" : "선택되지 않음")
                     }
                 }
@@ -665,8 +779,8 @@ struct MyLogDetailView: View {
                 SpotDetailView(spot: spot)
             } label: {
                 HStack(spacing: MaplogSpacing.small) {
-                    MaplogSpotImageView(spot: spot, height: 84, cornerRadius: MaplogRadius.medium)
-                        .frame(width: 84)
+                    MaplogSpotImageView(spot: spot, height: 88, cornerRadius: MaplogRadius.medium)
+                        .frame(width: 88)
 
                     VStack(alignment: .leading, spacing: 5) {
                         Text("\(spot.category) · \(spot.area)")
@@ -681,9 +795,14 @@ struct MyLogDetailView: View {
                     }
 
                     Spacer(minLength: 0)
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(Color.maplogSubtle)
                 }
-                .frame(minHeight: 84)
+                .padding(MaplogSpacing.xSmall)
+                .frame(minHeight: 104)
                 .contentShape(Rectangle())
+                .background(Color.maplogSurfaceRaised, in: RoundedRectangle(cornerRadius: MaplogRadius.large, style: .continuous))
             }
             .buttonStyle(MaplogPressFeedbackStyle())
         }
@@ -694,25 +813,34 @@ struct MyLogDetailView: View {
             SectionHeader(title: "이 로그의 이동 경로")
 
             NavigationLink {
-                RouteDetailView(trip: MockMaplogData.trips[0])
+                RouteDetailView(trip: routeTrip)
             } label: {
-                VStack(alignment: .leading, spacing: MaplogSpacing.small) {
-                    TravelImageView(
-                        style: MockMaplogData.trips[0].coverStyle,
-                        height: 188,
-                        cornerRadius: MaplogRadius.large,
-                        showsSymbol: false
-                    )
-                    Text(MockMaplogData.trips[0].title)
-                        .font(.title3.weight(.semibold))
-                        .foregroundStyle(.primary)
-                    Text(MockMaplogData.trips[0].subtitle)
-                        .font(.body)
-                        .foregroundStyle(.secondary)
-                    Text("\(MockMaplogData.trips[0].location) · \(MockMaplogData.trips[0].spots.count)개 장소")
-                        .font(.footnote.weight(.medium))
-                        .foregroundStyle(.secondary)
+                HStack(spacing: MaplogSpacing.small) {
+                    LogDetailImage(assetName: routeImageAssetName, height: 96, cornerRadius: MaplogRadius.medium)
+                        .frame(width: 112)
+
+                    VStack(alignment: .leading, spacing: MaplogSpacing.xxSmall) {
+                        Text(routeTrip.title)
+                            .font(MaplogFont.cardTitle)
+                            .foregroundStyle(Color.maplogInk)
+                            .lineLimit(2)
+                        Text(routeTrip.subtitle)
+                            .font(.subheadline)
+                            .foregroundStyle(Color.maplogMuted)
+                            .lineLimit(2)
+                        Text("\(routeTrip.location) · \(routeTrip.spots.count)개 장소 · \(routeTrip.duration)")
+                            .font(.footnote.weight(.medium))
+                            .foregroundStyle(Color.maplogMuted)
+                            .lineLimit(1)
+                    }
+
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(Color.maplogSubtle)
                 }
+                .padding(MaplogSpacing.xSmall)
+                .background(Color.maplogSurfaceRaised, in: RoundedRectangle(cornerRadius: MaplogRadius.large, style: .continuous))
             }
             .buttonStyle(MaplogPressFeedbackStyle())
         }
@@ -738,7 +866,7 @@ struct MyLogDetailView: View {
                     .font(MaplogFont.cardTitle)
                     .foregroundStyle(Color.maplogInk)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 56)
+                    .frame(height: MaplogSize.primaryButtonHeight)
                     .background(Color.maplogLime)
                     .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.large, style: .continuous))
             }
@@ -746,8 +874,13 @@ struct MyLogDetailView: View {
         }
         .padding(.horizontal, MaplogSpacing.page)
         .padding(.top, 12)
-        .padding(.bottom, 22)
-        .background(.regularMaterial)
+        .padding(.bottom, MaplogSpacing.small)
+        .background(Color.maplogSurface)
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(Color.maplogLine)
+                .frame(height: 1)
+        }
     }
 
     private func detailCircleButton(systemImage: String, action: @escaping () -> Void) -> some View {
@@ -760,11 +893,6 @@ struct MyLogDetailView: View {
                 .shadow(color: .black.opacity(0.30), radius: 2, x: 0, y: 1)
         }
         .buttonStyle(MaplogPressFeedbackStyle())
-    }
-
-    private func clipStyle(for index: Int) -> PhotoStyle {
-        let styles = [log.imageStyle, spot.imageStyle, PhotoStyle.city, PhotoStyle.cafe, PhotoStyle.palace]
-        return styles[index % styles.count]
     }
 
     private func showToast(_ text: String) {
@@ -783,6 +911,35 @@ struct MyLogDetailView: View {
     private func deleteLog() {
         onDelete(log)
         dismiss()
+    }
+}
+
+private struct LogDetailClip: Identifiable {
+    let assetName: String
+    let title: String
+    let timestamp: String
+
+    var id: String {
+        "\(timestamp)-\(title)"
+    }
+}
+
+private struct LogDetailImage: View {
+    let assetName: String
+    let height: CGFloat
+    var cornerRadius: CGFloat = MaplogRadius.large
+
+    var body: some View {
+        GeometryReader { proxy in
+            Image(assetName)
+                .resizable()
+                .scaledToFill()
+                .frame(width: proxy.size.width, height: proxy.size.height)
+                .clipped()
+        }
+        .frame(height: height)
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        .accessibilityHidden(true)
     }
 }
 
@@ -829,8 +986,8 @@ private struct LogShareSheet: View {
             }
 
             HStack(spacing: MaplogSpacing.small) {
-                TravelImageView(style: log.imageStyle, height: 86, cornerRadius: MaplogRadius.medium, showsSymbol: false)
-                    .frame(width: 86)
+                TravelLogImageView(log: log, cornerRadius: MaplogRadius.medium)
+                    .frame(width: 86, height: 86)
                 VStack(alignment: .leading, spacing: 6) {
                     Text("\(log.city) · \(log.date)")
                         .font(.system(size: 12, weight: .black))

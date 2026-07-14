@@ -15,6 +15,7 @@ struct MaplogActivityShareSheet: UIViewControllerRepresentable {
             activityItems: [MaplogVlogShareItem(post: post)],
             applicationActivities: nil
         )
+        controller.overrideUserInterfaceStyle = .light
         controller.completionWithItemsHandler = { _, _, _, _ in
             context.coordinator.dismiss()
         }

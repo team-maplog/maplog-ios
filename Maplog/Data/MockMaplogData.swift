@@ -150,7 +150,21 @@ enum MockMaplogData {
         pinY: 0.46
     )
 
-    static let spots = [seoulTower, forestCafe, jejuOreum, aewolCoast, seongsuAlley, seoulForest, ttukseomRiverPark, busanMarket, gwanganBridgeNight, haeundaeBeach]
+    static let minrakWaterfrontPark = MaplogSpot(
+        id: "spot-minrak-waterfront",
+        name: "민락수변공원",
+        category: "산책",
+        area: "부산 수영구 민락동",
+        summary: "광안대교 불빛을 따라 천천히 걷기 좋은 밤 산책 구간.",
+        rating: 4.7,
+        imageStyle: .night,
+        imageAssetName: "search_busan_route",
+        tags: ["부산", "광안리", "야경", "산책"],
+        pinX: 0.62,
+        pinY: 0.43
+    )
+
+    static let spots = [seoulTower, forestCafe, jejuOreum, aewolCoast, seongsuAlley, seoulForest, ttukseomRiverPark, busanMarket, gwanganBridgeNight, haeundaeBeach, minrakWaterfrontPark]
 
     /// 릴스에 기록된 장소를 중심으로 표시할 3km 내 주변 추천 목업입니다.
     static func nearbyRecommendations(around spot: MaplogSpot, withinKilometers: Int = 3) -> [MaplogSpot] {
@@ -237,6 +251,17 @@ enum MockMaplogData {
         ]
     }
 
+    static let gwanganriNightWalk = MaplogTrip(
+        id: "trip-gwangan-night-walk",
+        title: "광안리 나이트 워크",
+        subtitle: "광안대교 불빛을 따라 민락수변공원까지 걷는 밤",
+        location: "부산 수영구",
+        duration: "약 1시간 10분",
+        coverStyle: .night,
+        spots: [gwanganBridgeNight, minrakWaterfrontPark],
+        nearbySpots: [haeundaeBeach]
+    )
+
     static let trips: [MaplogTrip] = [
         MaplogTrip(
             id: "trip-seoul-night",
@@ -264,7 +289,8 @@ enum MockMaplogData {
             duration: "약 2시간",
             coverStyle: .city,
             spots: [forestCafe, seongsuAlley, seoulForest, ttukseomRiverPark]
-        )
+        ),
+        gwanganriNightWalk
     ]
 
     static let logs: [TravelLog] = [

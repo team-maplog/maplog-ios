@@ -313,12 +313,8 @@ struct HomeView: View {
             secondaryCategoryMenu
         }
         .padding(18)
-        .background(Color(uiColor: .secondarySystemBackground))
+        .background(Color.maplogCanvas)
         .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.xLarge, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: MaplogRadius.xLarge, style: .continuous)
-                .stroke(Color(uiColor: .separator).opacity(0.18), lineWidth: 1)
-        }
     }
 
     private var secondaryCategoryMenu: some View {
@@ -388,9 +384,9 @@ struct HomeView: View {
     private var weekendFestivalCarousel: some View {
         VStack(alignment: .leading, spacing: 14) {
             MaplogSectionHeader(
-                "기록하기 좋은 주말 축제",
-                systemImage: "sparkles",
-                subtitle: "짧은 클립으로 남기기 좋은 행사"
+                "이번 주말, 떠나기 좋은 축제",
+//                systemImage: "sparkles",
+//                subtitle: "주말 여행을 채워줄 행사"
             ) {
                 Button {
                     chipDestination = .festivals
@@ -823,6 +819,7 @@ private struct HomeMaplogClipCard: View {
     let onReturnHome: () -> Void
     @State private var showsComments = false
     @State private var showsShareSheet = false
+    @State private var showsSaveCollections = false
     @State private var shareSheetDetent: PresentationDetent = .medium
     @State private var actionToast: String?
     @State private var isCaptionExpanded = false
@@ -939,6 +936,11 @@ private struct HomeMaplogClipCard: View {
             .presentationDetents([.medium, .large], selection: $shareSheetDetent)
             .presentationDragIndicator(.visible)
         }
+        .sheet(isPresented: $showsSaveCollections) {
+            ReelSaveCollectionSheet(trip: trip)
+                .presentationDetents([.fraction(0.66), .large])
+                .presentationDragIndicator(.visible)
+        }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("\(post.author)의 \(post.title), \(post.place.name) 경로, \(trip.duration)")
     }
@@ -964,7 +966,7 @@ private struct HomeMaplogClipCard: View {
                 systemImage: sessionStore.hasSavedRoute(trip) ? "bookmark.fill" : "bookmark",
                 text: "저장",
                 tint: sessionStore.hasSavedRoute(trip) ? Color.maplogLime : .white,
-                accessibilityLabel: sessionStore.hasSavedRoute(trip) ? "저장 해제" : "저장"
+                accessibilityLabel: sessionStore.hasSavedRoute(trip) ? "저장한 컬렉션 관리" : "저장"
             ) {
                 toggleSave()
             }
@@ -1126,13 +1128,7 @@ private struct HomeMaplogClipCard: View {
     }
 
     private func toggleSave() {
-        if sessionStore.hasSavedRoute(trip) {
-            sessionStore.removeSavedRoute(trip)
-            showToast("저장을 해제했어요")
-        } else {
-            sessionStore.saveRoute(trip)
-            showToast("루트를 저장했어요")
-        }
+        showsSaveCollections = true
     }
 
     private func compactCountValue(from text: String) -> Int? {
@@ -1377,12 +1373,8 @@ private struct HomeNearbyPlaceCard: View {
                 .frame(maxHeight: .infinity, alignment: .top)
         }
         .padding(MaplogSpacing.small)
-        .background(Color(uiColor: .secondarySystemBackground))
+        .background(Color.maplogSurfaceRaised)
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(Color.maplogLine.opacity(0.7), lineWidth: 1)
-        }
         .shadow(color: .black.opacity(0.035), radius: 14, x: 0, y: 6)
     }
 }
@@ -1723,5 +1715,415 @@ struct AIDigestDetailView: View {
             sessionStore.saveDigest(digest)
             showToast("AI 요약을 보관함에 저장했어요")
         }
+    }
+}
+
+/// 릴스에서 저장을 누른 직후, 전체 보관함과 개인 컬렉션을 함께 정리하는 시트입니다.
+/// 새 컬렉션을 만들면 현재 보고 있는 루트를 바로 그 안에 담습니다.
+private struct ReelSaveCollectionSheet: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var sessionStore: MaplogSessionStore
+
+    let trip: MaplogTrip
+
+    @State private var isCreatingCollection = false
+    @State private var collectionName = ""
+    @State private var selectedCoverStyle: PhotoStyle = .cafe
+    @State private var validationMessage: String?
+    @State private var selectionFeedback = 0
+    @State private var successFeedback = 0
+    @FocusState private var isCollectionNameFocused: Bool
+
+    private let coverOptions: [PhotoStyle] = [.cafe, .city, .night, .ocean]
+
+    var body: some View {
+        Group {
+            if isCreatingCollection {
+                createCollectionContent
+            } else {
+                collectionPickerContent
+            }
+        }
+        .background(Color.maplogSurface)
+        .animation(
+            reduceMotion ? nil : .spring(response: 0.34, dampingFraction: 0.9),
+            value: isCreatingCollection
+        )
+        .sensoryFeedback(.selection, trigger: selectionFeedback)
+        .sensoryFeedback(.success, trigger: successFeedback)
+        .onAppear {
+            if sessionStore.saveRoute(trip) {
+                successFeedback += 1
+            }
+        }
+    }
+
+    private var collectionPickerContent: some View {
+        VStack(spacing: 0) {
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: MaplogSpacing.xLarge) {
+                    VStack(alignment: .leading, spacing: MaplogSpacing.xxSmall) {
+                        Text("저장할 컬렉션")
+                            .font(.title2.weight(.bold))
+                            .foregroundStyle(Color.maplogInk)
+                        Text("이 루트는 전체 보관함에 저장됐어요. 원하는 컬렉션에도 함께 담아보세요.")
+                            .font(.subheadline)
+                            .foregroundStyle(Color.maplogMuted)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    savedSummary
+
+                    VStack(alignment: .leading, spacing: MaplogSpacing.small) {
+                        HStack(alignment: .firstTextBaseline) {
+                            Text("컬렉션")
+                                .font(.headline)
+                                .foregroundStyle(Color.maplogInk)
+
+                            Spacer()
+
+                            Button(action: beginCreatingCollection) {
+                                Label("새 컬렉션", systemImage: "plus")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(Color.maplogOlive)
+                                    .frame(minHeight: MaplogSize.minimumTapTarget)
+                            }
+                            .buttonStyle(ReelSavePressStyle())
+                            .accessibilityHint("새 컬렉션을 만들고 현재 루트를 바로 저장합니다")
+                        }
+
+                        ForEach(sessionStore.routeCollections) { collection in
+                            collectionRow(collection)
+                        }
+                    }
+                }
+                .padding(.horizontal, MaplogSpacing.page)
+                .padding(.top, MaplogSpacing.medium)
+                .padding(.bottom, MaplogSpacing.large)
+            }
+
+            Button {
+                dismiss()
+            } label: {
+                Text("완료")
+                    .font(.headline)
+                    .foregroundStyle(Color.maplogInk)
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: 52)
+                    .background(Color.maplogLime, in: Capsule())
+            }
+            .buttonStyle(ReelSavePressStyle())
+            .padding(.horizontal, MaplogSpacing.page)
+            .padding(.vertical, MaplogSpacing.small)
+            .background(Color.maplogSurface)
+            .overlay(alignment: .top) {
+                Rectangle()
+                    .fill(Color.maplogLine.opacity(0.72))
+                    .frame(height: 1)
+            }
+        }
+    }
+
+    private var savedSummary: some View {
+        HStack(spacing: MaplogSpacing.small) {
+            TravelImageView(
+                style: trip.coverStyle,
+                height: 64,
+                cornerRadius: MaplogRadius.medium,
+                showsSymbol: false
+            )
+            .frame(width: 64)
+
+            VStack(alignment: .leading, spacing: MaplogSpacing.xxxSmall) {
+                Text("저장됨")
+                    .font(.headline)
+                    .foregroundStyle(Color.maplogInk)
+                Text(trip.title)
+                    .font(.subheadline)
+                    .foregroundStyle(Color.maplogMuted)
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 8)
+
+            Image(systemName: "bookmark.fill")
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(Color.maplogOlive)
+                .accessibilityHidden(true)
+        }
+        .padding(MaplogSpacing.small)
+        .background(Color.maplogCanvas, in: RoundedRectangle(cornerRadius: MaplogRadius.large, style: .continuous))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("저장됨, \(trip.title)")
+    }
+
+    private func collectionRow(_ collection: MaplogRouteCollection) -> some View {
+        let isIncluded = sessionStore.isRoute(trip, in: collection)
+        let routeCount = sessionStore.routes(in: collection).count
+
+        return Button {
+            withAnimation(reduceMotion ? nil : .spring(response: 0.3, dampingFraction: 0.86)) {
+                if isIncluded {
+                    _ = sessionStore.removeRoute(trip, from: collection.id)
+                } else {
+                    _ = sessionStore.addRoute(trip, to: collection.id)
+                }
+            }
+            selectionFeedback += 1
+        } label: {
+            HStack(spacing: MaplogSpacing.small) {
+                TravelImageView(
+                    style: collection.coverStyle,
+                    height: 56,
+                    cornerRadius: MaplogRadius.medium,
+                    showsSymbol: false
+                )
+                .frame(width: 56)
+
+                VStack(alignment: .leading, spacing: MaplogSpacing.xxxSmall) {
+                    Text(collection.title)
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(Color.maplogInk)
+                        .lineLimit(1)
+                    Text("\(routeCount)개 루트")
+                        .font(.caption)
+                        .foregroundStyle(Color.maplogMuted)
+                }
+
+                Spacer(minLength: 8)
+
+                Image(systemName: isIncluded ? "checkmark.circle.fill" : "plus.circle")
+                    .font(.title2.weight(.semibold))
+                    .foregroundStyle(isIncluded ? Color.maplogOlive : Color.maplogMuted)
+                    .symbolRenderingMode(.hierarchical)
+                    .accessibilityHidden(true)
+            }
+            .padding(MaplogSpacing.xSmall)
+            .frame(minHeight: 72)
+            .background(
+                isIncluded ? Color.maplogLime.opacity(0.16) : Color.maplogSurface,
+                in: RoundedRectangle(cornerRadius: MaplogRadius.large, style: .continuous)
+            )
+        }
+        .buttonStyle(ReelSavePressStyle())
+        .accessibilityLabel(collection.title)
+        .accessibilityValue(isIncluded ? "이 컬렉션에 저장됨" : "이 컬렉션에 저장되지 않음")
+        .accessibilityHint(isIncluded ? "두 번 탭하면 이 컬렉션에서 제거합니다" : "두 번 탭하면 이 컬렉션에 저장합니다")
+    }
+
+    private var createCollectionContent: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Button {
+                    endCreatingCollection()
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(Color.maplogInk)
+                        .frame(width: MaplogSize.minimumTapTarget, height: MaplogSize.minimumTapTarget)
+                }
+                .buttonStyle(ReelSavePressStyle())
+                .accessibilityLabel("컬렉션 목록으로 돌아가기")
+
+                Spacer()
+
+                Text("새 컬렉션")
+                    .font(.headline)
+                    .foregroundStyle(Color.maplogInk)
+
+                Spacer()
+
+                Color.clear
+                    .frame(width: MaplogSize.minimumTapTarget, height: MaplogSize.minimumTapTarget)
+            }
+            .padding(.horizontal, MaplogSpacing.xSmall)
+            .padding(.top, MaplogSpacing.xxSmall)
+
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: MaplogSpacing.xLarge) {
+                    VStack(alignment: .leading, spacing: MaplogSpacing.xxSmall) {
+                        Text("나만의 저장 폴더 만들기")
+                            .font(.title2.weight(.bold))
+                            .foregroundStyle(Color.maplogInk)
+                        Text("만드는 즉시 지금 보고 있는 루트가 이 컬렉션에 저장됩니다.")
+                            .font(.subheadline)
+                            .foregroundStyle(Color.maplogMuted)
+                    }
+
+                    VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
+                        Text("컬렉션 이름")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(Color.maplogInk)
+
+                        TextField("예: 가을 서울 산책", text: $collectionName)
+                            .font(.body)
+                            .foregroundStyle(Color.maplogInk)
+                            .focused($isCollectionNameFocused)
+                            .submitLabel(.done)
+                            .onSubmit(createCollection)
+                            .padding(.horizontal, MaplogSpacing.small)
+                            .frame(minHeight: 52)
+                            .background(Color.maplogCanvas, in: RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous))
+                            .overlay {
+                                if validationMessage != nil {
+                                    RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous)
+                                        .stroke(Color.maplogDanger, lineWidth: 1)
+                                }
+                            }
+
+                        if let validationMessage {
+                            Label(validationMessage, systemImage: "exclamationmark.circle.fill")
+                                .font(.caption)
+                                .foregroundStyle(Color.maplogDanger)
+                        }
+                    }
+
+                    VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
+                        Text("대표 이미지")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(Color.maplogInk)
+
+                        LazyVGrid(
+                            columns: Array(repeating: GridItem(.flexible(), spacing: MaplogSpacing.xSmall), count: 2),
+                            spacing: MaplogSpacing.xSmall
+                        ) {
+                            ForEach(coverOptions, id: \.self) { style in
+                                coverStyleButton(style)
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, MaplogSpacing.page)
+                .padding(.top, MaplogSpacing.medium)
+                .padding(.bottom, MaplogSpacing.large)
+            }
+
+            Button(action: createCollection) {
+                Label("만들고 저장하기", systemImage: "bookmark.fill")
+                    .font(.headline)
+                    .foregroundStyle(Color.maplogInk)
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: 52)
+                    .background(
+                        canCreateCollection ? Color.maplogLime : Color.maplogLine,
+                        in: Capsule()
+                    )
+            }
+            .buttonStyle(ReelSavePressStyle())
+            .disabled(!canCreateCollection)
+            .padding(.horizontal, MaplogSpacing.page)
+            .padding(.vertical, MaplogSpacing.small)
+            .background(Color.maplogSurface)
+        }
+        .onAppear {
+            DispatchQueue.main.async {
+                isCollectionNameFocused = true
+            }
+        }
+        .onChange(of: collectionName) {
+            validationMessage = nil
+        }
+    }
+
+    private func coverStyleButton(_ style: PhotoStyle) -> some View {
+        let isSelected = selectedCoverStyle == style
+
+        return Button {
+            selectedCoverStyle = style
+            selectionFeedback += 1
+        } label: {
+            ZStack(alignment: .bottomLeading) {
+                TravelImageView(
+                    style: style,
+                    height: 92,
+                    cornerRadius: MaplogRadius.medium,
+                    showsSymbol: false
+                )
+
+                LinearGradient(
+                    colors: [.clear, .black.opacity(0.54)],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+
+                Text(coverStyleTitle(for: style))
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.white)
+                    .padding(MaplogSpacing.xSmall)
+
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(Color.maplogLime)
+                        .padding(MaplogSpacing.xSmall)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                        .accessibilityHidden(true)
+                }
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous)
+                    .stroke(isSelected ? Color.maplogLime : .clear, lineWidth: 3)
+            }
+        }
+        .buttonStyle(ReelSavePressStyle())
+        .accessibilityLabel("\(coverStyleTitle(for: style)) 대표 이미지")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    private var canCreateCollection: Bool {
+        !collectionName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private func beginCreatingCollection() {
+        collectionName = ""
+        validationMessage = nil
+        selectedCoverStyle = .cafe
+        withAnimation(reduceMotion ? nil : .spring(response: 0.34, dampingFraction: 0.9)) {
+            isCreatingCollection = true
+        }
+    }
+
+    private func endCreatingCollection() {
+        isCollectionNameFocused = false
+        withAnimation(reduceMotion ? nil : .spring(response: 0.28, dampingFraction: 0.92)) {
+            isCreatingCollection = false
+        }
+    }
+
+    private func createCollection() {
+        guard let collection = sessionStore.createRouteCollection(
+            title: collectionName,
+            coverStyle: selectedCoverStyle
+        ) else {
+            validationMessage = "같은 이름의 컬렉션이 있거나 이름이 비어 있어요."
+            return
+        }
+
+        _ = sessionStore.addRoute(trip, to: collection.id)
+        isCollectionNameFocused = false
+        successFeedback += 1
+        endCreatingCollection()
+    }
+
+    private func coverStyleTitle(for style: PhotoStyle) -> String {
+        switch style {
+        case .cafe: return "카페"
+        case .city: return "도시"
+        case .night: return "야경"
+        case .ocean: return "바다"
+        default: return "여행"
+        }
+    }
+}
+
+private struct ReelSavePressStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
+            .opacity(configuration.isPressed ? 0.88 : 1)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.14), value: configuration.isPressed)
     }
 }

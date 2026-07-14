@@ -19,11 +19,11 @@ struct CaptureRecordingShutterButton: View {
                 )
                 .fill(isRecording ? Color.red : Color.maplogCaptureAccent)
                 .frame(
-                    width: isRecording ? 48 : 68,
-                    height: isRecording ? 48 : 68
+                    width: isRecording ? 44 : 60,
+                    height: isRecording ? 44 : 60
                 )
             }
-            .frame(width: 96, height: 96)
+            .frame(width: 84, height: 84)
             .contentShape(Circle())
         }
         .buttonStyle(CaptureShutterPressStyle())

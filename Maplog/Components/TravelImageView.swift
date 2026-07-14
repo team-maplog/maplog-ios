@@ -72,14 +72,16 @@ struct MaplogSpotImageView: View {
     }
 
     var body: some View {
-        Image(assetName)
-            .resizable()
-            .scaledToFill()
-            .frame(maxWidth: .infinity)
-            .frame(height: height)
-            .clipped()
-            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-            .accessibilityHidden(true)
+        GeometryReader { proxy in
+            Image(assetName)
+                .resizable()
+                .scaledToFill()
+                .frame(width: proxy.size.width, height: proxy.size.height)
+                .clipped()
+        }
+        .frame(height: height)
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        .accessibilityHidden(true)
     }
 }
 
@@ -189,25 +191,25 @@ struct MaplogReelRoutePage: View {
     }
 
     private var nearbyRecommendationSummary: some View {
-        HStack(spacing: MaplogSpacing.xSmall) {
-            Image(systemName: "play.fill")
-                .foregroundStyle(Color.maplogInk)
-            Text("내 기록")
-                .font(.caption.weight(.bold))
-            Divider()
-                .frame(height: 12)
-            Image(systemName: "sparkles")
-                .foregroundStyle(Color.maplogOlive)
+        HStack(spacing: MaplogSpacing.xxSmall) {
             Text("3km 이내 추천")
                 .font(.caption.weight(.bold))
+                .foregroundStyle(Color.maplogInk)
             Spacer(minLength: 0)
             Text("\(nearbyRecommendations.count)곳")
                 .font(.caption.weight(.bold))
-                .foregroundStyle(Color.maplogOlive)
+                .foregroundStyle(Color.maplogInk)
         }
         .padding(.horizontal, 12)
         .frame(height: 34)
-        .background(.regularMaterial, in: Capsule())
+        .background {
+            Capsule()
+                .fill(.ultraThinMaterial)
+                .overlay {
+                    Capsule()
+                        .fill(Color.maplogSurface.opacity(0.82))
+                }
+        }
         .padding(.horizontal, MaplogSpacing.page)
         .accessibilityElement(children: .combine)
     }
@@ -229,7 +231,7 @@ struct MaplogReelRoutePage: View {
                         .lineLimit(1)
                     Text(spot.area)
                         .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Color.maplogMuted)
                         .lineLimit(1)
                 }
 
@@ -244,7 +246,7 @@ struct MaplogReelRoutePage: View {
 
             Text(spot.summary)
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Color.maplogMuted)
                 .lineLimit(2)
 
             HStack(spacing: MaplogSpacing.xSmall) {
@@ -253,10 +255,10 @@ struct MaplogReelRoutePage: View {
                 } label: {
                     Label("장소 보기", systemImage: "mappin.and.ellipse")
                         .font(.caption.weight(.bold))
-                        .foregroundStyle(.primary)
+                        .foregroundStyle(Color.maplogInk)
                         .frame(maxWidth: .infinity)
                         .frame(minHeight: 40)
-                        .background(.primary.opacity(0.08))
+                        .background(Color.maplogInk.opacity(0.08))
                         .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous))
                 }
                 .buttonStyle(.plain)
@@ -275,13 +277,20 @@ struct MaplogReelRoutePage: View {
                 .buttonStyle(.plain)
             }
         }
-        .foregroundStyle(.primary)
+        .foregroundStyle(Color.maplogInk)
         .padding(14)
-        .background(.regularMaterial)
+        .background {
+            RoundedRectangle(cornerRadius: MaplogRadius.xLarge, style: .continuous)
+                .fill(.ultraThinMaterial)
+                .overlay {
+                    RoundedRectangle(cornerRadius: MaplogRadius.xLarge, style: .continuous)
+                        .fill(Color.maplogSurface.opacity(isSelected ? 0.84 : 0.78))
+                }
+        }
         .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.xLarge, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: MaplogRadius.xLarge, style: .continuous)
-                .stroke(isSelected ? Color.maplogLime : Color.white.opacity(0.16), lineWidth: isSelected ? 2 : 1)
+                .stroke(isSelected ? Color.maplogLime : .clear, lineWidth: 2)
         }
         .shadow(color: .black.opacity(0.16), radius: 12, y: 6)
         .accessibilityElement(children: .contain)
@@ -309,10 +318,6 @@ struct MaplogReelPageCue: View {
             .foregroundStyle(isSelected ? Color.maplogInk : .white)
             .frame(width: 42, height: 30)
             .background(isSelected ? Color.maplogLime : Color.black.opacity(0.42), in: Capsule())
-            .overlay {
-                Capsule()
-                    .stroke(.white.opacity(isSelected ? 0 : 0.2), lineWidth: 1)
-            }
     }
 }
 

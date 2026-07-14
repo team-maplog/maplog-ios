@@ -3,21 +3,20 @@ import SwiftUI
 // MARK: - Color tokens
 
 extension Color {
-    // Maplog's original lime palette.
-    static let maplogLime = Color(red: 0.76, green: 0.96, blue: 0.02)
-    static let maplogLimePressed = Color(red: 0.64, green: 0.82, blue: 0.01)
-    // Capture uses the same brand accent as the rest of Maplog.
+    // Asset-backed semantic colors keep every feature on the same visual system.
+    static let maplogLime = Color("MaplogAccent")
+    static let maplogLimePressed = Color("MaplogAccentPressed")
     static let maplogCaptureAccent = maplogLime
-    static let maplogInk = Color(red: 0.07, green: 0.08, blue: 0.08)
-    static let maplogMuted = Color(red: 0.39, green: 0.41, blue: 0.42)
-    static let maplogSubtle = Color(red: 0.53, green: 0.55, blue: 0.56)
-    static let maplogLine = Color(red: 0.89, green: 0.90, blue: 0.89)
-    static let maplogCanvas = Color(red: 0.965, green: 0.97, blue: 0.96)
-    static let maplogSurface = Color.white
-    static let maplogSurfaceRaised = Color(red: 0.985, green: 0.987, blue: 0.982)
-    static let maplogOlive = Color(red: 0.32, green: 0.42, blue: 0.02)
-    static let maplogDanger = Color(red: 0.75, green: 0.16, blue: 0.12)
-    static let maplogOnPrimary = Color.white
+    static let maplogInk = Color("MaplogInk")
+    static let maplogMuted = Color("MaplogMuted")
+    static let maplogSubtle = Color("MaplogSubtle")
+    static let maplogLine = Color("MaplogLine")
+    static let maplogCanvas = Color("MaplogCanvas")
+    static let maplogSurface = Color("MaplogSurface")
+    static let maplogSurfaceRaised = Color("MaplogSurfaceRaised")
+    static let maplogOlive = Color("MaplogOlive")
+    static let maplogDanger = Color("MaplogDanger")
+    static let maplogOnPrimary = Color("MaplogOnAccent")
 
     // Semantic aliases used by components.
     static let maplogPrimary = maplogLime
@@ -80,6 +79,13 @@ enum MaplogSize {
     static let iconLarge: CGFloat = 24
 }
 
+// MARK: - Symbol tokens
+
+enum MaplogSymbol {
+    /// A single, familiar SF Symbol for every action that opens turn-by-turn directions.
+    static let directions = "location.north.line.fill"
+}
+
 // MARK: - Typography tokens
 
 enum MaplogFont {
@@ -115,17 +121,11 @@ extension View {
         case .standard:
             background(Color.maplogSurface)
                 .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .stroke(Color.maplogBorder, lineWidth: 1)
-                }
+                .shadow(color: .black.opacity(0.035), radius: 10, x: 0, y: 4)
         case .elevated:
             background(Color.maplogSurfaceRaised)
                 .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .stroke(Color.maplogBorder, lineWidth: 1)
-                }
+                .shadow(color: .black.opacity(0.055), radius: 16, x: 0, y: 7)
         case .photo:
             background(Color.maplogSurface)
                 .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
@@ -146,6 +146,7 @@ extension View {
 
     func maplogNavigationAppearance() -> some View {
         toolbarBackground(Color.maplogSurface, for: .navigationBar)
-            .tint(Color.maplogPrimary)
+            .toolbarBackground(.visible, for: .navigationBar)
+            .tint(Color.maplogInk)
     }
 }

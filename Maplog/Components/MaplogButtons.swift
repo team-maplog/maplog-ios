@@ -55,12 +55,6 @@ struct MaplogButtonStyle: ButtonStyle {
             .frame(minHeight: variant.isText ? MaplogSize.minimumTapTarget : size.height)
             .background(backgroundColor(configuration.isPressed))
             .clipShape(RoundedRectangle(cornerRadius: variant.isText ? MaplogRadius.small : MaplogRadius.medium, style: .continuous))
-            .overlay {
-                if variant.hasBorder {
-                    RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous)
-                        .stroke(Color.maplogBorder, lineWidth: 1)
-                }
-            }
             .contentShape(RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous))
             .scaleEffect(configuration.isPressed && isEnabled ? 0.98 : 1)
             .opacity(isEnabled ? 1 : 0.48)
@@ -83,7 +77,7 @@ struct MaplogButtonStyle: ButtonStyle {
         case .primary:
             return isPressed ? .maplogPrimaryPressed : .maplogPrimary
         case .secondary:
-            return isPressed ? .maplogCanvas : .maplogSurface
+            return isPressed ? .maplogLine.opacity(0.7) : .maplogCanvas
         case .tonal:
             return isPressed ? .maplogLime.opacity(0.32) : .maplogLime.opacity(0.18)
         case .text:
@@ -110,11 +104,6 @@ struct MaplogPressFeedbackStyle: ButtonStyle {
 }
 
 private extension MaplogButtonVariant {
-    var hasBorder: Bool {
-        if case .secondary = self { return true }
-        return false
-    }
-
     var isText: Bool {
         if case .text = self { return true }
         return false

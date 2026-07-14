@@ -4,7 +4,6 @@ struct SavedView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var sessionStore: MaplogSessionStore
     @State private var toastText: String?
-    private let collections = MockMaplogData.collections
     private let spots = MockMaplogData.spots
 
     private var recommendedSpots: [MaplogSpot] {
@@ -40,16 +39,18 @@ struct SavedView: View {
                     }
 
                     VStack(alignment: .leading, spacing: MaplogSpacing.small) {
-                        SectionHeader(title: "컬렉션")
-                        ForEach(collections) { collection in
+                        SectionHeader(
+                            title: "컬렉션",
+                            subtitle: "저장한 루트를 테마별로 나눠 보세요."
+                        )
+                        ForEach(sessionStore.routeCollections) { collection in
                             NavigationLink {
-                                SavedCollectionDetailView(
-                                    collection: collection,
-                                    spots: collectionSpots(for: collection),
-                                    summary: collectionSummary(for: collection)
-                                )
+                                SavedRouteCollectionDetailView(collection: collection)
                             } label: {
-                                CollectionCard(collection: collection)
+                                RouteCollectionCard(
+                                    collection: collection,
+                                    routeCount: sessionStore.routes(in: collection).count
+                                )
                             }
                             .buttonStyle(.plain)
                         }
@@ -248,28 +249,6 @@ struct SavedView: View {
         }
     }
 
-    private func collectionSpots(for collection: SavedCollection) -> [MaplogSpot] {
-        switch collection.id {
-        case "collection-night":
-            return [MockMaplogData.seoulTower, MockMaplogData.forestCafe]
-        case "collection-jeju":
-            return [MockMaplogData.jejuOreum, MockMaplogData.busanMarket, MockMaplogData.forestCafe]
-        default:
-            return [MockMaplogData.forestCafe, MockMaplogData.seoulTower, MockMaplogData.busanMarket, MockMaplogData.jejuOreum]
-        }
-    }
-
-    private func collectionSummary(for collection: SavedCollection) -> String {
-        switch collection.id {
-        case "collection-night":
-            return "저녁 산책, 빛 축제, 야간 카페까지 밤에 더 좋은 장소를 모았어요."
-        case "collection-jeju":
-            return "다시 가고 싶은 여행 감도의 장소를 대표 목데이터로 묶어 보여줍니다."
-        default:
-            return "이번 주말 바로 열어볼 수 있는 팝업, 산책, 카페 코스를 모았어요."
-        }
-    }
-
     private func toggleSpotSaved(_ spot: MaplogSpot) {
         if sessionStore.hasSavedSpot(spot) {
             sessionStore.removeSavedSpot(spot)
@@ -332,6 +311,163 @@ struct SavedView: View {
                 }
             }
         }
+    }
+}
+
+private struct SavedRouteCollectionDetailView: View {
+    @EnvironmentObject private var sessionStore: MaplogSessionStore
+
+    let collection: MaplogRouteCollection
+
+    private var currentCollection: MaplogRouteCollection {
+        sessionStore.routeCollections.first { $0.id == collection.id } ?? collection
+    }
+
+    private var routes: [MaplogTrip] {
+        sessionStore.routes(in: currentCollection)
+    }
+
+    var body: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: MaplogSpacing.xLarge) {
+                header
+
+                if routes.isEmpty {
+                    VStack(spacing: MaplogSpacing.small) {
+                        Image(systemName: "bookmark")
+                            .font(.system(size: 32, weight: .semibold))
+                            .foregroundStyle(Color.maplogMuted)
+                        Text("아직 담긴 루트가 없어요")
+                            .font(.headline)
+                            .foregroundStyle(Color.maplogInk)
+                        Text("릴스의 저장 버튼에서 이 컬렉션을 선택하면 여기에 모입니다.")
+                            .font(.subheadline)
+                            .foregroundStyle(Color.maplogMuted)
+                            .multilineTextAlignment(.center)
+                    }
+                    .padding(MaplogSpacing.xxLarge)
+                    .frame(maxWidth: .infinity)
+                    .background(Color.maplogCanvas, in: RoundedRectangle(cornerRadius: MaplogRadius.xLarge, style: .continuous))
+                } else {
+                    VStack(alignment: .leading, spacing: MaplogSpacing.small) {
+                        SectionHeader(title: "담아둔 루트", subtitle: "\(routes.count)개 루트")
+
+                        ForEach(routes) { trip in
+                            CollectionRouteCard(trip: trip) {
+                                _ = sessionStore.removeRoute(trip, from: currentCollection.id)
+                            }
+                        }
+                    }
+                }
+            }
+            .maplogPagePadding()
+            .padding(.top, MaplogSpacing.medium)
+            .padding(.bottom, MaplogSpacing.xxLarge)
+        }
+        .maplogScreenSurface()
+        .navigationTitle(currentCollection.title)
+        .navigationBarTitleDisplayMode(.inline)
+        .maplogTabBarHidden()
+    }
+
+    private var header: some View {
+        HStack(spacing: MaplogSpacing.medium) {
+            TravelImageView(
+                style: currentCollection.coverStyle,
+                height: 88,
+                cornerRadius: MaplogRadius.large,
+                showsSymbol: false
+            )
+            .frame(width: 88)
+
+            VStack(alignment: .leading, spacing: MaplogSpacing.xxSmall) {
+                Text(currentCollection.title)
+                    .font(MaplogFont.screenTitle)
+                    .foregroundStyle(Color.maplogInk)
+                    .lineLimit(2)
+                Text("나만의 저장 컬렉션 · \(routes.count)개 루트")
+                    .font(MaplogFont.callout)
+                    .foregroundStyle(Color.maplogMuted)
+                    .lineLimit(2)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(MaplogSpacing.small)
+        .background(Color.maplogCanvas, in: RoundedRectangle(cornerRadius: MaplogRadius.xLarge, style: .continuous))
+    }
+}
+
+private struct CollectionRouteCard: View {
+    let trip: MaplogTrip
+    let onRemove: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: MaplogSpacing.small) {
+            NavigationLink {
+                RouteDetailView(trip: trip)
+            } label: {
+                TripCardView(trip: trip, isLarge: true)
+            }
+            .buttonStyle(.plain)
+
+            HStack {
+                Label("이 컬렉션에 저장됨", systemImage: "bookmark.fill")
+                    .font(MaplogFont.caption)
+                    .foregroundStyle(Color.maplogMuted)
+
+                Spacer(minLength: 8)
+
+                Button(action: onRemove) {
+                    Label("컬렉션에서 제거", systemImage: "minus.circle")
+                        .font(MaplogFont.caption)
+                        .foregroundStyle(Color.maplogInk)
+                        .padding(.horizontal, MaplogSpacing.small)
+                        .frame(minHeight: 34)
+                        .background(Color.maplogCanvas, in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(trip.title)을 이 컬렉션에서 제거")
+            }
+        }
+    }
+}
+
+private struct RouteCollectionCard: View {
+    let collection: MaplogRouteCollection
+    let routeCount: Int
+
+    var body: some View {
+        HStack(spacing: MaplogSpacing.small) {
+            TravelImageView(
+                style: collection.coverStyle,
+                height: 68,
+                cornerRadius: MaplogRadius.medium,
+                showsSymbol: false
+            )
+            .frame(width: 68)
+
+            VStack(alignment: .leading, spacing: MaplogSpacing.xxxSmall) {
+                Text(collection.title)
+                    .font(MaplogFont.cardTitle)
+                    .foregroundStyle(Color.maplogInk)
+                    .lineLimit(1)
+                Text("\(routeCount)개 루트")
+                    .font(MaplogFont.caption)
+                    .foregroundStyle(Color.maplogMuted)
+            }
+
+            Spacer(minLength: 0)
+
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(Color.maplogMuted)
+                .accessibilityHidden(true)
+        }
+        .padding(MaplogSpacing.xSmall)
+        .maplogCard()
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(collection.title), \(routeCount)개 루트")
     }
 }
 

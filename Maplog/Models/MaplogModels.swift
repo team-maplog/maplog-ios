@@ -138,6 +138,15 @@ struct SavedCollection: Identifiable, Hashable {
     let styles: [PhotoStyle]
 }
 
+/// 사용자가 릴스와 루트를 분류하는 개인 컬렉션입니다.
+/// 하나의 루트는 전체 보관함에 남긴 채 여러 컬렉션에 함께 담을 수 있습니다.
+struct MaplogRouteCollection: Identifiable, Hashable {
+    let id: String
+    var title: String
+    var coverStyle: PhotoStyle
+    var routeIDs: Set<String>
+}
+
 struct ComposerDraft: Hashable {
     let placeName: String
     let title: String?
@@ -378,6 +387,26 @@ final class MaplogSessionStore: ObservableObject {
     @Published private(set) var publishedLogs: [TravelLog] = []
     @Published private(set) var savedDrafts: [MaplogDraft] = []
     @Published private(set) var savedRoutes: [MaplogTrip] = []
+    @Published private(set) var routeCollections: [MaplogRouteCollection] = [
+        MaplogRouteCollection(
+            id: "collection-weekend",
+            title: "주말에 가볼 곳",
+            coverStyle: .cafe,
+            routeIDs: []
+        ),
+        MaplogRouteCollection(
+            id: "collection-night",
+            title: "야경 맛집",
+            coverStyle: .night,
+            routeIDs: []
+        ),
+        MaplogRouteCollection(
+            id: "collection-jeju",
+            title: "제주 다시가기",
+            coverStyle: .ocean,
+            routeIDs: []
+        )
+    ]
     @Published private(set) var savedSpots: [MaplogSpot] = []
     @Published private(set) var visitChecklistSpots: [MaplogSpot] = []
     @Published private(set) var savedEvents: [FeaturedEvent] = []
@@ -608,11 +637,70 @@ final class MaplogSessionStore: ObservableObject {
         }
 
         savedRoutes.remove(at: index)
+        for index in routeCollections.indices {
+            routeCollections[index].routeIDs.remove(trip.id)
+        }
         return true
     }
 
     func clearSavedRoutes() {
         savedRoutes.removeAll()
+        for index in routeCollections.indices {
+            routeCollections[index].routeIDs.removeAll()
+        }
+    }
+
+    func routes(in collection: MaplogRouteCollection) -> [MaplogTrip] {
+        savedRoutes.filter { collection.routeIDs.contains($0.id) }
+    }
+
+    func isRoute(_ trip: MaplogTrip, in collection: MaplogRouteCollection) -> Bool {
+        collection.routeIDs.contains(trip.id)
+    }
+
+    @discardableResult
+    func addRoute(_ trip: MaplogTrip, to collectionID: String) -> Bool {
+        guard let index = routeCollections.firstIndex(where: { $0.id == collectionID }) else {
+            return false
+        }
+
+        _ = saveRoute(trip)
+        return routeCollections[index].routeIDs.insert(trip.id).inserted
+    }
+
+    @discardableResult
+    func removeRoute(_ trip: MaplogTrip, from collectionID: String) -> Bool {
+        guard let index = routeCollections.firstIndex(where: { $0.id == collectionID }) else {
+            return false
+        }
+
+        return routeCollections[index].routeIDs.remove(trip.id) != nil
+    }
+
+    @discardableResult
+    func createRouteCollection(
+        title: String,
+        coverStyle: PhotoStyle
+    ) -> MaplogRouteCollection? {
+        let trimmedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedTitle.isEmpty else {
+            return nil
+        }
+
+        guard !routeCollections.contains(where: {
+            $0.title.localizedCaseInsensitiveCompare(trimmedTitle) == .orderedSame
+        }) else {
+            return nil
+        }
+
+        let collection = MaplogRouteCollection(
+            id: "collection-\(UUID().uuidString)",
+            title: trimmedTitle,
+            coverStyle: coverStyle,
+            routeIDs: []
+        )
+        routeCollections.insert(collection, at: 0)
+        return collection
     }
 
     func hasVisitChecklistSpot(_ spot: MaplogSpot) -> Bool {

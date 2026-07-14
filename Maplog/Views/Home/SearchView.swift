@@ -77,15 +77,9 @@ struct SearchView: View {
 
     private var topSearchBar: some View {
         HStack(spacing: MaplogSpacing.small) {
-            Button {
+            MaplogNavigationButton(systemName: "chevron.left", accessibilityLabel: "뒤로 가기") {
                 dismiss()
-            } label: {
-                Image(systemName: "chevron.left")
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(.primary)
-                    .frame(width: 40, height: 48)
             }
-            .buttonStyle(MaplogPressFeedbackStyle())
 
             HStack(spacing: 10) {
                 Image(systemName: "magnifyingglass")
@@ -117,12 +111,7 @@ struct SearchView: View {
             }
             .padding(.horizontal, 14)
             .frame(minHeight: 48)
-            .background(Color.maplogSurface)
-            .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.large, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: MaplogRadius.large, style: .continuous)
-                    .stroke(Color.maplogBorder.opacity(0.82), lineWidth: 1)
-            }
+            .background(Color.maplogCanvas, in: RoundedRectangle(cornerRadius: MaplogRadius.large, style: .continuous))
         }
     }
 
@@ -150,11 +139,7 @@ struct SearchView: View {
             }
         }
         .padding(4)
-        .background(Color.maplogSurface, in: RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous)
-                .stroke(Color.maplogBorder.opacity(0.78), lineWidth: 1)
-        }
+        .background(Color.maplogCanvas, in: RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous))
     }
 
     private var festivalSection: some View {
@@ -670,10 +655,6 @@ private struct SearchSavedShortcut: View {
         .frame(minHeight: 48)
         .background(Color.maplogSurfaceRaised)
         .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous)
-                .stroke(Color.maplogBorder.opacity(0.72), lineWidth: 1)
-        }
     }
 }
 

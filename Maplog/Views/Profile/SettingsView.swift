@@ -177,11 +177,7 @@ struct SettingsView: View {
             }
             .background(Color.maplogSurface)
             .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.large, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: MaplogRadius.large, style: .continuous)
-                    .stroke(Color.maplogBorder.opacity(0.9), lineWidth: 1)
-            }
-            .shadow(color: .black.opacity(0.035), radius: 6, x: 0, y: 2)
+            .shadow(color: .black.opacity(0.025), radius: 8, x: 0, y: 3)
         }
     }
 
@@ -200,9 +196,8 @@ struct SettingsView: View {
 
 private struct SettingsDivider: View {
     var body: some View {
-        Rectangle()
-            .fill(Color.maplogLine.opacity(0.8))
-            .frame(height: 1)
+        Color.clear
+            .frame(height: MaplogSpacing.xSmall)
     }
 }
 
@@ -367,17 +362,6 @@ private struct SettingsDetailView: View {
         ZStack(alignment: .bottom) {
             ScrollView(showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 22) {
-                    ZStack {
-                        Circle()
-                            .fill(Color.maplogCanvas)
-                            .frame(width: 112, height: 112)
-                        Image(systemName: route.icon)
-                            .font(.system(size: 40, weight: .bold))
-                            .foregroundStyle(Color.maplogOlive)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.top, 18)
-
                     VStack(alignment: .leading, spacing: 10) {
                         Text(route.detailTitle)
                             .font(MaplogFont.largeTitle)
@@ -396,12 +380,7 @@ private struct SettingsDetailView: View {
                             }
                         }
                     }
-                    .background(Color(.systemGray6).opacity(0.72))
-                    .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous))
-                    .overlay {
-                        RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous)
-                            .stroke(Color.maplogLine.opacity(0.9), lineWidth: 1)
-                    }
+                    .background(Color.maplogCanvas, in: RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous))
 
                     PrimaryActionButton(actionTitle, systemImage: actionIcon) {
                         handlePrimaryAction()
@@ -553,16 +532,9 @@ private struct PasswordChangeSheet: View {
 
             Spacer()
 
-            Button {
+            MaplogNavigationButton(systemName: "xmark", accessibilityLabel: "닫기") {
                 dismiss()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 14, weight: .black))
-                    .foregroundStyle(Color.maplogInk)
-                    .frame(width: MaplogSize.minimumTapTarget, height: MaplogSize.minimumTapTarget)
-                    .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
         }
     }
 
@@ -614,16 +586,9 @@ private struct SecuritySettingsSheet: View {
 
                 Spacer()
 
-                Button {
+                MaplogNavigationButton(systemName: "xmark", accessibilityLabel: "닫기") {
                     dismiss()
-                } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 14, weight: .black))
-                        .foregroundStyle(Color.maplogInk)
-                        .frame(width: MaplogSize.minimumTapTarget, height: MaplogSize.minimumTapTarget)
-                        .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
             }
 
             VStack(spacing: 0) {
@@ -716,9 +681,5 @@ private struct SecurityDeviceRow: View {
         .padding(MaplogSpacing.small)
         .background(Color.maplogSurface)
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(Color.maplogLine.opacity(0.9), lineWidth: 1)
-        }
     }
 }

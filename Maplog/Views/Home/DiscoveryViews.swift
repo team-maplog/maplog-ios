@@ -1065,7 +1065,7 @@ struct MapSearchView: View {
                     Button {
                         activeSuggestedTrip = suggestedTrip(for: spot)
                     } label: {
-                        Label("길찾기", systemImage: "location.north.line.fill")
+                        Label("길찾기", systemImage: MaplogSymbol.directions)
                             .font(.system(size: 15, weight: .black))
                             .foregroundStyle(Color.maplogInk)
                             .frame(maxWidth: .infinity)
