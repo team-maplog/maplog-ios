@@ -74,78 +74,80 @@ struct OnboardingView: View {
     @State private var resetConfirmation: ResetConfirmation?
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            VStack(spacing: 0) {
-                Spacer(minLength: MaplogSpacing.xxxLarge)
-
-                VStack(spacing: MaplogSpacing.medium) {
-                    ZStack {
-                        Circle()
-                            .fill(Color.maplogPrimary.opacity(0.18))
-                            .frame(width: 88, height: 88)
-                        Circle()
-                            .fill(Color.maplogPrimary)
-                            .frame(width: 58, height: 58)
-                        Image(systemName: "mappin.and.ellipse")
-                            .font(.system(size: 27, weight: .bold))
-                            .foregroundStyle(Color.maplogTextPrimary)
-                    }
-
-                    VStack(spacing: MaplogSpacing.xSmall) {
-                        Text("Maplog")
-                            .font(.system(size: 36, weight: .bold, design: .rounded))
-                            .tracking(-0.8)
-                            .foregroundStyle(Color.maplogTextPrimary)
-                        Text("여행의 순간을 지도로 기록하세요")
-                            .font(MaplogFont.body)
-                            .foregroundStyle(Color.maplogTextSecondary)
-                    }
-                }
-                .padding(.bottom, MaplogSpacing.xxxLarge)
-
-                VStack(spacing: MaplogSpacing.small) {
-                    loginButton(title: "이메일로 로그인", background: .maplogLime, foreground: .maplogInk, icon: "envelope.fill") {
-                        activeFlow = .email
-                    }
-
-                    HStack {
-                        Rectangle().fill(Color.maplogBorder).frame(height: 1)
-                        Text("또는")
-                            .font(MaplogFont.caption)
-                            .foregroundStyle(Color.maplogTextTertiary)
-                        Rectangle().fill(Color.maplogBorder).frame(height: 1)
-                    }
-                    .padding(.vertical, MaplogSpacing.xxSmall)
-
-                    loginButton(title: "카카오로 로그인", background: Color(red: 1.0, green: 0.86, blue: 0.0), foreground: .black, icon: "message.fill") {
-                        socialLogin(provider: "카카오")
-                    }
-                    loginButton(title: "네이버로 로그인", background: Color(red: 0.02, green: 0.78, blue: 0.33), foreground: .white, icon: "n.circle.fill") {
-                        socialLogin(provider: "네이버")
-                    }
-                    loginButton(title: "Apple로 로그인", background: .black, foreground: .white, icon: "apple.logo") {
-                        socialLogin(provider: "Apple")
-                    }
-
-                    HStack(spacing: MaplogSpacing.xSmall) {
-                        Button("회원가입") {
-                            activeFlow = .signup
+        NavigationStack{
+            ZStack(alignment: .bottom) {
+                VStack(spacing: 0) {
+                    Spacer(minLength: MaplogSpacing.xxxLarge)
+                    
+                    VStack(spacing: MaplogSpacing.medium) {
+                        ZStack {
+                            Circle()
+                                .fill(Color.maplogPrimary.opacity(0.18))
+                                .frame(width: 88, height: 88)
+                            Circle()
+                                .fill(Color.maplogPrimary)
+                                .frame(width: 58, height: 58)
+                            Image(systemName: "mappin.and.ellipse")
+                                .font(.system(size: 27, weight: .bold))
+                                .foregroundStyle(Color.maplogTextPrimary)
                         }
-                        Button("비밀번호 찾기") {
-                            activeFlow = .resetPassword
+                        
+                        VStack(spacing: MaplogSpacing.xSmall) {
+                            Text("Maplog")
+                                .font(.system(size: 36, weight: .bold, design: .rounded))
+                                .tracking(-0.8)
+                                .foregroundStyle(Color.maplogTextPrimary)
+                            Text("여행의 순간을 지도로 기록하세요")
+                                .font(MaplogFont.body)
+                                .foregroundStyle(Color.maplogTextSecondary)
                         }
                     }
-                    .buttonStyle(MaplogButtonStyle(variant: .text, size: .compact))
-                    .padding(.top, MaplogSpacing.xxSmall)
-                }
-                .maplogPagePadding()
-                .padding(.bottom, MaplogSpacing.xLarge)
-            }
-
-            if let toastText = viewModel.toastText {
-                MaplogToast(message: toastText)
+                    .padding(.bottom, MaplogSpacing.xxxLarge)
+                    
+                    VStack(spacing: MaplogSpacing.small) {
+                        loginButton(title: "이메일로 로그인", background: .maplogLime, foreground: .maplogInk, icon: "envelope.fill") {
+                            activeFlow = .email
+                        }
+                        
+                        HStack {
+                            Rectangle().fill(Color.maplogBorder).frame(height: 1)
+                            Text("또는")
+                                .font(MaplogFont.caption)
+                                .foregroundStyle(Color.maplogTextTertiary)
+                            Rectangle().fill(Color.maplogBorder).frame(height: 1)
+                        }
+                        .padding(.vertical, MaplogSpacing.xxSmall)
+                        
+                        loginButton(title: "카카오로 로그인", background: Color(red: 1.0, green: 0.86, blue: 0.0), foreground: .black, icon: "message.fill") {
+                            socialLogin(provider: "카카오")
+                        }
+                        loginButton(title: "네이버로 로그인", background: Color(red: 0.02, green: 0.78, blue: 0.33), foreground: .white, icon: "n.circle.fill") {
+                            socialLogin(provider: "네이버")
+                        }
+                        loginButton(title: "Apple로 로그인", background: .black, foreground: .white, icon: "apple.logo") {
+                            socialLogin(provider: "Apple")
+                        }
+                        
+                        HStack(spacing: MaplogSpacing.xSmall) {
+                            NavigationLink(destination: SignupView()) {
+                                Text("회원가입")
+                            }
+                            Button("비밀번호 찾기") {
+                                activeFlow = .resetPassword
+                            }
+                        }
+                        .buttonStyle(MaplogButtonStyle(variant: .text, size: .compact))
+                        .padding(.top, MaplogSpacing.xxSmall)
+                    }
+                    .maplogPagePadding()
                     .padding(.bottom, MaplogSpacing.xLarge)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+                
+                if let toastText = viewModel.toastText {
+                    MaplogToast(message: toastText)
+                        .padding(.bottom, MaplogSpacing.xLarge)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
             }
         }
         .background(

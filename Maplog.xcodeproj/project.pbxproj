@@ -31,18 +31,23 @@
 		A8D3584C883AE074D4757BEC /* KakaoMapCanvas.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABC782CD8FA602F351A4F8D1 /* KakaoMapCanvas.swift */; };
 		B8BBE3F5A7C53D50B176913A /* QuickMaplogIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2B4AB164A4CD66EF46DB763 /* QuickMaplogIntent.swift */; };
 		BD1E134CF66A662A18C9C841 /* TravelImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 041F9B0198AC4A718A00360E /* TravelImageView.swift */; };
+		C0D3E0010A2B3C4D5E6F7003 /* CaptureEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0D3E0010A2B3C4D5E6F7001 /* CaptureEditorView.swift */; };
+		C0D3E0010A2B3C4D5E6F7004 /* CaptureRecordingShutterButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0D3E0010A2B3C4D5E6F7002 /* CaptureRecordingShutterButton.swift */; };
+		C0D3E0010A2B3C4D5E6F7005 /* VlogCommentsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0D3E0010A2B3C4D5E6F7007 /* VlogCommentsSheet.swift */; };
+		C0D3E0010A2B3C4D5E6F7006 /* MaplogActivityShareSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0D3E0010A2B3C4D5E6F7008 /* MaplogActivityShareSheet.swift */; };
 		D8B336EBE197C31C32670DF1 /* DiscoveryViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D1EC2F8E72AB799F3B85F30 /* DiscoveryViews.swift */; };
 		DA6721EE38D0CF3507A10E92 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 301951B5ED69D1CB3A145958 /* SettingsView.swift */; };
 		DD1EC98CABBDFB2928455C19 /* MaplogLogoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B45817772DB8C538E6D5D16 /* MaplogLogoView.swift */; };
 		DEBA54644E2AC72CD4B1A5B9 /* ExploreMapViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2111B1B2104E377560C6C3EB /* ExploreMapViewModel.swift */; };
 		DEBB0D0F8CED4E01911F6036 /* MaplogTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = E616D005446E65E2A4478814 /* MaplogTheme.swift */; };
 		E1B3BAA0F6CB395742591F5D /* HomeSupportViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B3A6EE4CC60394A86768933 /* HomeSupportViews.swift */; };
+		E21BAE22300BC1C400B95B53 /* AuthModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = E21BAE21300BC1BC00B95B53 /* AuthModels.swift */; };
+		E21BAE24300BC1E200B95B53 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = E21BAE23300BC1D900B95B53 /* APIClient.swift */; };
+		E21BAE26300BC1FD00B95B53 /* AuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E21BAE25300BC1F600B95B53 /* AuthService.swift */; };
+		E21BAE28300BC20400B95B53 /* KeychainService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E21BAE27300BC20000B95B53 /* KeychainService.swift */; };
+		E21BAE2A300BC21700B95B53 /* AuthViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E21BAE29300BC21300B95B53 /* AuthViewModel.swift */; };
 		E2AC0FC03000354E0005D226 /* PracticeKakaoMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2AC0FBF3000354E0005D226 /* PracticeKakaoMapView.swift */; };
 		E64345BB3CE1454CD256FE69 /* Cards.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82FCBC8A1A1F73D5ABD6442D /* Cards.swift */; };
-		C0D3E0010A2B3C4D5E6F7003 /* CaptureEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0D3E0010A2B3C4D5E6F7001 /* CaptureEditorView.swift */; };
-		C0D3E0010A2B3C4D5E6F7004 /* CaptureRecordingShutterButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0D3E0010A2B3C4D5E6F7002 /* CaptureRecordingShutterButton.swift */; };
-		C0D3E0010A2B3C4D5E6F7005 /* VlogCommentsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0D3E0010A2B3C4D5E6F7007 /* VlogCommentsSheet.swift */; };
-		C0D3E0010A2B3C4D5E6F7006 /* MaplogActivityShareSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0D3E0010A2B3C4D5E6F7008 /* MaplogActivityShareSheet.swift */; };
 		EDDF28EA911571C5A90929B3 /* CaptureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 691D6E56B0806BACA016DE02 /* CaptureView.swift */; };
 		FB89B8F9095093D254CFC7CE /* ProfileViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 030655D170DFF7F7C85ED748 /* ProfileViewModel.swift */; };
 		FDBA21967A87837768F80E5D /* SavedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC728AC0952CD66D16711F60 /* SavedView.swift */; };
@@ -77,20 +82,51 @@
 		BBD4570766EEE062B0D9957F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		BC728AC0952CD66D16711F60 /* SavedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedView.swift; sourceTree = "<group>"; };
 		BDDE9E21B157D66A4C02AC14 /* MaplogButtons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MaplogButtons.swift; sourceTree = "<group>"; };
-		C9D76282FF2FFEEC0209C7A9 /* Maplog.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Maplog.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		CA24E71BC2577A1A15EBBAB7 /* ComposerViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComposerViewModel.swift; sourceTree = "<group>"; };
 		C0D3E0010A2B3C4D5E6F7001 /* CaptureEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureEditorView.swift; sourceTree = "<group>"; };
 		C0D3E0010A2B3C4D5E6F7002 /* CaptureRecordingShutterButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureRecordingShutterButton.swift; sourceTree = "<group>"; };
 		C0D3E0010A2B3C4D5E6F7007 /* VlogCommentsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VlogCommentsSheet.swift; sourceTree = "<group>"; };
 		C0D3E0010A2B3C4D5E6F7008 /* MaplogActivityShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MaplogActivityShareSheet.swift; sourceTree = "<group>"; };
+		C9D76282FF2FFEEC0209C7A9 /* Maplog.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Maplog.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		CA24E71BC2577A1A15EBBAB7 /* ComposerViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComposerViewModel.swift; sourceTree = "<group>"; };
 		D0C944E2B4B65B383EDBD76C /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
 		D653507D19A3EF33FCE581B8 /* SpotDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotDetailView.swift; sourceTree = "<group>"; };
 		E0640AE75B057F41C8A1BEC9 /* ComposerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComposerView.swift; sourceTree = "<group>"; };
+		E21BAE21300BC1BC00B95B53 /* AuthModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthModels.swift; sourceTree = "<group>"; };
+		E21BAE23300BC1D900B95B53 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
+		E21BAE25300BC1F600B95B53 /* AuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthService.swift; sourceTree = "<group>"; };
+		E21BAE27300BC20000B95B53 /* KeychainService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainService.swift; sourceTree = "<group>"; };
+		E21BAE29300BC21300B95B53 /* AuthViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthViewModel.swift; sourceTree = "<group>"; };
 		E2AC0FBF3000354E0005D226 /* PracticeKakaoMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PracticeKakaoMapView.swift; sourceTree = "<group>"; };
 		E616D005446E65E2A4478814 /* MaplogTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MaplogTheme.swift; sourceTree = "<group>"; };
 		E8D230492858DA4B6B97E40D /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
 		F2B4AB164A4CD66EF46DB763 /* QuickMaplogIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickMaplogIntent.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		E278E093300C00D50037F0CA /* Exceptions for "Auth" folder in "Maplog" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				SignupView.swift,
+			);
+			target = 22526D9D7DA8B4179D559524 /* Maplog */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		E21BAE2B300BC22400B95B53 /* Stores */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Stores;
+			sourceTree = "<group>";
+		};
+		E21BAF58300BE42C00B95B53 /* Auth */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				E278E093300C00D50037F0CA /* Exceptions for "Auth" folder in "Maplog" target */,
+			);
+			path = Auth;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		B765184E4DDFBCF0E46446ED /* Frameworks */ = {
@@ -107,6 +143,7 @@
 		0412E684700AC4A45E6C638E /* Maplog */ = {
 			isa = PBXGroup;
 			children = (
+				E21BAE2B300BC22400B95B53 /* Stores */,
 				466D4CDACC71C57EB22009EB /* Info.plist */,
 				2672356266064D88A9AB90F5 /* MaplogApp.swift */,
 				5EE6777E9995AFAB01247AC8 /* RootView.swift */,
@@ -119,6 +156,7 @@
 				435835C2B477580A99CC08C3 /* Theme */,
 				111F1E6792810099C9EBB4A6 /* ViewModels */,
 				79110CE8419A39D6032482EF /* Views */,
+				E21BAF58300BE42C00B95B53 /* Auth */,
 			);
 			path = Maplog;
 			sourceTree = "<group>";
@@ -151,6 +189,7 @@
 		111F1E6792810099C9EBB4A6 /* ViewModels */ = {
 			isa = PBXGroup;
 			children = (
+				E21BAE29300BC21300B95B53 /* AuthViewModel.swift */,
 				CA24E71BC2577A1A15EBBAB7 /* ComposerViewModel.swift */,
 				2111B1B2104E377560C6C3EB /* ExploreMapViewModel.swift */,
 				34838933415A9B48BC1BF98C /* HomeViewModel.swift */,
@@ -174,6 +213,9 @@
 		360E622DAD7A55E685E1045E /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				E21BAE27300BC20000B95B53 /* KeychainService.swift */,
+				E21BAE25300BC1F600B95B53 /* AuthService.swift */,
+				E21BAE23300BC1D900B95B53 /* APIClient.swift */,
 				74A94F44B0009F7B5B57E3AE /* KakaoMapSDKConfiguration.swift */,
 			);
 			path = Services;
@@ -281,6 +323,7 @@
 		BD4651531C42ADF9CA5B6D3E /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				E21BAE21300BC1BC00B95B53 /* AuthModels.swift */,
 				717E1AC786880C4F9F3E0447 /* MaplogModels.swift */,
 			);
 			path = Models;
@@ -317,6 +360,9 @@
 			buildRules = (
 			);
 			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				E21BAE2B300BC22400B95B53 /* Stores */,
 			);
 			name = Maplog;
 			packageProductDependencies = (
@@ -380,16 +426,19 @@
 				EDDF28EA911571C5A90929B3 /* CaptureView.swift in Sources */,
 				E64345BB3CE1454CD256FE69 /* Cards.swift in Sources */,
 				A00B2ABF9A8E2FC357C0A64C /* ComposerView.swift in Sources */,
+				E21BAE26300BC1FD00B95B53 /* AuthService.swift in Sources */,
 				32DE35FD9AE9F47B0B1FEF82 /* ComposerViewModel.swift in Sources */,
 				D8B336EBE197C31C32670DF1 /* DiscoveryViews.swift in Sources */,
 				8620FDB3784C86D27B86B21D /* ExploreMapView.swift in Sources */,
 				DEBA54644E2AC72CD4B1A5B9 /* ExploreMapViewModel.swift in Sources */,
 				E1B3BAA0F6CB395742591F5D /* HomeSupportViews.swift in Sources */,
 				854F77386EF2D1F4C9286482 /* HomeView.swift in Sources */,
+				E21BAE24300BC1E200B95B53 /* APIClient.swift in Sources */,
 				2DF93A0B91593B3004C4D65F /* HomeViewModel.swift in Sources */,
 				A8D3584C883AE074D4757BEC /* KakaoMapCanvas.swift in Sources */,
 				478728511FB5355DB05A6D30 /* KakaoMapSDKConfiguration.swift in Sources */,
 				3355D59236C4EA0C84F05829 /* LogFeedView.swift in Sources */,
+				E21BAE22300BC1C400B95B53 /* AuthModels.swift in Sources */,
 				0BDB4C1D30FCD6A8E747770C /* LogPreviewView.swift in Sources */,
 				2F5692305C0C1CB4922668FB /* MaplogApp.swift in Sources */,
 				A54F18BDB73628E81E84EC2E /* MaplogButtons.swift in Sources */,
@@ -405,8 +454,10 @@
 				B8BBE3F5A7C53D50B176913A /* QuickMaplogIntent.swift in Sources */,
 				5AED54A26FE2D0E933AAC6D2 /* RootView.swift in Sources */,
 				FDBA21967A87837768F80E5D /* SavedView.swift in Sources */,
+				E21BAE28300BC20400B95B53 /* KeychainService.swift in Sources */,
 				4B87E2473AF611A241D6F3BB /* SearchView.swift in Sources */,
 				DA6721EE38D0CF3507A10E92 /* SettingsView.swift in Sources */,
+				E21BAE2A300BC21700B95B53 /* AuthViewModel.swift in Sources */,
 				48B52C7259727D2951382F80 /* SpotDetailView.swift in Sources */,
 				BD1E134CF66A662A18C9C841 /* TravelImageView.swift in Sources */,
 				47C33995BE4EB3682A7880A9 /* TripDetailView.swift in Sources */,
