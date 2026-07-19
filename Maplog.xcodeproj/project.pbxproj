@@ -46,6 +46,7 @@
 		E21BAE26300BC1FD00B95B53 /* AuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E21BAE25300BC1F600B95B53 /* AuthService.swift */; };
 		E21BAE28300BC20400B95B53 /* KeychainService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E21BAE27300BC20000B95B53 /* KeychainService.swift */; };
 		E21BAE2A300BC21700B95B53 /* AuthViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E21BAE29300BC21300B95B53 /* AuthViewModel.swift */; };
+		E277D473300C975B00648B9A /* AuthValidation.swift in Sources */ = {isa = PBXBuildFile; fileRef = E277D472300C975300648B9A /* AuthValidation.swift */; };
 		E2AC0FC03000354E0005D226 /* PracticeKakaoMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2AC0FBF3000354E0005D226 /* PracticeKakaoMapView.swift */; };
 		E64345BB3CE1454CD256FE69 /* Cards.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82FCBC8A1A1F73D5ABD6442D /* Cards.swift */; };
 		EDDF28EA911571C5A90929B3 /* CaptureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 691D6E56B0806BACA016DE02 /* CaptureView.swift */; };
@@ -96,6 +97,7 @@
 		E21BAE25300BC1F600B95B53 /* AuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthService.swift; sourceTree = "<group>"; };
 		E21BAE27300BC20000B95B53 /* KeychainService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainService.swift; sourceTree = "<group>"; };
 		E21BAE29300BC21300B95B53 /* AuthViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthViewModel.swift; sourceTree = "<group>"; };
+		E277D472300C975300648B9A /* AuthValidation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthValidation.swift; sourceTree = "<group>"; };
 		E2AC0FBF3000354E0005D226 /* PracticeKakaoMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PracticeKakaoMapView.swift; sourceTree = "<group>"; };
 		E616D005446E65E2A4478814 /* MaplogTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MaplogTheme.swift; sourceTree = "<group>"; };
 		E8D230492858DA4B6B97E40D /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
@@ -323,6 +325,7 @@
 		BD4651531C42ADF9CA5B6D3E /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				E277D472300C975300648B9A /* AuthValidation.swift */,
 				E21BAE21300BC1BC00B95B53 /* AuthModels.swift */,
 				717E1AC786880C4F9F3E0447 /* MaplogModels.swift */,
 			);
@@ -439,6 +442,7 @@
 				478728511FB5355DB05A6D30 /* KakaoMapSDKConfiguration.swift in Sources */,
 				3355D59236C4EA0C84F05829 /* LogFeedView.swift in Sources */,
 				E21BAE22300BC1C400B95B53 /* AuthModels.swift in Sources */,
+				E277D473300C975B00648B9A /* AuthValidation.swift in Sources */,
 				0BDB4C1D30FCD6A8E747770C /* LogPreviewView.swift in Sources */,
 				2F5692305C0C1CB4922668FB /* MaplogApp.swift in Sources */,
 				A54F18BDB73628E81E84EC2E /* MaplogButtons.swift in Sources */,
