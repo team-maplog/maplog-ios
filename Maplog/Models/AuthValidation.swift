@@ -5,6 +5,7 @@
 //  Created by 한채림 on 7/19/26.
 //
 
+import Foundation
 
 enum AuthValidation {
     static func emailError(for email: String) -> String? {
@@ -14,9 +15,16 @@ enum AuthValidation {
             return "이메일을 입력해주세요."
         }
         
-        guard trimmedEmail.contains("@") else {
-            return "올바른 이메일 주소를 입력해주세요."
+        guard email.count <= 150 else {
+            return "이메일은 150자 이하로 입력해주세요."
         }
+    
+        guard email.range(
+                of: #"^[^\s@]+@[^\s@]+\.[^\s@]+$"#,
+                options: .regularExpression
+            ) != nil else {
+                return "올바른 이메일 주소를 입력해주세요."
+            }
         
         return nil
     }
@@ -73,20 +81,16 @@ enum AuthValidation {
             return "닉네임을 입력해주세요."
         }
         
-        guard (2...12).contains(nickname.count) else {
-            return "닉네임은 2자 이상 12자 이하로 입력해주세요."
-        }
-        
-        guard nickname.range(of: "\\s", options: .regularExpression) == nil else {
-            return "닉네임에는 공백을 사용할 수 없습니다."
+        guard (2...20).contains(nickname.count) else {
+            return "닉네임은 2자 이상 20자 이하로 입력해주세요."
         }
         
         guard nickname.range(
-            of: "^[가-힣A-Za-z0-9]+$",
-            options: .regularExpression
-        ) != nil else {
-            return "닉네임은 한글, 영문, 숫자만 사용할 수 있습니다."
-        }
+                of: #"^[\p{L}\p{N}]+(?: [\p{L}\p{N}]+)*$"#,
+                options: .regularExpression
+            ) != nil else {
+                return "닉네임은 한글, 영문, 숫자와 단일 공백만 사용할 수 있습니다."
+            }
         
         return nil
     }
@@ -94,11 +98,19 @@ enum AuthValidation {
     static func termsError(hasAcceptedTerms: Bool) -> String? {
         
         guard hasAcceptedTerms else {
-            return "이용약관 및 개인정보 처리방침에 동의해주세요."
+            return "이용약관에 동의해주세요."
         }
+        
         return nil
     }
     
-    
+    static func privacyPolicyError(privacyPolicyAgreed: Bool) -> String? {
+        
+        guard privacyPolicyAgreed else {
+            return "개인정보 처리방침에 동의해주세요."
+        }
+        
+        return nil
+    }
 }
 
