@@ -27,7 +27,7 @@ struct SignupRequest: Encodable {
 
 // 회원가입 성공 data
 struct SignupResponseData: Decodable {
-    let userId: Int
+    let userId: String
     let email: String
     let nickname: String
     let token: TokenResponse

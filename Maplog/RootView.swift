@@ -75,6 +75,7 @@ enum MaplogLaunchRequest {
 struct RootView: View {
     @Environment(\.scenePhase) private var scenePhase
     @EnvironmentObject private var authSessionStore: AuthSessionStore // 로그인 여부와 JWT 토큰을 관리해. MaplogApp에서 만들어서 주입한 객체
+    
     @StateObject private var sessionStore = MaplogSessionStore() // 기존 앱의 위치 권한, 저장한 로그·장소 같은 앱 내부 상태를 관리해. RootView가 직접 생성·소유
     
     @State private var hasFinishedInitialAuthCheck = false // keychain 조회 기억 상태

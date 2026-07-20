@@ -48,6 +48,13 @@ final class APIClient {
             do {
                 return try decoder.decode(responseType, from: data)
             } catch {
+#if DEBUG
+                print("❌ API decoding failed")
+                print("status:", httpResponse.statusCode)
+                print("url:", urlRequest.url?.absoluteString ?? "unknown")
+                print("error:", error)
+#endif
+                
                 throw APIError.decoding(error) // 2xx 성공 응답인데 JSON 모양이 다를 때
             }
         }

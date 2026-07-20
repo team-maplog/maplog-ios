@@ -29,7 +29,12 @@ struct SignupView: View {
                         .font(MaplogFont.bodyStrong)
                         .foregroundStyle(Color.maplogInk)
                     
-                    TextField("example@mail.com", text: $viewModel.email)
+                    TextField(
+                        "이메일 주소",
+                        text: $viewModel.email,
+                        prompt: Text("example@mail.com")
+                            .foregroundStyle(Color.maplogSubtle)
+                    )
                         .keyboardType(.emailAddress)
                         .textContentType(.emailAddress)
                         .textInputAutocapitalization(.never)
