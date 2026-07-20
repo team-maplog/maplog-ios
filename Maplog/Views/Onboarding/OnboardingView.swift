@@ -69,6 +69,9 @@ private extension String {
 
 struct OnboardingView: View {
     let onStart: () -> Void
+    
+    // 내가 만들지는 않지만, 상위 화면이 제공한 공유 객체를 사용
+    @EnvironmentObject private var authSessionStore: AuthSessionStore
     @StateObject private var viewModel = OnboardingViewModel()
     @State private var activeFlow: AuthFlow?
     @State private var resetConfirmation: ResetConfirmation?
@@ -129,7 +132,9 @@ struct OnboardingView: View {
                         }
                         
                         HStack(spacing: MaplogSpacing.xSmall) {
-                            NavigationLink(destination: SignupView()) {
+                            NavigationLink(destination: SignupView(
+                                authSessionStore: authSessionStore
+                            )) {
                                 Text("회원가입")
                             }
                             Button("비밀번호 찾기") {

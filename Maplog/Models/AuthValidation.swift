@@ -95,9 +95,9 @@ enum AuthValidation {
         return nil
     }
     
-    static func termsError(hasAcceptedTerms: Bool) -> String? {
+    static func termsError(termsAgreed: Bool) -> String? {
         
-        guard hasAcceptedTerms else {
+        guard termsAgreed else {
             return "이용약관에 동의해주세요."
         }
         

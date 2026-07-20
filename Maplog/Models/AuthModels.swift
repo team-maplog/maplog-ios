@@ -21,7 +21,7 @@ struct SignupRequest: Encodable {
     let password: String
     let passwordConfirmation: String
     let nickname: String
-    let termsAreed: Bool
+    let termsAgreed: Bool
     let privacyPolicyAgreed: Bool
 }
 
@@ -29,7 +29,7 @@ struct SignupRequest: Encodable {
 struct SignupResponseData: Decodable {
     let userId: Int
     let email: String
-    let name: String
+    let nickname: String
     let token: TokenResponse
 }
 

@@ -74,8 +74,10 @@ enum MaplogLaunchRequest {
 
 struct RootView: View {
     @Environment(\.scenePhase) private var scenePhase
-
-    @StateObject private var sessionStore = MaplogSessionStore()
+    @EnvironmentObject private var authSessionStore: AuthSessionStore // 로그인 여부와 JWT 토큰을 관리해. MaplogApp에서 만들어서 주입한 객체
+    @StateObject private var sessionStore = MaplogSessionStore() // 기존 앱의 위치 권한, 저장한 로그·장소 같은 앱 내부 상태를 관리해. RootView가 직접 생성·소유
+    
+    @State private var hasFinishedInitialAuthCheck = false // keychain 조회 기억 상태
     @State private var phase: LaunchPhase = .login
     @State private var requestedTab: MaplogTab?
     @State private var requestedCapturePlaceName: String?
@@ -121,10 +123,8 @@ struct RootView: View {
         }
         .tint(.maplogLime)
         .font(MaplogFont.body)
-        .environment(\.maplogLogout) {
-            withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) {
-                phase = .login
-            }
+        .environment(\.maplogLogout) { // endSession이 토큰을 삭제하고 isAuthenticated = false로 만들면, .onChange가 자동으로 로그인 화면으로 이동시킴
+            try? authSessionStore.endSession()
         }
         .environmentObject(sessionStore)
         .onAppear(perform: consumeLaunchRequest)
@@ -134,6 +134,38 @@ struct RootView: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: MaplogLaunchRequest.didChangeNotification)) { _ in
             consumeLaunchRequest()
+        } // 앱 시작 시 세션 복구
+        .task {
+            guard !hasFinishedInitialAuthCheck else {
+                return
+            }
+            
+            do {
+                try authSessionStore.restoreSession() // refresh token 존재 확인, isAuthenticated 변경
+            } catch {
+                
+            }
+            
+            hasFinishedInitialAuthCheck = true
+            
+            if authSessionStore.isAuthenticated {
+                phase = .app // ture, 기존 로그인 세션 있으므로 app
+            } else {
+                phase = .login // false, 로그인 정보 없으므로 login
+            }
+        } // 회원가입 성공 로그아웃 변화 감지
+        .onChange(of: authSessionStore.isAuthenticated) { _, isAuthenticated in
+            guard hasFinishedInitialAuthCheck else {
+                return
+            }
+            
+            withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) {
+                if isAuthenticated {
+                    phase = .location
+                } else {
+                    phase = .login
+                }
+            }
         }
     }
 

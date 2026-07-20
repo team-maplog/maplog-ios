@@ -14,7 +14,11 @@ struct SignupView: View {
     //    @State private var nickname = ""
     //    @State private var hasAcceptedTerms = false
     
-    @StateObject private var viewModel = AuthViewModel()
+    @StateObject private var viewModel: AuthViewModel
+    
+    init(authSessionStore: AuthSessionStore) {
+        _viewModel = StateObject(wrappedValue: AuthViewModel(authSessionStore: authSessionStore))
+    }
     
     
     var body: some View {
@@ -204,45 +208,53 @@ struct SignupView: View {
                                     .foregroundStyle(Color.maplogDanger)
                             }
                         }
-                        
-                        
-                        
-                        
-                        Button {
-                            // API 연결 단계에서 회원가입 요청을 추가합니다.
-                            guard viewModel.validateSignupForm() else {
-                                return
-                            }
-                        } label: {
-                            Text("가입 완료")
+                    
+                    
+                    
+                    
+                    Button {
+                        // API 연결 단계에서 회원가입 요청을 추가합니다.
+                        Task {
+                            await viewModel.signUp()
                         }
-                        .buttonStyle(MaplogButtonStyle(variant: .primary, size: .large, fullWidth: true))
+                    } label: {
+                        Text("가입 완료")
                         
-                        HStack(spacing: MaplogSpacing.xxSmall) {
-                            Spacer()
-                            Text("이미 계정이 있으신가요?")
-                                .font(MaplogFont.caption)
-                                .foregroundStyle(Color.maplogMuted)
-                            Button("로그인하기") {
-                                // 로그인 화면 연결 단계에서 NavigationLink로 교체합니다.
-                            }
-                            .font(MaplogFont.caption)
-                            .foregroundStyle(Color.maplogInk)
-                            .buttonStyle(.plain)
-                            Spacer()
-                        }
                     }
-                    .padding(.top, MaplogSpacing.medium)
+                    .buttonStyle(MaplogButtonStyle(variant: .primary, size: .large, fullWidth: true))
+                    .disabled(viewModel.isLoading)
+                    
+                    if let error = viewModel.signupError {
+                        Text(error)
+                            .font(MaplogFont.caption)
+                            .foregroundStyle(Color.maplogDanger)
+                    }
+                    
+                    HStack(spacing: MaplogSpacing.xxSmall) {
+                        Spacer()
+                        Text("이미 계정이 있으신가요?")
+                            .font(MaplogFont.caption)
+                            .foregroundStyle(Color.maplogMuted)
+                        Button("로그인하기") {
+                            // 로그인 화면 연결 단계에서 NavigationLink로 교체합니다.
+                        }
+                        .font(MaplogFont.caption)
+                        .foregroundStyle(Color.maplogInk)
+                        .buttonStyle(.plain)
+                        Spacer()
+                    }
                 }
-                .padding(.horizontal, MaplogSpacing.xLarge)
-                .padding(.top, MaplogSpacing.xLarge)
-                .padding(.bottom, MaplogSpacing.xxxLarge)
-                .navigationTitle("회원가입")
-                .navigationBarTitleDisplayMode(.inline)
+                .padding(.top, MaplogSpacing.medium)
             }
-            .background(Color.maplogSurface)
+            .padding(.horizontal, MaplogSpacing.xLarge)
+            .padding(.top, MaplogSpacing.xLarge)
+            .padding(.bottom, MaplogSpacing.xxxLarge)
+            .navigationTitle("회원가입")
+            .navigationBarTitleDisplayMode(.inline)
         }
+        .background(Color.maplogSurface)
     }
+}
 
 //#Preview("회원가입 이동 흐름") {
 //    NavigationStack {
@@ -255,6 +267,6 @@ struct SignupView: View {
 
 #Preview("회원가입 화면") {
     NavigationStack {
-        SignupView()
+        SignupView(authSessionStore: AuthSessionStore())
     }
 }

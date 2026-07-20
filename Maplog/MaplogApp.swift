@@ -2,6 +2,8 @@ import SwiftUI
 
 @main
 struct MaplogApp: App {
+    @StateObject private var authSessionStore = AuthSessionStore()
+    
     init() {
         KakaoMapSDKConfiguration.initializeIfNeeded()
     }
@@ -9,6 +11,7 @@ struct MaplogApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
+                .environmentObject(authSessionStore) 
         }
     }
 }
