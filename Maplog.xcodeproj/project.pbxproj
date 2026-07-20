@@ -11,7 +11,6 @@
 		0F38CC8E9CFCBB2E9982A900 /* KakaoMapsSDK-SPM in Frameworks */ = {isa = PBXBuildFile; productRef = 6B18CAE8F036967CBD6A5FD0 /* KakaoMapsSDK-SPM */; };
 		1F799557AF09B31CA1D664EF /* MaplogModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 717E1AC786880C4F9F3E0447 /* MaplogModels.swift */; };
 		28E82DEB362C514D0763D2DC /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0C944E2B4B65B383EDBD76C /* ProfileView.swift */; };
-		2DF93A0B91593B3004C4D65F /* HomeViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34838933415A9B48BC1BF98C /* HomeViewModel.swift */; };
 		2F5692305C0C1CB4922668FB /* MaplogApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2672356266064D88A9AB90F5 /* MaplogApp.swift */; };
 		32DE35FD9AE9F47B0B1FEF82 /* ComposerViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA24E71BC2577A1A15EBBAB7 /* ComposerViewModel.swift */; };
 		3355D59236C4EA0C84F05829 /* LogFeedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8768DFA90689F96DA18B14EF /* LogFeedView.swift */; };
@@ -23,7 +22,6 @@
 		5AED54A26FE2D0E933AAC6D2 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EE6777E9995AFAB01247AC8 /* RootView.swift */; };
 		6635A8152E8F95420B29E965 /* MaplogPrimitives.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1573A086114CD4D9DA1FBC0B /* MaplogPrimitives.swift */; };
 		77DB9C9792EBE33C03EC4360 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BBD4570766EEE062B0D9957F /* Assets.xcassets */; };
-		854F77386EF2D1F4C9286482 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35EB4818761109A7DD98F01F /* HomeView.swift */; };
 		8620FDB3784C86D27B86B21D /* ExploreMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90640D820DF57FB03ADAB4BB /* ExploreMapView.swift */; };
 		99558FA4864B1D3D371887CB /* MockMaplogData.swift in Sources */ = {isa = PBXBuildFile; fileRef = B178E7FBFB73E78FCFC05218 /* MockMaplogData.swift */; };
 		A00B2ABF9A8E2FC357C0A64C /* ComposerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0640AE75B057F41C8A1BEC9 /* ComposerView.swift */; };
@@ -42,7 +40,6 @@
 		DEBB0D0F8CED4E01911F6036 /* MaplogTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = E616D005446E65E2A4478814 /* MaplogTheme.swift */; };
 		E1B3BAA0F6CB395742591F5D /* HomeSupportViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B3A6EE4CC60394A86768933 /* HomeSupportViews.swift */; };
 		E21BAE22300BC1C400B95B53 /* AuthModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = E21BAE21300BC1BC00B95B53 /* AuthModels.swift */; };
-		E21BAE24300BC1E200B95B53 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = E21BAE23300BC1D900B95B53 /* APIClient.swift */; };
 		E21BAE26300BC1FD00B95B53 /* AuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E21BAE25300BC1F600B95B53 /* AuthService.swift */; };
 		E21BAE28300BC20400B95B53 /* KeychainService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E21BAE27300BC20000B95B53 /* KeychainService.swift */; };
 		E21BAE2A300BC21700B95B53 /* AuthViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E21BAE29300BC21300B95B53 /* AuthViewModel.swift */; };
@@ -63,8 +60,6 @@
 		24EF59E3368576B714BF324C /* TripDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TripDetailView.swift; sourceTree = "<group>"; };
 		2672356266064D88A9AB90F5 /* MaplogApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MaplogApp.swift; sourceTree = "<group>"; };
 		301951B5ED69D1CB3A145958 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
-		34838933415A9B48BC1BF98C /* HomeViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeViewModel.swift; sourceTree = "<group>"; };
-		35EB4818761109A7DD98F01F /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		3B3A6EE4CC60394A86768933 /* HomeSupportViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeSupportViews.swift; sourceTree = "<group>"; };
 		466D4CDACC71C57EB22009EB /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		5EE6777E9995AFAB01247AC8 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
@@ -93,7 +88,6 @@
 		D653507D19A3EF33FCE581B8 /* SpotDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotDetailView.swift; sourceTree = "<group>"; };
 		E0640AE75B057F41C8A1BEC9 /* ComposerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComposerView.swift; sourceTree = "<group>"; };
 		E21BAE21300BC1BC00B95B53 /* AuthModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthModels.swift; sourceTree = "<group>"; };
-		E21BAE23300BC1D900B95B53 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
 		E21BAE25300BC1F600B95B53 /* AuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthService.swift; sourceTree = "<group>"; };
 		E21BAE27300BC20000B95B53 /* KeychainService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainService.swift; sourceTree = "<group>"; };
 		E21BAE29300BC21300B95B53 /* AuthViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthViewModel.swift; sourceTree = "<group>"; };
@@ -128,9 +122,29 @@
 			path = Auth;
 			sourceTree = "<group>";
 		};
-		E281F66E300E13AC00562F7C /* Config */ = {
+		E281F79B300EACAC00562F7C /* Core */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = Config;
+			path = Core;
+			sourceTree = "<group>";
+		};
+		E281F7A9300EAEE000562F7C /* Features */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Features;
+			sourceTree = "<group>";
+		};
+		E281F7AD300EAF2100562F7C /* ViewModels */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		E281F7AE300EAF5200562F7C /* Views */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Views;
+			sourceTree = "<group>";
+		};
+		E281F7AF300EAF6D00562F7C /* Mocks */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Mocks;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -150,7 +164,8 @@
 		0412E684700AC4A45E6C638E /* Maplog */ = {
 			isa = PBXGroup;
 			children = (
-				E281F66E300E13AC00562F7C /* Config */,
+				E281F7A9300EAEE000562F7C /* Features */,
+				E281F79B300EACAC00562F7C /* Core */,
 				E21BAE2B300BC22400B95B53 /* Stores */,
 				466D4CDACC71C57EB22009EB /* Info.plist */,
 				2672356266064D88A9AB90F5 /* MaplogApp.swift */,
@@ -200,7 +215,6 @@
 				E21BAE29300BC21300B95B53 /* AuthViewModel.swift */,
 				CA24E71BC2577A1A15EBBAB7 /* ComposerViewModel.swift */,
 				2111B1B2104E377560C6C3EB /* ExploreMapViewModel.swift */,
-				34838933415A9B48BC1BF98C /* HomeViewModel.swift */,
 				030655D170DFF7F7C85ED748 /* ProfileViewModel.swift */,
 			);
 			path = ViewModels;
@@ -209,9 +223,10 @@
 		2FC6E5E451F0820B45E53CCE /* Home */ = {
 			isa = PBXGroup;
 			children = (
+				E281F7AE300EAF5200562F7C /* Views */,
+				E281F7AD300EAF2100562F7C /* ViewModels */,
 				1D1EC2F8E72AB799F3B85F30 /* DiscoveryViews.swift */,
 				3B3A6EE4CC60394A86768933 /* HomeSupportViews.swift */,
-				35EB4818761109A7DD98F01F /* HomeView.swift */,
 				E8D230492858DA4B6B97E40D /* SearchView.swift */,
 				24EF59E3368576B714BF324C /* TripDetailView.swift */,
 			);
@@ -223,7 +238,6 @@
 			children = (
 				E21BAE27300BC20000B95B53 /* KeychainService.swift */,
 				E21BAE25300BC1F600B95B53 /* AuthService.swift */,
-				E21BAE23300BC1D900B95B53 /* APIClient.swift */,
 				74A94F44B0009F7B5B57E3AE /* KakaoMapSDKConfiguration.swift */,
 			);
 			path = Services;
@@ -249,6 +263,7 @@
 		731DE34B0224B24C341F98A1 /* Data */ = {
 			isa = PBXGroup;
 			children = (
+				E281F7AF300EAF6D00562F7C /* Mocks */,
 				B178E7FBFB73E78FCFC05218 /* MockMaplogData.swift */,
 			);
 			path = Data;
@@ -372,7 +387,11 @@
 			);
 			fileSystemSynchronizedGroups = (
 				E21BAE2B300BC22400B95B53 /* Stores */,
-				E281F66E300E13AC00562F7C /* Config */,
+				E281F79B300EACAC00562F7C /* Core */,
+				E281F7A9300EAEE000562F7C /* Features */,
+				E281F7AD300EAF2100562F7C /* ViewModels */,
+				E281F7AE300EAF5200562F7C /* Views */,
+				E281F7AF300EAF6D00562F7C /* Mocks */,
 			);
 			name = Maplog;
 			packageProductDependencies = (
@@ -442,9 +461,6 @@
 				8620FDB3784C86D27B86B21D /* ExploreMapView.swift in Sources */,
 				DEBA54644E2AC72CD4B1A5B9 /* ExploreMapViewModel.swift in Sources */,
 				E1B3BAA0F6CB395742591F5D /* HomeSupportViews.swift in Sources */,
-				854F77386EF2D1F4C9286482 /* HomeView.swift in Sources */,
-				E21BAE24300BC1E200B95B53 /* APIClient.swift in Sources */,
-				2DF93A0B91593B3004C4D65F /* HomeViewModel.swift in Sources */,
 				A8D3584C883AE074D4757BEC /* KakaoMapCanvas.swift in Sources */,
 				478728511FB5355DB05A6D30 /* KakaoMapSDKConfiguration.swift in Sources */,
 				3355D59236C4EA0C84F05829 /* LogFeedView.swift in Sources */,
