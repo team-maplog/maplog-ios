@@ -5,6 +5,8 @@ struct HomeView: View {
     @Environment(\.maplogSelectTab) private var selectTab
     @EnvironmentObject private var sessionStore: MaplogSessionStore
     @ObservedObject var viewModel: HomeViewModel // MainTabView가 만든 하나를 받아서 관찰
+    let onShowAllFestivals: () -> Void
+    
     @State private var selectedCategory = "추천"
     @State private var selectedChip = "전체"
     @State private var showsThemeSpots = false
@@ -228,7 +230,7 @@ struct HomeView: View {
         case "지역":
             categoryDestination = .region
         case "관광":
-            categoryDestination = .tourism
+            onShowAllFestivals()
         default:
             break
         }
@@ -366,7 +368,7 @@ struct HomeView: View {
     private func openChip(_ chip: String) {
         switch chip {
         case "축제":
-            chipDestination = .festivals
+            onShowAllFestivals()
         case "맛집":
             showsNearbyRecommendations = true
         case "야경":
@@ -392,7 +394,7 @@ struct HomeView: View {
 //                subtitle: "주말 여행을 채워줄 행사"
             ) {
                 Button {
-                    chipDestination = .festivals
+                   onShowAllFestivals()
                 } label: {
                     HStack(spacing: 4) {
                         Text("전체보기")
@@ -661,16 +663,13 @@ struct HomeView: View {
             AIDigestHubView(digests: aiDigests)
         case .region:
             MapSearchView(query: "서울 성수동")
-        case .tourism:
-            FestivalListView()
+      
         }
     }
 
     @ViewBuilder
     private func chipDestinationView(for destination: HomeChipDestination) -> some View {
         switch destination {
-        case .festivals:
-            FestivalListView()
         case .mapSearch(let query):
             MapSearchView(query: query)
         }
@@ -1464,26 +1463,21 @@ private enum HomeCategoryDestination: Hashable, Identifiable {
     case routes
     case ai
     case region
-    case tourism
 
     var id: String {
         switch self {
         case .routes: return "routes"
         case .ai: return "ai"
         case .region: return "region"
-        case .tourism: return "tourism"
         }
     }
 }
 
 private enum HomeChipDestination: Hashable, Identifiable {
-    case festivals
     case mapSearch(String)
 
     var id: String {
         switch self {
-        case .festivals:
-            return "festivals"
         case .mapSearch(let query):
             return "map-search-\(query)"
         }

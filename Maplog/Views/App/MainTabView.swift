@@ -3,7 +3,14 @@
 //  Maplog
 //
 //  Created by 한채림 on 7/22/26.
+
+//HomeView
+//→ “전체보기 눌렸어요”만 알림
 //
+//MainTabView
+//→ NavigationStack 경로를 변경
+//→ FestivalListView 생성
+//→ Repository 주입
 
 import SwiftUI
 
@@ -21,11 +28,17 @@ struct MainTabView: View {
     @State private var prefersReelTabBarStyle = false
     @State private var activeCapturePlaceName: String?
 
+    private let festivalRepository: any FestivalRepository
+    @State private var homeNavigationPath: [HomeNavigationRoute] = []
+    
+    
     init(
         festivalRepository: any FestivalRepository, // Repository를 받게 함
         requestedTab: Binding<MaplogTab?> = .constant(nil),
         requestedCapturePlaceName: Binding<String?> = .constant(nil)
     ) {
+        self.festivalRepository = festivalRepository
+        
         _requestedTab = requestedTab
         _requestedCapturePlaceName = requestedCapturePlaceName
         _selectedTab = State(initialValue: .home)
@@ -37,6 +50,10 @@ struct MainTabView: View {
         )
     }
 
+    private enum HomeNavigationRoute: Hashable { // Hashable인 이유는 NavigationStack의 경로에 넣을 값
+        case festivalList
+    }
+    
     private var tabSelection: Binding<MaplogTab> {
         Binding(
             get: { selectedTab },
@@ -60,8 +77,18 @@ struct MainTabView: View {
         Group {
             switch selectedTab {
             case .home:
-                NavigationStack {
-                    HomeView(viewModel: homeviewModel)
+                NavigationStack(path: $homeNavigationPath) {
+                    HomeView(viewModel: homeviewModel,
+                        onShowAllFestivals: {
+                            homeNavigationPath.append(.festivalList)
+                        }
+                    )
+                    .navigationDestination(for: HomeNavigationRoute.self) { route in
+                        switch route {
+                        case .festivalList:
+                            FestivalListView(festivalRepository: festivalRepository)
+                        }
+                    }
                 }
             case .capture:
                 NavigationStack {

@@ -13,7 +13,6 @@
 //region은 실제 API 응답에서도 null이므로 반드시 String?
 //서버가 보내는 날짜는 "2026-07-30"이므로 이 단계에서는 String
 //thumbnailUrl도 서버 원본 값이므로 이 단계에서는 String
-//FestivalDTO에 id를 넣으면 안 됩니다. 서버가 주지 않는 값을 DTO에 만들면 DTO가 “서버 계약”이 아니게 됨
 
 import Foundation
 

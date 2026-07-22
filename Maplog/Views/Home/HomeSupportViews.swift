@@ -1991,161 +1991,161 @@ private struct EventInfoRow: View {
     }
 }
 
-struct FestivalListView: View {
-    @EnvironmentObject private var sessionStore: MaplogSessionStore
-    @State private var selectedFilter = "전체"
-    @State private var toastText: String?
-    private let filters = ["전체", "진행 중", "이번 주말", "거리순"]
-
-    private var visibleEvents: [FeaturedEvent] {
-        switch selectedFilter {
-        case "이번 주말":
-            return Array(MockMaplogData.events.prefix(2))
-        case "거리순":
-            return MockMaplogData.events.sorted { $0.location < $1.location }
-        default:
-            return MockMaplogData.events
-        }
-    }
-
-    var body: some View {
-        ZStack(alignment: .bottom) {
-            ScrollView(showsIndicators: false) {
-                LazyVStack(alignment: .leading, spacing: MaplogSpacing.section) {
-                    filterRow
-
-                    festivalListHeader
-
-                    ForEach(visibleEvents) { event in
-                        ZStack(alignment: .topTrailing) {
-                            NavigationLink {
-                                FeaturedEventDetailView(event: event)
-                            } label: {
-                                FestivalCard(
-                                    event: event,
-                                    isSaved: sessionStore.hasSavedEvent(event)
-                                )
-                            }
-                            .buttonStyle(.plain)
-
-                            Button {
-                                toggleSave(event)
-                            } label: {
-                                Image(systemName: sessionStore.hasSavedEvent(event) ? "heart.fill" : "heart")
-                                    .font(.system(size: 16, weight: .bold))
-                                    .foregroundStyle(sessionStore.hasSavedEvent(event) ? AnyShapeStyle(Color.maplogOlive) : AnyShapeStyle(.primary))
-                                    .frame(width: 34, height: 34)
-                                    .background(.regularMaterial)
-                                    .clipShape(Circle())
-                                    .overlay {
-                                        Circle()
-                                            .stroke(.white.opacity(0.25), lineWidth: 1)
-                                    }
-                            }
-                            .frame(width: MaplogSize.minimumTapTarget, height: MaplogSize.minimumTapTarget)
-                            .buttonStyle(.plain)
-                            .padding(MaplogSpacing.small)
-                            .accessibilityLabel(sessionStore.hasSavedEvent(event) ? "\(event.title) 관심 행사 저장 해제" : "\(event.title) 관심 행사 저장")
-                        }
-                    }
-                }
-                .padding(.horizontal, MaplogSpacing.page)
-                .padding(.top, 18)
-                .padding(.bottom, 110)
-            }
-
-            if let toastText {
-                Text(toastText)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.primary)
-                    .padding(.horizontal, 18)
-                    .frame(minHeight: 48)
-                    .background(.regularMaterial)
-                    .clipShape(Capsule())
-                    .shadow(color: .black.opacity(0.14), radius: 18, x: 0, y: 8)
-                    .padding(.bottom, 26)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-            }
-        }
-        .navigationTitle("축제")
-        .navigationBarTitleDisplayMode(.inline)
-        .maplogTabBarHidden()
-        .background(Color(uiColor: .systemBackground))
-    }
-
-    private var festivalListHeader: some View {
-        HStack(alignment: .bottom) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("전국 축제 · 공연")
-                    .font(MaplogFont.screenTitle)
-                    .foregroundStyle(Color.maplogInk)
-                Text("지금 떠나기 좋은 행사를 골라보세요")
-                    .font(MaplogFont.callout)
-                    .foregroundStyle(Color.maplogMuted)
-            }
-
-            Spacer()
-
-            Text("\(visibleEvents.count)개")
-                .font(MaplogFont.calloutStrong)
-                .foregroundStyle(Color.maplogOlive)
-                .padding(.horizontal, 10)
-                .frame(height: 30)
-                .background(Color.maplogLime.opacity(0.32))
-                .clipShape(Capsule())
-        }
-    }
-
-    private var filterRow: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 10) {
-                ForEach(filters, id: \.self) { filter in
-                    Button {
-                        selectedFilter = filter
-                    } label: {
-                        HStack(spacing: 4) {
-                            Text(filter)
-                            if filter == "거리순" {
-                                Image(systemName: "chevron.down")
-                                    .font(.system(size: 10, weight: .bold))
-                            }
-                        }
-                        .font(MaplogFont.calloutStrong)
-                        .foregroundStyle(selectedFilter == filter ? AnyShapeStyle(Color.maplogInk) : AnyShapeStyle(.secondary))
-                        .padding(.horizontal, 14)
-                        .frame(height: MaplogSize.chipHeight)
-                        .background(selectedFilter == filter ? Color.maplogLime : .clear)
-                        .clipShape(Capsule())
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
-    }
-
-    private func toggleSave(_ event: FeaturedEvent) {
-        if sessionStore.hasSavedEvent(event) {
-            sessionStore.removeSavedEvent(event)
-            showToast("행사 저장을 해제했어요")
-        } else {
-            sessionStore.saveEvent(event)
-            showToast("관심 행사에 저장했어요")
-        }
-    }
-
-    private func showToast(_ text: String) {
-        withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
-            toastText = text
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.45) {
-            withAnimation(.easeOut(duration: 0.2)) {
-                if toastText == text {
-                    toastText = nil
-                }
-            }
-        }
-    }
-}
+//struct FestivalListView: View {
+//    @EnvironmentObject private var sessionStore: MaplogSessionStore
+//    @State private var selectedFilter = "전체"
+//    @State private var toastText: String?
+//    private let filters = ["전체", "진행 중", "이번 주말", "거리순"]
+//
+//    private var visibleEvents: [FeaturedEvent] {
+//        switch selectedFilter {
+//        case "이번 주말":
+//            return Array(MockMaplogData.events.prefix(2))
+//        case "거리순":
+//            return MockMaplogData.events.sorted { $0.location < $1.location }
+//        default:
+//            return MockMaplogData.events
+//        }
+//    }
+//
+//    var body: some View {
+//        ZStack(alignment: .bottom) {
+//            ScrollView(showsIndicators: false) {
+//                LazyVStack(alignment: .leading, spacing: MaplogSpacing.section) {
+//                    filterRow
+//
+//                    festivalListHeader
+//
+//                    ForEach(visibleEvents) { event in
+//                        ZStack(alignment: .topTrailing) {
+//                            NavigationLink {
+//                                FeaturedEventDetailView(event: event)
+//                            } label: {
+//                                FestivalCard(
+//                                    event: event,
+//                                    isSaved: sessionStore.hasSavedEvent(event)
+//                                )
+//                            }
+//                            .buttonStyle(.plain)
+//
+//                            Button {
+//                                toggleSave(event)
+//                            } label: {
+//                                Image(systemName: sessionStore.hasSavedEvent(event) ? "heart.fill" : "heart")
+//                                    .font(.system(size: 16, weight: .bold))
+//                                    .foregroundStyle(sessionStore.hasSavedEvent(event) ? AnyShapeStyle(Color.maplogOlive) : AnyShapeStyle(.primary))
+//                                    .frame(width: 34, height: 34)
+//                                    .background(.regularMaterial)
+//                                    .clipShape(Circle())
+//                                    .overlay {
+//                                        Circle()
+//                                            .stroke(.white.opacity(0.25), lineWidth: 1)
+//                                    }
+//                            }
+//                            .frame(width: MaplogSize.minimumTapTarget, height: MaplogSize.minimumTapTarget)
+//                            .buttonStyle(.plain)
+//                            .padding(MaplogSpacing.small)
+//                            .accessibilityLabel(sessionStore.hasSavedEvent(event) ? "\(event.title) 관심 행사 저장 해제" : "\(event.title) 관심 행사 저장")
+//                        }
+//                    }
+//                }
+//                .padding(.horizontal, MaplogSpacing.page)
+//                .padding(.top, 18)
+//                .padding(.bottom, 110)
+//            }
+//
+//            if let toastText {
+//                Text(toastText)
+//                    .font(.subheadline.weight(.semibold))
+//                    .foregroundStyle(.primary)
+//                    .padding(.horizontal, 18)
+//                    .frame(minHeight: 48)
+//                    .background(.regularMaterial)
+//                    .clipShape(Capsule())
+//                    .shadow(color: .black.opacity(0.14), radius: 18, x: 0, y: 8)
+//                    .padding(.bottom, 26)
+//                    .transition(.move(edge: .bottom).combined(with: .opacity))
+//            }
+//        }
+//        .navigationTitle("축제")
+//        .navigationBarTitleDisplayMode(.inline)
+//        .maplogTabBarHidden()
+//        .background(Color(uiColor: .systemBackground))
+//    }
+//
+//    private var festivalListHeader: some View {
+//        HStack(alignment: .bottom) {
+//            VStack(alignment: .leading, spacing: 4) {
+//                Text("전국 축제 · 공연")
+//                    .font(MaplogFont.screenTitle)
+//                    .foregroundStyle(Color.maplogInk)
+//                Text("지금 떠나기 좋은 행사를 골라보세요")
+//                    .font(MaplogFont.callout)
+//                    .foregroundStyle(Color.maplogMuted)
+//            }
+//
+//            Spacer()
+//
+//            Text("\(visibleEvents.count)개")
+//                .font(MaplogFont.calloutStrong)
+//                .foregroundStyle(Color.maplogOlive)
+//                .padding(.horizontal, 10)
+//                .frame(height: 30)
+//                .background(Color.maplogLime.opacity(0.32))
+//                .clipShape(Capsule())
+//        }
+//    }
+//
+//    private var filterRow: some View {
+//        ScrollView(.horizontal, showsIndicators: false) {
+//            HStack(spacing: 10) {
+//                ForEach(filters, id: \.self) { filter in
+//                    Button {
+//                        selectedFilter = filter
+//                    } label: {
+//                        HStack(spacing: 4) {
+//                            Text(filter)
+//                            if filter == "거리순" {
+//                                Image(systemName: "chevron.down")
+//                                    .font(.system(size: 10, weight: .bold))
+//                            }
+//                        }
+//                        .font(MaplogFont.calloutStrong)
+//                        .foregroundStyle(selectedFilter == filter ? AnyShapeStyle(Color.maplogInk) : AnyShapeStyle(.secondary))
+//                        .padding(.horizontal, 14)
+//                        .frame(height: MaplogSize.chipHeight)
+//                        .background(selectedFilter == filter ? Color.maplogLime : .clear)
+//                        .clipShape(Capsule())
+//                    }
+//                    .buttonStyle(.plain)
+//                }
+//            }
+//        }
+//    }
+//
+//    private func toggleSave(_ event: FeaturedEvent) {
+//        if sessionStore.hasSavedEvent(event) {
+//            sessionStore.removeSavedEvent(event)
+//            showToast("행사 저장을 해제했어요")
+//        } else {
+//            sessionStore.saveEvent(event)
+//            showToast("관심 행사에 저장했어요")
+//        }
+//    }
+//
+//    private func showToast(_ text: String) {
+//        withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
+//            toastText = text
+//        }
+//        DispatchQueue.main.asyncAfter(deadline: .now() + 1.45) {
+//            withAnimation(.easeOut(duration: 0.2)) {
+//                if toastText == text {
+//                    toastText = nil
+//                }
+//            }
+//        }
+//    }
+//}
 
 private struct FestivalCard: View {
     let event: FeaturedEvent
