@@ -15,4 +15,7 @@ enum APIError: Error {
     case decoding(Error)
     case unexpectedResponse(code: String, message: String) // Http는 성공인데, successFlag가 false이거나, 회원가입인데 다른 성공 코드가 온 이상한 응답
     case missingData // 회원가입 성공이라고 했는데 data가 nil인 응답
+    
+    case invalidURL
+    case invalidRequest(reason: String)
 }

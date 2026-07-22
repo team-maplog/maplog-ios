@@ -3,15 +3,30 @@ import SwiftUI
 @main
 struct MaplogApp: App {
     @StateObject private var authSessionStore = AuthSessionStore()
+    private let festivalRepository: any FestivalRepository // 여기서 선언
     
     init() {
         KakaoMapSDKConfiguration.initializeIfNeeded()
+        
+        let apiClient = APIClient()
+        
+        // apiService는 init 안에서만 잠깐 쓰는 지역 상수
+        //        (init 안에서 Repository를 만들기 위해 잠깐 필요함
+        //        init이 끝나면 apiService라는 이름은 사라짐)
+        let apiService = DefaultFestivalAPIService(apiClient: apiClient)
+
+//        festivalRepository
+//        → apiService를 보관
+//        → apiClient를 보관
+//        실제 객체는 사라지지 않음. Repository가 그 API Service를 가지고 있기 때문
+//        MaplogApp이 원래 가지고 있기로 선언한 저장 프로퍼티를 초기화하는 코드
+        self.festivalRepository = DefaultFestivalRepository(apiService: apiService)
     }
 
     var body: some Scene {
         WindowGroup {
-            RootView()
-                .environmentObject(authSessionStore) 
+            RootView(festivalRepository: festivalRepository) // Composition Root
+                .environmentObject(authSessionStore)
         }
     }
 }

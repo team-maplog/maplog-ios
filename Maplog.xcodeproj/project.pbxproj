@@ -19,7 +19,6 @@
 		47C33995BE4EB3682A7880A9 /* TripDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24EF59E3368576B714BF324C /* TripDetailView.swift */; };
 		48B52C7259727D2951382F80 /* SpotDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D653507D19A3EF33FCE581B8 /* SpotDetailView.swift */; };
 		4B87E2473AF611A241D6F3BB /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8D230492858DA4B6B97E40D /* SearchView.swift */; };
-		5AED54A26FE2D0E933AAC6D2 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EE6777E9995AFAB01247AC8 /* RootView.swift */; };
 		6635A8152E8F95420B29E965 /* MaplogPrimitives.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1573A086114CD4D9DA1FBC0B /* MaplogPrimitives.swift */; };
 		77DB9C9792EBE33C03EC4360 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BBD4570766EEE062B0D9957F /* Assets.xcassets */; };
 		8620FDB3784C86D27B86B21D /* ExploreMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90640D820DF57FB03ADAB4BB /* ExploreMapView.swift */; };
@@ -62,7 +61,6 @@
 		301951B5ED69D1CB3A145958 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		3B3A6EE4CC60394A86768933 /* HomeSupportViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeSupportViews.swift; sourceTree = "<group>"; };
 		466D4CDACC71C57EB22009EB /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
-		5EE6777E9995AFAB01247AC8 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
 		65ABBA241CCE59F34DF290A0 /* LogPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogPreviewView.swift; sourceTree = "<group>"; };
 		691D6E56B0806BACA016DE02 /* CaptureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureView.swift; sourceTree = "<group>"; };
 		717E1AC786880C4F9F3E0447 /* MaplogModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MaplogModels.swift; sourceTree = "<group>"; };
@@ -147,6 +145,11 @@
 			path = Mocks;
 			sourceTree = "<group>";
 		};
+		E29548F2300FC566008AB637 /* App */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = App;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -169,7 +172,6 @@
 				E21BAE2B300BC22400B95B53 /* Stores */,
 				466D4CDACC71C57EB22009EB /* Info.plist */,
 				2672356266064D88A9AB90F5 /* MaplogApp.swift */,
-				5EE6777E9995AFAB01247AC8 /* RootView.swift */,
 				788BE76129F3163C4DBBEAC5 /* AppIntents */,
 				86B65D051A5C8E1403262757 /* Components */,
 				731DE34B0224B24C341F98A1 /* Data */,
@@ -280,6 +282,7 @@
 		79110CE8419A39D6032482EF /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				E29548F2300FC566008AB637 /* App */,
 				B1A126FE1B2603FC7C02B20F /* Composer */,
 				2FC6E5E451F0820B45E53CCE /* Home */,
 				0B31CCB1430D07D077F6095E /* Logs */,
@@ -392,6 +395,7 @@
 				E281F7AD300EAF2100562F7C /* ViewModels */,
 				E281F7AE300EAF5200562F7C /* Views */,
 				E281F7AF300EAF6D00562F7C /* Mocks */,
+				E29548F2300FC566008AB637 /* App */,
 			);
 			name = Maplog;
 			packageProductDependencies = (
@@ -479,7 +483,6 @@
 				28E82DEB362C514D0763D2DC /* ProfileView.swift in Sources */,
 				FB89B8F9095093D254CFC7CE /* ProfileViewModel.swift in Sources */,
 				B8BBE3F5A7C53D50B176913A /* QuickMaplogIntent.swift in Sources */,
-				5AED54A26FE2D0E933AAC6D2 /* RootView.swift in Sources */,
 				FDBA21967A87837768F80E5D /* SavedView.swift in Sources */,
 				E21BAE28300BC20400B95B53 /* KeychainService.swift in Sources */,
 				4B87E2473AF611A241D6F3BB /* SearchView.swift in Sources */,

@@ -4,7 +4,7 @@ struct HomeView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.maplogSelectTab) private var selectTab
     @EnvironmentObject private var sessionStore: MaplogSessionStore
-    @StateObject private var viewModel = HomeViewModel()
+    @ObservedObject var viewModel: HomeViewModel // MainTabView가 만든 하나를 받아서 관찰
     @State private var selectedCategory = "추천"
     @State private var selectedChip = "전체"
     @State private var showsThemeSpots = false
@@ -37,9 +37,9 @@ struct HomeView: View {
         Array(homePosts.dropFirst())
     }
 
-    private var homeFestivalEvents: [FeaturedEvent] {
-        [spotlightEvent] + MockMaplogData.events
-    }
+//    private var homeFestivalEvents: [FeaturedEvent] {
+//        [spotlightEvent] + MockMaplogData.events
+//    }
 
     private var isHomeReelActive: Bool {
         guard let homeScrollPosition else { return false }
@@ -86,6 +86,9 @@ struct HomeView: View {
         .background(isHomeReelActive ? Color.black : Color(uiColor: .systemBackground))
         .preferredColorScheme(isHomeReelActive ? .dark : nil)
         .maplogReelTabBarStyle(isHomeReelActive)
+        .task { // body 안에서 직접 API를 호출하지 않고, View가 화면에 등장하는 생명주기에 맞는 .task에서 호출
+            await viewModel.loadInitialFestivals()
+        }
         .toolbar(.hidden, for: .navigationBar)
         .navigationDestination(isPresented: $showsThemeSpots) {
             ThemeSpotsView {
@@ -384,7 +387,7 @@ struct HomeView: View {
     private var weekendFestivalCarousel: some View {
         VStack(alignment: .leading, spacing: 14) {
             MaplogSectionHeader(
-                "이번 주말, 떠나기 좋은 축제",
+                "지금 떠나기 좋은 축제",
 //                systemImage: "sparkles",
 //                subtitle: "주말 여행을 채워줄 행사"
             ) {
@@ -401,27 +404,69 @@ struct HomeView: View {
             }
             .padding(.horizontal, MaplogSpacing.page)
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(spacing: 14) {
-                    ForEach(homeFestivalEvents) { event in
-                        NavigationLink {
-                            FeaturedEventDetailView(event: event)
-                        } label: {
-                            HomeFestivalCarouselCard(
-                                event: event,
-                                isSpotlight: event.id == spotlightEvent.id
-                            )
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .scrollTargetLayout()
-            }
+            festivalSectionContent
             .contentMargins(.horizontal, MaplogSpacing.page, for: .scrollContent)
             .scrollTargetBehavior(.viewAligned)
         }
     }
 
+    // loading / content / empty / failed 중 무엇을 보일지 결정 (상태 판단과 카드 레이아웃을 분리)
+    @ViewBuilder
+    private var festivalSectionContent: some View{
+        switch viewModel.festivalState {
+        case .idle, .loading:
+            ProgressView("축제 정보를 불러오는 중이에요")
+                .frame(maxWidth: .infinity, minHeight: 172)
+                .padding(.horizontal, MaplogSpacing.page)
+        case .content(let cards):
+            festivalCards(cards)
+        case .empty:
+            VStack(spacing: 8) {
+                Image(systemName: "calendar.badge.exclamationmark")
+                    .font(.title2)
+                    .foregroundStyle(.secondary)
+                
+                Text("현재 포시할 축제가 없어요.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, minHeight: 172)
+            .padding(.horizontal, MaplogSpacing.page)
+            
+        case .failed(let message):
+            VStack(spacing: 10) {
+                Text(message)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                
+                Button("다시 시도") {
+                    Task {
+                        await viewModel.retryInitialFestivals()
+                    }
+                }
+                .buttonStyle(.bordered)
+            }
+            .frame(maxWidth: .infinity, minHeight: 172)
+            .padding(.horizontal, MaplogSpacing.page)
+        }
+    }
+    
+    // 축제 카드 목록 UI를 만들어 주는 보조 함수(실제 반환값은 ScrollView, LazyHStack, ForEach 등이 조합된 아주 긴 타입인데, 그걸 전부 쓰지 않도록 Swift가 some View로 감춰줌)
+    // content일 때 카드들을 어떤 모양으로 그릴지 담당
+    private func festivalCards(_ cards: [HomeFestivalCardViewData]) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            LazyHStack(spacing: 14) {
+                ForEach(cards) { card in
+                    HomeFestivalCarouselCard(card: card)
+                }
+            }
+            .scrollTargetLayout()
+        }
+        .contentMargins(.horizontal, MaplogSpacing.page, for: .scrollContent)
+        .scrollTargetBehavior(.viewAligned)
+    }
+    
     private var weekendRecommendation: some View {
         VStack(alignment: .leading, spacing: MaplogSpacing.small) {
             Text("이번 주말, 여기 어때요?")
@@ -657,48 +702,40 @@ struct HomeView: View {
 }
 
 private struct HomeFestivalCarouselCard: View {
-    let event: FeaturedEvent
-    let isSpotlight: Bool
-
-    private var imageName: String {
-        if isSpotlight {
-            return "home_gwanghwamun_photo"
-        }
-        return event.thumbnailAssetName ?? event.imageStyle.assetName
-    }
-
+    let card: HomeFestivalCardViewData
+    
     var body: some View {
         ZStack(alignment: .bottomLeading) {
-            Image(imageName)
-                .resizable()
-                .scaledToFill()
+            festivalThumbnail
                 .frame(width: 264, height: 172)
                 .clipped()
-
+            
             LinearGradient(
                 colors: [.black.opacity(0.04), .clear, .black.opacity(0.82)],
                 startPoint: .top,
                 endPoint: .bottom
             )
-
+            
             VStack(alignment: .leading, spacing: 7) {
-                Text("이번 주말")
+                Text("축제")
                     .font(.caption.weight(.bold))
                     .foregroundStyle(Color.maplogInk)
                     .padding(.horizontal, 10)
                     .frame(minHeight: 26)
                     .background(Color.maplogLime, in: Capsule())
-
+                
                 Spacer()
-
-                Text(event.title)
+                
+                Text(card.title)
                     .font(.headline)
                     .foregroundStyle(.white)
                     .lineLimit(2)
-
+                
                 HStack(spacing: 10) {
-                    Label(event.location, systemImage: "mappin.and.ellipse")
-                    Label(event.period, systemImage: "calendar")
+                    Label(card.locationText, systemImage: "mappin.and.ellipse")
+                        .lineLimit(1)
+                    
+                    Label(card.periodText, systemImage: "calendar")
                         .lineLimit(1)
                 }
                 .font(.caption.weight(.semibold))
@@ -714,9 +751,53 @@ private struct HomeFestivalCarouselCard: View {
         }
         .shadow(color: .black.opacity(0.09), radius: 10, x: 0, y: 5)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(event.title), \(event.location), \(event.period)")
+        .accessibilityLabel(
+            "\(card.title), \(card.locationText), \(card.periodText)"
+        )
+    }
+    
+    
+//    축제 목록 API 성공”과 별개로 각 썸네일을 내려받아. 즉 목록은 먼저 카드로 나타나고, 이미지가 조금 뒤에 표시되는 것은 자연스러운 동작
+//    다른 View들을 SwiftUI가 하나의 화면으로 조립할 수 있게 해줌
+    @ViewBuilder
+    private var festivalThumbnail: some View {
+        if let thumbnailURL = card.thumbnailURL {
+            AsyncImage(url: thumbnailURL) { phase in
+                switch phase {
+                case .empty:
+                    thumbnailPlaceholder
+                        .overlay {
+                            ProgressView()
+                                .tint(.secondary)
+                        }
+                case .success(let image):
+                                    image
+                                        .resizable()
+                                        .scaledToFill()
+
+                                case .failure:
+                                    thumbnailPlaceholder
+                    
+                @unknown default:
+                    thumbnailPlaceholder
+                }
+            }
+        } else {
+            thumbnailPlaceholder
+        }
+    }
+    
+    private var thumbnailPlaceholder: some View {
+        Color(uiColor: .secondarySystemFill)
+                    .overlay {
+                        Image(systemName: "photo")
+                            .font(.title2)
+                            .foregroundStyle(.secondary)
+                    }
     }
 }
+
+
 
 private struct HomeWeekendCard: View {
     let event: FeaturedEvent
