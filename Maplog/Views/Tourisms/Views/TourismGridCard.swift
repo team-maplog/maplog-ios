@@ -1,16 +1,16 @@
 //
-//  FestivalGridCard.swift
+//  TourismGridCard.swift
 //  Maplog
 //
 //  Created by 한채림 on 7/22/26.
 //
 
-//2열에서 보이는 작은 축제 카드 하나
-// 축제 데이터 하나를 받아서 2열 그리드 안에 그리는 역할만 함. API 호출·페이지네이션·화면 이동은 하지 않음
+//2열에서 보이는 작은 관광 카드 하나
+// 관광 데이터 하나를 받아서 2열 그리드 안에 그리는 역할만 함. API 호출·페이지네이션·화면 이동은 하지 않음
 import SwiftUI
 
-struct FestivalGridCard: View {
-    let item: FestivalListItemViewData
+struct TourismGridCard: View {
+    let item: TourismListItemViewData
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -93,9 +93,9 @@ struct FestivalGridCard: View {
     }
 }
 
-#Preview("2열 축제 카드") {
-    FestivalGridCard(
-        item: FestivalListItemViewData(
+#Preview("2열 관광 카드") {
+    TourismGridCard(
+        item: TourismListItemViewData(
             id: 2993769,
             title: "안동 수(水)페스타",
             locationText: "경상북도 안동시",
@@ -109,8 +109,8 @@ struct FestivalGridCard: View {
 }
 
 #Preview("긴 제목 카드") {
-    FestivalGridCard(
-        item: FestivalListItemViewData(
+    TourismGridCard(
+        item: TourismListItemViewData(
             id: 1,
             title: "2026 이럴때이런음악 해설이 있는 청소년음악회",
             locationText: "서울특별시",
@@ -122,7 +122,7 @@ struct FestivalGridCard: View {
     .padding()
 }
 
-//FestivalGridCard
+//TourismGridCard
 //├─ thumbnail
 //│  ├─ AsyncImage 성공 → 실제 이미지
 //│  ├─ 로딩 중 → placeholder + spinner

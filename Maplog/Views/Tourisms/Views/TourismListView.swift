@@ -1,5 +1,5 @@
 //
-//  FestivalListView.swift
+//  TourismListView.swift
 //  Maplog
 //
 //  Created by 한채림 on 7/22/26.
@@ -8,37 +8,37 @@
 // 전체보기 화면 자체
 import SwiftUI
 
-struct FestivalListView: View {
-    @StateObject private var viewModel: FestivalListViewModel // 홈과 달리 FestivalListView가 @StateObject를 소유하는 이유는, 목록 ViewModel은 이 목록 화면만을 위해 만들어지고 다른 화면과 공유되지 않기 때문
+struct TourismListView: View {
+    @StateObject private var viewModel: TourismListViewModel // 홈과 달리 TourismListView가 @StateObject를 소유하는 이유는, 목록 ViewModel은 이 목록 화면만을 위해 만들어지고 다른 화면과 공유되지 않기 때문
     
     private let gridColums: [GridItem] = [
         GridItem(.flexible(minimum: 0), spacing: 32), // 가로: 카드와 카드 사이
         GridItem(.flexible(minimum: 0), spacing: 32)
     ]
     
-    init(festivalRepository: any FestivalRepository) {
-        _viewModel = StateObject(wrappedValue: FestivalListViewModel(
-            festivalRepository: festivalRepository
+    init(tourismRepository: any TourismRepository) {
+        _viewModel = StateObject(wrappedValue: TourismListViewModel(
+            tourismRepository: tourismRepository
         ))
     }
     
     var body: some View {
-        festivalContent
+        tourismContent
             .navigationTitle("축제")
             .navigationBarTitleDisplayMode(.inline)
             .task {
-                await viewModel.loadInitialFestivals()
+                await viewModel.loadInitialTourisms()
             }
     }
     
     @ViewBuilder
-    private var festivalContent: some View {
-        switch viewModel.festivalState {
+    private var tourismContent: some View {
+        switch viewModel.tourismState {
         case .idle, .initialLoading:
             ProgressView("축제 정보를 불러오는 중이에요")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         case .content:
-            festivalGrid
+            tourismGrid
         case .empty:
             ContentUnavailableView("표시할 축제가 없어요",
             systemImage: "calendar.badge.exclamationmark",
@@ -52,7 +52,7 @@ struct FestivalListView: View {
                 
                 Button("다시 시도") {
                     Task {
-                        await viewModel.retryInitialFestivlas() // 화면 진입 시 비동기 API 요청
+                        await viewModel.retryInitialTourisms() // 화면 진입 시 비동기 API 요청
                     }
                 }
                 .buttonStyle(.bordered)
@@ -62,7 +62,7 @@ struct FestivalListView: View {
         }
     }
     
-    private var festivalGrid: some View {
+    private var tourismGrid: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 Text("현재 \(viewModel.items.count)개 표시 중")
@@ -71,7 +71,7 @@ struct FestivalListView: View {
                 
                 LazyVGrid(columns: gridColums, spacing: 16) {
                     ForEach(viewModel.items) { item in
-                            FestivalGridCard(item: item)
+                            TourismGridCard(item: item)
                             .frame(maxWidth: .infinity, alignment: .topLeading)
                     }
                 }

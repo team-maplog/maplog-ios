@@ -5,7 +5,7 @@ struct HomeView: View {
     @Environment(\.maplogSelectTab) private var selectTab
     @EnvironmentObject private var sessionStore: MaplogSessionStore
     @ObservedObject var viewModel: HomeViewModel // MainTabView가 만든 하나를 받아서 관찰
-    let onShowAllFestivals: () -> Void
+    let onShowAllTourisms: () -> Void
     
     @State private var selectedCategory = "추천"
     @State private var selectedChip = "전체"
@@ -39,7 +39,7 @@ struct HomeView: View {
         Array(homePosts.dropFirst())
     }
 
-//    private var homeFestivalEvents: [FeaturedEvent] {
+//    private var homeTourismEvents: [FeaturedEvent] {
 //        [spotlightEvent] + MockMaplogData.events
 //    }
 
@@ -89,7 +89,7 @@ struct HomeView: View {
         .preferredColorScheme(isHomeReelActive ? .dark : nil)
         .maplogReelTabBarStyle(isHomeReelActive)
         .task { // body 안에서 직접 API를 호출하지 않고, View가 화면에 등장하는 생명주기에 맞는 .task에서 호출
-            await viewModel.loadInitialFestivals()
+            await viewModel.loadInitialTourisms()
         }
         .toolbar(.hidden, for: .navigationBar)
         .navigationDestination(isPresented: $showsThemeSpots) {
@@ -143,7 +143,7 @@ struct HomeView: View {
         VStack(alignment: .leading, spacing: MaplogSpacing.xLarge) {
             homeHeader
                 .padding(.horizontal, MaplogSpacing.page)
-            weekendFestivalCarousel
+            weekendTourismCarousel
         }
         .padding(.bottom, 24)
     }
@@ -230,7 +230,7 @@ struct HomeView: View {
         case "지역":
             categoryDestination = .region
         case "관광":
-            onShowAllFestivals()
+            onShowAllTourisms()
         default:
             break
         }
@@ -368,7 +368,7 @@ struct HomeView: View {
     private func openChip(_ chip: String) {
         switch chip {
         case "축제":
-            onShowAllFestivals()
+            onShowAllTourisms()
         case "맛집":
             showsNearbyRecommendations = true
         case "야경":
@@ -386,15 +386,15 @@ struct HomeView: View {
         }
     }
 
-    private var weekendFestivalCarousel: some View {
+    private var weekendTourismCarousel: some View {
         VStack(alignment: .leading, spacing: 14) {
             MaplogSectionHeader(
-                "지금 떠나기 좋은 축제",
+                "지금 떠나기 좋은 즐길 거리",
 //                systemImage: "sparkles",
 //                subtitle: "주말 여행을 채워줄 행사"
             ) {
                 Button {
-                   onShowAllFestivals()
+                   onShowAllTourisms()
                 } label: {
                     HStack(spacing: 4) {
                         Text("전체보기")
@@ -406,22 +406,22 @@ struct HomeView: View {
             }
             .padding(.horizontal, MaplogSpacing.page)
 
-            festivalSectionContent
+            tourismSectionContent
             .contentMargins(.horizontal, MaplogSpacing.page, for: .scrollContent)
             .scrollTargetBehavior(.viewAligned)
         }
     }
 
-    // loading / content / empty / failed 중 무엇을 보일지 결정 (상태 판단과 카드 레이아웃을 분리)
+    // loading / content / empty / failed 중 무엇을 보일지 결정 (상태 판단과 관광 카드 레이아웃을 분리)
     @ViewBuilder
-    private var festivalSectionContent: some View{
-        switch viewModel.festivalState {
+    private var tourismSectionContent: some View{
+        switch viewModel.tourismState {
         case .idle, .loading:
             ProgressView("축제 정보를 불러오는 중이에요")
                 .frame(maxWidth: .infinity, minHeight: 172)
                 .padding(.horizontal, MaplogSpacing.page)
         case .content(let cards):
-            festivalCards(cards)
+            tourismCards(cards)
         case .empty:
             VStack(spacing: 8) {
                 Image(systemName: "calendar.badge.exclamationmark")
@@ -444,7 +444,7 @@ struct HomeView: View {
                 
                 Button("다시 시도") {
                     Task {
-                        await viewModel.retryInitialFestivals()
+                        await viewModel.retryInitialTourisms()
                     }
                 }
                 .buttonStyle(.bordered)
@@ -454,13 +454,13 @@ struct HomeView: View {
         }
     }
     
-    // 축제 카드 목록 UI를 만들어 주는 보조 함수(실제 반환값은 ScrollView, LazyHStack, ForEach 등이 조합된 아주 긴 타입인데, 그걸 전부 쓰지 않도록 Swift가 some View로 감춰줌)
+    // 관광 카드 목록 UI를 만들어 주는 보조 함수(실제 반환값은 ScrollView, LazyHStack, ForEach 등이 조합된 아주 긴 타입인데, 그걸 전부 쓰지 않도록 Swift가 some View로 감춰줌)
     // content일 때 카드들을 어떤 모양으로 그릴지 담당
-    private func festivalCards(_ cards: [HomeFestivalCardViewData]) -> some View {
+    private func tourismCards(_ cards: [HomeTourismCardViewData]) -> some View {
         ScrollView(.horizontal, showsIndicators: false) {
             LazyHStack(spacing: 14) {
                 ForEach(cards) { card in
-                    HomeFestivalCarouselCard(card: card)
+                    HomeTourismCarouselCard(card: card)
                 }
             }
             .scrollTargetLayout()
@@ -700,12 +700,12 @@ struct HomeView: View {
 
 }
 
-private struct HomeFestivalCarouselCard: View {
-    let card: HomeFestivalCardViewData
+private struct HomeTourismCarouselCard: View {
+    let card: HomeTourismCardViewData
     
     var body: some View {
         ZStack(alignment: .bottomLeading) {
-            festivalThumbnail
+            tourismThumbnail
                 .frame(width: 264, height: 172)
                 .clipped()
             
@@ -759,7 +759,7 @@ private struct HomeFestivalCarouselCard: View {
 //    축제 목록 API 성공”과 별개로 각 썸네일을 내려받아. 즉 목록은 먼저 카드로 나타나고, 이미지가 조금 뒤에 표시되는 것은 자연스러운 동작
 //    다른 View들을 SwiftUI가 하나의 화면으로 조립할 수 있게 해줌
     @ViewBuilder
-    private var festivalThumbnail: some View {
+    private var tourismThumbnail: some View {
         if let thumbnailURL = card.thumbnailURL {
             AsyncImage(url: thumbnailURL) { phase in
                 switch phase {

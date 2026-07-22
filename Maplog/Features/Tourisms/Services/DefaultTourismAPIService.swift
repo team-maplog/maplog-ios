@@ -1,15 +1,15 @@
 //
-//  FestivalProviding.swift
+//  DefaultTourismAPIService.swift
 //  Maplog
 //
 //  Created by 한채림 on 7/21/26.
 //
 
 //- URLComponents로 URL 생성
-//- GET /api/v1/festivals 요청
+//- GET /api/v1/tourisms 요청
 //- APIClient 호출
 //- successFlag / SUCCESS-002 확인
-//- FestivalPageDTO 반환
+//- TourismPageDTO 반환
 
 //첫 요청
 //cursor = nil
@@ -21,17 +21,17 @@
 
 import Foundation
 
-final class DefaultFestivalAPIService: FestivalAPIService {
+final class DefaultTourismAPIService: TourismAPIService {
     private let apiClient: APIClient
 
     init(apiClient: APIClient) {
         self.apiClient = apiClient
     }
 
-    func fetchFestivals(
+    func fetchTourisms(
         cursor: String?,
         size: Int
-    ) async throws -> FestivalPageDTO {
+    ) async throws -> TourismPageDTO {
         guard (1...100).contains(size) else {
             throw APIError.invalidRequest(reason: "size는 1부터 100 사이여야 합니다.")
         }
@@ -40,7 +40,7 @@ final class DefaultFestivalAPIService: FestivalAPIService {
         let endpoint = APIConfiguration.baseURL
             .appendingPathComponent("api")
             .appendingPathComponent("v1")
-            .appendingPathComponent("festivals")
+            .appendingPathComponent("tourisms")
         //url을 조각으로 나눠서 안전하게 수정하는 도구
         var components = URLComponents(url: endpoint, resolvingAgainstBaseURL: false)
         
@@ -64,7 +64,7 @@ final class DefaultFestivalAPIService: FestivalAPIService {
         
         urlRequest.setValue("application/json", forHTTPHeaderField: "Accept")
         
-        let response: APIResponse<FestivalPageDTO> = try await apiClient.request(urlRequest, responseType: APIResponse<FestivalPageDTO>.self)
+        let response: APIResponse<TourismPageDTO> = try await apiClient.request(urlRequest, responseType: APIResponse<TourismPageDTO>.self)
         
         guard response.successFlag else {
             throw APIError.unexpectedResponse(code: response.code, message: response.message)
@@ -74,10 +74,10 @@ final class DefaultFestivalAPIService: FestivalAPIService {
             throw APIError.unexpectedResponse(code: response.code, message: response.message)
         }
         
-        guard let festivalPageDTO = response.data else {
+        guard let tourismPageDTO = response.data else {
             throw APIError.missingData
         }
         
-        return festivalPageDTO
+        return tourismPageDTO
     }
 }

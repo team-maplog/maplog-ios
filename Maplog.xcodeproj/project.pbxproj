@@ -150,9 +150,9 @@
 			path = App;
 			sourceTree = "<group>";
 		};
-		E295D8E9301087AC004F1588 /* Festivals */ = {
+		E295D8E9301087AC004F1588 /* Tourisms */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = Festivals;
+			path = Tourisms;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -287,7 +287,7 @@
 		79110CE8419A39D6032482EF /* Views */ = {
 			isa = PBXGroup;
 			children = (
-				E295D8E9301087AC004F1588 /* Festivals */,
+				E295D8E9301087AC004F1588 /* Tourisms */,
 				E29548F2300FC566008AB637 /* App */,
 				B1A126FE1B2603FC7C02B20F /* Composer */,
 				2FC6E5E451F0820B45E53CCE /* Home */,
@@ -402,7 +402,7 @@
 				E281F7AE300EAF5200562F7C /* Views */,
 				E281F7AF300EAF6D00562F7C /* Mocks */,
 				E29548F2300FC566008AB637 /* App */,
-				E295D8E9301087AC004F1588 /* Festivals */,
+				E295D8E9301087AC004F1588 /* Tourisms */,
 			);
 			name = Maplog;
 			packageProductDependencies = (

@@ -27,6 +27,7 @@ extension EnvironmentValues {
     }
 }
 
+
 enum MaplogLaunchRequest {
     static let didChangeNotification = Notification.Name("MaplogLaunchRequestDidChange")
 
@@ -83,10 +84,10 @@ struct RootView: View {
     @State private var requestedTab: MaplogTab?
     @State private var requestedCapturePlaceName: String?
 
-    private let festivalRepository: any FestivalRepository
+    private let tourismRepository: any TourismRepository
     
-    init(festivalRepository: any FestivalRepository) {
-        self.festivalRepository = festivalRepository
+    init(tourismRepository: any TourismRepository) {
+        self.tourismRepository = tourismRepository
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("-MaplogSkipOnboarding") {
             _phase = State(initialValue: .app)
@@ -119,8 +120,8 @@ struct RootView: View {
                     }
                 )
             case .app:
-                MainTabView( // RootView는 protocol만 받아서 MainTabView 생성 부분에 전달, DefaultFestivalRepository를 모름. 오직 FestivalRepository 역할만 앎
-                    festivalRepository: festivalRepository,
+                MainTabView( // RootView는 protocol만 받아서 MainTabView 생성 부분에 전달, DefaultTourismRepository를 모름. 오직 TourismRepository 역할만 앎
+                    tourismRepository: tourismRepository,
                     requestedTab: $requestedTab,
                     requestedCapturePlaceName: $requestedCapturePlaceName
                 )
@@ -183,4 +184,3 @@ struct RootView: View {
         requestedTab = tab
     }
 }
-

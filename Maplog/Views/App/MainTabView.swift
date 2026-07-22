@@ -9,7 +9,7 @@
 //
 //MainTabView
 //→ NavigationStack 경로를 변경
-//→ FestivalListView 생성
+//→ TourismListView 생성
 //→ Repository 주입
 
 import SwiftUI
@@ -28,16 +28,16 @@ struct MainTabView: View {
     @State private var prefersReelTabBarStyle = false
     @State private var activeCapturePlaceName: String?
 
-    private let festivalRepository: any FestivalRepository
+    private let tourismRepository: any TourismRepository
     @State private var homeNavigationPath: [HomeNavigationRoute] = []
     
     
     init(
-        festivalRepository: any FestivalRepository, // Repository를 받게 함
+        tourismRepository: any TourismRepository, // Repository를 받게 함
         requestedTab: Binding<MaplogTab?> = .constant(nil),
         requestedCapturePlaceName: Binding<String?> = .constant(nil)
     ) {
-        self.festivalRepository = festivalRepository
+        self.tourismRepository = tourismRepository
         
         _requestedTab = requestedTab
         _requestedCapturePlaceName = requestedCapturePlaceName
@@ -45,13 +45,13 @@ struct MainTabView: View {
         _previousTab = State(initialValue: .home)
         
         _homeviewModel = StateObject(wrappedValue: HomeViewModel(
-            festivalRepository: festivalRepository
+            tourismRepository: tourismRepository
         )
         )
     }
 
-    private enum HomeNavigationRoute: Hashable { // Hashable인 이유는 NavigationStack의 경로에 넣을 값
-        case festivalList
+    private enum HomeNavigationRoute: Hashable { // Hashable인 이유는 NavigationStack의 경로에 넣을 값, 홈에서 갈 수 있는 목적지 이름표
+        case tourismList // 관광 목록 화면으로 이동하라는 경로 값
     }
     
     private var tabSelection: Binding<MaplogTab> {
@@ -79,14 +79,14 @@ struct MainTabView: View {
             case .home:
                 NavigationStack(path: $homeNavigationPath) {
                     HomeView(viewModel: homeviewModel,
-                        onShowAllFestivals: {
-                            homeNavigationPath.append(.festivalList)
+                        onShowAllTourisms: {
+                            homeNavigationPath.append(.tourismList)
                         }
                     )
                     .navigationDestination(for: HomeNavigationRoute.self) { route in
                         switch route {
-                        case .festivalList:
-                            FestivalListView(festivalRepository: festivalRepository)
+                        case .tourismList:
+                            TourismListView(tourismRepository: tourismRepository)
                         }
                     }
                 }

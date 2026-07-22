@@ -1,5 +1,5 @@
 //
-//  FestivalDTO.swift
+//  TourismDTO.swift
 //  Maplog
 //
 //  Created by 한채림 on 7/21/26.
@@ -14,22 +14,30 @@
 //서버가 보내는 날짜는 "2026-07-30"이므로 이 단계에서는 String
 //thumbnailUrl도 서버 원본 값이므로 이 단계에서는 String
 
+
+// 위 설명 아니고 아래 설명보기
+//서버 JSON → TourismDTO(문자열·null 그대로) → Repository(날짜 변환) → Tourism(앱에서 쓸 타입) → ViewModel
+
 import Foundation
 
-struct FestivalDTO: Decodable {
-    let festivalId: Int64
+struct TourismDTO: Decodable {
+    let tourismId: Int64
     let name: String
     let region: String?
+    let address: String?
     let thumbnailURL: String
-    let startDate: String
-    let endDate: String
+    let startDate: String?
+    let endDate: String?
+    let category: TourismCategory
 
     enum CodingKeys: String, CodingKey {
-        case festivalId
+        case tourismId
         case name
         case region
+        case address
         case startDate
         case endDate
         case thumbnailURL = "thumbnailUrl"
+        case category
     }
 }
