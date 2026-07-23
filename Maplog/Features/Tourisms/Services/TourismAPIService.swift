@@ -8,6 +8,7 @@
 
 protocol TourismAPIService {
     func fetchTourisms(
+        category: TourismCategory,
         cursor: String?,
         size: Int
     ) async throws -> TourismPageDTO

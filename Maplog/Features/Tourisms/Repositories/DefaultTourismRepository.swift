@@ -40,8 +40,11 @@ final class DefaultTourismRepository: TourismRepository {
         self.apiService = apiService
     }
     
-    func fetchTourisms(cursor: String?, size: Int) async throws -> TourismPage {
-        let pageDTO = try await apiService.fetchTourisms(cursor: cursor, size: size)
+    func fetchTourisms(category: TourismCategory, cursor: String?, size: Int) async throws -> TourismPage {
+        let pageDTO = try await apiService.fetchTourisms(
+            category: category,
+            cursor: cursor,
+            size: size)
         
         let tourisms = try pageDTO.content.map { tourismDTO in
             try makeTourism(from: tourismDTO)
