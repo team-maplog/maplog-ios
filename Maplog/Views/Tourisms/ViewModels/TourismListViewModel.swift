@@ -20,6 +20,7 @@ final class TourismListViewModel: ObservableObject {
     @Published private(set) var tourismState: TourismListState = .idle // 첫 화면의 loading / content / empty / failed 상태
     @Published private(set) var items: [TourismListItemViewData] = [] // 현재 그리드에 실제로 표시 중인 관광 카드들
     @Published private(set) var isLoadingNextPage = false // 기존 그리드를 유지한 채 하단에서 다음 페이지를 불러오는 중인지
+    @Published private(set) var nextPageError: ErrorPresentation? // 전체보기에서 다음 페이지를 이어 불러올 때 오류, nil: 다음 페이지 관련 오류 없음 | 값 있음: 기존 카드들은 그대로 두고, “더 불러오기 실패” 문구와 재시도 버튼을 보여줄 준비가 됨
     
     private let tourismRepository: any TourismRepository
     private var nextCursor: String? // 다음 API 요청에만 쓰는 서버의 위치표
@@ -50,13 +51,17 @@ final class TourismListViewModel: ObservableObject {
             return
         }
         
+        nextPageError = nil
         items = []
         nextCursor = nil
         hasNext = false
         tourismState = .initialLoading
         
         do {
-            let page = try await tourismRepository.fetchTourisms(cursor: nil, size: pageSize)
+            let page = try await tourismRepository.fetchTourisms(
+                category: .all,
+                cursor: nil,
+                size: pageSize)
             
             guard !Task.isCancelled else {
                 tourismState = .idle
@@ -73,10 +78,60 @@ final class TourismListViewModel: ObservableObject {
             
             tourismState = newItems.isEmpty ? .empty : .content
         } catch {
-            tourismState = .failed(message: tourismErrorMessage(for: error))
+            tourismState = .failed(TourismErrorPolicy.presentation(for: error))
         }
     }
     
+    func loadNextPage() async {
+        guard tourismState == .content, // 첫 페이지 카드가 이미 성공적으로 있어야 함
+              !isLoadingNextPage, // 이미 다음 페이지를 요청 중이면 또 요청하지 않음
+              hasNext, // 서버가 “더 있어요”라고 알려줬을 때만 요청
+              let nextCursor // 서버가 준 다음 위치표가 실제로 있어야 요청
+        else {
+            return
+        }
+
+        isLoadingNextPage = true
+        nextPageError = nil
+
+        defer {
+            isLoadingNextPage = false
+        }
+
+        do {
+            let page = try await tourismRepository.fetchTourisms(
+                category: .all,
+                cursor: nextCursor,
+                size: pageSize
+            )
+
+            guard !Task.isCancelled else {
+                return
+            }
+
+            let newItems = page.tourisms.map { tourism in
+                    makeListItemViewData(from: tourism)
+            }
+
+            items.append(contentsOf: newItems)
+            self.nextCursor = page.nextCursor
+            hasNext = page.hasNext
+        } catch is CancellationError {
+            return
+        } catch { // 오류만 따로 저장. 이후 View에서 그리드 하단에만 오류 문구와 재시도 버튼을 보여줌
+            nextPageError = TourismErrorPolicy.presentation(for: error)
+        }
+    }
+
+    func retryNextPage() async {
+        guard nextPageError != nil else {
+            return
+        }
+
+        await loadNextPage()
+    }
+
+
     private func makeListItemViewData(from tourism: Tourism) -> TourismListItemViewData {
         let formattedPeriodText = periodText(
             startDate: tourism.startDate,
@@ -98,26 +153,6 @@ final class TourismListViewModel: ObservableObject {
         }
 
         return "\(periodDateFormatter.string(from: startDate)) ~ \(periodDateFormatter.string(from: endDate))"
-    }
-    
-    private func tourismErrorMessage(for error: Error) -> String {
-        guard let apiError = error as? APIError else {
-            return "축제 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요."
-        }
-
-        switch apiError {
-        case .server(_, let response) where response.code == "TOUR-001":
-            return "현재 축제 정보를 이용할 수 없어요."
-
-        case .server(_, let response) where response.code == "TOUR-002":
-            return "축제 정보를 불러오는 중 문제가 생겼어요. 잠시 후 다시 시도해 주세요."
-
-        case .network:
-            return "인터넷 연결을 확인한 뒤 다시 시도해 주세요."
-
-        default:
-            return "축제 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요."
-        }
     }
     
 //    실패

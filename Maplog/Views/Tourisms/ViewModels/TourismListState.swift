@@ -12,5 +12,5 @@ enum TourismListState: Equatable {
     case initialLoading // 첫 페이지를 불러오는 중, 아직 보여 줄 카드가 없음
     case content // 카드가 한 개 이상 있음
     case empty // 첫 페이지 조회는 성공했지만 축제가 없음
-    case failed(message: String) // 첫 페이지 조회 실패, 실패 문구와 재시도 버튼 표시
+    case failed(ErrorPresentation) // 첫 페이지 조회 실패, 실패 문구와 재시도 버튼 표시
 }

@@ -4,6 +4,7 @@ struct HomeView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.maplogSelectTab) private var selectTab
     @EnvironmentObject private var sessionStore: MaplogSessionStore
+    @Environment(\.maplogLogout) private var performLogout
     @ObservedObject var viewModel: HomeViewModel // MainTabView가 만든 하나를 받아서 관찰
     let onShowAllTourisms: () -> Void
     
@@ -435,19 +436,29 @@ struct HomeView: View {
             .frame(maxWidth: .infinity, minHeight: 172)
             .padding(.horizontal, MaplogSpacing.page)
             
-        case .failed(let message):
+        case .failed(let presentation):
             VStack(spacing: 10) {
-                Text(message)
+                Text(presentation.message)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                 
-                Button("다시 시도") {
-                    Task {
-                        await viewModel.retryInitialTourisms()
+                switch presentation.recoveryAction {
+                case .retry:
+                    Button("다시 시도") {
+                        Task {
+                            await viewModel.retryInitialTourisms()
+                        }
                     }
+                    .buttonStyle(.bordered)
+                case .signIn:
+                    Button("다시 로그인") {
+                            performLogout()
+                        }
+                        .buttonStyle(.bordered)
+                case .none:
+                    EmptyView()
                 }
-                .buttonStyle(.bordered)
             }
             .frame(maxWidth: .infinity, minHeight: 172)
             .padding(.horizontal, MaplogSpacing.page)

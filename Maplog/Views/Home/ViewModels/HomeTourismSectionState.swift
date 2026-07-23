@@ -12,5 +12,5 @@ enum HomeTourismSectionState: Equatable {
     case loading // 첫 API 요청 중
     case content([HomeTourismCardViewData]) //카드 표시
     case empty // API는 성공했지만 content가 []
-    case failed(message: String) // 네트워크, TOUR-001, TOUR-002 등 실패
+    case failed(ErrorPresentation) // 네트워크, TOUR-001, TOUR-002 등 실패
 }
