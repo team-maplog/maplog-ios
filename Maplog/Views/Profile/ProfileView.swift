@@ -119,17 +119,31 @@ struct ProfileView: View {
     }
 
     private var topBar: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text("내 Maplog")
-                .font(.title2.weight(.bold))
-                .foregroundStyle(.primary)
-            Text("짧은 클립으로 쌓은 여행 기록")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+        HStack(alignment: .top){
+            VStack(alignment: .leading, spacing: 3) {
+                Text("내 Maplog")
+                    .font(.title2.weight(.bold))
+                    .foregroundStyle(.primary)
+                Text("짧은 클립으로 쌓은 여행 기록")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            NavigationLink {
+                SettingsView()
+            } label: {
+                Image(systemName: "gearshape")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(Color.maplogInk)
+                    .frame(width: 44, height: 44)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("설정")
         }
         .padding(.top, 12)
-    }
-
+}
     private var profileHeader: some View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(spacing: MaplogSpacing.medium) {

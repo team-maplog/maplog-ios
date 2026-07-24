@@ -25,7 +25,7 @@ struct TourismDTO: Decodable {
     let name: String
     let region: String?
     let address: String?
-    let thumbnailURL: String
+    let thumbnailURL: String?
     let startDate: String?
     let endDate: String?
     let category: TourismCategory

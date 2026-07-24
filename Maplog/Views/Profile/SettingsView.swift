@@ -11,6 +11,7 @@ private struct SettingsRoute: Identifiable, Hashable {
 struct SettingsView: View {
     @Environment(\.maplogLogout) private var maplogLogout
     @EnvironmentObject private var sessionStore: MaplogSessionStore
+    @EnvironmentObject private var signOutViewModel: SignOutViewModel
     @State private var showUpdateToast = false
     @State private var toastText = ""
     @State private var showLogoutDialog = false
@@ -93,7 +94,7 @@ struct SettingsView: View {
                         Button {
                             showLogoutDialog = true
                         } label: {
-                            SettingsActionRow(title: "로그아웃")
+                            SettingsActionRow(title: signOutViewModel.isLoading ? "로그아웃 중...": "로그아웃")
                         }
                         .buttonStyle(.plain)
 
@@ -122,7 +123,9 @@ struct SettingsView: View {
         .navigationBarTitleDisplayMode(.inline)
         .confirmationDialog("로그아웃할까요?", isPresented: $showLogoutDialog, titleVisibility: .visible) {
             Button("로그아웃") {
-                maplogLogout()
+                Task {
+                    await signOutViewModel.signOut()
+                }
             }
             Button("취소", role: .cancel) {
                 showLogoutDialog = false

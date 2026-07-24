@@ -35,45 +35,45 @@ import Foundation
 
 final class DefaultTourismRepository: TourismRepository {
     private let apiService: any TourismAPIService
-    
+
     init(apiService: any TourismAPIService) {
         self.apiService = apiService
     }
-    
+
     func fetchTourisms(category: TourismCategory, cursor: String?, size: Int) async throws -> TourismPage {
         let pageDTO = try await apiService.fetchTourisms(
             category: category,
             cursor: cursor,
             size: size)
-        
+
         let tourisms = try pageDTO.content.map { tourismDTO in
             try makeTourism(from: tourismDTO)
         }
-        
+
         return TourismPage(tourisms: tourisms, hasNext: pageDTO.hasNext, nextCursor: pageDTO.nextCursor)
     }
-    
+
     private func makeTourism(from dto: TourismDTO) throws -> Tourism {
         let startDate = try date(from: dto.startDate, field: "startDate")
         let endDate = try date(from: dto.endDate, field: "endDate")
-        
+
         return Tourism(
             id: dto.tourismId,
             name: dto.name,
             region: dto.region,
             address: dto.address,
-            thumbnailURL: URL(string: dto.thumbnailURL),
+            thumbnailURL: dto.thumbnailURL.flatMap { URL(string: $0) },
             startDate: startDate,
             endDate: endDate,
             category: dto.category
             )
     }
-    
+
     private func date(from value: String?, field: String) throws -> Date? {
         guard let value else {
             return nil
         }
-        
+
         guard let date = parseDate(value) else {
             throw TourismRepositoryError.invalidDate(
                 field: field,
@@ -83,17 +83,17 @@ final class DefaultTourismRepository: TourismRepository {
 
         return date
     }
-    
+
     private func parseDate(_ value: String) -> Date? {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.calendar = Calendar(identifier: .gregorian)
         formatter.timeZone = TimeZone(identifier: "Asia/Seoul")
         formatter.dateFormat = "yyyy-MM-dd"
-        
+
         return formatter.date(from: value)
     }
-    
+
 }
 
 //Repository
