@@ -76,17 +76,21 @@ enum MaplogLaunchRequest {
 struct RootView: View {
     @Environment(\.scenePhase) private var scenePhase
     @EnvironmentObject private var authSessionStore: AuthSessionStore // 로그인 여부와 JWT 토큰을 관리해. MaplogApp에서 만들어서 주입한 객체
-    
+
     @StateObject private var sessionStore = MaplogSessionStore() // 기존 앱의 위치 권한, 저장한 로그·장소 같은 앱 내부 상태를 관리해. RootView가 직접 생성·소유
-    
+
     @State private var hasFinishedInitialAuthCheck = false // keychain 조회 기억 상태
     @State private var phase: LaunchPhase = .login
     @State private var requestedTab: MaplogTab?
     @State private var requestedCapturePlaceName: String?
 
+    private let authRepository: any AuthRepository
     private let tourismRepository: any TourismRepository
-    
-    init(tourismRepository: any TourismRepository) {
+
+    init(
+        authRepository: any AuthRepository,
+        tourismRepository: any TourismRepository) {
+        self.authRepository = authRepository
         self.tourismRepository = tourismRepository
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("-MaplogSkipOnboarding") {
@@ -99,7 +103,8 @@ struct RootView: View {
         Group {
             switch phase {
             case .login:
-                OnboardingView {
+                OnboardingView(authRepository: authRepository)
+                {
                     withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) {
                         phase = .location
                     }
@@ -145,15 +150,15 @@ struct RootView: View {
             guard !hasFinishedInitialAuthCheck else {
                 return
             }
-            
+
             do {
                 try authSessionStore.restoreSession() // refresh token 존재 확인, isAuthenticated 변경
             } catch {
-                
+
             }
-            
+
             hasFinishedInitialAuthCheck = true
-            
+
             if authSessionStore.isAuthenticated {
                 phase = .app // ture, 기존 로그인 세션 있으므로 app
             } else {
@@ -164,7 +169,7 @@ struct RootView: View {
             guard hasFinishedInitialAuthCheck else {
                 return
             }
-            
+
             withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) {
                 if isAuthenticated {
                     phase = .location
