@@ -38,12 +38,12 @@ private struct ResetConfirmation: Identifiable {
 }
 
 final class OnboardingViewModel: ObservableObject {
-    @Published var email = "chaerim@maplog.app"
-    @Published var password = "maplog2026"
+    @Published var email = ""
+    @Published var password = ""
     @Published var signupName = "채림"
-    @Published var signupEmail = "hello@maplog.app"
-    @Published var signupPassword = "maplog2026"
-    @Published var resetEmail = "chaerim@maplog.app"
+    @Published var signupEmail = ""
+    @Published var signupPassword = ""
+    @Published var resetEmail = ""
     @Published var rememberEmail = true
     @Published var marketingOptIn = false
     @Published var toastText: String?
@@ -68,8 +68,9 @@ private extension String {
 }
 
 struct OnboardingView: View {
+    let authRepository: any AuthRepository
     let onStart: () -> Void
-    
+
     // 내가 만들지는 않지만, 상위 화면이 제공한 공유 객체를 사용
     @EnvironmentObject private var authSessionStore: AuthSessionStore
     @StateObject private var viewModel = OnboardingViewModel()
@@ -81,7 +82,7 @@ struct OnboardingView: View {
             ZStack(alignment: .bottom) {
                 VStack(spacing: 0) {
                     Spacer(minLength: MaplogSpacing.xxxLarge)
-                    
+
                     VStack(spacing: MaplogSpacing.medium) {
                         ZStack {
                             Circle()
@@ -94,7 +95,7 @@ struct OnboardingView: View {
                                 .font(.system(size: 27, weight: .bold))
                                 .foregroundStyle(Color.maplogTextPrimary)
                         }
-                        
+
                         VStack(spacing: MaplogSpacing.xSmall) {
                             Text("Maplog")
                                 .font(.system(size: 36, weight: .bold, design: .rounded))
@@ -106,12 +107,24 @@ struct OnboardingView: View {
                         }
                     }
                     .padding(.bottom, MaplogSpacing.xxxLarge)
-                    
+
                     VStack(spacing: MaplogSpacing.small) {
-                        loginButton(title: "이메일로 로그인", background: .maplogLime, foreground: .maplogInk, icon: "envelope.fill") {
-                            activeFlow = .email
+                        NavigationLink{
+                            SignInView(authRepository: authRepository, authSessionStore: authSessionStore)
+                        } label: {
+                            OnboardingLoginButtonLabel(title: "이메일로 로그인", icon: "envelope.fill")
                         }
-                        
+                        .buttonStyle(
+                            MaplogButtonStyle(
+                                variant: .brand(
+                                    background: .maplogLime,
+                                    foreground: .maplogInk
+                                ),
+                                size: .large,
+                                fullWidth: true
+                            )
+                        )
+
                         HStack {
                             Rectangle().fill(Color.maplogBorder).frame(height: 1)
                             Text("또는")
@@ -120,7 +133,7 @@ struct OnboardingView: View {
                             Rectangle().fill(Color.maplogBorder).frame(height: 1)
                         }
                         .padding(.vertical, MaplogSpacing.xxSmall)
-                        
+
                         loginButton(title: "카카오로 로그인", background: Color(red: 1.0, green: 0.86, blue: 0.0), foreground: .black, icon: "message.fill") {
                             socialLogin(provider: "카카오")
                         }
@@ -130,7 +143,7 @@ struct OnboardingView: View {
                         loginButton(title: "Apple로 로그인", background: .black, foreground: .white, icon: "apple.logo") {
                             socialLogin(provider: "Apple")
                         }
-                        
+
                         HStack(spacing: MaplogSpacing.xSmall) {
                             NavigationLink(destination: SignupView(
                                 authSessionStore: authSessionStore
@@ -147,7 +160,7 @@ struct OnboardingView: View {
                     .maplogPagePadding()
                     .padding(.bottom, MaplogSpacing.xLarge)
                 }
-                
+
                 if let toastText = viewModel.toastText {
                     MaplogToast(message: toastText)
                         .padding(.bottom, MaplogSpacing.xLarge)
@@ -190,14 +203,10 @@ struct OnboardingView: View {
 
     private func loginButton(title: String, background: Color, foreground: Color, icon: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            HStack(spacing: MaplogSpacing.small) {
-                Image(systemName: icon)
-                    .font(.system(size: MaplogSize.iconMedium, weight: .semibold))
-                    .frame(width: MaplogSize.iconLarge)
-                Text(title)
-                    .frame(maxWidth: .infinity)
-                Color.clear.frame(width: MaplogSize.iconLarge, height: 1)
-            }
+            OnboardingLoginButtonLabel(
+                title: title,
+                icon: icon
+            )
         }
         .buttonStyle(
             MaplogButtonStyle(
@@ -225,6 +234,25 @@ struct OnboardingView: View {
                     viewModel.toastText = nil
                 }
             }
+        }
+    }
+}
+
+private struct OnboardingLoginButtonLabel: View {
+    let title: String
+    let icon: String
+
+    var body: some View {
+        HStack(spacing: MaplogSpacing.small) {
+            Image(systemName: icon)
+                .font(.system(size: MaplogSize.iconMedium, weight: .semibold))
+                .frame(width: MaplogSize.iconLarge)
+
+            Text(title)
+                .frame(maxWidth: .infinity)
+
+            Color.clear
+                .frame(width: MaplogSize.iconLarge, height: 1)
         }
     }
 }

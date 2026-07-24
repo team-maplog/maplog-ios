@@ -1,18 +1,33 @@
 import SwiftUI
 
 @main
-struct MaplogApp: App {
+struct MaplogApp: App { // 앱의 조립 담당자
     @StateObject private var authSessionStore:  AuthSessionStore
+    @StateObject private var signOutViewModel: SignOutViewModel
+    private let authRepository: any AuthRepository
     private let tourismRepository: any TourismRepository // 여기서 선언
-    
+
     init() {
         KakaoMapSDKConfiguration.initializeIfNeeded()
-        
+
         let sessionStore = AuthSessionStore()
         _authSessionStore = StateObject(wrappedValue: sessionStore) // @StateObject property wrapper 자체를 초기화
 
         let apiClient = APIClient()
-        
+
+        let authAPIService = DefaultAuthAPIService(
+            apiClient: apiClient,
+            accessTokenProvider: sessionStore
+        )
+
+        let authRepository = DefaultAuthRepository(
+            apiService: authAPIService
+        )
+
+        self.authRepository = authRepository
+
+        _signOutViewModel = StateObject(wrappedValue: SignOutViewModel(authRepository: authRepository, authSessionStore: sessionStore))
+
         // apiService는 init 안에서만 잠깐 쓰는 지역 상수
         //        (init 안에서 Repository를 만들기 위해 잠깐 필요함
         //        init이 끝나면 apiService라는 이름은 사라짐)
@@ -20,6 +35,9 @@ struct MaplogApp: App {
             apiClient: apiClient,
             accessTokenProvider: sessionStore
         )
+
+
+
 
 //        tourismRepository
 //        → apiService를 보관
@@ -31,8 +49,11 @@ struct MaplogApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView(tourismRepository: tourismRepository) // Composition Root
+            RootView(
+                authRepository: authRepository,
+                tourismRepository: tourismRepository) // Composition Root
                 .environmentObject(authSessionStore)
+                .environmentObject(signOutViewModel)
         }
     }
 }

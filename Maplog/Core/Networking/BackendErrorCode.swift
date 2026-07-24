@@ -9,33 +9,55 @@ enum BackendErrorCode: Equatable {
     case tourAPIUnavailable
     case tourAPIRequestFailed
     case commonValidationFailure
-    
+
     case expiredAccessToken
     case invalidAuthentication
-    
+
     case unknown(String)
-    
+
+    case userNotFound
+    case inactiveUser
+    case suspendedUser
+    case pendingUser
+    case wrongPassword
+
     init(serverCode: String) {
         switch serverCode {
         case "TOUR-001":
             self = .tourAPIUnavailable
-            
+
         case "TOUR-002":
             self = .tourAPIRequestFailed
-            
+
         case "COMMON-014":
             self = .commonValidationFailure
-            
+
         case "EXPIRED_TOKEN":
             self = .expiredAccessToken
-            
+
         case "WRONG_TOKEN",
             "MALFORMED_JWT",
             "UNSUPPORTED_JWT",
             "ILLEGAL_ARGUMENT_JWT",
             "REFRESH_INVALID":
             self = .invalidAuthentication
-            
+
+        case "USER-001":
+            self = .userNotFound
+
+        case "USER-002":
+            self = .inactiveUser
+
+        case "USER-003":
+            self = .suspendedUser
+
+        case "USER-004":
+            self = .pendingUser
+
+        case "USER-006":
+            self = .wrongPassword
+
+
         default:
             self = .unknown(serverCode)
         }
