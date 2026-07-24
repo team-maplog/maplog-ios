@@ -2,18 +2,24 @@ import SwiftUI
 
 @main
 struct MaplogApp: App {
-    @StateObject private var authSessionStore = AuthSessionStore()
+    @StateObject private var authSessionStore:  AuthSessionStore
     private let tourismRepository: any TourismRepository // 여기서 선언
     
     init() {
         KakaoMapSDKConfiguration.initializeIfNeeded()
         
+        let sessionStore = AuthSessionStore()
+        _authSessionStore = StateObject(wrappedValue: sessionStore) // @StateObject property wrapper 자체를 초기화
+
         let apiClient = APIClient()
         
         // apiService는 init 안에서만 잠깐 쓰는 지역 상수
         //        (init 안에서 Repository를 만들기 위해 잠깐 필요함
         //        init이 끝나면 apiService라는 이름은 사라짐)
-        let apiService = DefaultTourismAPIService(apiClient: apiClient)
+        let apiService = DefaultTourismAPIService(
+            apiClient: apiClient,
+            accessTokenProvider: sessionStore
+        )
 
 //        tourismRepository
 //        → apiService를 보관

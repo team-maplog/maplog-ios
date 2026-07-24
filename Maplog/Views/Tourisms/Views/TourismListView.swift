@@ -9,6 +9,7 @@
 import SwiftUI
 
 struct TourismListView: View {
+    @Environment(\.maplogLogout) private var performLogout
     @StateObject private var viewModel: TourismListViewModel // 홈과 달리 TourismListView가 @StateObject를 소유하는 이유는, 목록 ViewModel은 이 목록 화면만을 위해 만들어지고 다른 화면과 공유되지 않기 때문
     
     private let gridColums: [GridItem] = [
@@ -44,18 +45,30 @@ struct TourismListView: View {
             systemImage: "calendar.badge.exclamationmark",
                                    description: Text("현재 진행 예정인 축제가 없어요.")
             )
-        case .failed(let message):
+        case .failed(let presentation):
             VStack(spacing: 12) {
-                Text(message)
+                Text(presentation.message)
                     .multilineTextAlignment(.center)
                     .foregroundStyle(.secondary)
                 
-                Button("다시 시도") {
-                    Task {
-                        await viewModel.retryInitialTourisms() // 화면 진입 시 비동기 API 요청
+                switch presentation.recoveryAction {
+                case .retry:
+                    Button("다시 시도") {
+                        Task {
+                            await viewModel.retryInitialTourisms()
+                        }
                     }
+                    .buttonStyle(.bordered)
+
+                case .signIn:
+                    Button("다시 로그인") {
+                        performLogout()
+                    }
+                    .buttonStyle(.bordered)
+
+                case .none:
+                    EmptyView()
                 }
-                .buttonStyle(.bordered)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding()
@@ -71,13 +84,66 @@ struct TourismListView: View {
                 
                 LazyVGrid(columns: gridColums, spacing: 16) {
                     ForEach(viewModel.items) { item in
-                            TourismGridCard(item: item)
+                        TourismGridCard(item: item)
                             .frame(maxWidth: .infinity, alignment: .topLeading)
+                            .task {
+                                guard item.id == viewModel.items.last?.id else {
+                                    return
+                                }
+
+                                await viewModel.loadNextPage()
+                            }
                     }
                 }
+                if viewModel.isLoadingNextPage {
+                    ProgressView("더 불러오는 중이에요")
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                }
+
+                if let presentation = viewModel.nextPageError {
+                    TourismNextPageErrorFooter(
+                        presentation: presentation,
+                        onRetry: {
+                            Task {
+                                await viewModel.retryNextPage()
+                            }
+                        },
+                        onSignIn: performLogout
+                    )
+                }
+
             }
             .padding(.horizontal, MaplogSpacing.page)
             .padding(.vertical, 16)
         }
+    }
+}
+
+private struct TourismNextPageErrorFooter: View {
+    let presentation: ErrorPresentation
+    let onRetry: () -> Void
+    let onSignIn: () -> Void
+
+    var body: some View {
+        VStack(spacing: 8) {
+            Text(presentation.message)
+                .font(.footnote)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(.secondary)
+
+            switch presentation.recoveryAction {
+            case .retry:
+                Button("다시 시도", action: onRetry)
+                    .buttonStyle(.bordered)
+            case .signIn: // 인증 오류일 때 로그인 화면으로 돌아갈 행동
+                Button("다시 로그인", action: onSignIn)
+                    .buttonStyle(.bordered)
+            case .none:
+                EmptyView()
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 12)
     }
 }

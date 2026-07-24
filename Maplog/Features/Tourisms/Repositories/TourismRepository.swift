@@ -13,6 +13,7 @@
 
 protocol TourismRepository {
     func fetchTourisms(
+        category: TourismCategory,
         cursor: String?,
         size: Int
     ) async throws -> TourismPage

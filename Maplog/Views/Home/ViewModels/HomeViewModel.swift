@@ -72,7 +72,7 @@ final class HomeViewModel: ObservableObject {
         tourismState = .loading
         
         do {
-            let page = try await tourismRepository.fetchTourisms(cursor: nil, size: 10)
+            let page = try await tourismRepository.fetchTourisms(category: .events, cursor: nil, size: 10)
             
             let cards = page.tourisms.map { tourism in
                 makeCardViewData(from: tourism) // Tourism들을 카드용 데이터로 변환
@@ -82,7 +82,7 @@ final class HomeViewModel: ObservableObject {
         } catch is CancellationError { // CancellationError는 탭 이동처럼 화면이 사라져 요청이 취소된 정상 상황이므로 실패 UI로 바꾸지 않음, 실패 화면의 버튼은 retryInitialTourisms()를 호출하는 구조
             return
         } catch {
-            tourismState = .failed(message: tourismErrorMessage(for: error))
+            tourismState = .failed(TourismErrorPolicy.presentation(for: error))
         }
     }
     
@@ -120,26 +120,7 @@ final class HomeViewModel: ObservableObject {
             return "\(periodDateFormatter.string(from: startDate)) ~ \(periodDateFormatter.string(from: endDate))"
     }
     
-    
-    // API 오류를 사용자용 문구로 바꾸는 함수
-    private func tourismErrorMessage(for error: Error) -> String {
-        guard let apiError = error as? APIError else {
-            return "축제 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요."
-        }
-        
-        switch apiError {
-        case .server(_, let response) where response.code == "TOUR-001":
-            return "현재 축제 정보를 이용할 수 없어요."
-            
-        case .server(_, let response) where response.code == "TOUR-002":
-            return "축제 정보를 불러오는 중 문제가 생겼어요. 잠시 후 다시 시도해 주세요."
-            
-        case .network:
-            return "인터넷 연결을 확인한 뒤 다시 시도해 주세요."
-            
-        default:
-                return "축제 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요."
-        }
-    }
+
+
     
 }
