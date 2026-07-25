@@ -24,14 +24,70 @@ struct TourismListView: View {
     }
     
     var body: some View {
-        tourismContent
-            .navigationTitle("축제")
+        VStack(spacing: 0) {
+            categoryCarousel
+            tourismContent
+        }
+            .navigationTitle("관광")
             .navigationBarTitleDisplayMode(.inline)
-            .task {
+            .task(id: viewModel.selectedCategory) {
                 await viewModel.loadInitialTourisms()
             }
     }
     
+    private var categoryCarousel: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            LazyHStack(spacing: MaplogSpacing.xSmall) {
+                ForEach(viewModel.categoryTabs) { tab in
+                    Button {
+                        viewModel.selectCategory(tab.category)
+                    } label: {
+                        Text(tab.title)
+                            .font(MaplogFont.calloutStrong)
+                            .foregroundStyle(
+                                tab.category == viewModel.selectedCategory
+                                ? Color.maplogOnPrimary
+                                : Color.maplogTextPrimary
+                            )
+                            .padding(.horizontal, MaplogSpacing.medium)
+                            .frame(minHeight: MaplogSize.minimumTapTarget)
+                            .background {
+                                Capsule()
+                                    .fill(
+                                        tab.category == viewModel.selectedCategory
+                                        ? Color.maplogPrimary
+                                        : Color.maplogSurface
+                                    )
+                            }
+                            .overlay {
+                                Capsule()
+                                    .stroke(
+                                        Color.maplogBorder,
+                                        lineWidth: tab.category == viewModel.selectedCategory ? 0 : 1
+                                    )
+                            }
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("\(tab.title) 카테고리")
+                    .accessibilityValue(
+                        tab.category == viewModel.selectedCategory ? "선택됨" : "선택되지 않음"
+                    )
+                    .accessibilityAddTraits(
+                        tab.category == viewModel.selectedCategory ? .isSelected : []
+                    )
+                }
+            }
+            .padding(.horizontal, MaplogSpacing.page)
+        }
+        .padding(.vertical, MaplogSpacing.xxSmall)
+        .frame(
+                height: MaplogSize.minimumTapTarget
+                    + (MaplogSpacing.xxSmall * 2)
+            )
+        .background(Color.maplogSurface)
+    }
+
+
     @ViewBuilder
     private var tourismContent: some View {
         switch viewModel.tourismState {
