@@ -21,12 +21,27 @@ final class TourismListViewModel: ObservableObject {
     @Published private(set) var items: [TourismListItemViewData] = [] // 현재 그리드에 실제로 표시 중인 관광 카드들
     @Published private(set) var isLoadingNextPage = false // 기존 그리드를 유지한 채 하단에서 다음 페이지를 불러오는 중인지
     @Published private(set) var nextPageError: ErrorPresentation? // 전체보기에서 다음 페이지를 이어 불러올 때 오류, nil: 다음 페이지 관련 오류 없음 | 값 있음: 기존 카드들은 그대로 두고, “더 불러오기 실패” 문구와 재시도 버튼을 보여줄 준비가 됨
+    @Published private(set) var selectedCategory: TourismCategory = .events
     
     private let tourismRepository: any TourismRepository
     private var nextCursor: String? // 다음 API 요청에만 쓰는 서버의 위치표
     private var hasNext = false // 더 불러올 데이터가 있는지
     private let pageSize = 20 // 모든 페이지 요청에서 유지할 개수, 여기서는 20
     
+    let categoryTabs: [TourismCategoryTabViewData] = [
+        .init(category: .all, title: "전체 관광"),
+        .init(category: .events, title: "행사 전체"),
+        .init(category: .festival, title: "축제"),
+        .init(category: .performance, title: "공연"),
+        .init(category: .event, title: "행사"),
+        .init(category: .recommendedCourse, title: "추천 코스"),
+        .init(category: .experienceTourism, title: "체험 관광"),
+        .init(category: .historyTourism, title: "역사 관광"),
+        .init(category: .leisureSports, title: "레저·스포츠"),
+        .init(category: .natureTourism, title: "자연 관광"),
+        .init(category: .culturalTourism, title: "문화 관광")
+    ]
+
     private let periodDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "ko_KR")
@@ -47,24 +62,23 @@ final class TourismListViewModel: ObservableObject {
 //    → content / empty / failed 상태 변경
     
     func loadInitialTourisms() async {
-        guard tourismState == .idle else{ // 동시에 두 요청 막거나 이미 받은 첫 페이지를 다시 요청하지 않도록 막는 역할
-            return
-        }
+        let requestedCategory = selectedCategory
         
         nextPageError = nil
         items = []
         nextCursor = nil
         hasNext = false
+        isLoadingNextPage = false
         tourismState = .initialLoading
         
         do {
             let page = try await tourismRepository.fetchTourisms(
-                category: .all,
+                category: requestedCategory,
                 cursor: nil,
-                size: pageSize)
+                size: pageSize
+            )
             
-            guard !Task.isCancelled else {
-                tourismState = .idle
+            guard !Task.isCancelled, requestedCategory == selectedCategory else {
                 return
             }
             
@@ -75,9 +89,14 @@ final class TourismListViewModel: ObservableObject {
             items = newItems
             nextCursor = page.nextCursor
             hasNext = page.hasNext
-            
             tourismState = newItems.isEmpty ? .empty : .content
+        } catch is CancellationError {
+            return
         } catch {
+            guard !Task.isCancelled, requestedCategory == selectedCategory else {
+                return
+            }
+
             tourismState = .failed(TourismErrorPolicy.presentation(for: error))
         }
     }
@@ -91,6 +110,8 @@ final class TourismListViewModel: ObservableObject {
             return
         }
 
+        let requestedCategory = selectedCategory
+
         isLoadingNextPage = true
         nextPageError = nil
 
@@ -100,12 +121,12 @@ final class TourismListViewModel: ObservableObject {
 
         do {
             let page = try await tourismRepository.fetchTourisms(
-                category: .all,
+                category: requestedCategory,
                 cursor: nextCursor,
                 size: pageSize
             )
 
-            guard !Task.isCancelled else {
+            guard !Task.isCancelled, requestedCategory == selectedCategory else { // 이전 요청의 카드 추가 차단
                 return
             }
 
@@ -118,8 +139,17 @@ final class TourismListViewModel: ObservableObject {
             hasNext = page.hasNext
         } catch is CancellationError {
             return
-        } catch { // 오류만 따로 저장. 이후 View에서 그리드 하단에만 오류 문구와 재시도 버튼을 보여줌
-            nextPageError = TourismErrorPolicy.presentation(for: error)
+        } catch {
+            guard !Task.isCancelled, requestedCategory == selectedCategory else { // 이전 요청의 오류 표시 차단
+                return
+            }
+
+            if TourismErrorPolicy.isCursorInvalid(error) { // 현재 들고 있는 다음 페이지 표지가 더는 유효하지 않을 때 같은 cursor로 재시도하면 또 실패하므로 선택된 카테고리는 유지하고 cursor만 버린 뒤 첫 페이지부터 다시 요청
+                await loadInitialTourisms()
+                return
+            }
+
+            nextPageError = TourismErrorPolicy.presentation(for: error) // 오류만 따로 저장. 이후 View에서 그리드 하단에만 오류 문구와 재시도 버튼을 보여줌
         }
     }
 
@@ -176,5 +206,12 @@ final class TourismListViewModel: ObservableObject {
         tourismState = .idle
         await loadInitialTourisms()
 
+    }
+
+    func selectCategory(_ category: TourismCategory) {
+        guard selectedCategory != category else {
+            return
+        }
+        selectedCategory = category
     }
 }

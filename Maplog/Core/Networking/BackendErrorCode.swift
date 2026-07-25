@@ -20,6 +20,7 @@ enum BackendErrorCode: Equatable {
     case suspendedUser
     case pendingUser
     case wrongPassword
+    case cursorInvalid
 
     init(serverCode: String) {
         switch serverCode {
@@ -57,6 +58,8 @@ enum BackendErrorCode: Equatable {
         case "USER-006":
             self = .wrongPassword
 
+        case "CURSOR-001":
+            self = .cursorInvalid
 
         default:
             self = .unknown(serverCode)
