@@ -7,7 +7,8 @@ struct HomeView: View {
     @Environment(\.maplogLogout) private var performLogout
     @ObservedObject var viewModel: HomeViewModel // MainTabView가 만든 하나를 받아서 관찰
     let onShowAllTourisms: () -> Void
-    
+    let onShowTourismDetail: (Int64) -> Void
+
     @State private var selectedCategory = "추천"
     @State private var selectedChip = "전체"
     @State private var showsThemeSpots = false
@@ -422,27 +423,28 @@ struct HomeView: View {
                 .frame(maxWidth: .infinity, minHeight: 172)
                 .padding(.horizontal, MaplogSpacing.page)
         case .content(let cards):
+
             tourismCards(cards)
         case .empty:
             VStack(spacing: 8) {
                 Image(systemName: "calendar.badge.exclamationmark")
                     .font(.title2)
                     .foregroundStyle(.secondary)
-                
+
                 Text("현재 포시할 축제가 없어요.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
             .frame(maxWidth: .infinity, minHeight: 172)
             .padding(.horizontal, MaplogSpacing.page)
-            
+
         case .failed(let presentation):
             VStack(spacing: 10) {
                 Text(presentation.message)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
-                
+
                 switch presentation.recoveryAction {
                 case .retry:
                     Button("다시 시도") {
@@ -464,14 +466,20 @@ struct HomeView: View {
             .padding(.horizontal, MaplogSpacing.page)
         }
     }
-    
+
     // 관광 카드 목록 UI를 만들어 주는 보조 함수(실제 반환값은 ScrollView, LazyHStack, ForEach 등이 조합된 아주 긴 타입인데, 그걸 전부 쓰지 않도록 Swift가 some View로 감춰줌)
     // content일 때 카드들을 어떤 모양으로 그릴지 담당
     private func tourismCards(_ cards: [HomeTourismCardViewData]) -> some View {
         ScrollView(.horizontal, showsIndicators: false) {
             LazyHStack(spacing: 14) {
                 ForEach(cards) { card in
-                    HomeTourismCarouselCard(card: card)
+                    Button {
+                        onShowTourismDetail(card.id)
+                    } label: {
+                        HomeTourismCarouselCard(card: card)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint("관광 상세 정보 보기")
                 }
             }
             .scrollTargetLayout()
@@ -479,7 +487,7 @@ struct HomeView: View {
         .contentMargins(.horizontal, MaplogSpacing.page, for: .scrollContent)
         .scrollTargetBehavior(.viewAligned)
     }
-    
+
     private var weekendRecommendation: some View {
         VStack(alignment: .leading, spacing: MaplogSpacing.small) {
             Text("이번 주말, 여기 어때요?")
@@ -674,7 +682,7 @@ struct HomeView: View {
             AIDigestHubView(digests: aiDigests)
         case .region:
             MapSearchView(query: "서울 성수동")
-      
+
         }
     }
 
@@ -713,19 +721,19 @@ struct HomeView: View {
 
 private struct HomeTourismCarouselCard: View {
     let card: HomeTourismCardViewData
-    
+
     var body: some View {
         ZStack(alignment: .bottomLeading) {
             tourismThumbnail
                 .frame(width: 264, height: 172)
                 .clipped()
-            
+
             LinearGradient(
                 colors: [.black.opacity(0.04), .clear, .black.opacity(0.82)],
                 startPoint: .top,
                 endPoint: .bottom
             )
-            
+
             VStack(alignment: .leading, spacing: 7) {
                 Text("축제")
                     .font(.caption.weight(.bold))
@@ -733,18 +741,18 @@ private struct HomeTourismCarouselCard: View {
                     .padding(.horizontal, 10)
                     .frame(minHeight: 26)
                     .background(Color.maplogLime, in: Capsule())
-                
+
                 Spacer()
-                
+
                 Text(card.title)
                     .font(.headline)
                     .foregroundStyle(.white)
                     .lineLimit(2)
-                
+
                 HStack(spacing: 10) {
                     Label(card.locationText, systemImage: "mappin.and.ellipse")
                         .lineLimit(1)
-                    
+
                     Label(card.periodText, systemImage: "calendar")
                         .lineLimit(1)
                 }
@@ -765,8 +773,8 @@ private struct HomeTourismCarouselCard: View {
             "\(card.title), \(card.locationText), \(card.periodText)"
         )
     }
-    
-    
+
+
 //    축제 목록 API 성공”과 별개로 각 썸네일을 내려받아. 즉 목록은 먼저 카드로 나타나고, 이미지가 조금 뒤에 표시되는 것은 자연스러운 동작
 //    다른 View들을 SwiftUI가 하나의 화면으로 조립할 수 있게 해줌
     @ViewBuilder
@@ -787,7 +795,7 @@ private struct HomeTourismCarouselCard: View {
 
                                 case .failure:
                                     thumbnailPlaceholder
-                    
+
                 @unknown default:
                     thumbnailPlaceholder
                 }
@@ -796,7 +804,7 @@ private struct HomeTourismCarouselCard: View {
             thumbnailPlaceholder
         }
     }
-    
+
     private var thumbnailPlaceholder: some View {
         Color(uiColor: .secondarySystemFill)
                     .overlay {

@@ -18,7 +18,7 @@ struct MainTabView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @StateObject private var homeviewModel: HomeViewModel // @StateObject를 MainTabView에 두는 이유는 MainTabView가 HomeViewModel의 소유자이기 때문
     // 홈 탭이 다시 그려져도 같은 ViewModel 인스턴스를 유지하기 좋음
-    
+
     @Binding private var requestedTab: MaplogTab?
     @Binding private var requestedCapturePlaceName: String?
 
@@ -30,20 +30,20 @@ struct MainTabView: View {
 
     private let tourismRepository: any TourismRepository
     @State private var homeNavigationPath: [HomeNavigationRoute] = []
-    
-    
+
+
     init(
         tourismRepository: any TourismRepository, // Repository를 받게 함
         requestedTab: Binding<MaplogTab?> = .constant(nil),
         requestedCapturePlaceName: Binding<String?> = .constant(nil)
     ) {
         self.tourismRepository = tourismRepository
-        
+
         _requestedTab = requestedTab
         _requestedCapturePlaceName = requestedCapturePlaceName
         _selectedTab = State(initialValue: .home)
         _previousTab = State(initialValue: .home)
-        
+
         _homeviewModel = StateObject(wrappedValue: HomeViewModel(
             tourismRepository: tourismRepository
         )
@@ -52,8 +52,9 @@ struct MainTabView: View {
 
     private enum HomeNavigationRoute: Hashable { // Hashable인 이유는 NavigationStack의 경로에 넣을 값, 홈에서 갈 수 있는 목적지 이름표
         case tourismList // 관광 목록 화면으로 이동하라는 경로 값
+        case tourismDetail(tourismID: Int64)
     }
-    
+
     private var tabSelection: Binding<MaplogTab> {
         Binding(
             get: { selectedTab },
@@ -78,15 +79,24 @@ struct MainTabView: View {
             switch selectedTab {
             case .home:
                 NavigationStack(path: $homeNavigationPath) {
-                    HomeView(viewModel: homeviewModel,
-                        onShowAllTourisms: {
-                            homeNavigationPath.append(.tourismList)
-                        }
-                    )
+                    HomeView(
+                            viewModel: homeviewModel,
+                            onShowAllTourisms: {
+                                homeNavigationPath.append(.tourismList)
+                            },
+                            onShowTourismDetail: { tourismID in
+                                homeNavigationPath.append(
+                                    .tourismDetail(tourismID: tourismID)
+                                )
+                            }
+                        )
                     .navigationDestination(for: HomeNavigationRoute.self) { route in
                         switch route {
                         case .tourismList:
                             TourismListView(tourismRepository: tourismRepository)
+
+                        case .tourismDetail(let tourismID):
+                            TourismDetailView(tourismID: tourismID, tourismRepository: tourismRepository)
                         }
                     }
                 }
@@ -219,7 +229,7 @@ struct MaplogTabBar: View {
             standardTabBar
         }
     }
-    
+
     private var standardTabBar: some View {
         HStack(spacing: 0) {
             ForEach(MaplogTab.allCases) { tab in
@@ -320,7 +330,7 @@ private struct MaplogTabBarItem: View {
     let tab: MaplogTab
     let isSelected: Bool
     let tint: Color
-    
+
     var body: some View {
         VStack(spacing: 4) {
             ZStack {
@@ -329,13 +339,13 @@ private struct MaplogTabBarItem: View {
                         .fill(tab == .capture ? Color.maplogLime : Color.maplogLime.opacity(0.16))
                         .frame(width: 42, height: 30)
                 }
-                
+
                 Image(systemName: tab.icon)
                     .font(.system(size: 20, weight: .semibold))
                     .foregroundStyle(tab == .capture && isSelected ? Color.maplogInk : tint)
             }
             .frame(height: 32)
-            
+
             Text(tab.title)
                 .font(MaplogFont.tabLabel)
                 .foregroundStyle(isSelected ? (tab == .capture ? Color.maplogInk : tint) : Color.maplogMuted)
