@@ -17,4 +17,8 @@ protocol TourismRepository {
         cursor: String?,
         size: Int
     ) async throws -> TourismPage
+
+    func fetchTourismDetail(
+        tourismID: Int64
+    ) async throws -> TourismDetail
 }

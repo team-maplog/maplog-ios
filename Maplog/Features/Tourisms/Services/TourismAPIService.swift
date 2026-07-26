@@ -12,4 +12,8 @@ protocol TourismAPIService {
         cursor: String?,
         size: Int
     ) async throws -> TourismPageDTO
+
+    func fetchTourismDetail(
+        tourismID: Int64
+    ) async throws -> TourismDetailDTO
 }

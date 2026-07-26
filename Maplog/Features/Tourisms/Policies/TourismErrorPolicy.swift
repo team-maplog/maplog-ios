@@ -10,7 +10,20 @@
 //APIError인지 확인
 //서버의 문자열 코드를 BackendErrorCode로 바꿈
 //관광 화면에 필요한 문구와 행동을 결정
+//ViewModel       → 목록을 처음부터 다시 불러올지 결정
+//TourismErrorPolicy → CURSOR-001인지 판별
+//BackendErrorCode → 서버 문자열을 Swift enum으로 변환
+
 enum TourismErrorPolicy {
+    static func isCursorInvalid(_ error: Error) -> Bool {
+        guard case let APIError.server(_, response) = error else {
+            return false
+        }
+
+        return BackendErrorCode(serverCode: response.code) == .cursorInvalid
+    }
+
+
     static func presentation(for error: Error) -> ErrorPresentation {
         guard let apiError = error as? APIError else {
             return defaultPresentation
