@@ -53,6 +53,13 @@ final class DefaultTourismRepository: TourismRepository {
         return TourismPage(tourisms: tourisms, hasNext: pageDTO.hasNext, nextCursor: pageDTO.nextCursor)
     }
 
+    func fetchTourismDetail(tourismID: Int64) async throws -> TourismDetail {
+        let detailDTO = try await apiService.fetchTourismDetail(tourismID: tourismID)
+
+        return try makeTourismDetail(from: detailDTO)
+    }
+
+
     private func makeTourism(from dto: TourismDTO) throws -> Tourism {
         let startDate = try date(from: dto.startDate, field: "startDate")
         let endDate = try date(from: dto.endDate, field: "endDate")
@@ -67,6 +74,129 @@ final class DefaultTourismRepository: TourismRepository {
             endDate: endDate,
             category: dto.category
             )
+    }
+
+    private func makeTourismDetail(from dto: TourismDetailDTO) throws -> TourismDetail {
+        let introduction = try dto.introduction.map {
+                try makeTourismDetailIntroduction(from: $0)
+            }
+
+        return TourismDetail(
+                id: dto.tourismId,
+                category: dto.category,
+                common: makeTourismDetailCommonInfo(from: dto.common),
+                introduction: introduction,
+                repeatInfo: dto.repeatInfo.map(makeTourismDetailRepeatInfo),
+                images: dto.images.map(makeTourismDetailImage), // 서버 배열의 DTO 하나씩을 앱 배열의 Domain Model 하나씩으로 바꿈, 서버가 []를 보내면 앱도 빈 배열을 받고,이미지 섹션을 숨겨야 하는 정상 상태가 됨
+                petTour: dto.petTour.map(makeTourismPetTour)  // petTour가 nil이면 변환하지 않고 그대로 nil을 유지
+            )
+    }
+
+    private func makeTourismDetailCommonInfo(from dto: TourismDetailCommonDTO) -> TourismDetailCommonInfo {
+        TourismDetailCommonInfo(
+                name: dto.name,
+                createdAt: dto.createdAt,
+                modifiedAt: dto.modifiedAt,
+                tel: dto.tel,
+                telName: dto.telName,
+                homepageURL: dto.homepageURL.flatMap { URL(string: $0) },
+                thumbnailURL: dto.thumbnailURL.flatMap { URL(string: $0) },
+                originalImageURL: dto.originalImageURL.flatMap { URL(string: $0) },
+                copyrightCode: dto.copyrightCode,
+                regionCode: dto.regionCode,
+                districtCode: dto.districtCode,
+                classification1: dto.classification1,
+                classification2: dto.classification2,
+                classification3: dto.classification3,
+                region: dto.region,
+                address: dto.address,
+                zipCode: dto.zipCode,
+                longitude: dto.longitude,
+                latitude: dto.latitude,
+                mapLevel: dto.mapLevel,
+                overview: dto.overview
+            )
+    }
+
+    private func makeTourismDetailIntroduction(from dto: TourismDetailIntroductionDTO) throws -> TourismDetailIntroduction {
+        TourismDetailIntroduction(
+                type: dto.type,
+                startDate: try date(from: dto.startDate, field: "startDate"),
+                endDate: try date(from: dto.endDate, field: "endDate"),
+                openingDate: dto.openingDate,
+                place: dto.place,
+                openingHours: dto.openingHours,
+                closedDays: dto.closedDays,
+                usageFee: dto.usageFee,
+                discountInfo: dto.discountInfo,
+                parkingInfo: dto.parkingInfo,
+                parkingFee: dto.parkingFee,
+                contactInfo: dto.contactInfo,
+                reservationInfo: dto.reservationInfo,
+                homepageURL: dto.homepageURL.flatMap { URL(string: $0) },
+                program: dto.program,
+                subEvent: dto.subEvent,
+                sponsor: dto.sponsor,
+                sponsorContact: dto.sponsorContact,
+                ageLimit: dto.ageLimit,
+                experienceGuide: dto.experienceGuide,
+                experienceAge: dto.experienceAge,
+                capacity: dto.capacity,
+                operatingSeason: dto.operatingSeason,
+                duration: dto.duration,
+                distance: dto.distance,
+                schedule: dto.schedule,
+                theme: dto.theme,
+                scale: dto.scale,
+                representativeMenu: dto.representativeMenu,
+                menu: dto.menu,
+                seatCount: dto.seatCount,
+                packingInfo: dto.packingInfo,
+                smokingInfo: dto.smokingInfo,
+                kidsFacilityInfo: dto.kidsFacilityInfo,
+                creditCardInfo: dto.creditCardInfo,
+                petInfo: dto.petInfo,
+                babyCarriageInfo: dto.babyCarriageInfo,
+                extraFields: dto.extraFields
+            )
+    }
+
+    private func makeTourismDetailRepeatInfo(from dto: TourismDetailRepeatInfoDTO) -> TourismDetailRepeatInfo {
+        TourismDetailRepeatInfo(
+                serialNumber: dto.serialNumber,
+                title: dto.title,
+                description: dto.description,
+                imageURL: dto.imageURL.flatMap { URL(string: $0) },
+                attributes: dto.attributes
+            )
+    }
+
+    private func makeTourismDetailImage(
+        from dto: TourismDetailImageDTO
+    ) -> TourismDetailImage {
+        TourismDetailImage(
+            originalURL: dto.originalURL.flatMap { URL(string: $0) },
+            smallURL: dto.smallURL.flatMap { URL(string: $0) },
+            name: dto.name,
+            copyrightCode: dto.copyrightCode,
+            serialNumber: dto.serialNumber
+        )
+    }
+
+    private func makeTourismPetTour(
+        from dto: TourismPetTourDTO
+    ) -> TourismPetTour {
+        TourismPetTour(
+            accidentRisk: dto.accidentRisk,
+            accompanimentType: dto.accompanimentType,
+            relatedFacility: dto.relatedFacility,
+            relatedSupplies: dto.relatedSupplies,
+            otherInfo: dto.otherInfo,
+            relatedPurchaseSupplies: dto.relatedPurchaseSupplies,
+            accompanimentPossibleCapacity: dto.accompanimentPossibleCapacity,
+            relatedRentalSupplies: dto.relatedRentalSupplies,
+            requiredItems: dto.requiredItems
+        )
     }
 
     private func date(from value: String?, field: String) throws -> Date? {
@@ -93,6 +223,8 @@ final class DefaultTourismRepository: TourismRepository {
 
         return formatter.date(from: value)
     }
+
+
 
 }
 

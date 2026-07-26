@@ -1,13 +1,21 @@
 import SwiftUI
+import UIKit
 import KakaoMapsSDK
 
 struct KakaoMapCanvas: View {
+    let latitude: Double
+    let longitude: Double
+
     @State private var shouldDrawMap = true
 
     var body: some View {
         Group {
             if KakaoMapSDKConfiguration.hasUsableNativeAppKey {
-                KakaoMapRepresentable(shouldDrawMap: $shouldDrawMap)
+                KakaoMapRepresentable(
+                    shouldDrawMap: $shouldDrawMap,
+                    latitude: latitude,
+                    longitude: longitude
+                )
                     .onAppear {
                         KakaoMapSDKConfiguration.initializeIfNeeded()
                         shouldDrawMap = true
@@ -24,6 +32,8 @@ struct KakaoMapCanvas: View {
 
 private struct KakaoMapRepresentable: UIViewRepresentable {
     @Binding var shouldDrawMap: Bool
+    let latitude: Double
+    let longitude: Double
 
     // 실제 KMViewContainer 생성, Coordinator에 연결하고, 엔진 준비 시작하고 swiftUI에 반환
     func makeUIView(context: Context) -> KMViewContainer {
@@ -51,16 +61,37 @@ private struct KakaoMapRepresentable: UIViewRepresentable {
 
     // swiftUI가 보관할 Coordinator 객체 생성
     func makeCoordinator() -> Coordinator {
-        Coordinator()
+        Coordinator(
+            latitude: latitude,
+            longitude: longitude)
     }
 
+
+//    LabelLayer  = 핀들을 담는 폴더
+//    PoiStyle    = 핀의 그림/모양
+//    POI         = 특정 좌표에 실제로 놓는 핀
     final class Coordinator: NSObject, MapControllerDelegate {
         private let mapViewName = "mapview"
         private var needsInitialCameraMove = true
 
+        private let initialPosition: MapPoint
+
+        private let tourismPinLayerID = "tourism-pin-layer"
+        private let tourismPinStyleID = "tourism-pin-style"
+        private var hasAddedTourismPin = false
+
+        init(latitude: Double, longitude: Double) {
+            initialPosition = MapPoint(longitude: longitude, latitude: latitude) // initialPosition은 이번 지도 화면이 처음 열릴 때 보여줄 관광지 위치
+            super.init()
+        }
+
+
+
         var controller: KMController?
+        private weak var viewContainer: KMViewContainer? // 뷰를 기억할 프로퍼티
 
         func createController(with view: KMViewContainer) {
+            viewContainer = view
             controller = KMController(viewContainer: view)
             controller?.delegate = self
         }
@@ -88,20 +119,83 @@ private struct KakaoMapRepresentable: UIViewRepresentable {
         }
 
         @objc func addViews() {
-            let defaultPosition = MapPoint(longitude: 126.9780, latitude: 37.5665)
+
             let mapviewInfo = MapviewInfo(
                 viewName: mapViewName,
                 viewInfoName: "map",
-                defaultPosition: defaultPosition,
-                defaultLevel: 10
+                defaultPosition: initialPosition,
+                defaultLevel: 15
             )
 
             controller?.addView(mapviewInfo)
         }
 
-        @objc func addViewSucceeded(_ viewName: String, viewInfoName: String) {
-            print("Kakao map loaded: \(viewName), \(viewInfoName)")
+        private func applyMapLayoutIfReady(_ size: CGSize) { // 지도 크기와 최초 카메라 위치를 한 번에 적용하는 함수
+            guard size.width > 0,
+                      size.height > 0,
+                  let mapView = controller?.getView(mapViewName) as? KakaoMap
+            else {
+                return
+            }
+
+            mapView.viewRect = CGRect(origin: .zero, size: size)
+
+            guard needsInitialCameraMove else {
+                return
+            }
+
+            let cameraUpdate = CameraUpdate.make(
+                target: initialPosition,
+                zoomLevel: 15,
+                mapView: mapView
+            )
+
+            mapView.moveCamera(cameraUpdate)
+            needsInitialCameraMove = false
         }
+
+
+        @objc func addViewSucceeded(_ viewName: String, viewInfoName: String) {
+            guard let size = viewContainer?.bounds.size else {
+                return
+            }
+            applyMapLayoutIfReady(size)
+            addTourismPinIfNeeded()
+        }
+
+        private func addTourismPinIfNeeded() {
+            guard !hasAddedTourismPin,
+                  let mapView = controller?.getView(mapViewName) as? KakaoMap
+            else {
+                return
+            }
+
+            let labelManager = mapView.getLabelManager()
+
+            let configuration = UIImage.SymbolConfiguration(pointSize: 40, weight: .bold)
+
+            let pinImage = UIImage(systemName: "mappin.circle.fill", withConfiguration: configuration)?.withTintColor(.systemRed, renderingMode: .alwaysOriginal)
+
+            let iconStyle = PoiIconStyle(symbol: pinImage, anchorPoint: CGPoint(x: 0.5,  y: 1.0)) // 가운데 아래쪽이 실제 관광지 좌표를 가리키게 함. 그래서 핀 끝이 위치를 정확히 찍음
+
+            let poiStyle = PoiStyle(styleID: tourismPinStyleID, styles: [PerLevelPoiStyle(iconStyle: iconStyle, level: 0)])
+
+            labelManager.addPoiStyle(poiStyle)
+
+            let layerOption = LabelLayerOptions(layerID: tourismPinLayerID, competitionType: .none, competitionUnit: .symbolFirst, orderType: .rank, zOrder: 0)
+
+            guard let layer = labelManager.addLabelLayer(option: layerOption) else {
+                return
+            }
+
+            let poiOption = PoiOptions(styleID: tourismPinStyleID, poiID: "tourism-location")
+
+            let pin = layer.addPoi(option: poiOption, at: initialPosition)
+
+            pin?.show()
+            hasAddedTourismPin = true
+        }
+
 
         @objc func addViewFailed(_ viewName: String, viewInfoName: String) {
             print("Kakao map failed to load: \(viewName), \(viewInfoName)")
@@ -116,23 +210,9 @@ private struct KakaoMapRepresentable: UIViewRepresentable {
         }
 
         @objc func containerDidResized(_ size: CGSize) {
-            guard let mapView = controller?.getView(mapViewName) as? KakaoMap else {
-                return
-            }
+            applyMapLayoutIfReady(size)
 
-            mapView.viewRect = CGRect(origin: .zero, size: size)
 
-            guard needsInitialCameraMove else {
-                return
-            }
-
-            let cameraUpdate = CameraUpdate.make(
-                target: MapPoint(longitude: 126.9780, latitude: 37.5665),
-                zoomLevel: 10,
-                mapView: mapView
-            )
-            mapView.moveCamera(cameraUpdate)
-            needsInitialCameraMove = false
         }
     }
 }
