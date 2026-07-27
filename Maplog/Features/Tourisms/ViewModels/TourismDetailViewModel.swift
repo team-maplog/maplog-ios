@@ -76,15 +76,19 @@ final class TourismDetailViewModel: ObservableObject {
 
     private func makeViewData(from detail: TourismDetail) -> TourismDetailViewData {
         let imageItems = makeImageItems(from: detail.images)
-        let heroImageURL = detail.common.thumbnailURL ?? imageItems.first?.imageURL
+        let heroImageURL = detail.common.originalImageURL // 원본 대표 이미지
+            ?? imageItems.first?.imageURL // 상세 이미지 원본
+            ?? detail.common.thumbnailURL // 썸네일
         let phoneNumber = nonEmpty(detail.common.tel)
-
+        let overviewText = nonEmpty(detail.common.overview)
+        let informationRows = makeInformationRows(from: detail.introduction)
+        
         return TourismDetailViewData(
             title: detail.common.name,
             categoryText: categoryText(for: detail.category),
             regionText: nonEmpty(detail.common.region),
             addressText: nonEmpty(detail.common.address),
-            overviewText: nonEmpty(detail.common.overview),
+            overviewText: overviewText,
             heroImageURL: heroImageURL,
             phoneNumber: nonEmpty(detail.common.tel),
             phoneURL: makeTelephoneURL(from: phoneNumber),
@@ -95,15 +99,14 @@ final class TourismDetailViewModel: ObservableObject {
                 longitude: detail.common.longitude
             ),
             periodText: periodText(from: detail.introduction),
-            informationRows: makeInformationRows(
-                from: detail.introduction
-            ),
+            informationSections: makeInformationSections(from: informationRows),
             extraInformationRows: makeExtraInformationRows(
                 from: detail.introduction
             ),
             images: imageItems,
             repeatInfoItems: makeRepeatInfoItems(
-                from: detail.repeatInfo
+                from: detail.repeatInfo,
+                overviewText: overviewText
             ),
             petInformationRows: makePetInformationRows(
                 from: detail.petTour
@@ -210,23 +213,105 @@ final class TourismDetailViewModel: ObservableObject {
         ]
             .compactMap { $0 }
     }
+    
+    private func makeInformationSections(
+        from rows: [TourismDetailInfoRowViewData]
+    ) -> [TourismDetailInformationSectionViewData] {
+        [
+            makeInformationSection(
+                id: "quick",
+                title: "한눈에 보기",
+                rowIDs: ["place", "openingHours", "usageFee"],
+                sourceRows: rows
+            ),
+            makeInformationSection(
+                id: "visit",
+                title: "방문 전 확인",
+                rowIDs: [
+                    "closedDays",
+                    "discountInfo",
+                    "parkingInfo",
+                    "parkingFee",
+                    "reservationInfo",
+                    "contactInfo",
+                    "ageLimit",
+                    "operatingSeason"
+                ],
+                sourceRows: rows
+            ),
+            makeInformationSection(
+                id: "program",
+                title: "프로그램",
+                rowIDs: [
+                    "program",
+                    "subEvent",
+                    "experienceGuide",
+                    "experienceAge",
+                    "duration",
+                    "distance",
+                    "schedule",
+                    "theme"
+                ],
+                sourceRows: rows
+            ),
+            makeInformationSection(
+                id: "food",
+                title: "음식점 정보",
+                rowIDs: [
+                    "representativeMenu",
+                    "menu",
+                    "seatCount",
+                    "packingInfo"
+                ],
+                sourceRows: rows
+            ),
+            makeInformationSection(
+                id: "facility",
+                title: "시설·편의 정보",
+                rowIDs: [
+                    "smokingInfo",
+                    "kidsFacilityInfo",
+                    "creditCardInfo",
+                    "petInfo",
+                    "babyCarriageInfo"
+                ],
+                sourceRows: rows
+            ),
+            makeInformationSection(
+                id: "organizer",
+                title: "주최·문의",
+                rowIDs: ["sponsor", "sponsorContact"],
+                sourceRows: rows
+            )
+        ]
+        .compactMap { $0 }
+    }
 
-    private func makeExtraInformationRows(
-        from introduction: TourismDetailIntroduction?
-    ) -> [TourismDetailInfoRowViewData] {
-        guard let extraFields = introduction?.extraFields else {
-            return []
+    private func makeInformationSection(
+        id: String,
+        title: String,
+        rowIDs: [String],
+        sourceRows: [TourismDetailInfoRowViewData]
+    ) -> TourismDetailInformationSectionViewData? {
+        let sectionRows = rowIDs.compactMap { rowID in
+            sourceRows.first { $0.id == rowID }
         }
 
-        return extraFields
-            .sorted { $0.key < $1.key }
-            .compactMap { key, value in
-                makeInfoRow(
-                    "extra-\(key)",
-                    title: key,
-                    value: value
-                )
-            }
+        guard !sectionRows.isEmpty else {
+            return nil
+        }
+
+        return TourismDetailInformationSectionViewData(
+            id: id,
+            title: title,
+            rows: sectionRows
+        )
+    }
+
+    private func makeExtraInformationRows(
+        from _: TourismDetailIntroduction?
+    ) -> [TourismDetailInfoRowViewData] {
+        []
     }
 
     private func makeImageItems(
@@ -247,24 +332,30 @@ final class TourismDetailViewModel: ObservableObject {
         }
     }
 
+    private func isSameContent(_ left: String?, _ right: String?) -> Bool {
+        guard let left = nonEmpty(left),
+                  let right = nonEmpty(right)
+        else {
+            return false
+        }
+        
+        let normalizedLeft = left.filter { !$0.isWhitespace }
+        let normalizedRight = right.filter { !$0.isWhitespace }
+        
+        return normalizedLeft == normalizedRight
+    }
+    
     private func makeRepeatInfoItems(
-        from repeatInfo: [TourismDetailRepeatInfo]
+        from repeatInfo: [TourismDetailRepeatInfo],
+        overviewText: String?
     ) -> [TourismDetailRepeatInfoViewData] {
         repeatInfo.enumerated().compactMap { index, item in
             let title = nonEmpty(item.title)
-            let description = nonEmpty(item.description)
-            let attributeRows = (item.attributes ?? [:])
-                .sorted { $0.key < $1.key }
-                .compactMap { key, value in
-                    makeInfoRow(
-                        "repeat-\(index)-\(key)",
-                        title: key,
-                        value: value
-                    )
-                }
+            let originalDescription = nonEmpty(item.description)
+            let description = isSameContent(originalDescription, overviewText) ? nil : originalDescription
+            let attributeRows: [TourismDetailInfoRowViewData] = []
 
-            guard title != nil
-                    || description != nil
+            guard  description != nil
                     || item.imageURL != nil
                     || !attributeRows.isEmpty
             else {
