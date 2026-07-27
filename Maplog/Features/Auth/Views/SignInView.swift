@@ -10,7 +10,13 @@ import SwiftUI
 
 struct SignInView: View {
     @StateObject private var viewModel: SignInViewModel // @StateObject로 ViewModel을 이 화면이 소유
-
+    @FocusState private var focusedField: SignInField?
+    
+    private enum SignInField: Hashable {
+        case email
+        case password
+    }
+    
     init(
         authRepository: any AuthRepository,
         authSessionStore: AuthSessionStore
@@ -86,6 +92,11 @@ struct SignInView: View {
             .textContentType(.username)
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
+            .focused($focusedField, equals: .email)
+            .submitLabel(.next)
+            .onSubmit {
+                focusedField = .password
+            }
             .font(MaplogFont.body)
             .foregroundStyle(Color.maplogInk)
             .padding(.horizontal, MaplogSpacing.medium)
@@ -129,6 +140,12 @@ struct SignInView: View {
             .textContentType(.password)
             .textInputAutocapitalization(.never)
             .autocorrectionDisabled()
+            .focused($focusedField, equals: .password)
+                .submitLabel(.go)
+                .onSubmit {
+                    focusedField = nil
+                    requestSignIn()
+                }
             .font(MaplogFont.body)
             .foregroundStyle(Color.maplogInk)
             .padding(.horizontal, MaplogSpacing.medium)
