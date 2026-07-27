@@ -5,11 +5,11 @@
 //  Created by 한채림 on 7/21/26.
 //
 
-//- URLComponents로 URL 생성
-//- GET /api/v1/tourisms 요청
-//- APIClient 호출
-//- successFlag / SUCCESS-002 확인
-//- TourismPageDTO 반환
+// Tourism Service의 역할
+// - 관광 API URL, query, HTTP method 생성
+// - 성공 응답의 계약 확인
+// - 인증 헤더, 토큰 만료, 재발급, 재시도는
+//   AuthenticatedAPIClient가 담당
 
 //첫 요청
 //cursor = nil
@@ -22,22 +22,10 @@
 import Foundation
 
 final class DefaultTourismAPIService: TourismAPIService {
-    private let apiClient: APIClient
-    private let accessTokenProvider: any AccessTokenProviding // Service는 AuthSessionStore라는 구체적인 클래스를 모름,
-//    DefaultTourismAPIService가 아는 것
-//    → access token을 제공할 수 있는 객체가 있다
-//
-//    DefaultTourismAPIService가 모르는 것
-//    → Keychain에 어떻게 저장하는지
-//    → 로그인 화면 상태가 어떤지
-//    → AuthSessionStore라는 실제 클래스인지
-//    그래서 AuthSessionStore가 아니라 any AccessTokenProviding을 받음
+    private let authenticatedAPIClient: AuthenticatedAPIClient
 
-    init(apiClient: APIClient,
-         accessTokenProvider: any AccessTokenProviding
-    ) {
-        self.apiClient = apiClient
-        self.accessTokenProvider = accessTokenProvider
+    init(authenticatedAPIClient: AuthenticatedAPIClient) {
+        self.authenticatedAPIClient = authenticatedAPIClient
     }
 
     func fetchTourisms(
@@ -50,11 +38,7 @@ final class DefaultTourismAPIService: TourismAPIService {
         }
 
         // await가 필요한 이유는 AccessTokenProviding이 @MainActor이고, 현재 Service는 Main Actor 밖에 있기 때문, 메인 액터가 관리하는 AuthSessionStore에게 안전하게 token을 물어봄
-        let accessToken = try await accessTokenProvider.currentAccessToken()
 
-        guard let accessToken, !accessToken.isEmpty else {
-            throw APIError.missingAccessToken
-        }
 
 
         let endpoint = APIConfiguration.baseURL
@@ -85,9 +69,7 @@ final class DefaultTourismAPIService: TourismAPIService {
 
         urlRequest.setValue("application/json", forHTTPHeaderField: "Accept")
 
-        urlRequest.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-
-        let response: APIResponse<TourismPageDTO> = try await apiClient.request(urlRequest, responseType: APIResponse<TourismPageDTO>.self)
+        let response: APIResponse<TourismPageDTO> = try await authenticatedAPIClient.request(urlRequest, responseType: APIResponse<TourismPageDTO>.self)
 
         guard response.successFlag else {
             throw APIError.unexpectedResponse(code: response.code, message: response.message)
@@ -109,12 +91,6 @@ final class DefaultTourismAPIService: TourismAPIService {
             throw APIError.invalidRequest(reason: "tourismID는 1 이상의 정수여야 합니다.")
         }
 
-        let accessToken = try await accessTokenProvider.currentAccessToken()
-
-        guard let accessToken, !accessToken.isEmpty else {
-            throw APIError.missingAccessToken
-        }
-
         let endpoint = APIConfiguration.baseURL
             .appendingPathComponent("api")
             .appendingPathComponent("v1")
@@ -124,12 +100,8 @@ final class DefaultTourismAPIService: TourismAPIService {
         var urlRequest = URLRequest(url: endpoint)
         urlRequest.httpMethod = "GET"
         urlRequest.setValue("application/json", forHTTPHeaderField: "Accept")
-            urlRequest.setValue(
-                "Bearer \(accessToken)",
-                forHTTPHeaderField: "Authorization"
-            )
 
-        let response: APIResponse<TourismDetailDTO> = try await apiClient.request(urlRequest, responseType: APIResponse<TourismDetailDTO>.self)
+        let response: APIResponse<TourismDetailDTO> = try await authenticatedAPIClient.request(urlRequest, responseType: APIResponse<TourismDetailDTO>.self)
 
         guard response.successFlag else {
             throw APIError.unexpectedResponse(code: response.code, message: response.message)

@@ -13,7 +13,7 @@ import Combine
 import Foundation
 
 @MainActor // ui 상태 변경을 메인 스레드에서 안전하게 함
-final class AuthSessionStore: ObservableObject, AccessTokenProviding { // AuthSessionStore는 AccessTokenProviding 역할을 수행할 수 있음
+final class AuthSessionStore: ObservableObject, AuthSessionManaging { // AuthSessionStore는 AccessTokenProviding 역할을 수행할 수 있음
     @Published private(set) var isAuthenticated = false
 
     private enum TokenKey {
@@ -21,20 +21,24 @@ final class AuthSessionStore: ObservableObject, AccessTokenProviding { // AuthSe
         static let refreshToken = "maplog.refreshToken"
     }
 
-    // 회원가입 로그인 성공 시 세션 시작
-    func startSession(with token: AuthToken) throws {
-
+    private func saveTokens(_ token: AuthToken) throws {
         try KeychainService.save(token.accessToken, for: TokenKey.accessToken)
+
         do {
             try KeychainService.save(token.refreshToken, for: TokenKey.refreshToken)
-        }catch { // access token만 저장되고 refresh token 저장에는 실패한 반쪽 세션을 정리하는 안전장치
+        } catch {
             try? KeychainService.delete(for: TokenKey.accessToken)
             try? KeychainService.delete(for: TokenKey.refreshToken)
-
             isAuthenticated = false
             throw error
         }
+    }
 
+
+
+    // 회원가입 로그인 성공 시 세션 시작
+    func startSession(with token: AuthToken) throws {
+        try saveTokens(token)
         isAuthenticated = true
     }
 
@@ -46,6 +50,12 @@ final class AuthSessionStore: ObservableObject, AccessTokenProviding { // AuthSe
 
         try startSession(with: authToken)
     }
+
+    // 이미 로그인한 사용자의 토큰 회전
+    func replaceTokens(with token: AuthToken) throws {
+            try saveTokens(token)
+            isAuthenticated = true
+        }
 
     // 앱 실행 시 기존 세션 복구
     func restoreSession() throws {
@@ -66,6 +76,10 @@ final class AuthSessionStore: ObservableObject, AccessTokenProviding { // AuthSe
     // 나중에 Authorization 헤더에 쓸 access token 조회
     func currentAccessToken() throws -> String? {
         try KeychainService.read(for: TokenKey.accessToken)
+    }
+
+    func currentRefreshToken() throws -> String? {
+        try KeychainService.read(for: TokenKey.refreshToken)
     }
 }
 

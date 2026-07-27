@@ -10,13 +10,15 @@ import Foundation
 final class DefaultAuthAPIService: AuthAPIService {
     private let apiClient: APIClient
     private let accessTokenProvider: any AccessTokenProviding
+    private let refreshTokenProvider: any RefreshTokenProviding
 
     init(apiClient: APIClient,
-         accessTokenProvider: any AccessTokenProviding
+         accessTokenProvider: any AccessTokenProviding,
+         refreshTokenProvider: any RefreshTokenProviding
     ) {
         self.apiClient = apiClient
         self.accessTokenProvider = accessTokenProvider
-
+        self.refreshTokenProvider = refreshTokenProvider
     }
 
     func signIn(request: SignInRequestDTO) async throws -> SignInResponseDTO {
@@ -81,6 +83,45 @@ final class DefaultAuthAPIService: AuthAPIService {
         guard response.successFlag else {
             throw APIError.unexpectedResponse(code: response.code, message: response.message)
         }
+    }
+
+    func reissueToken() async throws -> TokenResponse {
+        let refreshToken = try await refreshTokenProvider.currentRefreshToken()
+
+        guard let refreshToken, !refreshToken.isEmpty else {
+            throw APIError.missingRefreshToken
+        }
+
+        let url = APIConfiguration.baseURL
+            .appendingPathComponent("api")
+            .appendingPathComponent("v1")
+            .appendingPathComponent("auth")
+            .appendingPathComponent("token")
+            .appendingPathComponent("refresh")
+
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = "POST"
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Accept")
+            urlRequest.setValue(
+                "Bearer \(refreshToken)",
+                forHTTPHeaderField: "Authorization"
+            )
+
+        let response: APIResponse<TokenResponse> = try await apiClient.request(urlRequest, responseType: APIResponse<TokenResponse>.self)
+
+        guard response.successFlag else {
+            throw APIError.unexpectedResponse(code: response.code, message: response.message)
+        }
+
+        guard response.code == "SUCCESS-007" else {
+            throw APIError.unexpectedResponse(code: response.code, message: response.message)
+        }
+
+        guard let token = response.data else {
+            throw APIError.missingData
+        }
+
+        return token
     }
 
 }

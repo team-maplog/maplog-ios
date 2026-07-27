@@ -17,25 +17,23 @@ struct MaplogApp: App { // 앱의 조립 담당자
 
         let authAPIService = DefaultAuthAPIService(
             apiClient: apiClient,
-            accessTokenProvider: sessionStore
+            accessTokenProvider: sessionStore,
+            refreshTokenProvider: sessionStore
         )
 
         let authRepository = DefaultAuthRepository(
             apiService: authAPIService
         )
 
+        let tokenRefresher = DefaultAccessTokenRefresher(authRepository: authRepository, authSession: sessionStore)
+
+        let authenticatedAPIClient = AuthenticatedAPIClient(apiClient: apiClient, authSession: sessionStore, tokenRefresher: tokenRefresher)
+
+        let apiService = DefaultTourismAPIService(authenticatedAPIClient: authenticatedAPIClient)
+
         self.authRepository = authRepository
 
         _signOutViewModel = StateObject(wrappedValue: SignOutViewModel(authRepository: authRepository, authSessionStore: sessionStore))
-
-        // apiService는 init 안에서만 잠깐 쓰는 지역 상수
-        //        (init 안에서 Repository를 만들기 위해 잠깐 필요함
-        //        init이 끝나면 apiService라는 이름은 사라짐)
-        let apiService = DefaultTourismAPIService(
-            apiClient: apiClient,
-            accessTokenProvider: sessionStore
-        )
-
 
 
 
