@@ -26,8 +26,7 @@ struct TourismDetailView: View {
 
     var body: some View {
         detailContent
-            .navigationTitle("관광 상세")
-            .navigationBarTitleDisplayMode(.inline)
+            .toolbar(.hidden, for: .navigationBar)
             .maplogScreenSurface()
             .task {
                 await viewModel.load()
@@ -42,7 +41,12 @@ struct TourismDetailView: View {
             TourismDetailLoadingView()
 
         case .content(let detail):
-            TourismDetailBasicContent(detail: detail)
+            TourismDetailBasicContent(
+                detail: detail,
+                onBack: {
+                    dismiss()
+                }
+            )
 
         case .failed(let presentation):
             TourismDetailFailedView(
@@ -103,102 +107,158 @@ private struct TourismDetailLoadingView: View {
 
 private struct TourismDetailBasicContent: View {
     let detail: TourismDetailViewData
+    private let heroHeight: CGFloat = 360
+    let onBack: () -> Void
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: MaplogSpacing.section) {
-                heroImage
-
-                VStack(alignment: .leading, spacing: MaplogSpacing.small) {
-                    Text(detail.categoryText)
-                        .font(MaplogFont.badge)
-                        .foregroundStyle(Color.maplogTextPrimary)
-                        .padding(.horizontal, MaplogSpacing.small)
-                        .padding(.vertical, MaplogSpacing.xxSmall)
-                        .background(Color.maplogPrimary)
-                        .clipShape(Capsule())
-
-                    Text(detail.title)
-                        .font(MaplogFont.screenTitle)
-                        .foregroundStyle(Color.maplogTextPrimary)
-
-                    if let periodText = detail.periodText {
-                        Label(periodText, systemImage: "calendar")
-                            .font(MaplogFont.callout)
-                            .foregroundStyle(Color.maplogTextSecondary)
+        GeometryReader { proxy in
+            
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    heroSection(width: proxy.size.width)
+                    
+                    VStack(alignment: .leading, spacing: MaplogSpacing.section) {
+                        VStack(alignment: .leading, spacing: MaplogSpacing.small) {
+                            
+                            if let regionText = detail.regionText {
+                                Label(regionText, systemImage: "mappin.and.ellipse")
+                                    .font(MaplogFont.callout)
+                                    .foregroundStyle(Color.maplogTextSecondary)
+                            }
+                            
+                            if let addressText = detail.addressText {
+                                Text(addressText)
+                                    .font(MaplogFont.callout)
+                                    .foregroundStyle(Color.maplogTextSecondary)
+                            }
+                            
+                            TourismDetailActionSection(
+                                title: detail.title,
+                                phoneNumber: detail.phoneNumber,
+                                phoneURL: detail.phoneURL,
+                                homepageURL: detail.homepageURL,
+                                coordinate: detail.coordinate
+                            )
+                        }
+                        
+                        if let overviewText = detail.overviewText {
+                            VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
+                                Text("소개")
+                                    .font(MaplogFont.sectionTitle)
+                                    .foregroundStyle(Color.maplogTextPrimary)
+                                
+                                Text(overviewText)
+                                    .font(MaplogFont.body)
+                                    .foregroundStyle(Color.maplogTextSecondary)
+                                    .lineSpacing(5)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                        }
+                        
+                        ForEach(detail.informationSections) { section in
+                            TourismDetailInformationSection(title: section.title, rows: section.rows)
+                        }
+                        
+                        if !detail.images.isEmpty {
+                            TourismDetailImageSection(images: detail.images)
+                        }
+                        
+                        if !detail.repeatInfoItems.isEmpty {
+                            TourismDetailRepeatInfoSection(
+                                items: detail.repeatInfoItems
+                            )
+                        }
+                        
+                        if !detail.petInformationRows.isEmpty {
+                            TourismDetailInformationSection(
+                                title: "반려동물 동반 안내",
+                                rows: detail.petInformationRows
+                            )
+                        }
+                        
+                        if !detail.extraInformationRows.isEmpty {
+                            TourismDetailInformationSection(
+                                title: "추가 정보",
+                                rows: detail.extraInformationRows
+                            )
+                        }
                     }
-
-                    if let regionText = detail.regionText {
-                        Label(regionText, systemImage: "mappin.and.ellipse")
-                            .font(MaplogFont.callout)
-                            .foregroundStyle(Color.maplogTextSecondary)
-                    }
-
-                    if let addressText = detail.addressText {
-                        Text(addressText)
-                            .font(MaplogFont.callout)
-                            .foregroundStyle(Color.maplogTextSecondary)
-                    }
-
-                    TourismDetailActionSection(
-                        title: detail.title,
-                        phoneNumber: detail.phoneNumber,
-                        phoneURL: detail.phoneURL,
-                        homepageURL: detail.homepageURL,
-                        coordinate: detail.coordinate
-                    )
+                    .maplogPagePadding()
+                    .padding(.top, MaplogSpacing.section)
                 }
-
-                if let overviewText = detail.overviewText {
-                    VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
-                        Text("소개")
-                            .font(MaplogFont.sectionTitle)
-                            .foregroundStyle(Color.maplogTextPrimary)
-
-                        Text(overviewText)
-                            .font(MaplogFont.body)
-                            .foregroundStyle(Color.maplogTextSecondary)
-                            .lineSpacing(5)
-                    }
-                }
-
-                if !detail.informationRows.isEmpty {
-                    TourismDetailInformationSection(
-                        title: "이용 정보",
-                        rows: detail.informationRows
-                    )
-                }
-
-                if !detail.images.isEmpty {
-                    TourismDetailImageSection(images: detail.images)
-                }
-
-                if !detail.repeatInfoItems.isEmpty {
-                    TourismDetailRepeatInfoSection(
-                        items: detail.repeatInfoItems
-                    )
-                }
-
-                if !detail.petInformationRows.isEmpty {
-                    TourismDetailInformationSection(
-                        title: "반려동물 동반 안내",
-                        rows: detail.petInformationRows
-                    )
-                }
-
-                if !detail.extraInformationRows.isEmpty {
-                    TourismDetailInformationSection(
-                        title: "추가 정보",
-                        rows: detail.extraInformationRows
-                    )
+                .frame(maxWidth: proxy.size.width,  alignment: .leading)
+                .maplogListBottomPadding()
+            }
+        }
+        .ignoresSafeArea(.container, edges: .top)
+    }
+    
+    private func heroSection(width: CGFloat) -> some View {
+        ZStack(alignment: .bottomLeading) {
+            heroImage
+                .frame(maxWidth: .infinity)
+            
+            LinearGradient(
+                colors: [
+                    .clear,
+                    Color.black.opacity(0.7)
+                ],
+                startPoint: .center,
+                endPoint: .bottom
+            )
+            
+            VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
+                Text(detail.categoryText)
+                    .font(MaplogFont.badge)
+                    .foregroundStyle(Color.maplogTextPrimary)
+                    .padding(.horizontal, MaplogSpacing.small)
+                    .padding(.vertical, MaplogSpacing.xxSmall)
+                    .background(Color.maplogPrimary)
+                    .clipShape(Capsule())
+                
+                Text(detail.title)
+                    .font(MaplogFont.screenTitle)
+                    .foregroundStyle(.white)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                
+                if let periodText = detail.periodText {
+                    Label(periodText, systemImage: "calendar")
+                        .font(MaplogFont.callout)
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
-            .maplogPagePadding()
-            .padding(.vertical, MaplogSpacing.pageTop)
-            .maplogListBottomPadding()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(MaplogSpacing.cardPadding)
+        }
+        .frame(width: width, height: heroHeight)
+        .clipped()
+        .overlay(alignment: .topLeading) {
+            Button(action: onBack) {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(
+                        width: MaplogSize.minimumTapTarget,
+                        height: MaplogSize.minimumTapTarget
+                    )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("뒤로가기")
+            .padding(.leading, MaplogSpacing.page)
+            .padding(
+                .top,
+                MaplogSpacing.xxxLarge + MaplogSpacing.xSmall
+            )
         }
     }
-
+    
+    
     @ViewBuilder
     private var heroImage: some View {
         if let heroImageURL = detail.heroImageURL {
@@ -222,14 +282,8 @@ private struct TourismDetailBasicContent: View {
                     heroPlaceholder
                 }
             }
-            .frame(height: 260)
+            .frame(height: heroHeight)
             .clipped()
-            .clipShape(
-                RoundedRectangle(
-                    cornerRadius: MaplogRadius.hero,
-                    style: .continuous
-                )
-            )
         } else {
             heroPlaceholder
         }
@@ -237,18 +291,13 @@ private struct TourismDetailBasicContent: View {
 
     private var heroPlaceholder: some View {
         Color.maplogSurfaceRaised
-            .frame(height: 260)
+            .frame(height: heroHeight)
             .overlay {
                 Image(systemName: "photo")
                     .font(.largeTitle)
                     .foregroundStyle(Color.maplogTextTertiary)
             }
-            .clipShape(
-                RoundedRectangle(
-                    cornerRadius: MaplogRadius.hero,
-                    style: .continuous
-                )
-            )
+
     }
 }
 
@@ -274,6 +323,7 @@ private struct TourismDetailInformationSection: View {
                             .font(MaplogFont.callout)
                             .foregroundStyle(Color.maplogTextSecondary)
                             .multilineTextAlignment(.trailing)
+                            .fixedSize(horizontal: false, vertical: true)
                             .frame(
                                 maxWidth: .infinity,
                                 alignment: .trailing
@@ -487,9 +537,10 @@ private struct TourismDetailActionSection: View {
                         MaplogButtonStyle(
                             variant: .secondary,
                             size: .regular,
-                            fullWidth: true
+                            fullWidth: false
                         )
                     )
+                    .frame(maxWidth: .infinity)
                     .accessibilityLabel("\(phoneNumber)로 전화")
                 }
 
@@ -501,9 +552,10 @@ private struct TourismDetailActionSection: View {
                         MaplogButtonStyle(
                             variant: .secondary,
                             size: .regular,
-                            fullWidth: true
+                            fullWidth: false
                         )
                     )
+                    .frame(maxWidth: .infinity)
                     .accessibilityLabel("홈페이지 열기")
                 }
 
@@ -517,12 +569,14 @@ private struct TourismDetailActionSection: View {
                             MaplogButtonStyle(
                                 variant: .secondary,
                                 size: .regular,
-                                fullWidth: true
+                                fullWidth: false
                             )
                         )
+                        .frame(maxWidth: .infinity)
                         .accessibilityHint("\(title)의 위치 지도 열기")
                 }
             }
+            .frame(maxWidth: .infinity)
         }
     }
 }

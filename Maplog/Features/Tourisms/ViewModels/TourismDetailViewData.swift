@@ -25,7 +25,7 @@ struct TourismDetailViewData: Equatable {
     let homepageURL: URL?
     let coordinate: TourismDetailCoordinateViewData? // 위도·경도가 둘 다 있을 때만 값이 생김. View는 coordinate != nil일 때만 지도 버튼을 활성화
     let periodText: String? // View는 Date를 몰라도 됨. ViewModel이 "2026. 07. 25. ~ 2026. 07. 30."처럼 완성해 전달
-    let informationRows: [TourismDetailInfoRowViewData] // 이용 시간, 휴무일, 주차 안내처럼 값이 있는 행만 ViewModel이 만듦. View는 ForEach로 그리기만
+    let informationSections: [TourismDetailInformationSectionViewData] // 한눈에 보기, 장소, 이용 시간, 이용 요금
     let extraInformationRows: [TourismDetailInfoRowViewData]
     let images: [TourismDetailImageViewData]
     let repeatInfoItems: [TourismDetailRepeatInfoViewData]
@@ -41,6 +41,12 @@ struct TourismDetailInfoRowViewData: Identifiable, Equatable {
     let id: String
     let title: String
     let value: String
+}
+
+struct TourismDetailInformationSectionViewData: Identifiable, Equatable {
+    let id: String
+    let title: String
+    let rows: [TourismDetailInfoRowViewData]
 }
 
 struct TourismDetailImageViewData: Identifiable, Equatable {
