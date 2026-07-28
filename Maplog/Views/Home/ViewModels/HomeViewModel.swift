@@ -57,7 +57,7 @@ import Foundation
 @MainActor
 final class HomeViewModel: ObservableObject {
     @Published private(set) var tourismState: HomeTourismSectionState = .idle
-    
+
     private let tourismRepository: any TourismRepository // TourismRepository protocol을 만족하는 어떤 실제 객체 하나(DefaultTourismRepository 객체가 들어감)
     
     init(tourismRepository: any TourismRepository) { // HomeViewModel을 만들 때 Repository를 반드시 전달받게 함
@@ -68,7 +68,7 @@ final class HomeViewModel: ObservableObject {
         guard tourismState != .loading else {
             return
         }
-        
+
         tourismState = .loading
         
         do {
@@ -100,6 +100,7 @@ final class HomeViewModel: ObservableObject {
                                 title: tourism.name,
                                 locationText: tourism.region ?? "지역 정보 없음",
                                 periodText: periodText(startDate: tourism.startDate, endDate: tourism.endDate),
+                                dDayText: dDayText(startDate: tourism.startDate, endDate: tourism.endDate),
                                 thumbnailURL: tourism.thumbnailURL)
     }
     
@@ -120,7 +121,20 @@ final class HomeViewModel: ObservableObject {
             return "\(periodDateFormatter.string(from: startDate)) ~ \(periodDateFormatter.string(from: endDate))"
     }
     
+    private func dDayText(startDate: Date?, endDate: Date?) -> String? {
+        let status = TourismScheduleStatusCalculator.make(startDate: startDate, endDate: endDate)
 
+        switch status {
+        case .ongoing:
+            return "진행 중"
+
+        case let .upcoming(daysRemaining):
+            return "D-\(daysRemaining)"
+
+        case .ended, .unavailable:
+            return nil
+        }
+    }
 
     
 }

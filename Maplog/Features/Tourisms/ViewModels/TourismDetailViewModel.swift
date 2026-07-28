@@ -99,6 +99,7 @@ final class TourismDetailViewModel: ObservableObject {
                 longitude: detail.common.longitude
             ),
             periodText: periodText(from: detail.introduction),
+            statusText: statusText(from: detail.introduction),
             informationSections: makeInformationSections(from: informationRows),
             extraInformationRows: makeExtraInformationRows(
                 from: detail.introduction
@@ -168,6 +169,23 @@ final class TourismDetailViewModel: ObservableObject {
             return "종료일 \(periodDateFormatter.string(from: endDate))"
 
         case (nil, nil):
+            return nil
+        }
+    }
+
+    private func statusText(
+        from introduction: TourismDetailIntroduction?
+    ) -> String? {
+        let status = TourismScheduleStatusCalculator.make(startDate: introduction?.startDate, endDate: introduction?.endDate)
+
+        switch status {
+        case .ongoing:
+            return "진행 중"
+
+        case let .upcoming(daysRemaining):
+            return "D-\(daysRemaining)"
+
+        case .ended, .unavailable:
             return nil
         }
     }
