@@ -15,5 +15,6 @@ struct HomeTourismCardViewData: Identifiable, Equatable {
     let title: String
     let locationText: String
     let periodText: String
+    let dDayText: String?
     let thumbnailURL: URL?
 }

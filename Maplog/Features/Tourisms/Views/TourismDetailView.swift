@@ -107,7 +107,7 @@ private struct TourismDetailLoadingView: View {
 
 private struct TourismDetailBasicContent: View {
     let detail: TourismDetailViewData
-    private let heroHeight: CGFloat = 360
+    private let heroPlaceholderHeight: CGFloat = 460
     let onBack: () -> Void
 
     var body: some View {
@@ -116,7 +116,7 @@ private struct TourismDetailBasicContent: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     heroSection(width: proxy.size.width)
-                    
+
                     VStack(alignment: .leading, spacing: MaplogSpacing.section) {
                         VStack(alignment: .leading, spacing: MaplogSpacing.small) {
                             
@@ -196,8 +196,9 @@ private struct TourismDetailBasicContent: View {
     
     private func heroSection(width: CGFloat) -> some View {
         ZStack(alignment: .bottomLeading) {
-            heroImage
-                .frame(maxWidth: .infinity)
+//            heroImage
+//                .frame(maxWidth: .infinity)
+            heroImage(width: width)
             
             LinearGradient(
                 colors: [
@@ -209,14 +210,26 @@ private struct TourismDetailBasicContent: View {
             )
             
             VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
-                Text(detail.categoryText)
-                    .font(MaplogFont.badge)
-                    .foregroundStyle(Color.maplogTextPrimary)
-                    .padding(.horizontal, MaplogSpacing.small)
-                    .padding(.vertical, MaplogSpacing.xxSmall)
-                    .background(Color.maplogPrimary)
-                    .clipShape(Capsule())
-                
+                HStack(spacing: MaplogSpacing.xSmall) {
+                    Text(detail.categoryText)
+                        .font(MaplogFont.badge)
+                        .foregroundStyle(Color.maplogTextPrimary)
+                        .padding(.horizontal, MaplogSpacing.small)
+                        .padding(.vertical, MaplogSpacing.xxSmall)
+                        .background(Color.maplogPrimary)
+                        .clipShape(Capsule())
+
+                    if let statusText = detail.statusText {
+                        Text(statusText)
+                            .font(MaplogFont.calloutStrong)
+                            .foregroundStyle(.white)
+                            .shadow(
+                                color: .black.opacity(0.35),
+                                radius: 2, x: 0, y: 1
+                            )
+                    }
+                }
+
                 Text(detail.title)
                     .font(MaplogFont.screenTitle)
                     .foregroundStyle(.white)
@@ -236,8 +249,7 @@ private struct TourismDetailBasicContent: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(MaplogSpacing.cardPadding)
         }
-        .frame(width: width, height: heroHeight)
-        .clipped()
+        .frame(width: width)
         .overlay(alignment: .topLeading) {
             Button(action: onBack) {
                 Image(systemName: "chevron.left")
@@ -247,6 +259,14 @@ private struct TourismDetailBasicContent: View {
                         width: MaplogSize.minimumTapTarget,
                         height: MaplogSize.minimumTapTarget
                     )
+                    .background(
+                        Color.black.opacity(0.18),
+                        in: Circle()
+                    )
+                    .overlay {
+                        Circle()
+                            .stroke(.white.opacity(0.28), lineWidth: 1)
+                    }
             }
             .buttonStyle(.plain)
             .accessibilityLabel("뒤로가기")
@@ -260,7 +280,7 @@ private struct TourismDetailBasicContent: View {
     
     
     @ViewBuilder
-    private var heroImage: some View {
+    private func heroImage(width: CGFloat) -> some View {
         if let heroImageURL = detail.heroImageURL {
             AsyncImage(url: heroImageURL) { phase in
                 switch phase {
@@ -273,7 +293,8 @@ private struct TourismDetailBasicContent: View {
                 case .success(let image):
                     image
                         .resizable()
-                        .scaledToFill()
+                        .scaledToFit()
+                        .frame(width: width)
 
                 case .failure:
                     heroPlaceholder
@@ -282,8 +303,6 @@ private struct TourismDetailBasicContent: View {
                     heroPlaceholder
                 }
             }
-            .frame(height: heroHeight)
-            .clipped()
         } else {
             heroPlaceholder
         }
@@ -291,7 +310,7 @@ private struct TourismDetailBasicContent: View {
 
     private var heroPlaceholder: some View {
         Color.maplogSurfaceRaised
-            .frame(height: heroHeight)
+            .frame(height: heroPlaceholderHeight)
             .overlay {
                 Image(systemName: "photo")
                     .font(.largeTitle)

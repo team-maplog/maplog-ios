@@ -767,6 +767,21 @@ private struct HomeTourismCarouselCard: View {
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .stroke(.white.opacity(0.16), lineWidth: 1)
         }
+        .overlay(alignment: .topTrailing) {
+            if let dDayText = card.dDayText {
+                Text(dDayText)
+                    .font(MaplogFont.callout.weight(.bold))
+                    .foregroundStyle(.white)
+                    .shadow(
+                        color: .black.opacity(0.65),
+                        radius: 2,
+                        x: 0,
+                        y: 1
+                    )
+                    .padding(.top, MaplogSpacing.medium)
+                    .padding(.trailing, MaplogSpacing.medium)
+            }
+        }
         .shadow(color: .black.opacity(0.09), radius: 10, x: 0, y: 5)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
