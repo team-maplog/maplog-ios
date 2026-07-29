@@ -82,7 +82,8 @@ final class TourismDetailViewModel: ObservableObject {
         let phoneNumber = nonEmpty(detail.common.tel)
         let overviewText = nonEmpty(detail.common.overview)
         let informationRows = makeInformationRows(from: detail.introduction)
-        
+        let programLines = makeContentLines(from: detail.introduction?.program, idPrefix: "program")
+
         return TourismDetailViewData(
             title: detail.common.name,
             categoryText: categoryText(for: detail.category),
@@ -100,6 +101,7 @@ final class TourismDetailViewModel: ObservableObject {
             ),
             periodText: periodText(from: detail.introduction),
             statusText: statusText(from: detail.introduction),
+            programLines: programLines,
             informationSections: makeInformationSections(from: informationRows),
             extraInformationRows: makeExtraInformationRows(
                 from: detail.introduction
@@ -199,7 +201,7 @@ final class TourismDetailViewModel: ObservableObject {
 
         return [
         makeInfoRow("place", title: "장소", value: introduction.place),
-        makeInfoRow("openingHours", title: "이용 시간", value: introduction.openingHours),
+        makeInfoRow("openingHours", title: "운영 시간", value: introduction.openingHours),
         makeInfoRow("closedDays", title: "휴무일", value: introduction.closedDays),
         makeInfoRow("usageFee", title: "이용 요금", value: introduction.usageFee),
         makeInfoRow("discountInfo", title: "할인 정보", value: introduction.discountInfo),
@@ -207,7 +209,7 @@ final class TourismDetailViewModel: ObservableObject {
         makeInfoRow("parkingFee", title: "주차 요금", value: introduction.parkingFee),
         makeInfoRow("contactInfo", title: "문의", value: introduction.contactInfo),
         makeInfoRow("reservationInfo", title: "예약", value: introduction.reservationInfo),
-        makeInfoRow("program", title: "프로그램", value: introduction.program),
+//        makeInfoRow("program", title: "프로그램", value: introduction.program),
         makeInfoRow("subEvent", title: "부대 행사", value: introduction.subEvent),
         makeInfoRow("sponsor", title: "주최", value: introduction.sponsor),
         makeInfoRow("sponsorContact", title: "주최 문의", value: introduction.sponsorContact),
@@ -231,7 +233,7 @@ final class TourismDetailViewModel: ObservableObject {
         ]
             .compactMap { $0 }
     }
-    
+
     private func makeInformationSections(
         from rows: [TourismDetailInfoRowViewData]
     ) -> [TourismDetailInformationSectionViewData] {
@@ -258,10 +260,9 @@ final class TourismDetailViewModel: ObservableObject {
                 sourceRows: rows
             ),
             makeInformationSection(
-                id: "program",
-                title: "프로그램",
+                id: "programAdditional",
+                title: "추가 프로그램 안내",
                 rowIDs: [
-                    "program",
                     "subEvent",
                     "experienceGuide",
                     "experienceAge",
@@ -326,6 +327,49 @@ final class TourismDetailViewModel: ObservableObject {
         )
     }
 
+    private func makeContentLines(from program: String?, idPrefix: String) -> [TourismDetailContentLineViewData] {
+        guard let content = nonEmpty(program) else {
+            return []
+        }
+
+        return content
+            .components(separatedBy: .newlines) // 줄바꿈 기준으로 문자열을 나눔
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) } // 각 줄의 앞뒤 공백·줄바꿈을 제거
+            .filter { !$0.isEmpty } // 빈 문자열은 제거
+            .enumerated() // 각 줄에 순번을 붙임
+            .map { item in // 각 줄을 TourismDetailProgramLineViewData로 변환
+                makeContentLine(from: item.element, index: item.offset, idPrefix: idPrefix)
+            }
+    }
+
+//    TourismDetailProgramLineViewData(
+//        id: "program-0",
+//        style: .heading,
+//        text: "1. 메인 프로그램"
+//    )
+
+    private func makeContentLine(from rawLine: String, index: Int, idPrefix: String) -> TourismDetailContentLineViewData {
+        if rawLine.range(
+            of: #"^\d+\."#,
+            options: .regularExpression
+        ) != nil {
+            return TourismDetailContentLineViewData(id: "program-\(index)", style: .heading, text: rawLine)
+        }
+
+        if rawLine.hasPrefix("-") || rawLine.hasPrefix("•") {
+            return TourismDetailContentLineViewData(id: "program-\(index)",
+                                                    style: .bullet,
+                                                    text: rawLine.trimmingCharacters(
+                                                        in: CharacterSet(charactersIn: "-• ")
+                                                    )
+            )
+        }
+        return TourismDetailContentLineViewData(id: "program-\(index)",
+                                                style: .body,
+                                                text: rawLine
+        )
+    }
+
     private func makeExtraInformationRows(
         from _: TourismDetailIntroduction?
     ) -> [TourismDetailInfoRowViewData] {
@@ -356,24 +400,35 @@ final class TourismDetailViewModel: ObservableObject {
         else {
             return false
         }
-        
+
         let normalizedLeft = left.filter { !$0.isWhitespace }
         let normalizedRight = right.filter { !$0.isWhitespace }
-        
+
         return normalizedLeft == normalizedRight
     }
-    
+
     private func makeRepeatInfoItems(
         from repeatInfo: [TourismDetailRepeatInfo],
         overviewText: String?
     ) -> [TourismDetailRepeatInfoViewData] {
         repeatInfo.enumerated().compactMap { index, item in
+            let itemID = nonEmpty(item.serialNumber) ?? "repeat-\(index)"
             let title = nonEmpty(item.title)
             let originalDescription = nonEmpty(item.description)
-            let description = isSameContent(originalDescription, overviewText) ? nil : originalDescription
+
+            let description = isSameContent(
+                originalDescription,
+                overviewText
+            ) ? nil : originalDescription
+
+            let contentLines = makeContentLines(
+                from: description,
+                idPrefix: itemID
+            )
+
             let attributeRows: [TourismDetailInfoRowViewData] = []
 
-            guard  description != nil
+            guard !contentLines.isEmpty
                     || item.imageURL != nil
                     || !attributeRows.isEmpty
             else {
@@ -381,9 +436,9 @@ final class TourismDetailViewModel: ObservableObject {
             }
 
             return TourismDetailRepeatInfoViewData(
-                id: nonEmpty(item.serialNumber) ?? "repeat-\(index)",
+                id: itemID,
                 title: title ?? "세부 정보",
-                description: description,
+                contentLines: contentLines,
                 imageURL: item.imageURL,
                 attributeRows: attributeRows
             )

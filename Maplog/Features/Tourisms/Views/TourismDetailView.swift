@@ -110,43 +110,57 @@ private struct TourismDetailBasicContent: View {
     private let heroPlaceholderHeight: CGFloat = 460
     let onBack: () -> Void
 
+    private var quickInformationSection: TourismDetailInformationSectionViewData? {
+        detail.informationSections.first { $0.id == "quick" }
+    }
+
+    private var organizerInformationSection: TourismDetailInformationSectionViewData? {
+        detail.informationSections.first { $0.id == "organizer" }
+    }
+
+    private var detailedInformationSections: [TourismDetailInformationSectionViewData] {
+        detail.informationSections.filter { $0.id != "quick" && $0.id != "organizer" }
+    }
+
+
+
+
+
     var body: some View {
         GeometryReader { proxy in
-            
+
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
                     heroSection(width: proxy.size.width)
 
                     VStack(alignment: .leading, spacing: MaplogSpacing.section) {
                         VStack(alignment: .leading, spacing: MaplogSpacing.small) {
-                            
+
                             if let regionText = detail.regionText {
                                 Label(regionText, systemImage: "mappin.and.ellipse")
                                     .font(MaplogFont.callout)
                                     .foregroundStyle(Color.maplogTextSecondary)
                             }
-                            
+
                             if let addressText = detail.addressText {
                                 Text(addressText)
                                     .font(MaplogFont.callout)
                                     .foregroundStyle(Color.maplogTextSecondary)
                             }
-                            
+
                             TourismDetailActionSection(
-                                title: detail.title,
                                 phoneNumber: detail.phoneNumber,
                                 phoneURL: detail.phoneURL,
                                 homepageURL: detail.homepageURL,
-                                coordinate: detail.coordinate
                             )
                         }
-                        
+
                         if let overviewText = detail.overviewText {
                             VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
                                 Text("소개")
                                     .font(MaplogFont.sectionTitle)
                                     .foregroundStyle(Color.maplogTextPrimary)
-                                
+
                                 Text(overviewText)
                                     .font(MaplogFont.body)
                                     .foregroundStyle(Color.maplogTextSecondary)
@@ -155,32 +169,50 @@ private struct TourismDetailBasicContent: View {
                                     .frame(maxWidth: .infinity, alignment: .leading)
                             }
                         }
-                        
-                        ForEach(detail.informationSections) { section in
-                            TourismDetailInformationSection(title: section.title, rows: section.rows)
+
+                        if let quickInformationSection {
+                            TourismDetailQuickInfoSection(rows: quickInformationSection.rows)
                         }
-                        
+
+                        if let coordinate = detail.coordinate {
+                            TourismDetailLocationPreviewSection(title: detail.title, addressText: detail.addressText, coordinate: coordinate)
+                        }
+
+                        if !detail.programLines.isEmpty {
+                            TourismDetailProgramSection(lines: detail.programLines)
+                        }
+
+                        ForEach(detailedInformationSections) { section in
+                            TourismDetailInformationSection(title: section.title, rows: section.rows, layout: .detail)
+                        }
+
+                        if let organizerInformationSection {
+                            TourismDetailOrganizerSection(rows: organizerInformationSection.rows)
+                        }
+
                         if !detail.images.isEmpty {
                             TourismDetailImageSection(images: detail.images)
                         }
-                        
+
                         if !detail.repeatInfoItems.isEmpty {
                             TourismDetailRepeatInfoSection(
                                 items: detail.repeatInfoItems
                             )
                         }
-                        
+
                         if !detail.petInformationRows.isEmpty {
                             TourismDetailInformationSection(
                                 title: "반려동물 동반 안내",
-                                rows: detail.petInformationRows
+                                rows: detail.petInformationRows,
+                                layout: .detail
                             )
                         }
-                        
+
                         if !detail.extraInformationRows.isEmpty {
                             TourismDetailInformationSection(
                                 title: "추가 정보",
-                                rows: detail.extraInformationRows
+                                rows: detail.extraInformationRows,
+                                layout: .detail
                             )
                         }
                     }
@@ -193,13 +225,13 @@ private struct TourismDetailBasicContent: View {
         }
         .ignoresSafeArea(.container, edges: .top)
     }
-    
+
     private func heroSection(width: CGFloat) -> some View {
         ZStack(alignment: .bottomLeading) {
 //            heroImage
 //                .frame(maxWidth: .infinity)
             heroImage(width: width)
-            
+
             LinearGradient(
                 colors: [
                     .clear,
@@ -208,7 +240,7 @@ private struct TourismDetailBasicContent: View {
                 startPoint: .center,
                 endPoint: .bottom
             )
-            
+
             VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
                 HStack(spacing: MaplogSpacing.xSmall) {
                     Text(detail.categoryText)
@@ -237,7 +269,7 @@ private struct TourismDetailBasicContent: View {
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                
+
                 if let periodText = detail.periodText {
                     Label(periodText, systemImage: "calendar")
                         .font(MaplogFont.callout)
@@ -277,8 +309,8 @@ private struct TourismDetailBasicContent: View {
             )
         }
     }
-    
-    
+
+
     @ViewBuilder
     private func heroImage(width: CGFloat) -> some View {
         if let heroImageURL = detail.heroImageURL {
@@ -320,9 +352,61 @@ private struct TourismDetailBasicContent: View {
     }
 }
 
+private struct TourismDetailQuickInfoSection: View {
+    let rows: [TourismDetailInfoRowViewData]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: MaplogSpacing.medium) {
+            ForEach(rows) { row in
+                HStack(alignment: .top, spacing: MaplogSpacing.small) {
+                    Image(systemName: iconName(for: row.id))
+                        .font(.system(size: MaplogSize.iconMedium, weight: .semibold))
+                        .foregroundStyle(Color.maplogOlive)
+                        .frame(width: MaplogSize.iconMedium)
+
+                    VStack(alignment: .leading, spacing: MaplogSpacing.xxSmall) {
+                        Text(row.title)
+                            .font(MaplogFont.caption)
+                                                        .foregroundStyle(Color.maplogTextSecondary)
+
+                                                    Text(row.value)
+                                                        .font(MaplogFont.calloutStrong)
+                                                        .foregroundStyle(Color.maplogTextPrimary)
+                                                        .fixedSize(
+                                                            horizontal: false,
+                                                            vertical: true
+                                                        )
+                    }
+                }
+            }
+        }
+        .padding(.vertical, MaplogSpacing.xSmall)
+    }
+    private func iconName(for rowID: String) -> String {
+            switch rowID {
+            case "openingHours":
+                return "clock"
+
+            case "place":
+                return "mappin.and.ellipse"
+
+            case "usageFee":
+                return "ticket"
+
+            default:
+                return "info.circle"
+            }
+        }
+}
+
 private struct TourismDetailInformationSection: View {
+    enum Layout {
+        case summary
+        case detail
+    }
     let title: String
     let rows: [TourismDetailInfoRowViewData]
+    let layout: Layout
 
     var body: some View {
         VStack(alignment: .leading, spacing: MaplogSpacing.small) {
@@ -332,23 +416,7 @@ private struct TourismDetailInformationSection: View {
 
             VStack(spacing: 0) {
                 ForEach(rows) { row in
-                    HStack(alignment: .top, spacing: MaplogSpacing.small) {
-                        Text(row.title)
-                            .font(MaplogFont.calloutStrong)
-                            .foregroundStyle(Color.maplogTextPrimary)
-                            .frame(width: 96, alignment: .leading)
-
-                        Text(row.value)
-                            .font(MaplogFont.callout)
-                            .foregroundStyle(Color.maplogTextSecondary)
-                            .multilineTextAlignment(.trailing)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .frame(
-                                maxWidth: .infinity,
-                                alignment: .trailing
-                            )
-                    }
-                    .padding(.vertical, MaplogSpacing.small)
+                    informationRow(row)
 
                     if row.id != rows.last?.id {
                         Divider()
@@ -359,7 +427,170 @@ private struct TourismDetailInformationSection: View {
             .maplogCard()
         }
     }
+
+    @ViewBuilder
+    private func informationRow(_ row: TourismDetailInfoRowViewData) -> some View {
+        switch layout {
+        case .summary:
+            HStack(alignment: .top, spacing: MaplogSpacing.small) {
+                Text(row.title)
+                    .font(MaplogFont.calloutStrong)
+                    .foregroundStyle(Color.maplogTextPrimary)
+                    .frame(width: 96, alignment: .leading)
+
+                Text(row.value)
+                    .font(MaplogFont.callout)
+                    .foregroundStyle(Color.maplogTextSecondary)
+                    .multilineTextAlignment(.trailing)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(
+                        maxWidth: .infinity,
+                        alignment: .trailing
+                    )
+            }
+            .padding(.vertical, MaplogSpacing.small)
+
+        case .detail:
+            VStack(alignment: .leading, spacing: MaplogSpacing.xxSmall) {
+                if row.title != title {
+                    Text(row.title)
+                        .font(MaplogFont.calloutStrong)
+                        .foregroundStyle(Color.maplogTextPrimary)
+                }
+
+                Text(row.value)
+                    .font(MaplogFont.callout)
+                    .foregroundStyle(Color.maplogTextSecondary)
+                    .multilineTextAlignment(.leading)
+                    .lineSpacing(MaplogSpacing.xxSmall)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(
+                        maxWidth: .infinity,
+                        alignment: .leading
+                    )
+                    .textSelection(.enabled)
+            }
+            .padding(.vertical, MaplogSpacing.medium)
+        }
+    }
 }
+
+private struct TourismDetailProgramSection: View {
+    let lines: [TourismDetailContentLineViewData]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: MaplogSpacing.small) {
+            Text("프로그램")
+                .font(MaplogFont.sectionTitle)
+                .foregroundStyle(Color.maplogTextPrimary)
+
+            VStack(alignment: .leading, spacing: MaplogSpacing.medium) {
+                ForEach(lines) { line in
+                    programLine(line)
+                }
+            }
+            .padding(MaplogSpacing.cardPadding)
+            .maplogCard()
+        }
+    }
+
+    @ViewBuilder
+    private func programLine(_ line: TourismDetailContentLineViewData) -> some View {
+        switch line.style {
+        case .heading:
+            Text(line.text)
+                .font(MaplogFont.calloutStrong)
+                .foregroundStyle(Color.maplogTextPrimary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, MaplogSpacing.xSmall)
+
+        case .bullet:
+            HStack(alignment: .top, spacing: MaplogSpacing.xSmall) {
+                Text("•")
+                        .font(MaplogFont.calloutStrong)
+                        .foregroundStyle(Color.maplogPrimary)
+
+                Text(line.text)
+                        .font(MaplogFont.callout)
+                        .foregroundStyle(Color.maplogTextSecondary)
+                        .lineSpacing(MaplogSpacing.xxSmall)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+        case .body:
+                    Text(line.text)
+                        .font(MaplogFont.callout)
+                        .foregroundStyle(Color.maplogTextSecondary)
+                        .lineSpacing(MaplogSpacing.xxSmall)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+
+private struct TourismDetailOrganizerSection: View {
+    let rows: [TourismDetailInfoRowViewData]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: MaplogSpacing.small) {
+            Text("주최·문의")
+                .font(MaplogFont.sectionTitle)
+                .foregroundStyle(Color.maplogTextPrimary)
+
+            VStack(spacing: 0) {
+                ForEach(rows) { row in
+                    organizerRow(row)
+
+                    if row.id != rows.last?.id {
+                        Divider()
+                    }
+                }
+            }
+            .padding(.horizontal, MaplogSpacing.cardPadding)
+            .maplogCard()
+        }
+    }
+
+    private func organizerRow(
+        _ row: TourismDetailInfoRowViewData
+    ) -> some View {
+        HStack(alignment: .top, spacing: MaplogSpacing.small) {
+            Image(systemName: iconName(for: row.id))
+                .font(MaplogFont.calloutStrong)
+                .foregroundStyle(Color.maplogOlive)
+                .frame(width: 24)
+
+            VStack(alignment: .leading, spacing: MaplogSpacing.xxSmall) {
+                Text(row.title)
+                    .font(MaplogFont.caption)
+                    .foregroundStyle(Color.maplogTextSecondary)
+
+                Text(row.value)
+                    .font(MaplogFont.calloutStrong)
+                    .foregroundStyle(Color.maplogTextPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .padding(.vertical, MaplogSpacing.medium)
+    }
+
+    private func iconName(for rowID: String) -> String {
+        switch rowID {
+        case "sponsor":
+            return "building.2"
+
+        case "sponsorContact":
+            return "phone"
+
+        default:
+            return "info.circle"
+        }
+    }
+}
+
+
 
 private struct TourismDetailImageSection: View {
     let images: [TourismDetailImageViewData]
@@ -432,78 +663,120 @@ private struct TourismDetailRepeatInfoSection: View {
 
             VStack(spacing: MaplogSpacing.small) {
                 ForEach(items) { item in
-                    VStack(
-                        alignment: .leading,
-                        spacing: MaplogSpacing.small
-                    ) {
-                        if let imageURL = item.imageURL {
-                            AsyncImage(url: imageURL) { phase in
-                                switch phase {
-                                case .empty:
-                                    Color.maplogSurfaceRaised
-
-                                case .success(let image):
-                                    image
-                                        .resizable()
-                                        .scaledToFill()
-
-                                case .failure:
-                                    Color.maplogSurfaceRaised
-
-                                @unknown default:
-                                    Color.maplogSurfaceRaised
-                                }
-                            }
-                            .frame(height: 160)
-                            .clipped()
-                            .clipShape(
-                                RoundedRectangle(
-                                    cornerRadius: MaplogRadius.medium,
-                                    style: .continuous
-                                )
-                            )
-                        }
-
-                        Text(item.title)
-                            .font(MaplogFont.cardTitle)
-                            .foregroundStyle(Color.maplogTextPrimary)
-
-                        if let description = item.description {
-                            Text(description)
-                                .font(MaplogFont.callout)
-                                .foregroundStyle(Color.maplogTextSecondary)
-                        }
-
-                        if !item.attributeRows.isEmpty {
-                            Divider()
-
-                            ForEach(item.attributeRows) { row in
-                                HStack(alignment: .top) {
-                                    Text(row.title)
-                                        .font(MaplogFont.caption)
-                                        .foregroundStyle(
-                                            Color.maplogTextSecondary
-                                        )
-
-                                    Spacer()
-
-                                    Text(row.value)
-                                        .font(MaplogFont.caption)
-                                        .foregroundStyle(
-                                            Color.maplogTextPrimary
-                                        )
-                                        .multilineTextAlignment(.trailing)
-                                }
-                            }
-                        }
-                    }
-                    .padding(MaplogSpacing.cardPadding)
-                    .maplogCard()
+                    TourismDetailRepeatInfoCard(item: item)
                 }
             }
         }
     }
 }
+
+private struct TourismDetailRepeatInfoCard: View {
+    let item: TourismDetailRepeatInfoViewData
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: MaplogSpacing.small) {
+            if let imageURL = item.imageURL {
+                AsyncImage(url: imageURL) { phase in
+                    switch phase {
+                    case .empty:
+                        Color.maplogSurfaceRaised
+
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .scaledToFill()
+
+                    case .failure:
+                        Color.maplogSurfaceRaised
+
+                    @unknown default:
+                        Color.maplogSurfaceRaised
+                    }
+                }
+                .frame(height: 180)
+                .clipped()
+                .clipShape(
+                    RoundedRectangle(
+                        cornerRadius: MaplogRadius.medium,
+                        style: .continuous
+                    )
+                )
+            }
+
+            Label(item.title, systemImage: "text.alignleft")
+                .font(MaplogFont.cardTitle)
+                .foregroundStyle(Color.maplogTextPrimary)
+
+            if !item.contentLines.isEmpty {
+                VStack(alignment: .leading, spacing: MaplogSpacing.medium) {
+                    ForEach(item.contentLines) { line in
+                        contentLine(line)
+                    }
+                }
+            }
+
+            if !item.attributeRows.isEmpty {
+                Divider()
+
+                ForEach(item.attributeRows) { row in
+                    VStack(
+                        alignment: .leading,
+                        spacing: MaplogSpacing.xxxSmall
+                    ) {
+                        Text(row.title)
+                            .font(MaplogFont.caption)
+                            .foregroundStyle(Color.maplogTextSecondary)
+
+                        Text(row.value)
+                            .font(MaplogFont.callout)
+                            .foregroundStyle(Color.maplogTextPrimary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+        }
+        .padding(MaplogSpacing.cardPadding)
+        .maplogCard()
+    }
+
+    @ViewBuilder
+    private func contentLine(
+        _ line: TourismDetailContentLineViewData
+    ) -> some View {
+        switch line.style {
+        case .heading:
+            Text(line.text)
+                .font(MaplogFont.calloutStrong)
+                .foregroundStyle(Color.maplogTextPrimary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top, MaplogSpacing.xSmall)
+
+        case .bullet:
+            HStack(alignment: .top, spacing: MaplogSpacing.small) {
+                Circle()
+                    .fill(Color.maplogPrimary)
+                    .frame(width: 6, height: 6)
+                    .padding(.top, 8)
+
+                Text(line.text)
+                    .font(MaplogFont.callout)
+                    .foregroundStyle(Color.maplogTextSecondary)
+                    .lineSpacing(MaplogSpacing.xxSmall)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+        case .body:
+            Text(line.text)
+                .font(MaplogFont.callout)
+                .foregroundStyle(Color.maplogTextSecondary)
+                .lineSpacing(MaplogSpacing.xxSmall)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+
 
 private struct TourismDetailFailedView: View {
     let presentation: ErrorPresentation
@@ -539,63 +812,43 @@ private struct TourismDetailFailedView: View {
 }
 
 private struct TourismDetailActionSection: View {
-    let title: String
     let phoneNumber: String?
     let phoneURL: URL?
     let homepageURL: URL?
-    let coordinate: TourismDetailCoordinateViewData?
 
     var body: some View {
-        if phoneURL != nil || homepageURL != nil || coordinate != nil {
+        if phoneURL != nil || homepageURL != nil {
             HStack(spacing: MaplogSpacing.small) {
                 if let phoneNumber, let phoneURL {
                     Link(destination: phoneURL) {
                         Label("전화", systemImage: "phone.fill")
+                            .lineLimit(1)
                     }
                     .buttonStyle(
                         MaplogButtonStyle(
                             variant: .secondary,
                             size: .regular,
-                            fullWidth: false
+                            fullWidth: true
                         )
                     )
-                    .frame(maxWidth: .infinity)
                     .accessibilityLabel("\(phoneNumber)로 전화")
                 }
 
                 if let homepageURL {
                     Link(destination: homepageURL) {
                         Label("홈페이지", systemImage: "safari")
+                            .lineLimit(1)
                     }
                     .buttonStyle(
                         MaplogButtonStyle(
                             variant: .secondary,
                             size: .regular,
-                            fullWidth: false
+                            fullWidth: true
                         )
                     )
-                    .frame(maxWidth: .infinity)
                     .accessibilityLabel("홈페이지 열기")
                 }
-
-                if let coordinate {
-                    NavigationLink { // 지도 화면을 여는 코드
-                        TourismLocationMapView(title: title, coordinate: coordinate)
-                    } label: {
-                        Label("지도 보기", systemImage: "map.fill")
-                    }
-                    .buttonStyle(
-                            MaplogButtonStyle(
-                                variant: .secondary,
-                                size: .regular,
-                                fullWidth: false
-                            )
-                        )
-                        .frame(maxWidth: .infinity)
-                        .accessibilityHint("\(title)의 위치 지도 열기")
-                }
             }
-            .frame(maxWidth: .infinity)
         }
     }
 }
