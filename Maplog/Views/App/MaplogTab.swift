@@ -12,6 +12,9 @@ enum MaplogTab: String, CaseIterable, Identifiable {
     case profile
 
     var id: String { rawValue }
+    static var navigationTabs: [MaplogTab] {
+        [.home, .map, .profile]
+    }
 
     var title: String {
         switch self {

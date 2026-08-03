@@ -6,6 +6,11 @@ struct MaplogApp: App { // 앱의 조립 담당자
     @StateObject private var signOutViewModel: SignOutViewModel
     private let authRepository: any AuthRepository
     private let tourismRepository: any TourismRepository // 여기서 선언
+    private let cameraCaptureService: any CameraCaptureService
+    private let mediaDraftRepository: any MediaDraftRepository
+    private let videoThumbnailService: any VideoThumbnailService
+    private let videoPlaybackService: any VideoPlaybackService
+    private let videoExportService: any VideoExportService
 
     init() {
         KakaoMapSDKConfiguration.initializeIfNeeded()
@@ -39,19 +44,35 @@ struct MaplogApp: App { // 앱의 조립 담당자
 
 //        tourismRepository
 //        → apiService를 보관
-//        → apiClient를 보관
-//        실제 객체는 사라지지 않음. Repository가 그 API Service를 가지고 있기 때문
-//        MaplogApp이 원래 가지고 있기로 선언한 저장 프로퍼티를 초기화하는 코드
+        //        → apiClient를 보관
+        //        실제 객체는 사라지지 않음. Repository가 그 API Service를 가지고 있기 때문
+        //        MaplogApp이 원래 가지고 있기로 선언한 저장 프로퍼티를 초기화하는 코드
         self.tourismRepository = DefaultTourismRepository(apiService: apiService)
+        
+        self.cameraCaptureService = AVCameraCaptureService()
+        
+        self.mediaDraftRepository = FileMediaDraftRepository()
+        
+        self.videoThumbnailService = AVVideoThumbnailService()
+        
+        self.videoPlaybackService = AVVideoPlaybackService()
+        
+        self.videoExportService = AVVideoExportService()
     }
-
+    
     var body: some Scene {
         WindowGroup {
             RootView(
                 authRepository: authRepository,
-                tourismRepository: tourismRepository) // Composition Root
-                .environmentObject(authSessionStore)
-                .environmentObject(signOutViewModel)
+                tourismRepository: tourismRepository, // Composition Root
+                cameraCaptureService: cameraCaptureService,
+                mediaDraftRepository: mediaDraftRepository,
+                videoThumbnailService: videoThumbnailService,
+                videoPlaybackService: videoPlaybackService,
+                videoExportService: videoExportService
+            )
+            .environmentObject(authSessionStore)
+            .environmentObject(signOutViewModel)
         }
     }
 }
