@@ -29,16 +29,31 @@ struct MainTabView: View {
     @State private var activeCapturePlaceName: String?
 
     private let tourismRepository: any TourismRepository
+    private let cameraCaptureService: any CameraCaptureService
+    private let mediaDraftRepository: any MediaDraftRepository
+    private let videoThumbnailService: any VideoThumbnailService
+    private let videoPlaybackService: any VideoPlaybackService
+    private let videoExportService: any VideoExportService
     @State private var homeNavigationPath: [HomeNavigationRoute] = []
 
 
     init(
         tourismRepository: any TourismRepository, // Repository를 받게 함
+        cameraCaptureService: any CameraCaptureService,
+        mediaDraftRepository: any MediaDraftRepository,
+        videoThumbnailService: any VideoThumbnailService,
+        videoPlaybackService: any VideoPlaybackService,
+        videoExportService: any VideoExportService,
         requestedTab: Binding<MaplogTab?> = .constant(nil),
         requestedCapturePlaceName: Binding<String?> = .constant(nil)
     ) {
         self.tourismRepository = tourismRepository
-
+        self.cameraCaptureService = cameraCaptureService
+        self.mediaDraftRepository = mediaDraftRepository
+        self.videoThumbnailService = videoThumbnailService
+        self.videoPlaybackService = videoPlaybackService
+        self.videoExportService = videoExportService
+        
         _requestedTab = requestedTab
         _requestedCapturePlaceName = requestedCapturePlaceName
         _selectedTab = State(initialValue: .home)
@@ -73,6 +88,34 @@ struct MainTabView: View {
     private var tabBarMorphAnimation: Animation? {
         reduceMotion ? nil : .smooth(duration: 0.4)
     }
+    
+    @ViewBuilder
+    private var bottomContorls: some View {
+        if #available(iOS 26, *) {
+            GlassEffectContainer(spacing: 0) { // 각 컴포넌트에 넣은 .glassEffect가 재질을 만들고, 컨테이너는 가까운 유리 두 개를 같은 장면으로 렌더링해 자연스럽고 효율적으로 보이게 해줌
+                bottomControlsContent
+            }
+        } else {
+            bottomControlsContent
+        }
+    }
+    
+    private var bottomControlsContent: some View {
+        HStack(spacing: MaplogSpacing.small) {
+            MaplogTabBar(
+                selectedTab: tabSelection,
+                isCompact: usesCompactTabBar,
+                isReelStyle: usesReelTabBarStyle
+            )
+            .frame(maxWidth: .infinity)
+            
+            MaplogCaptureButton(isReelStyle: usesReelTabBarStyle) {
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
+                    applyRequestedTab(.capture)
+                }
+            }
+        }
+    }
 
     var body: some View {
         Group {
@@ -102,7 +145,13 @@ struct MainTabView: View {
                 }
             case .capture:
                 NavigationStack {
-                    CaptureView(initialPlaceName: activeCapturePlaceName) {
+                    CameraCaptureFeatureView(
+                        cameraCaptureService: cameraCaptureService,
+                        mediaDraftRepository: mediaDraftRepository,
+                        videoThumbnailService: videoThumbnailService,
+                        videoPlaybackService: videoPlaybackService,
+                        videoExportService: videoExportService
+                    ) {
                         withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
                             selectedTab = previousTab
                         }
@@ -124,13 +173,22 @@ struct MainTabView: View {
         }
         .overlay(alignment: .bottom) {
             if !isTabBarHidden {
-                MaplogTabBar(
-                    selectedTab: tabSelection,
-                    isCompact: usesCompactTabBar,
-                    isReelStyle: usesReelTabBarStyle
-                )
-                .padding(.horizontal, usesCompactTabBar ? (usesReelTabBarStyle ? 54 : 28) : 0)
-                .padding(.bottom, usesCompactTabBar ? (usesReelTabBarStyle ? 2 : 6) : 0)
+                HStack(spacing: MaplogSpacing.small) {
+                    MaplogTabBar(
+                        selectedTab: tabSelection,
+                        isCompact: usesCompactTabBar,
+                        isReelStyle: usesReelTabBarStyle
+                    )
+                    .frame(maxWidth: .infinity)
+                    
+                    MaplogCaptureButton(isReelStyle: usesReelTabBarStyle) {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
+                            applyRequestedTab(.capture)
+                        }
+                    }
+                }
+                .padding(.horizontal, MaplogSpacing.page)
+                .padding(.bottom, usesCompactTabBar ? 0 : 0)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
                 .animation(tabBarMorphAnimation, value: usesReelTabBarStyle)
             }
@@ -220,7 +278,7 @@ struct MaplogTabBar: View {
     @Binding var selectedTab: MaplogTab
     var isCompact = false
     var isReelStyle = false
-
+    
     @ViewBuilder
     var body: some View {
         if isCompact {
@@ -229,10 +287,10 @@ struct MaplogTabBar: View {
             standardTabBar
         }
     }
-
+    
     private var standardTabBar: some View {
         HStack(spacing: 0) {
-            ForEach(MaplogTab.allCases) { tab in
+            ForEach(MaplogTab.navigationTabs) { tab in
                 Button {
                     select(tab, response: 0.35, dampingFraction: 0.86)
                 } label: {
@@ -263,52 +321,83 @@ struct MaplogTabBar: View {
                 }
         }
     }
-
+    
+    // iOS 버전에 맞춰 유리 표면만 입힘
+    @ViewBuilder
     private var compactTabBar: some View {
+        Group {
+            if #available(iOS 26, *) {
+                compactTabBarContent
+                    .glassEffect( // .regular → 조금 더 안정적·읽기 쉬운 기본 유리 .clear   → 배경이 더 비치는 맑은 유리
+                        .regular.interactive(),
+                        in: Capsule())
+            } else {
+                compactTabBarContent
+                    .background(.ultraThinMaterial, in: Capsule())
+                    .overlay {
+                        Capsule()
+                            .strokeBorder(Color.white.opacity(0.62), lineWidth: 1)
+                    }
+                    .clipShape(Capsule())
+                    .shadow(
+                        color: .black.opacity(isReelStyle ? 0.10 : 0.12),
+                        radius: isReelStyle ? 10 : 12,
+                        x: 0,
+                        y: isReelStyle ? 4 : 5
+                    )
+            }
+        }
+        .scaleEffect(isReelStyle ? 0.90 : 1.0, anchor: .bottom)
+        .animation(
+            reduceMotion ? nil : .smooth(duration: 0.4),
+                value: isReelStyle
+            )
+    }
+
+        
+    
+    // 탭 아이콘·선택 상태·크기만 담당
+    private var compactTabBarContent: some View {
         HStack(spacing: 4) {
-            ForEach(MaplogTab.allCases) { tab in
+            ForEach(MaplogTab.navigationTabs) { tab in
                 Button {
                     select(tab, response: 0.32, dampingFraction: 0.88)
                 } label: {
                     Image(systemName: tab.icon)
-                        .font(.system(size: isReelStyle ? 18 : 19, weight: .semibold))
+                        .font(.system(size: isReelStyle ? 18 : 21,
+                              weight: .semibold))
                         .foregroundStyle(isReelStyle ? Color.maplogInk : Color.primary)
                         .frame(maxWidth: .infinity)
-                        .frame(height: MaplogSize.minimumTapTarget)
-                        .background {
-                            if selectedTab == tab {
-                                Capsule()
-                                    .fill(Color.maplogPrimary.opacity(0.24))
-                                    .padding(.horizontal, 2)
-                                    .padding(.vertical, 4)
-                            }
-                        }
-                        .contentShape(Rectangle())
+                        .frame(height: isReelStyle ? MaplogSize.minimumTapTarget : 48)
+                                            .background {
+                                                if selectedTab == tab {
+                                                    Capsule()
+                                                        .fill(Color.maplogPrimary.opacity(0.24))
+                                                        .padding(.horizontal, 0)
+                                                        .padding(.vertical, isReelStyle ? 2 : 0)
+                                                }
+                                            }
+                                            .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel(tab.title)
-                .accessibilityAddTraits(selectedTab == tab ? .isSelected : [])
+                            .accessibilityLabel(tab.title)
+                            .accessibilityAddTraits(
+                                selectedTab == tab ? .isSelected : []
+                            )
             }
         }
-        .padding(.horizontal, isReelStyle ? MaplogSpacing.xxSmall : MaplogSpacing.xSmall)
-        .frame(maxWidth: isReelStyle ? 286 : 330)
-        .frame(height: isReelStyle ? 48 : 54)
-        .background {
-            Capsule()
-                .fill(
-                    isReelStyle
-                        ? AnyShapeStyle(Color.maplogSurface.opacity(0.94))
-                        : AnyShapeStyle(Color.maplogSurface.opacity(0.96))
-                )
-        }
-        .clipShape(Capsule())
-        .shadow(
-            color: .black.opacity(isReelStyle ? 0.10 : 0.12),
-            radius: isReelStyle ? 10 : 12,
-            x: 0,
-            y: isReelStyle ? 4 : 5
-        )
-        .animation(reduceMotion ? nil : .smooth(duration: 0.4), value: isReelStyle)
+        .padding(
+                .horizontal,
+                isReelStyle
+                    ? MaplogSpacing.xxSmall
+                    : MaplogSpacing.xxSmall
+            )
+            .frame(maxWidth: isReelStyle ? 286 : 330)
+            .frame(height: isReelStyle ? 48 : 56)
+            .animation(
+                reduceMotion ? nil : .smooth(duration: 0.4),
+                value: isReelStyle
+            )
     }
 
     private func itemColor(for tab: MaplogTab) -> Color {

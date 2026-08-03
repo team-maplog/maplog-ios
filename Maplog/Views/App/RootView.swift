@@ -84,14 +84,32 @@ struct RootView: View {
     @State private var requestedTab: MaplogTab?
     @State private var requestedCapturePlaceName: String?
 
+    
+   // init이 끝난 뒤에도 body에서 쓸 값을 보관
     private let authRepository: any AuthRepository
     private let tourismRepository: any TourismRepository
+    private let cameraCaptureService: any CameraCaptureService
+    private let mediaDraftRepository: any MediaDraftRepository
+    private let videoThumbnailService: any VideoThumbnailService
+    private let videoPlaybackService: any VideoPlaybackService
+    private let videoExportService: any VideoExportService
 
     init(
         authRepository: any AuthRepository,
-        tourismRepository: any TourismRepository) {
+        tourismRepository: any TourismRepository,
+        cameraCaptureService: any CameraCaptureService,
+        mediaDraftRepository: any MediaDraftRepository,
+        videoThumbnailService: any VideoThumbnailService,
+        videoPlaybackService: any VideoPlaybackService,
+        videoExportService: any VideoExportService
+    ) {
         self.authRepository = authRepository
         self.tourismRepository = tourismRepository
+        self.cameraCaptureService = cameraCaptureService
+        self.mediaDraftRepository = mediaDraftRepository
+        self.videoThumbnailService = videoThumbnailService
+        self.videoPlaybackService = videoPlaybackService
+        self.videoExportService = videoExportService
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("-MaplogSkipOnboarding") {
             _phase = State(initialValue: .app)
@@ -127,6 +145,11 @@ struct RootView: View {
             case .app:
                 MainTabView( // RootView는 protocol만 받아서 MainTabView 생성 부분에 전달, DefaultTourismRepository를 모름. 오직 TourismRepository 역할만 앎
                     tourismRepository: tourismRepository,
+                    cameraCaptureService: cameraCaptureService,
+                    mediaDraftRepository: mediaDraftRepository,
+                    videoThumbnailService: videoThumbnailService,
+                    videoPlaybackService: videoPlaybackService,
+                    videoExportService: videoExportService,
                     requestedTab: $requestedTab,
                     requestedCapturePlaceName: $requestedCapturePlaceName
                 )
