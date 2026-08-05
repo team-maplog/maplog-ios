@@ -25,70 +25,56 @@ struct ClipEditorTimelineItemView: View {
     //    let onRemove: () -> Void
     
     var body: some View {
-            ZStack(alignment: .topTrailing) {
-                Button(action: onSelect) {
-                    cardContent
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(
-                    "\(displayOrder)번 클립, \(item.durationText)"
-                )
-                .accessibilityValue(
-                    isSelected ? "선택됨" : "선택 안 됨"
-                )
-                .accessibilityHint(
-                    "길게 눌러 다른 카드 위치로 끌어 순서를 바꿀 수 있어요"
-                )
-                
-                if let onRemove {
-                    Button(action: onRemove) {
-                        Image(systemName: "xmark")
-                            .font(.caption.weight(.bold))
-                            .foregroundStyle(.white)
-                            .frame(width: 28, height: 28)
-                            .background(
-                                Color.maplogInk.opacity(0.72),
-                                in: Circle()
-                            )
-                    }
-                    .buttonStyle(.plain)
-                    .padding(8)
-                    .accessibilityLabel("\(displayOrder)번 클립 편집에서 제외")
-                }
+        ZStack {
+            Button(action: onSelect) {
+                cardContent
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel(
+                "\(displayOrder)번 클립, \(item.durationText)"
+            )
+            .accessibilityValue(
+                isSelected ? "선택됨" : "선택 안 됨"
+            )
+            .accessibilityHint(
+                "길게 눌러 다른 카드 위치로 끌어 순서를 바꿀 수 있어요"
+            )
         }
-        private var cardContent: some View {
-            VStack(
-                alignment: .leading,
-                spacing: MaplogSpacing.xxSmall
-            ) {
-                ZStack(alignment: .topLeading) {
-                    thumbnail
-                    
-                    Text("\(displayOrder)")
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(Color.maplogInk)
-                        .frame(width: 26, height: 26)
+        .overlay(alignment: .topLeading) {
+            orderBadge
+                .padding(ClipEditorLayout.timelineOverlayInset)
+        }
+        .overlay(alignment: .topTrailing) {
+            if let onRemove {
+                Button(action: onRemove) {
+                    Image(systemName: "xmark")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(.white)
+                        .frame(
+                            width: ClipEditorLayout.timelineBadgeSize,
+                            height: ClipEditorLayout.timelineBadgeSize
+                        )
                         .background(
-                            Color.maplogLime,
+                            Color.maplogInk.opacity(0.65),
                             in: Circle()
                         )
-                        .padding(6)
                 }
-                
-                Text("\(displayOrder)번 클립")
-                    .font(MaplogFont.bodyStrong)
-                    .lineLimit(1)
-                
-                Text(item.durationText)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                .buttonStyle(.plain)
+                .padding(ClipEditorLayout.timelineOverlayInset)
+                .accessibilityLabel("\(displayOrder)번 클립을 타임라인에서 제외")
             }
-            .frame(width: 104, alignment: .leading)
-            .padding(4)
+        }
+    }
+    
+    private var cardContent: some View {
+        thumbnail
+            .frame(
+                width: ClipEditorLayout.timelineCardWidth,
+                height: ClipEditorLayout.timelineCardHeight
+            )
             .background(
                 isSelected
-                ? Color.maplogLime.opacity(0.16)
+                ? Color.maplogLime.opacity(0.14)
                 : Color.clear,
                 in: RoundedRectangle(
                     cornerRadius: MaplogRadius.medium,
@@ -101,11 +87,27 @@ struct ClipEditorTimelineItemView: View {
                     style: .continuous
                 )
                 .stroke(
-                    isSelected ? Color.maplogLime : Color.clear,
+                    isSelected
+                    ? Color.maplogLime
+                    : Color.clear,
                     lineWidth: 2
                 )
             }
-        }
+    }
+    
+    private var orderBadge: some View {
+        Text("\(displayOrder)")
+            .font(.caption2.weight(.bold))
+            .foregroundStyle(Color.maplogInk)
+            .frame(
+                width: ClipEditorLayout.timelineBadgeSize,
+                height: ClipEditorLayout.timelineBadgeSize
+            )
+            .background(
+                Color.maplogLime,
+                in: Circle()
+            )
+    }
     
     
     @ViewBuilder
@@ -125,7 +127,10 @@ struct ClipEditorTimelineItemView: View {
                     }
             }
         }
-        .frame(width: 104, height: 132)
+        .frame(
+            width: ClipEditorLayout.timelineCardWidth,
+            height: ClipEditorLayout.timelineThumbnailHeight
+        )
         .clipShape(
             RoundedRectangle(
                 cornerRadius: MaplogRadius.small,

@@ -11,6 +11,8 @@ struct ClipTextOverlayItemViewData: Identifiable, Equatable {
     let id: UUID
     let text: String
     let displayTimeText: String
+    let position: ClipOverlayPosition
+    let style: ClipTextStyle
 }
 
 //ClipTextOverlay

@@ -19,8 +19,13 @@ final class ClipEditorViewModel: ObservableObject {
     @Published private(set) var textOverlays: [ClipTextOverlay] = [] // 자막 상태 프로퍼티, 최종 영상에 들어갈 편집 데이터라서 ClipTextOverlay Model 그대로 보관
     @Published private(set) var playingClipID: UUID?
     @Published private(set) var playingLocalTime: TimeInterval = 0
+    @Published private(set) var isPreviewPlaying = false // 재생 상태
+    @Published private(set) var isPreviewMuted = false // 음소거
+    @Published private(set) var activeTool: ClipEditorActiveTool = .none // 지금 T, 위치, 스티커 중 어떤 도구 패널을 열어야 하는지
+    @Published private(set) var selectedTextOverlayID: UUID? // 여러 자막 중 사용자가 선택해서 수정 중인 자막 하나
     
     
+    private var ignoresPlaybackProgress = false // 드래그 중에는 재생 시간 갱신을 무시
     private let input: ClipEditorInput // Clip Picker에서 넘겨준 선택 결과, 실제 CaptureDraftClip들이 있고, 각 클립의 파일 URL·촬영 날짜·길이가 들어있음
     private let videoThumbnailService: any VideoThumbnailService // 영상 파일 URL로부터 썸네일 Data를 만드는 기술 담당
     private var orderedClips: [CaptureDraftClip] = [] // 나중에 실제로 이어붙일 원본 영상들의 현재 순서
@@ -43,6 +48,39 @@ final class ClipEditorViewModel: ObservableObject {
     }
     
     
+//    isPreviewPlaying      → ▶ / ⏸ 아이콘 결정
+//    currentPlaybackTimeText → 2.4s
+//    totalDurationText       → 6.0s
+//    playbackProgress         → 재생 바 위치
+    var totalDuration: TimeInterval {
+        editorTimeline.totalDuration
+    }
+
+    var currentPlaybackTime: TimeInterval {
+        playbackProgress * totalDuration
+    }
+
+    var currentPlaybackTimeText: String {
+        playbackTimeText(currentPlaybackTime)
+    }
+
+    var totalDurationText: String {
+        playbackTimeText(totalDuration)
+    }
+
+    private func playbackTimeText(
+        _ seconds: TimeInterval
+    ) -> String {
+        String(format: "%.1fs", seconds)
+    }
+    
+    
+    
+    
+    
+    
+    
+    
 //    Picker 선택: [B, A, C]
 //    input.clips: [B, A, C]
 //    orderedClips: [B, A, C]
@@ -54,6 +92,7 @@ final class ClipEditorViewModel: ObservableObject {
         
         hasPrepared = true
         state = .loading
+        isPreviewMuted = videoPlaybackService.isMuted
         
         orderedClips = input.clips
         
@@ -141,7 +180,11 @@ final class ClipEditorViewModel: ObservableObject {
 
             if shouldPlay {
                 videoPlaybackService.play()
+            } else {
+                videoPlaybackService.pause()
             }
+
+            isPreviewPlaying = shouldPlay
     }
     
     func stopPreview() {
@@ -150,6 +193,106 @@ final class ClipEditorViewModel: ObservableObject {
         playbackProgress = 0
         playingClipID = nil
         playingLocalTime = 0
+        isPreviewPlaying = false
+    }
+    
+    // 재생·일시정지와 재생 위치 이동 행동
+    func togglePreviewPlayback() {
+        guard totalDuration > 0 else {
+            return
+        }
+
+        if isPreviewPlaying {
+            videoPlaybackService.pause()
+        } else {
+            videoPlaybackService.play()
+        }
+
+        isPreviewPlaying.toggle()
+    }
+
+    // 텍스트 추가시 즉시 재생 중인 것을 멈춤
+    private func pausePreviewForEditing() {
+        videoPlaybackService.pause()
+        isPreviewPlaying = false
+    }
+    
+    // 음소거
+    func togglePreviewMute() {
+        videoPlaybackService.toggleMute()
+
+        isPreviewMuted = videoPlaybackService.isMuted
+    }
+    
+//    T 버튼 탭
+//    → toggleActiveTool(.text)
+//    → T 버튼 라임 활성화
+//    → 텍스트 입력·스타일 패널 표시
+    func toggleActiveTool(
+        _ tool: ClipEditorActiveTool
+    ) {
+        if activeTool == tool {
+            activeTool = .none
+
+            if tool == .text {
+                selectedTextOverlayID = nil
+            }
+
+            return
+        }
+
+        activeTool = tool
+    }
+
+//    영상 위 텍스트 탭
+//    → selectTextOverlay(id:)
+//    → 그 자막만 선택 테두리 표시
+    func selectTextOverlay(
+        id: UUID?
+    ) {
+        guard let id else {
+            selectedTextOverlayID = nil
+            return
+        }
+
+        guard textOverlays.contains(
+            where: { $0.id == id }
+        ) else {
+            return
+        }
+
+        selectedTextOverlayID = id
+        activeTool = .text
+    }
+
+//    텍스트 드래그 시작
+//    → setOverlayDragging(true)
+//    → 상단 도구 버튼 잠시 숨김
+    func setOverlayDragging(
+        _ isDragging: Bool
+    ) {
+        guard ignoresPlaybackProgress != isDragging else {
+                return
+            }
+
+            if isDragging {
+                pausePreviewForEditing()
+            }
+
+            ignoresPlaybackProgress = isDragging
+        }
+    
+    func seekPreview( // 화면의 0.0 ~ 1.0 슬라이더 값을 실제 영상 시간으로 바꿔서, 이미 있는 movePlayback(to:)에 전달
+        to progress: Double
+    ) {
+        let safeProgress = min(
+            max(progress, 0),
+            1
+        )
+
+        movePlayback(
+            to: safeProgress * totalDuration
+        )
     }
     
     func exportVideo() async {
@@ -162,6 +305,7 @@ final class ClipEditorViewModel: ObservableObject {
         exportedVideo = nil
         
         videoPlaybackService.pause()
+        isPreviewPlaying = false
         
         defer {
             isExporting = false
@@ -197,32 +341,75 @@ final class ClipEditorViewModel: ObservableObject {
             .sorted { $0.startTime < $1.startTime }
     }
     
+//    A 클립 재생 중
+//    → A 클립의 현재 시간에 보일 자막만 표시
+//
+//    B 클립으로 넘어감
+//    → A의 자막은 사라짐
+//    → B 클립의 자막만 표시
+    var visibleTextOverlayItems: [ClipTextOverlayItemViewData] {
+        guard let clipID = playingClipID else {
+            return []
+        }
+
+        return textOverlays(for: clipID)
+            .filter { overlay in
+                overlay.startTime <= playingLocalTime
+                && playingLocalTime <= overlay.endTime
+            }
+            .map { overlay in
+                makeTextOverlayItemViewData(from: overlay)
+            }
+    }
+
+    // selectedTextOverlay은 실제 편집 데이터인 Domain Model이고, selectedTextOverlayItem은 View에 전달할 화면용 데이터
+    var selectedTextOverlay: ClipTextOverlay? {
+        guard let selectedTextOverlayID else {
+            return nil
+        }
+
+        return textOverlays.first {
+            $0.id == selectedTextOverlayID
+        }
+    }
+    
+    var selectedTextOverlayItem: ClipTextOverlayItemViewData? {
+        guard let selectedTextOverlay else {
+            return nil
+        }
+
+        return makeTextOverlayItemViewData(
+            from: selectedTextOverlay
+        )
+    }
+    
     // ViewModel에서 변환
     func textOverlayItems(
         for clipID: UUID
     ) -> [ClipTextOverlayItemViewData] {
-        textOverlays(for: clipID).map { overlay in
-            ClipTextOverlayItemViewData(
-                id: overlay.id,
-                text: overlay.text,
-                displayTimeText: overlayTimeText(
-                    for: overlay
-                )
-            )
-        }
+        textOverlays(for: clipID)
+            .map(makeTextOverlayItemViewData)
     }
-    // view는 아래와 같은 데이터만 받게 됨. 
-    // ClipTextOverlayItemViewData(
-//    id: ...,
-//    text: "부산 해운대",
-//    displayTimeText: "1.2초 ~ 3.2초"
-//)
+
+    private func makeTextOverlayItemViewData(
+        from overlay: ClipTextOverlay
+    ) -> ClipTextOverlayItemViewData {
+        ClipTextOverlayItemViewData(
+            id: overlay.id,
+            text: overlay.text,
+            displayTimeText: overlayTimeText(
+                for: overlay
+            ),
+            position: overlay.position,
+            style: overlay.style
+        )
+    }
 
     private func overlayTimeText(
         for overlay: ClipTextOverlay
     ) -> String {
-        "\(formattedSeconds(overlay.startTime))초 ~ "
-        + "\(formattedSeconds(overlay.endTime))초"
+        "\(formattedSeconds(overlay.startTime))s ~ "
+        + "\(formattedSeconds(overlay.endTime))s"
     }
 
     private func formattedSeconds(
@@ -231,7 +418,25 @@ final class ClipEditorViewModel: ObservableObject {
         String(format: "%.1f", seconds)
     }
     
-    
+    func addTextOverlayToCurrentClip() {
+//        영상이 B 클립을 재생 중이면 → B에 텍스트 생성
+//        아직 재생 위치를 못 찾은 상황이면 → 사용자가 선택한 카드인 selectedPreview 클립에 생성
+//        T 버튼 탭
+//        → 현재 재생 중인 클립 ID 확인
+//        → 영상 일시정지
+//        → 새 텍스트 생성
+//        → 새 텍스트 선택 + 스타일 패널 표시
+        guard let clipID = playingClipID ?? selectedPreview?.id else {
+            return
+        }
+
+        pausePreviewForEditing()
+        
+        addTextOverlay(
+            to: clipID,
+            text: "텍스트"
+        )
+    }
     
 //    5초짜리 A 클립
 //    현재 1.3초 재생 중
@@ -258,52 +463,125 @@ final class ClipEditorViewModel: ObservableObject {
             return
         }
 
-        let overlayDuration = min(2, duration)
-
-        let currentTime: TimeInterval
-
-        if playingClipID == clipID { // 전체 영상 4.3초가 아니라 지금 재생 중인 B 클립의 2.3초를 기준으로 추가
-            currentTime = playingLocalTime
-        } else {
-            currentTime = 0
-        }
-
-        let latestStartTime = max(0, duration - overlayDuration)
-        let startTime = min(currentTime, latestStartTime)
-        let endTime = min(startTime + overlayDuration, duration)
-
         let overlay = ClipTextOverlay(
             clipID: clipID,
             text: trimmedText,
-            startTime: startTime,
-            endTime: endTime
+            startTime: 0,
+            endTime: duration
         )
 
         textOverlays.append(overlay)
+        selectedTextOverlayID = overlay.id
+        activeTool = .text
     }
     
-    func updateTextOverlay(
+    func updateTextOverlayPosition(
         id: UUID,
-        text: String
+        position: ClipOverlayPosition
+    ) {
+        guard let index = textOverlays.firstIndex(
+            where: { $0.id == id }
+        ) else {
+            return
+        }
+
+        textOverlays[index].position = position
+    }
+    
+    func updateSelectedText(
+        _ text: String
     ) {
         let trimmedText = text.trimmingCharacters(
             in: .whitespacesAndNewlines
         )
 
+        guard !trimmedText.isEmpty else {
+            return
+        }
+
+        updateSelectedTextOverlay { overlay in
+            overlay.text = trimmedText
+        }
+    }
+
+    // 선택한 자막 수정
+//    현재 선택된 자막 ID 확인
+//    → textOverlays에서 해당 자막 찾기
+//    → 그 자막의 style.weight만 .bold로 변경
+//    → @Published textOverlays 변경
+//    → Canvas가 새 스타일로 자막을 다시 그림
+    func updateSelectedTextFont(
+        _ font: ClipTextFont
+    ) {
+        updateSelectedTextStyle { style in
+            style.font = font
+        }
+    }
+
+    func updateSelectedTextWeight(
+        _ weight: ClipTextWeight
+    ) {
+        updateSelectedTextStyle { style in
+            style.weight = weight
+        }
+    }
+
+    func updateSelectedTextColor(
+        _ color: ClipTextColor
+    ) {
+        updateSelectedTextStyle { style in
+            style.color = color
+        }
+    }
+
+    func changeSelectedTextFontSize(
+        by amount: Double
+    ) {
+        updateSelectedTextStyle { style in
+            style.fontSize = min(
+                max(
+                    style.fontSize + amount,
+                    ClipTextStyle.minimumFontSize
+                ),
+                ClipTextStyle.maximumFontSize
+            )
+        }
+    }
+
+    private func updateSelectedTextStyle(
+        _ update: (inout ClipTextStyle) -> Void
+    ) {
+        updateSelectedTextOverlay { overlay in
+            update(&overlay.style)
+        }
+    }
+
+    private func updateSelectedTextOverlay(
+        _ update: (inout ClipTextOverlay) -> Void
+    ) {
         guard
-            !trimmedText.isEmpty,
+            let selectedTextOverlayID,
             let index = textOverlays.firstIndex(
-                where: { $0.id == id }
+                where: { $0.id == selectedTextOverlayID }
             )
         else {
             return
         }
 
-        textOverlays[index].text = trimmedText
+        update(&textOverlays[index])
     }
+    
+    func deleteTextOverlay(
+        id: UUID
+    ) {
+        textOverlays.removeAll {
+            $0.id == id
+        }
 
-    func deleteTextOverlay(id: UUID) {
-        textOverlays.removeAll { $0.id == id }
+        if selectedTextOverlayID == id {
+            selectedTextOverlayID = nil
+            activeTool = .none
+        }
     }
     
     func playExportedVideo(
@@ -360,7 +638,7 @@ final class ClipEditorViewModel: ObservableObject {
             return "사진"
         }
         
-        return "\(max(1, Int(duration.rounded())))초"
+        return "\(max(1, Int(duration.rounded())))s"
     }
     
     private func loadThumbnails(for clips: [CaptureDraftClip]
@@ -623,9 +901,9 @@ final class ClipEditorViewModel: ObservableObject {
         )
 
         videoPlaybackService.observeProgress { [weak self] progress in
-            guard let self else {
-                return
-            }
+            guard let self, !self.ignoresPlaybackProgress else { // 드래그 중에는 playbackProgress, playingClipID, playingLocalTime이 계속 바뀌지 않게 막는 거야. 즉 화면 전체가 0.05초마다 다시 그려지는 것을 막음
+                    return
+                }
 
             self.playbackProgress = progress
 
