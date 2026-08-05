@@ -11,6 +11,7 @@ import SwiftUI
 struct ClipEditorView: View {
     @ObservedObject var viewModel: ClipEditorViewModel
     @State private var exportPreviewResult: VideoExportResult?
+    @State private var isOverlayDragging = false
     
     let previewPlayer: AVPlayer
     let onAddClipTap: () -> Void
@@ -18,33 +19,23 @@ struct ClipEditorView: View {
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
-        NavigationStack {
-            Group{
+        ZStack {
+                Color.black
+                    .ignoresSafeArea()
+
                 switch viewModel.state {
                 case .loading:
                     ProgressView("클립을 준비하고 있어요.")
-                    
+                        .tint(.white)
+                        .foregroundStyle(.white)
+
                 case .content:
                     contentView
-                    
+
                 case .failed(let presentation):
                     failedView(presentation)
                 }
             }
-                .padding(MaplogSpacing.page)
-                .navigationTitle("클립 편집")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Button {
-                            dismiss()
-                        } label: {
-                            Image(systemName: "xmark")
-                        }
-                        .accessibilityLabel("클립 편집 닫기")
-                    }
-                }
-        }
         .task {
             await viewModel.prepare()
         }
@@ -106,35 +97,185 @@ struct ClipEditorView: View {
     }
     
     private var contentView: some View {
-        ScrollView {
-            VStack(
-                alignment: .leading,
-                spacing: MaplogSpacing.section
-            ) {
-                VStack(
-                    alignment: .leading,
-                    spacing: MaplogSpacing.xxSmall
-                ) {
-                    Text("선택한 클립")
-                        .font(MaplogFont.screenTitle)
-                    
-                    Text(
-                        "\(viewModel.timelineItems.count)개 클립이 선택 순서대로 준비됐어요."
+        GeometryReader { proxy in
+            VStack(spacing: 0) {
+                previewCanvas(
+                    height: max(
+                        ClipEditorLayout.previewMinimumHeight,
+                        proxy.size.height
+                            * ClipEditorLayout.previewHeightRatio
                     )
-                    .font(MaplogFont.callout)
-                    .foregroundStyle(.secondary)
-                }
-                
-                previewSection
-                
-                timelineSection
+                )
+
+                playbackControls
+
+                Spacer(minLength: 0)
+
+                editorBottomPanel
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(MaplogSpacing.page)
+            .frame(
+                maxWidth: .infinity,
+                maxHeight: .infinity,
+                alignment: .top
+            )
+            .frame(
+                maxWidth: .infinity,
+                maxHeight: .infinity
+            )
         }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
+        .background(Color.maplogSurface)
+        .ignoresSafeArea(edges: .top)
+    }
+    
+    private func previewCanvas(
+        height: CGFloat
+    ) -> some View {
+        ClipEditorPreviewView(
+            player: previewPlayer,
+            selectedItem: viewModel.selectedPreview,
+            textOverlayItems: viewModel.visibleTextOverlayItems,
+            selectedTextOverlayID: viewModel.selectedTextOverlayID,
+            onTextOverlayTap: { id in
+                viewModel.selectTextOverlay(id: id)
+            },
+            onTextOverlayPositionChange: { id, position in
+                viewModel.updateTextOverlayPosition(
+                    id: id,
+                    position: position
+                )
+            },
+//            onOverlayDraggingChanged: { isDragging in
+//                guard isOverlayDragging != isDragging else {
+//                    return
+//                }
+//
+//                viewModel.setOverlayDragging(isDragging)
+//                isOverlayDragging = isDragging
+//            },
+            onOverlayDraggingChanged: { isDragging in
+                viewModel.setOverlayDragging(isDragging)
+            },
+            onTextOverlayDelete: { id in
+                viewModel.deleteTextOverlay(id: id)
+            }
+        )
+        .frame(maxWidth: .infinity)
+        .frame(height: height)
+        .background(Color.black)
+        .overlay(alignment: .bottom) {
+            if
+                viewModel.activeTool == .text,
+                let item = viewModel.selectedTextOverlayItem
+            {
+                ClipEditorTextStylePanel(
+                    item: item,
+                    onFontSizeChange: { amount in
+                        viewModel.changeSelectedTextFontSize(
+                            by: amount
+                        )
+                    },
+                    onFontSelect: { font in
+                        viewModel.updateSelectedTextFont(font)
+                    },
+                    onWeightSelect: { weight in
+                        viewModel.updateSelectedTextWeight(weight)
+                    },
+                    onColorSelect: { color in
+                        viewModel.updateSelectedTextColor(color)
+                    }
+                )
+                .padding(.horizontal, MaplogSpacing.page)
+                .padding(.bottom, MaplogSpacing.xxSmall)
+//                .opacity(isOverlayDragging ? 0 : 1)
+//                .allowsHitTesting(!isOverlayDragging)
+//                .animation(nil, value: isOverlayDragging)
+            }
+        }
+        
+        .overlay(alignment: .top) {
+            ClipEditorTopControlsView(
+                activeTool: viewModel.activeTool,
+                onClose: {
+                    dismiss()
+                },
+                onTextTap: {
+                    viewModel.addTextOverlayToCurrentClip()
+                },
+                onLocationTap: {
+                    viewModel.toggleActiveTool(.location)
+                },
+                onStickerTap: {
+                    viewModel.toggleActiveTool(.sticker)
+                }
+            )
+            .padding(.horizontal, MaplogSpacing.page)
+            .padding(.top, ClipEditorLayout.topControlsTopInset)
+            .opacity(isOverlayDragging ? 0 : 1)
+            .allowsHitTesting(!isOverlayDragging)
+            .animation(nil, value: isOverlayDragging)
+        }
+        .clipped()
+    }
+    
+    // ViewModel의 상태를 화면용 컴포넌트에 전달하고, 버튼·슬라이더에서 발생한 행동은 다시 ViewModel에 전달하는 연결부
+//    사용자 재생 버튼 탭
+//    → ClipEditorPlaybackControlsView의 onPlayPauseTap 실행
+//    → viewModel.togglePreviewPlayback() 실행
+//    → ViewModel이 PlaybackService에 재생 또는 일시정지 요청
+//    → isPreviewPlaying 값 변경
+//    → SwiftUI가 버튼 아이콘을 다시 그림
+    private var playbackControls: some View {
+        ClipEditorPlaybackControlsView(
+                isPlaying: viewModel.isPreviewPlaying,
+                isMuted: viewModel.isPreviewMuted,
+                currentTimeText: viewModel.currentPlaybackTimeText,
+                totalTimeText: viewModel.totalDurationText,
+                progress: viewModel.playbackProgress,
+                onPlayPauseTap: {
+                    viewModel.togglePreviewPlayback()
+                },
+                onMuteTap: {
+                    viewModel.togglePreviewMute()
+                },
+                onSeek: { progress in
+                    viewModel.seekPreview(to: progress)
+                }
+            )    }
+    
+    private var editorBottomPanel: some View {
+        VStack(spacing: MaplogSpacing.small) {
+            timelineSection
+
             exportActionButton
         }
+        .padding(.horizontal, MaplogSpacing.page)
+        .padding(.top, MaplogSpacing.small)
+        .padding(.bottom, MaplogSpacing.xxSmall)
+        .background(Color.maplogSurface)
+    }
+    
+    private var timelineSection: some View {
+        ClipEditorTimelineStripView(
+            items: viewModel.timelineItems,
+            selectedID: viewModel.selectedPreview?.id,
+            orderForID: { id in
+                viewModel.timelineOrder(for: id)
+            },
+            canRemove: viewModel.canRemoveClip,
+            onRemove: { id in
+                viewModel.removeClip(id: id)
+            },
+            onSelect: { id in
+                viewModel.selectPreview(id: id)
+            },
+            onMove: { sourceID, targetID in
+                viewModel.moveClip(
+                    id: sourceID,
+                    to: targetID
+                )
+            },
+            onAdd: onAddClipTap
+        )
     }
     
     private func failedView(
@@ -144,15 +285,15 @@ struct ClipEditorView: View {
             Image(systemName: "video.slash")
                 .font(.largeTitle)
                 .foregroundStyle(.secondary)
-
+            
             Text("미리보기를 열지 못했어요")
                 .font(.title3.weight(.bold))
-
+            
             Text(presentation.message)
                 .font(.body)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
-
+            
             if presentation.recoveryAction == .retry {
                 Button("다시 시도") {
                     Task {
@@ -165,59 +306,6 @@ struct ClipEditorView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-    
-    private var previewSection: some View {
-        VStack(
-                alignment: .leading,
-                spacing: MaplogSpacing.small
-            ) {
-                Text("미리보기")
-                    .font(.headline)
-
-                ClipEditorPreviewView(
-                    player: previewPlayer,
-                    selectedItem: viewModel.selectedPreview,
-                    displayOrder: viewModel.selectedPreview.flatMap { item in
-                        viewModel.timelineOrder(for: item.id)
-                    },
-                    playbackProgress: viewModel.playbackProgress
-                )
-            }
-    }
-    
-    private var timelineSection: some View {
-        VStack(
-            alignment: .leading,
-            spacing: MaplogSpacing.small
-        ) {
-            Text("타임라인")
-                .font(.headline)
-            
-            
-            ClipEditorTimelineStripView(
-                items: viewModel.timelineItems,
-                selectedID: viewModel.selectedPreview?.id,
-                orderForID: { id in
-                    viewModel.timelineOrder(for: id)
-                },
-                canRemove: viewModel.canRemoveClip,
-                onRemove: { id in
-                    viewModel.removeClip(id: id)
-                },
-                
-                onSelect: { id in
-                    viewModel.selectPreview(id: id)
-                },
-                onMove: { sourceID, targetID in
-                    viewModel.moveClip(
-                        id: sourceID,
-                        to: targetID
-                    )
-                },
-                onAdd: onAddClipTap
-            )
-        }
     }
     
     private var exportActionButton: some View {
@@ -257,15 +345,12 @@ struct ClipEditorView: View {
         )
         .accessibilityLabel(
             viewModel.isExporting
-            ? "영상 만드는 중"
-            : "영상 만들기"
+            ? "완성 중"
+            : "완성하기"
         )
         .accessibilityHint(
             "현재 타임라인 순서대로 클립을 하나의 영상으로 만듭니다."
         )
-        .padding(.horizontal, MaplogSpacing.page)
-        .padding(.vertical, MaplogSpacing.small)
-        .background(.ultraThinMaterial)
     }
     
     private var exportErrorBinding: Binding<Bool> {

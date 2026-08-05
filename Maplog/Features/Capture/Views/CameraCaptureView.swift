@@ -126,7 +126,7 @@ struct CameraCaptureView: View {
         VStack(spacing: 16) {
                 Spacer()
 
-                Text("\(Int((viewModel.recordingProgress * viewModel.settings.clipDuration.seconds).rounded(.down))) / \(Int(viewModel.settings.clipDuration.seconds))초")
+                Text("\(Int((viewModel.recordingProgress * viewModel.settings.clipDuration.seconds).rounded(.down))) / \(Int(viewModel.settings.clipDuration.seconds))s")
                     .font(.subheadline.weight(.bold))
                     .foregroundStyle(.white)
                     .monospacedDigit()

@@ -30,6 +30,14 @@ final class AVVideoPlaybackService: VideoPlaybackService {
         queuePlayer
     }
     
+    var isMuted: Bool {
+        queuePlayer.isMuted
+    }
+
+    func toggleMute() {
+        queuePlayer.isMuted.toggle()
+    }
+    
     func loadVideo(at url: URL) {
         stop()
         

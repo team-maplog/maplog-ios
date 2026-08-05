@@ -117,7 +117,7 @@ final class ClipPickerViewModel: ObservableObject {
             return "사진"
         }
 
-        return "\(max(1, Int(duration.rounded())))초"
+        return "\(max(1, Int(duration.rounded())))s"
     }
     
     private func loadThumbnails(for drafts: [CaptureDraftClip]) async {

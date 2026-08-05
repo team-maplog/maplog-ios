@@ -1,0 +1,523 @@
+//
+//  ClipEditorUIKitTextOverlayCanvasView.swift
+//  Maplog
+//
+//  Created by 한채림 on 8/5/26.
+// SwiftUI와 UIKit을 연결하는 어댑터, UIViewRepresentable을 쓰면 SwiftUI 화면 안에 UIKit UIView를 넣을 수 있음
+//
+
+import SwiftUI
+import UIKit
+
+struct ClipEditorUIKitTextOverlayCanvasView: UIViewRepresentable {
+    let items: [ClipTextOverlayItemViewData]
+    let selectedID: UUID?
+    
+    let onSelect: (UUID) -> Void
+    let onPositionChange: (
+        UUID,
+        ClipOverlayPosition
+    ) -> Void
+    let onDragChanged: (Bool) -> Void
+    let onDelete: (UUID) -> Void
+    
+    // 화면에 처음 나타날 때 UIKit 캔버스 객체를 딱 한 번 만듦
+    func makeUIView(context: Context) -> EditorTextOverlayCanvasUIView {
+        EditorTextOverlayCanvasUIView()
+    }
+    
+    // ViewModel에서 자막 데이터가 바뀌었을 때, 이미 만들어 둔 캔버스에 최신 데이터를 전달
+    func updateUIView(
+        _ uiView: EditorTextOverlayCanvasUIView,
+        context: Context
+    ) {
+        uiView.update(
+            items: items,
+            selectedID: selectedID,
+            onSelect: onSelect,
+            onPositionChange: onPositionChange,
+            onDragChanged: onDragChanged,
+            onDelete: onDelete
+        )
+    }
+}
+// 실제 UIKit 캔버스, 자막별 UILabel, 삭제 버튼, UIPanGestureRecognizer를 넣음
+final class EditorTextOverlayCanvasUIView: UIView {
+    private var itemViews: [
+            UUID: EditorTextOverlayItemUIView
+        ] = [:]
+
+        private var onSelect: ((UUID) -> Void)?
+        private var onPositionChange: ((
+            UUID,
+            ClipOverlayPosition
+        ) -> Void)?
+        private var onDragChanged: ((Bool) -> Void)?
+        private var onDelete: ((UUID) -> Void)?
+    
+        override init(frame: CGRect) {
+            super.init(frame: frame)
+
+            backgroundColor = .clear
+            isUserInteractionEnabled = true
+        }
+
+        required init?(coder: NSCoder) {
+            fatalError("init(coder:) has not been implemented")
+        }
+
+    func update(
+        items: [ClipTextOverlayItemViewData],
+        selectedID: UUID?,
+        onSelect: @escaping (UUID) -> Void,
+        onPositionChange: @escaping (
+            UUID,
+            ClipOverlayPosition
+        ) -> Void,
+        onDragChanged: @escaping (Bool) -> Void,
+        onDelete: @escaping (UUID) -> Void
+    ) {
+        self.onSelect = onSelect
+        self.onPositionChange = onPositionChange
+        self.onDragChanged = onDragChanged
+        self.onDelete = onDelete
+
+        let incomingIDs = Set(items.map(\.id))
+
+                let removedIDs = itemViews.keys.filter { id in
+                    !incomingIDs.contains(id)
+                }
+
+                for id in removedIDs {
+                    itemViews[id]?.removeFromSuperview()
+                    itemViews[id] = nil
+                }
+
+                for item in items {
+                    let itemView: EditorTextOverlayItemUIView
+
+                    if let existingView = itemViews[item.id] {
+                        itemView = existingView
+                    } else {
+                        itemView = EditorTextOverlayItemUIView()
+                        itemViews[item.id] = itemView
+                        addSubview(itemView)
+                    }
+
+                    itemView.configure(
+                        item: item,
+                        isSelected: item.id == selectedID
+                    )
+                    
+                    itemView.onTap = { [weak self] id in
+                        self?.onSelect?(id)
+                    }
+
+                    itemView.onDragChanged = { [weak self] isDragging in
+                        self?.onDragChanged?(isDragging)
+                    }
+                    
+                    itemView.onDelete = { [weak self] id in
+                        self?.onDelete?(id)
+                    }
+
+                    itemView.onDragEnded = { [weak self] id, center in
+                        guard let self else {
+                            return
+                        }
+
+                        self.onPositionChange?(
+                            id,
+                            self.normalizedPosition(for: center)
+                        )
+                    }
+                }
+
+                setNeedsLayout()
+    }
+    override func layoutSubviews() {
+            super.layoutSubviews()
+
+            for itemView in itemViews.values {
+                itemView.place(in: bounds.size)
+            }
+        }
+    
+    private func normalizedPosition(
+        for center: CGPoint
+    ) -> ClipOverlayPosition {
+        guard bounds.width > 0, bounds.height > 0 else {
+            return .center
+        }
+
+        return ClipOverlayPosition(
+            x: Double(center.x / bounds.width),
+            y: Double(center.y / bounds.height)
+        )
+    }
+}
+
+final class EditorTextOverlayItemUIView: UILabel, UIGestureRecognizerDelegate {
+    var onTap: ((UUID) -> Void)?
+    var onDragChanged: ((Bool) -> Void)?
+    var onDragEnded: ((UUID, CGPoint) -> Void)?
+    var onDelete: ((UUID) -> Void)?
+
+    private let panGesture = UIPanGestureRecognizer()
+    private let tapGesture = UITapGestureRecognizer()
+    private let selectionBorderView = UIView()
+    private let deleteButton = UIButton(type: .system)
+
+    private var itemID: UUID?
+    private var position: ClipOverlayPosition = .center
+    private var startCenter = CGPoint.zero
+    private var isPanning = false
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+
+        numberOfLines = 3
+        textAlignment = .center
+        adjustsFontSizeToFitWidth = true
+        minimumScaleFactor = 0.6
+        isUserInteractionEnabled = true
+        
+        // 테두리 뷰 설정
+        selectionBorderView.isUserInteractionEnabled = false
+        selectionBorderView.layer.cornerRadius = 8
+        selectionBorderView.layer.borderWidth = 2
+        selectionBorderView.layer.borderColor =
+            UIColor(Color.maplogLime).cgColor
+
+        selectionBorderView.translatesAutoresizingMaskIntoConstraints = false
+
+        addSubview(selectionBorderView)
+
+        NSLayoutConstraint.activate([
+            selectionBorderView.topAnchor.constraint(
+                equalTo: topAnchor
+            ),
+            selectionBorderView.leadingAnchor.constraint(
+                equalTo: leadingAnchor
+            ),
+            selectionBorderView.trailingAnchor.constraint(
+                equalTo: trailingAnchor
+            ),
+            selectionBorderView.bottomAnchor.constraint(
+                equalTo: bottomAnchor
+            )
+        ])
+        
+        // 삭제 버튼 설정
+        clipsToBounds = false
+
+        deleteButton.setImage(
+            UIImage(
+                systemName: "xmark",
+                withConfiguration: UIImage.SymbolConfiguration(
+                    pointSize: 10,
+                    weight: .bold
+                )
+            ),
+            for: .normal
+        )
+
+        deleteButton.tintColor = .white
+        deleteButton.backgroundColor = UIColor(
+            Color.maplogInk
+        )
+
+        deleteButton.layer.cornerRadius = 9
+        deleteButton.clipsToBounds = true
+        deleteButton.isHidden = true
+        deleteButton.accessibilityLabel = "텍스트 삭제"
+
+        deleteButton.translatesAutoresizingMaskIntoConstraints = false
+
+        deleteButton.addTarget(
+            self,
+            action: #selector(handleDelete),
+            for: .touchUpInside
+        )
+        
+        addSubview(deleteButton)
+
+        NSLayoutConstraint.activate([
+            deleteButton.widthAnchor.constraint(
+                equalToConstant: 18
+            ),
+            deleteButton.heightAnchor.constraint(
+                equalToConstant: 18
+            ),
+            deleteButton.centerXAnchor.constraint(
+                equalTo: trailingAnchor
+            ),
+            deleteButton.centerYAnchor.constraint(
+                equalTo: topAnchor
+            )
+        ])
+
+        panGesture.delegate = self
+        tapGesture.delegate = self
+        
+        panGesture.addTarget(
+            self,
+            action: #selector(handlePan(_:))
+        )
+
+        tapGesture.addTarget(
+            self,
+            action: #selector(handleTap)
+        )
+
+        tapGesture.require(toFail: panGesture)
+
+        addGestureRecognizer(panGesture)
+        addGestureRecognizer(tapGesture)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    func configure(
+        item: ClipTextOverlayItemViewData,
+        isSelected: Bool
+    ) {
+        itemID = item.id
+        position = item.position
+
+        text = item.text
+        font = makeFont(style: item.style)
+        textColor = makeTextColor(style: item.style)
+        
+        selectionBorderView.isHidden = !isSelected
+        deleteButton.isHidden = !isSelected
+        deleteButton.layer.zPosition = 1
+        
+        layer.cornerRadius = 8
+        
+        deleteButton.isHidden = !isSelected // 선택되지 않은 텍스트에는 x 버튼이 없고, 텍스트를 탭해 선택되면 x가 나타남
+        bringSubviewToFront(deleteButton)
+    }
+
+    func place(in canvasSize: CGSize) {
+        guard
+            !isPanning,
+            canvasSize.width > 0,
+            canvasSize.height > 0
+        else {
+            return
+        }
+
+        let maximumWidth = canvasSize.width * 0.75
+
+        let textSize = sizeThatFits(
+            CGSize(
+                width: maximumWidth,
+                height: .greatestFiniteMagnitude
+            )
+        )
+
+        bounds.size = CGSize(
+            width: ceil(textSize.width) + 16,
+            height: ceil(textSize.height) + 12
+        )
+
+        center = CGPoint(
+            x: CGFloat(position.x) * canvasSize.width,
+            y: CGFloat(position.y) * canvasSize.height
+        )
+    }
+
+    @objc
+    private func handleTap() {
+        guard let itemID else {
+            return
+        }
+
+        onTap?(itemID)
+    }
+    
+    @objc // 삭제 함수와 버튼 터치 분리
+    private func handleDelete() {
+        guard let itemID else {
+            return
+        }
+
+        onDelete?(itemID)
+    }
+
+    @objc
+    private func handlePan(
+        _ recognizer: UIPanGestureRecognizer
+    ) {
+        guard let canvas = superview else {
+            return
+        }
+
+        switch recognizer.state {
+        case .began:
+            guard let itemID else {
+                return
+            }
+
+            isPanning = true
+            startCenter = center
+
+            onTap?(itemID)
+            onDragChanged?(true)
+
+            canvas.bringSubviewToFront(self)
+
+        case .changed:
+            let translation = recognizer.translation(
+                in: canvas
+            )
+
+            center = CGPoint(
+                x: startCenter.x + translation.x,
+                y: startCenter.y + translation.y
+            )
+
+        case .ended, .cancelled:
+            guard let itemID else {
+                return
+            }
+
+            isPanning = false
+
+            onDragEnded?(itemID, center)
+            onDragChanged?(false)
+
+        case .failed:
+            isPanning = false
+            center = startCenter
+
+            onDragChanged?(false)
+
+        default:
+            break
+        }
+    }
+
+    private func makeFont(
+        style: ClipTextStyle
+    ) -> UIFont {
+        let baseFont = UIFont.systemFont(
+            ofSize: style.fontSize,
+            weight: fontWeight(for: style.weight)
+        )
+
+        let descriptor: UIFontDescriptor
+
+        switch style.font {
+        case .standard:
+            descriptor = baseFont.fontDescriptor
+
+        case .rounded:
+            descriptor = baseFont.fontDescriptor.withDesign(.rounded)
+                ?? baseFont.fontDescriptor
+
+        case .serif:
+            descriptor = baseFont.fontDescriptor.withDesign(.serif)
+                ?? baseFont.fontDescriptor
+
+        case .monospaced:
+            descriptor = baseFont.fontDescriptor.withDesign(.monospaced)
+                ?? baseFont.fontDescriptor
+        }
+
+        return UIFont(
+            descriptor: descriptor,
+            size: baseFont.pointSize
+        )
+    }
+
+    private func fontWeight(
+        for weight: ClipTextWeight
+    ) -> UIFont.Weight {
+        switch weight {
+        case .regular:
+            return .regular
+        case .medium:
+            return .medium
+        case .semibold:
+            return .semibold
+        case .bold:
+            return .bold
+        }
+    }
+
+    private func makeTextColor(
+        style: ClipTextStyle
+    ) -> UIColor {
+        switch style.color {
+        case .white:
+            return .white
+        case .black:
+            return .black
+        case .maplogLime:
+            return UIColor(Color.maplogLime)
+        case .warmYellow:
+            return UIColor(
+                red: 1,
+                green: 0.82,
+                blue: 0.2,
+                alpha: 1
+            )
+        case .coral:
+            return UIColor(
+                red: 1,
+                green: 0.35,
+                blue: 0.3,
+                alpha: 1
+            )
+        case .pink:
+            return UIColor(
+                red: 1,
+                green: 0.42,
+                blue: 0.65,
+                alpha: 1
+            )
+        case .lavender:
+            return UIColor(
+                red: 0.68,
+                green: 0.58,
+                blue: 1,
+                alpha: 1
+            )
+        case .skyBlue:
+            return UIColor(
+                red: 0.28,
+                green: 0.65,
+                blue: 1,
+                alpha: 1
+            )
+        case .mint:
+            return UIColor(
+                red: 0.28,
+                green: 0.9,
+                blue: 0.7,
+                alpha: 1
+            )
+        }
+    }
+    
+    // 텍스트 영역 드래그 → UIPanGestureRecognizer 처리
+//    x 버튼 탭 → UIButton만 처리
+    func gestureRecognizer(
+        _ gestureRecognizer: UIGestureRecognizer,
+        shouldReceive touch: UITouch
+    ) -> Bool {
+        guard let touchedView = touch.view else {
+            return true
+        }
+
+        let touchedDeleteButton =
+            touchedView === deleteButton
+            || touchedView.isDescendant(of: deleteButton)
+
+        return !touchedDeleteButton
+    }
+}

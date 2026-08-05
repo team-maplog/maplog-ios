@@ -26,55 +26,35 @@ struct ClipEditorTimelineStripView: View {
             LazyHStack(spacing: MaplogSpacing.small) {
                 ForEach(items) { item in
                     if let displayOrder = orderForID(item.id) {
-                        HStack(spacing: MaplogSpacing.small) {
-                            ClipEditorTimelineItemView(
-                                item: item,
-                                displayOrder: displayOrder,
-                                isSelected: item.id == selectedID,
-                                onSelect: {
-                                    onSelect(item.id)
-                                },
-                                onRemove: canRemove
-                                    ? {
-                                        onRemove(item.id)
-                                    }
-                                    : nil
-                            )
-                            
-                            .buttonStyle(.plain)
-                            .accessibilityLabel(
-                                "\(displayOrder)번 클립, \(item.durationText)"
-                            )
-                            .accessibilityValue(
-                                item.id == selectedID
-                                ? "선택됨"
-                                : "선택 안 됨"
-                            )
-                            .accessibilityHint(
-                                "두 번 탭하여 미리보기로 선택"
-                            )
-                            .onDrag {
-                                draggingID = item.id
+                        ClipEditorTimelineItemView(
+                            item: item,
+                            displayOrder: displayOrder,
+                            isSelected: item.id == selectedID,
+                            onSelect: {
+                                onSelect(item.id)
+                            },
+                            onRemove: canRemove
+                                ? {
+                                    onRemove(item.id)
+                                }
+                                : nil
+                        )
+                        .buttonStyle(.plain)
+                        .onDrag {
+                            draggingID = item.id
 
-                                return NSItemProvider( // 드래그 중인 카드가 있다는 것을 SwiftUI에 알려 주는 운반 상자
-                                    object: item.id.uuidString as NSString
-                                )
-                            }
-                            .onDrop(
-                                of: [UTType.plainText],
-                                delegate: ClipEditorTimelineDropDelegate(
-                                    targetID: item.id,
-                                    draggingID: $draggingID,
-                                    onMove: onMove
-                                )
+                            return NSItemProvider(
+                                object: item.id.uuidString as NSString
                             )
-                            
-                            if displayOrder < items.count {
-                                Image(systemName: "chevron.right")
-                                    .font(.caption.weight(.bold))
-                                    .foregroundStyle(.secondary)
-                            }
                         }
+                        .onDrop(
+                            of: [UTType.plainText],
+                            delegate: ClipEditorTimelineDropDelegate(
+                                targetID: item.id,
+                                draggingID: $draggingID,
+                                onMove: onMove
+                            )
+                        )
                     }
                 }
                 Button(action: onAdd) {
@@ -85,21 +65,25 @@ struct ClipEditorTimelineStripView: View {
             }
             .padding(.vertical, MaplogSpacing.xxSmall)
         }
+        .frame(height: ClipEditorLayout.timelineStripHeight)
         .accessibilityLabel("클립 타임라인")
         
     }
     
     private var addClipCard: some View {
-        VStack(spacing: MaplogSpacing.small) {
+        VStack(spacing: MaplogSpacing.xxSmall) {
             Image(systemName: "plus")
                 .font(.title3.weight(.semibold))
                 .foregroundStyle(Color.maplogInk)
 
-            Text("클립 구성")
-                .font(.caption.weight(.semibold))
+            Text("클립 추가")
+                .font(.caption2.weight(.semibold))
                 .foregroundStyle(Color.maplogInk)
         }
-        .frame(width: 104, height: 176)
+        .frame(
+            width: ClipEditorLayout.timelineCardWidth,
+            height: ClipEditorLayout.timelineCardHeight
+        )
         .background(
             Color.maplogSurfaceRaised,
             in: RoundedRectangle(
