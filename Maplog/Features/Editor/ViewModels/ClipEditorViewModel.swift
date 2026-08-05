@@ -23,7 +23,7 @@ final class ClipEditorViewModel: ObservableObject {
     @Published private(set) var isPreviewMuted = false // 음소거
     @Published private(set) var activeTool: ClipEditorActiveTool = .none // 지금 T, 위치, 스티커 중 어떤 도구 패널을 열어야 하는지
     @Published private(set) var selectedTextOverlayID: UUID? // 여러 자막 중 사용자가 선택해서 수정 중인 자막 하나
-    
+    @Published private(set) var textInputRequestID: UUID? // 입력 시작 요청 상태
     
     private var ignoresPlaybackProgress = false // 드래그 중에는 재생 시간 갱신을 무시
     private let input: ClipEditorInput // Clip Picker에서 넘겨준 선택 결과, 실제 CaptureDraftClip들이 있고, 각 클립의 파일 URL·촬영 날짜·길이가 들어있음
@@ -252,6 +252,7 @@ final class ClipEditorViewModel: ObservableObject {
     ) {
         guard let id else {
             selectedTextOverlayID = nil
+            textInputRequestID = nil // 선택 해제 또는 삭제 시 요청 정리
             return
         }
 
@@ -472,7 +473,16 @@ final class ClipEditorViewModel: ObservableObject {
 
         textOverlays.append(overlay)
         selectedTextOverlayID = overlay.id
+        textInputRequestID = overlay.id
         activeTool = .text
+    }
+    
+    func finishTextInputRequest(for id: UUID) {
+        guard textInputRequestID == id else {
+            return
+        }
+
+        textInputRequestID = nil
     }
     
     func updateTextOverlayPosition(
@@ -488,21 +498,67 @@ final class ClipEditorViewModel: ObservableObject {
         textOverlays[index].position = position
     }
     
-    func updateSelectedText(
-        _ text: String
+    // ID 기반 텍스트 수정 함수
+//   UITextView가 “나는 123번 자막이고, 내용이 이렇게 바뀌었어” 전달
+//    → ViewModel이 123번 자막을 찾아
+//    → 그 자막의 text만 변경
+    func updateTextOverlayText(
+        id: UUID,
+        text: String
     ) {
-        let trimmedText = text.trimmingCharacters(
-            in: .whitespacesAndNewlines
-        )
-
-        guard !trimmedText.isEmpty else {
+        guard let index = textOverlays.firstIndex(
+            where: { $0.id == id }
+        ) else {
             return
         }
 
-        updateSelectedTextOverlay { overlay in
-            overlay.text = trimmedText
-        }
+        textOverlays[index].text = text
     }
+    
+    // 입력 완료도 ID 기준, 입력이 끝났을 때 공백만 남았다면 자막을 삭제하고, 내용이 있으면 앞뒤 공백만 정리
+    func finishTextEditing(
+        id: UUID
+    ) {
+        guard let index = textOverlays.firstIndex(
+            where: { $0.id == id }
+        ) else {
+            return
+        }
+
+        let trimmedText = textOverlays[index].text
+            .trimmingCharacters(
+                in: .whitespacesAndNewlines
+            )
+
+        if trimmedText.isEmpty {
+            deleteTextOverlay(id: id)
+            return
+        }
+
+        textOverlays[index].text = trimmedText
+    }
+    
+    func updateSelectedText(
+        _ text: String
+    ) {
+        guard let selectedTextOverlayID else {
+                return
+            }
+
+            updateTextOverlayText(
+                id: selectedTextOverlayID,
+                text: text
+            )
+    }
+    // 입력 완료용 함수
+    func finishSelectedTextEditing() {
+        guard let selectedTextOverlayID else {
+                return
+            }
+
+            finishTextEditing(id: selectedTextOverlayID)
+        }
+
 
     // 선택한 자막 수정
 //    현재 선택된 자막 ID 확인
@@ -581,6 +637,9 @@ final class ClipEditorViewModel: ObservableObject {
         if selectedTextOverlayID == id {
             selectedTextOverlayID = nil
             activeTool = .none
+        }
+        if textInputRequestID == id {
+            textInputRequestID = nil
         }
     }
     
