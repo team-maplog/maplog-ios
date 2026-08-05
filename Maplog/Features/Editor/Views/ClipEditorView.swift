@@ -144,17 +144,14 @@ struct ClipEditorView: View {
                     position: position
                 )
             },
-//            onOverlayDraggingChanged: { isDragging in
-//                guard isOverlayDragging != isDragging else {
-//                    return
-//                }
-//
-//                viewModel.setOverlayDragging(isDragging)
-//                isOverlayDragging = isDragging
-//            },
             onOverlayDraggingChanged: { isDragging in
-                viewModel.setOverlayDragging(isDragging)
+                guard isOverlayDragging != isDragging else {
+                    return
+                }
+                isOverlayDragging = isDragging // 화면에서 도구들을 숨길지 결정하는 로컬 상태
+                viewModel.setOverlayDragging(isDragging) // 재생 진행률 갱신을 잠시 막고, 드래그 시작 때 영상을 멈추는 상태 처리
             },
+
             onTextOverlayDelete: { id in
                 viewModel.deleteTextOverlay(id: id)
             }
@@ -186,9 +183,9 @@ struct ClipEditorView: View {
                 )
                 .padding(.horizontal, MaplogSpacing.page)
                 .padding(.bottom, MaplogSpacing.xxSmall)
-//                .opacity(isOverlayDragging ? 0 : 1)
-//                .allowsHitTesting(!isOverlayDragging)
-//                .animation(nil, value: isOverlayDragging)
+                .opacity(isOverlayDragging ? 0 : 1)
+                .allowsHitTesting(!isOverlayDragging)
+                .animation(nil, value: isOverlayDragging)
             }
         }
         
