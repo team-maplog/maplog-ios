@@ -154,7 +154,23 @@ struct ClipEditorView: View {
 
             onTextOverlayDelete: { id in
                 viewModel.deleteTextOverlay(id: id)
-            }
+            },
+            textInputRequestID: viewModel.textInputRequestID,
+            onTextInputRequestHandled: { id in // 나중에 UIKit이 키보드 열기 완료했어라고 알려줄 때, ViewModel의 요청을 지워 주는 통로
+                viewModel.finishTextInputRequest(for: id)
+            },
+            onTextOverlayTextChange: { id, text in
+                viewModel.updateTextOverlayText(
+                    id: id,
+                    text: text
+                )
+            },
+            onTextOverlayTextEditingFinished: { id in
+                viewModel.finishTextEditing(id: id)
+            },
+            onPreviewBackgroundTap: {
+                viewModel.selectTextOverlay(id: nil)
+            },
         )
         .frame(maxWidth: .infinity)
         .frame(height: height)

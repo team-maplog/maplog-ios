@@ -17,7 +17,8 @@ struct ClipEditorTextStylePanel: View {
     let onWeightSelect: (ClipTextWeight) -> Void
     let onColorSelect: (ClipTextColor) -> Void
 
-    @State private var isExpanded = false
+
+    @State private var isExpanded = true
 
     var body: some View {
         VStack(
@@ -27,6 +28,7 @@ struct ClipEditorTextStylePanel: View {
             toggleButton
 
             if isExpanded {
+
                 topStyleRow
 
                 Divider()
@@ -91,7 +93,7 @@ struct ClipEditorTextStylePanel: View {
                 : "텍스트 스타일 펼치기"
         )
     }
-
+    
     private var topStyleRow: some View {
         ScrollView(
             .horizontal,
