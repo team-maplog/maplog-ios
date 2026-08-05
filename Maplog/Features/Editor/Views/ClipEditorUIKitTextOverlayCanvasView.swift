@@ -270,6 +270,7 @@ final class EditorTextOverlayItemUIView: UILabel, UIGestureRecognizerDelegate {
             action: #selector(handleTap)
         )
 
+        // 탭과 드래그가 겹치지 않게 하는 코드
         tapGesture.require(toFail: panGesture)
 
         addGestureRecognizer(panGesture)
@@ -280,7 +281,7 @@ final class EditorTextOverlayItemUIView: UILabel, UIGestureRecognizerDelegate {
         fatalError("init(coder:) has not been implemented")
     }
 
-    func configure(
+    func configure( // 화면 갱신
         item: ClipTextOverlayItemViewData,
         isSelected: Bool
     ) {
@@ -301,7 +302,7 @@ final class EditorTextOverlayItemUIView: UILabel, UIGestureRecognizerDelegate {
         bringSubviewToFront(deleteButton)
     }
 
-    func place(in canvasSize: CGSize) {
+    func place(in canvasSize: CGSize) { // 텍스트의 크기와 캔버스 안 위치 계산
         guard
             !isPanning,
             canvasSize.width > 0,
@@ -348,7 +349,9 @@ final class EditorTextOverlayItemUIView: UILabel, UIGestureRecognizerDelegate {
         onDelete?(itemID)
     }
 
-    @objc
+    @objc // 텍스트를 드래그해서 움직이는 함수
+//    canvas (부모 뷰, superview)
+//     └─ 텍스트 UILabel (현재 self)
     private func handlePan(
         _ recognizer: UIPanGestureRecognizer
     ) {
@@ -357,21 +360,21 @@ final class EditorTextOverlayItemUIView: UILabel, UIGestureRecognizerDelegate {
         }
 
         switch recognizer.state {
-        case .began:
+        case .began: // 드래그 시작
             guard let itemID else {
                 return
             }
 
-            isPanning = true
-            startCenter = center
+            isPanning = true // 지금 드래그 중이라고 기록
+            startCenter = center // 드래그를 시작한 당시 텍스트의 중심 위치 저장
 
-            onTap?(itemID)
+            onTap?(itemID) // 드래그를 시작해도 해당 텍스트는 선택 상태가 되어야 하므로 호출
             onDragChanged?(true)
 
             canvas.bringSubviewToFront(self)
 
         case .changed:
-            let translation = recognizer.translation(
+            let translation = recognizer.translation( // translation은 드래그 시작점에서 현재 손가락까지 이동한 거리
                 in: canvas
             )
 
@@ -380,6 +383,11 @@ final class EditorTextOverlayItemUIView: UILabel, UIGestureRecognizerDelegate {
                 y: startCenter.y + translation.y
             )
 
+            
+//            드래그 중 상태 해제
+//            최종 중심 위치(center)를 바깥쪽에 전달
+//            바깥쪽 ViewModel이나 상태가 이 위치를 저장할 수 있음
+//            “드래그 끝” 알림 전달
         case .ended, .cancelled:
             guard let itemID else {
                 return
