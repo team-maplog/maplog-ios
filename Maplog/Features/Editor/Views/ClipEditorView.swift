@@ -99,19 +99,23 @@ struct ClipEditorView: View {
     private var contentView: some View {
         GeometryReader { proxy in
             VStack(spacing: 0) {
-                previewCanvas(
-                    height: max(
+                let previewHeight = viewModel.isTextEditing
+                    ? proxy.size.height
+                    : max(
                         ClipEditorLayout.previewMinimumHeight,
                         proxy.size.height
                             * ClipEditorLayout.previewHeightRatio
                     )
-                )
 
-                playbackControls
+                previewCanvas(height: previewHeight)
 
-                Spacer(minLength: 0)
+                if !viewModel.isTextEditing {
+                    playbackControls
 
-                editorBottomPanel
+                    Spacer(minLength: 0)
+
+                    editorBottomPanel
+                }
             }
             .frame(
                 maxWidth: .infinity,
@@ -166,11 +170,15 @@ struct ClipEditorView: View {
                 )
             },
             onTextOverlayTextEditingFinished: { id in
-                viewModel.finishTextEditing(id: id)
+                viewModel.finishTextEditing(id: id) // 빈 텍스트면 삭제하고, 아니면 앞뒤 공백 정리
+                viewModel.endTextEditing(id: id) // 지금 입력 중 상태를 끝냄
             },
             onPreviewBackgroundTap: {
                 viewModel.selectTextOverlay(id: nil)
             },
+            onTextOverlayTextEditingStarted: { id in
+                viewModel.beginTextEditing(id: id)
+            }
         )
         .frame(maxWidth: .infinity)
         .frame(height: height)
@@ -208,6 +216,7 @@ struct ClipEditorView: View {
         .overlay(alignment: .top) {
             ClipEditorTopControlsView(
                 activeTool: viewModel.activeTool,
+                isTextEditing: viewModel.isTextEditing,
                 onClose: {
                     dismiss()
                 },

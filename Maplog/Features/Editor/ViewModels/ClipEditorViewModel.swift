@@ -24,6 +24,7 @@ final class ClipEditorViewModel: ObservableObject {
     @Published private(set) var activeTool: ClipEditorActiveTool = .none // 지금 T, 위치, 스티커 중 어떤 도구 패널을 열어야 하는지
     @Published private(set) var selectedTextOverlayID: UUID? // 여러 자막 중 사용자가 선택해서 수정 중인 자막 하나
     @Published private(set) var textInputRequestID: UUID? // 입력 시작 요청 상태
+    @Published private(set) var editingTextOverlayID: UUID? // 지금 실제로 입력 중인지 상태
     
     private var ignoresPlaybackProgress = false // 드래그 중에는 재생 시간 갱신을 무시
     private let input: ClipEditorInput // Clip Picker에서 넘겨준 선택 결과, 실제 CaptureDraftClip들이 있고, 각 클립의 파일 URL·촬영 날짜·길이가 들어있음
@@ -66,6 +67,10 @@ final class ClipEditorViewModel: ObservableObject {
 
     var totalDurationText: String {
         playbackTimeText(totalDuration)
+    }
+    
+    var isTextEditing: Bool {
+        editingTextOverlayID != nil
     }
 
     private func playbackTimeText(
@@ -154,6 +159,23 @@ final class ClipEditorViewModel: ObservableObject {
         }
         
         return index + 1
+    }
+    
+    func beginTextEditing(id: UUID) {
+        guard textOverlays.contains(where: { $0.id == id }) else {
+            return
+        }
+
+        editingTextOverlayID = id
+        activeTool = .text
+    }
+
+    func endTextEditing(id: UUID) {
+        guard editingTextOverlayID == id else {
+            return
+        }
+
+        editingTextOverlayID = nil
     }
     
     // 실제 영상 준비 + 화면 상태 변경 함수 추가
