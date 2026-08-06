@@ -30,6 +30,7 @@ struct ClipEditorPreviewView: View {
     let onTextOverlayTextChange: (UUID, String) -> Void
     let onTextOverlayTextEditingFinished: (UUID) -> Void
     let onPreviewBackgroundTap: () -> Void
+    let onTextOverlayTextEditingStarted: (UUID) -> Void
     
     var body: some View {
         VStack(spacing: MaplogSpacing.xxSmall) {
@@ -61,7 +62,8 @@ struct ClipEditorPreviewView: View {
                         onTextInputRequestHandled: onTextInputRequestHandled,
                         onTextChange: onTextOverlayTextChange,
                         onTextEditingFinished: onTextOverlayTextEditingFinished,
-                        onBackgroundTap: onPreviewBackgroundTap
+                        onBackgroundTap: onPreviewBackgroundTap,
+                        onTextEditingStarted: onTextOverlayTextEditingStarted
                     )
                     
                 } else {

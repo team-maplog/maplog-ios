@@ -25,6 +25,7 @@ struct ClipEditorUIKitTextOverlayCanvasView: UIViewRepresentable {
     let onTextChange: (UUID, String) -> Void
     let onTextEditingFinished: (UUID) -> Void
     let onBackgroundTap: () -> Void // 빈 영역 탭 콜백
+    let onTextEditingStarted: (UUID) -> Void
     
     // 화면에 처음 나타날 때 UIKit 캔버스 객체를 딱 한 번 만듦
     func makeUIView(context: Context) -> EditorTextOverlayCanvasUIView {
@@ -47,7 +48,8 @@ struct ClipEditorUIKitTextOverlayCanvasView: UIViewRepresentable {
             onTextInputRequestHandled: onTextInputRequestHandled,
             onTextChange: onTextChange,
             onTextEditingFinished: onTextEditingFinished,
-            onBackgroundTap: onBackgroundTap
+            onBackgroundTap: onBackgroundTap,
+            onTextEditingStarted: onTextEditingStarted
         )
     }
 }
@@ -71,6 +73,7 @@ final class EditorTextOverlayCanvasUIView: UIView, UIGestureRecognizerDelegate {
         private var isFulfillingTextInputRequest = false
         private let backgroundTapGesture = UITapGestureRecognizer()
         private var onBackgroundTap: (() -> Void)?
+        private var onTextEditingStarted: ((UUID) -> Void)?
     
         override init(frame: CGRect) {
             super.init(frame: frame)
@@ -108,7 +111,8 @@ final class EditorTextOverlayCanvasUIView: UIView, UIGestureRecognizerDelegate {
         onTextInputRequestHandled: @escaping (UUID) -> Void,
         onTextChange: @escaping (UUID, String) -> Void,
         onTextEditingFinished: @escaping (UUID) -> Void,
-        onBackgroundTap: @escaping () -> Void
+        onBackgroundTap: @escaping () -> Void,
+        onTextEditingStarted: @escaping (UUID) -> Void
     ) {
         self.onSelect = onSelect
         self.onPositionChange = onPositionChange
@@ -119,6 +123,7 @@ final class EditorTextOverlayCanvasUIView: UIView, UIGestureRecognizerDelegate {
         self.onTextChange = onTextChange
         self.onTextEditingFinished = onTextEditingFinished
         self.onBackgroundTap = onBackgroundTap
+        self.onTextEditingStarted = onTextEditingStarted
 
         let incomingIDs = Set(items.map(\.id))
 
@@ -176,6 +181,10 @@ final class EditorTextOverlayCanvasUIView: UIView, UIGestureRecognizerDelegate {
 
                     itemView.onTextEditingFinished = { [weak self] id in
                         self?.onTextEditingFinished?(id)
+                    }
+                    
+                    itemView.onTextEditingStarted = { [weak self] id in
+                        self?.onTextEditingStarted?(id)
                     }
                 }
 
@@ -263,6 +272,7 @@ final class EditorTextOverlayItemUIView: UIView, UIGestureRecognizerDelegate, UI
     var onDelete: ((UUID) -> Void)?
     var onTextChange: ((UUID, String) -> Void)?
     var onTextEditingFinished: ((UUID) -> Void)?
+    var onTextEditingStarted: ((UUID) -> Void)?
 
     private let panGesture = UIPanGestureRecognizer()
     private let tapGesture = UITapGestureRecognizer()
@@ -577,6 +587,7 @@ final class EditorTextOverlayItemUIView: UIView, UIGestureRecognizerDelegate, UI
         }
 
         onTap?(itemID)
+        onTextEditingStarted?(itemID)
     }
 
     func textViewDidChange(

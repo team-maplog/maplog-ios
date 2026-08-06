@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ClipEditorTopControlsView: View {
     let activeTool: ClipEditorActiveTool
+    let isTextEditing: Bool
 
     let onClose: () -> Void
     let onTextTap: () -> Void
@@ -23,37 +24,39 @@ struct ClipEditorTopControlsView: View {
                 action: onClose
             )
 
-            Spacer(minLength: 0)
+            if !isTextEditing {
+                Spacer(minLength: 0)
 
-            HStack(spacing: MaplogSpacing.xxSmall) {
-                passiveControl(
-                    symbol: "arrow.uturn.backward"
-                )
+                HStack(spacing: MaplogSpacing.xxSmall) {
+                    passiveControl(
+                        symbol: "arrow.uturn.backward"
+                    )
 
-                glassButton(
-                    symbol: "textformat",
-                    accessibilityLabel: "텍스트 도구",
-                    isSelected: activeTool == .text,
-                    action: onTextTap
-                )
+                    glassButton(
+                        symbol: "textformat",
+                        accessibilityLabel: "텍스트 도구",
+                        isSelected: activeTool == .text,
+                        action: onTextTap
+                    )
 
-                glassButton(
-                    symbol: "mappin.and.ellipse",
-                    accessibilityLabel: "위치와 시간 도구",
-                    isSelected: activeTool == .location,
-                    action: onLocationTap
-                )
+                    glassButton(
+                        symbol: "mappin.and.ellipse",
+                        accessibilityLabel: "위치와 시간 도구",
+                        isSelected: activeTool == .location,
+                        action: onLocationTap
+                    )
 
-                glassButton(
-                    symbol: "face.smiling",
-                    accessibilityLabel: "스티커 도구",
-                    isSelected: activeTool == .sticker,
-                    action: onStickerTap
-                )
+                    glassButton(
+                        symbol: "face.smiling",
+                        accessibilityLabel: "스티커 도구",
+                        isSelected: activeTool == .sticker,
+                        action: onStickerTap
+                    )
 
-                passiveControl(
-                    symbol: "ellipsis"
-                )
+                    passiveControl(
+                        symbol: "ellipsis"
+                    )
+                }
             }
         }
     }
