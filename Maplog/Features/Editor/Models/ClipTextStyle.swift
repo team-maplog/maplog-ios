@@ -45,6 +45,11 @@ enum ClipTextColor: String, CaseIterable, Equatable, Sendable {
     case mint
 }
 
+enum ClipTextContainerStyle: Equatable, Sendable {
+    case none
+    case glass
+}
+
 struct ClipTextStyle: Equatable, Sendable {
     static let minimumFontSize = 18.0
     static let maximumFontSize = 52.0
@@ -53,16 +58,19 @@ struct ClipTextStyle: Equatable, Sendable {
     var weight: ClipTextWeight
     var color: ClipTextColor
     var fontSize: Double
+    var containerStyle: ClipTextContainerStyle
 
     init(
         font: ClipTextFont = .standard,
         weight: ClipTextWeight = .regular,
         color: ClipTextColor = .white,
-        fontSize: Double = 26
+        fontSize: Double = 26,
+        containerStyle: ClipTextContainerStyle = .none
     ) {
         self.font = font
         self.weight = weight
         self.color = color
+        self.containerStyle = containerStyle
         self.fontSize = min(
             max(fontSize, Self.minimumFontSize),
             Self.maximumFontSize

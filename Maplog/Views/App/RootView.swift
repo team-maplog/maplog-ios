@@ -84,7 +84,7 @@ struct RootView: View {
     @State private var requestedTab: MaplogTab?
     @State private var requestedCapturePlaceName: String?
 
-    
+
    // init이 끝난 뒤에도 body에서 쓸 값을 보관
     private let authRepository: any AuthRepository
     private let tourismRepository: any TourismRepository
@@ -93,6 +93,7 @@ struct RootView: View {
     private let videoThumbnailService: any VideoThumbnailService
     private let videoPlaybackService: any VideoPlaybackService
     private let videoExportService: any VideoExportService
+    private let captureLocationService: any CaptureLocationService
 
     init(
         authRepository: any AuthRepository,
@@ -101,7 +102,8 @@ struct RootView: View {
         mediaDraftRepository: any MediaDraftRepository,
         videoThumbnailService: any VideoThumbnailService,
         videoPlaybackService: any VideoPlaybackService,
-        videoExportService: any VideoExportService
+        videoExportService: any VideoExportService,
+        captureLocationService: any CaptureLocationService
     ) {
         self.authRepository = authRepository
         self.tourismRepository = tourismRepository
@@ -110,6 +112,7 @@ struct RootView: View {
         self.videoThumbnailService = videoThumbnailService
         self.videoPlaybackService = videoPlaybackService
         self.videoExportService = videoExportService
+        self.captureLocationService = captureLocationService
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("-MaplogSkipOnboarding") {
             _phase = State(initialValue: .app)
@@ -150,6 +153,7 @@ struct RootView: View {
                     videoThumbnailService: videoThumbnailService,
                     videoPlaybackService: videoPlaybackService,
                     videoExportService: videoExportService,
+                    captureLocationService: captureLocationService,
                     requestedTab: $requestedTab,
                     requestedCapturePlaceName: $requestedCapturePlaceName
                 )

@@ -25,11 +25,11 @@ final class AVVideoPlaybackService: VideoPlaybackService {
     private let queuePlayer = AVQueuePlayer()
     private var playerLooper: AVPlayerLooper?
     private var periodicTimeObserver: Any? // AVPlayer가 주기적으로 알려주는 재생 시간을 해제하기 위해 보관하는 토큰
-    
+
     var player: AVPlayer {
         queuePlayer
     }
-    
+
     var isMuted: Bool {
         queuePlayer.isMuted
     }
@@ -37,18 +37,18 @@ final class AVVideoPlaybackService: VideoPlaybackService {
     func toggleMute() {
         queuePlayer.isMuted.toggle()
     }
-    
+
     func loadVideo(at url: URL) {
         stop()
-        
+
         let templateItem = AVPlayerItem(url: url)
-        
+
         playerLooper = AVPlayerLooper(
             player: queuePlayer,
             templateItem: templateItem
         )
     }
-    
+
     func loadVideoSequence(
         from urls: [URL]
     ) async throws {
@@ -67,7 +67,7 @@ final class AVVideoPlaybackService: VideoPlaybackService {
             templateItem: templateItem
         )
     }
-    
+
     // 재생 위치 이동 기능
 //    seek(to: 0)
 //    → 전체 영상 맨 처음 A 시작
@@ -89,45 +89,45 @@ final class AVVideoPlaybackService: VideoPlaybackService {
 
         queuePlayer.seek(to: time)
     }
-    
+
     func play() {
         queuePlayer.play()
     }
-    
+
     func pause() {
         queuePlayer.pause()
     }
-    
+
     func stop() {
         removeProgressObserver()
         queuePlayer.pause()
-        
+
         playerLooper?.disableLooping()
         playerLooper = nil
-        
+
         queuePlayer.removeAllItems()
     }
-    
+
     func observeProgress(_ handler: @escaping (Double) -> Void) {
         removeProgressObserver()
-        
+
         let interval = CMTime(seconds: 0.05, preferredTimescale: 600)
-        
+
         periodicTimeObserver = queuePlayer.addPeriodicTimeObserver(forInterval: interval, queue: .main) {
             [weak self] time in
             guard let self else {
                  return
             }
-            
+
             let duration = queuePlayer.currentItem?.duration.seconds ?? 0
-            
+
             guard duration.isFinite,
                   duration > 0,
                   time.seconds.isFinite
             else {
                  return
             }
-            
+
             let progress = min(
                 max(time.seconds / duration, 0),
                 1
@@ -135,7 +135,7 @@ final class AVVideoPlaybackService: VideoPlaybackService {
             handler(progress)
         }
     }
-    
+
     // 영상들을 메모리 안에서 이어 붙임, 파일로 내보내지 않고, AVPlayerItem으로 만들어 즉시 재생
     private func makeSequenceItem(
         from urls: [URL]
@@ -161,6 +161,7 @@ final class AVVideoPlaybackService: VideoPlaybackService {
         var renderSize: CGSize?
 
         for url in urls {
+            print("영상 준비 시작:", url.lastPathComponent)
             let asset = AVURLAsset(url: url)
 
             guard let sourceVideoTrack = try await asset
@@ -237,7 +238,7 @@ final class AVVideoPlaybackService: VideoPlaybackService {
 //
 //            A instruction: 0초 ~ 2초
 //            B instruction: 2초 ~ 5초
-            
+
             instruction.timeRange = CMTimeRange(
                 start: insertionTime,
                 duration: duration
@@ -259,7 +260,7 @@ final class AVVideoPlaybackService: VideoPlaybackService {
             instruction.layerInstructions = [layerInstruction]
             instructions.append(instruction)
 
-            
+
 //            처음: insertionTime = 0초
 //
 //            A 2초 추가
@@ -284,7 +285,7 @@ final class AVVideoPlaybackService: VideoPlaybackService {
         // 지금까지 만든 여러 instruction을 하나로 모으는 최종 영상 렌더링 설정
         let videoComposition = AVMutableVideoComposition()
 
-        
+
         // 현재는 첫 영상의 방향을 적용한 크기를 기준으로 사용
 //        1 / 30초
 //        = 초당 30장
@@ -302,12 +303,12 @@ final class AVVideoPlaybackService: VideoPlaybackService {
 
         return item
     }
-    
+
     private func removeProgressObserver() {
         guard let periodicTimeObserver else {
             return
         }
-        
+
         queuePlayer.removeTimeObserver(periodicTimeObserver)
         self.periodicTimeObserver = nil
     }
