@@ -12,7 +12,7 @@ import UIKit
 struct ClipEditorUIKitTextOverlayCanvasView: UIViewRepresentable {
     let items: [ClipTextOverlayItemViewData]
     let selectedID: UUID?
-    
+
     let onSelect: (UUID) -> Void
     let onPositionChange: (
         UUID,
@@ -26,12 +26,14 @@ struct ClipEditorUIKitTextOverlayCanvasView: UIViewRepresentable {
     let onTextEditingFinished: (UUID) -> Void
     let onBackgroundTap: () -> Void // 빈 영역 탭 콜백
     let onTextEditingStarted: (UUID) -> Void
-    
+    let onTemplateSwipe: (Int) -> Void
+
+
     // 화면에 처음 나타날 때 UIKit 캔버스 객체를 딱 한 번 만듦
     func makeUIView(context: Context) -> EditorTextOverlayCanvasUIView {
         EditorTextOverlayCanvasUIView()
     }
-    
+
     // ViewModel에서 자막 데이터가 바뀌었을 때, 이미 만들어 둔 캔버스에 최신 데이터를 전달
     func updateUIView(
         _ uiView: EditorTextOverlayCanvasUIView,
@@ -49,10 +51,38 @@ struct ClipEditorUIKitTextOverlayCanvasView: UIViewRepresentable {
             onTextChange: onTextChange,
             onTextEditingFinished: onTextEditingFinished,
             onBackgroundTap: onBackgroundTap,
-            onTextEditingStarted: onTextEditingStarted
+            onTextEditingStarted: onTextEditingStarted,
+            onTemplateSwipe: onTemplateSwipe
         )
     }
 }
+// 스냅용 타입과 상태 추가
+private enum TextOverlaySnapAnchor: Equatable {
+    case start // 왼쪽, 세로 기준 위
+    case center // 중앙, 중앙
+    case end // 오른쪽, 아래
+}
+
+private struct TextOverlaySnapState: Equatable {
+    let x: TextOverlaySnapAnchor?
+    let y: TextOverlaySnapAnchor?
+
+    static let none = TextOverlaySnapState(
+        x: nil,
+        y: nil
+    )
+
+    var isActive: Bool {
+        x != nil || y != nil
+    }
+}
+
+private struct TextOverlaySnapCandidate {
+    let anchor: TextOverlaySnapAnchor
+    let center: CGFloat
+    let guideCoordinate: CGFloat
+}
+
 // 실제 UIKit 캔버스, 자막별 UILabel, 삭제 버튼, UIPanGestureRecognizer를 넣음
 final class EditorTextOverlayCanvasUIView: UIView, UIGestureRecognizerDelegate {
     private var itemViews: [
@@ -74,13 +104,35 @@ final class EditorTextOverlayCanvasUIView: UIView, UIGestureRecognizerDelegate {
         private let backgroundTapGesture = UITapGestureRecognizer()
         private var onBackgroundTap: (() -> Void)?
         private var onTextEditingStarted: ((UUID) -> Void)?
-    
+        private var onLocationTimestampTemplateSwipe:
+        ((UUID, Int) -> Void)?
+        private let templateSwipeGesture = UIPanGestureRecognizer()
+        private var onTemplateSwipe: ((Int) -> Void)?
+        private let activeGuideView = EditorTextOverlayActiveGuideUIView()
+        private let snapFeedback = UISelectionFeedbackGenerator()
+        private var activeSnapState = TextOverlaySnapState.none
+        private let snapThreshold: CGFloat = 12
+        private let snapInset: CGFloat = 18
+
         override init(frame: CGRect) {
             super.init(frame: frame)
 
             backgroundColor = .clear
+
+            activeGuideView.translatesAutoresizingMaskIntoConstraints = false
+            activeGuideView.isUserInteractionEnabled = false
+
+            insertSubview(activeGuideView, at: 0)
+
+            NSLayoutConstraint.activate([
+                activeGuideView.topAnchor.constraint(equalTo: topAnchor),
+                activeGuideView.leadingAnchor.constraint(equalTo: leadingAnchor),
+                activeGuideView.trailingAnchor.constraint(equalTo: trailingAnchor),
+                activeGuideView.bottomAnchor.constraint(equalTo: bottomAnchor)
+            ])
+
             isUserInteractionEnabled = true
-            
+
             backgroundTapGesture.addTarget(
                     self,
                     action: #selector(handleBackgroundTap)
@@ -90,8 +142,22 @@ final class EditorTextOverlayCanvasUIView: UIView, UIGestureRecognizerDelegate {
                 backgroundTapGesture.cancelsTouchesInView = false
 
                 addGestureRecognizer(backgroundTapGesture)
+
+            templateSwipeGesture.addTarget(
+                self,
+                action: #selector(handleTemplateSwipe(_:))
+            )
+
+            templateSwipeGesture.delegate = self
+            templateSwipeGesture.cancelsTouchesInView = false
+
+            backgroundTapGesture.require(
+                toFail: templateSwipeGesture
+            )
+
+            addGestureRecognizer(templateSwipeGesture)
         }
-    
+
 
         required init?(coder: NSCoder) {
             fatalError("init(coder:) has not been implemented")
@@ -112,7 +178,8 @@ final class EditorTextOverlayCanvasUIView: UIView, UIGestureRecognizerDelegate {
         onTextChange: @escaping (UUID, String) -> Void,
         onTextEditingFinished: @escaping (UUID) -> Void,
         onBackgroundTap: @escaping () -> Void,
-        onTextEditingStarted: @escaping (UUID) -> Void
+        onTextEditingStarted: @escaping (UUID) -> Void,
+        onTemplateSwipe: @escaping (Int) -> Void
     ) {
         self.onSelect = onSelect
         self.onPositionChange = onPositionChange
@@ -124,6 +191,7 @@ final class EditorTextOverlayCanvasUIView: UIView, UIGestureRecognizerDelegate {
         self.onTextEditingFinished = onTextEditingFinished
         self.onBackgroundTap = onBackgroundTap
         self.onTextEditingStarted = onTextEditingStarted
+        self.onTemplateSwipe = onTemplateSwipe
 
         let incomingIDs = Set(items.map(\.id))
 
@@ -151,7 +219,7 @@ final class EditorTextOverlayCanvasUIView: UIView, UIGestureRecognizerDelegate {
                         item: item,
                         isSelected: item.id == selectedID
                     )
-                    
+
                     itemView.onTap = { [weak self] id in
                         self?.onSelect?(id)
                     }
@@ -159,7 +227,7 @@ final class EditorTextOverlayCanvasUIView: UIView, UIGestureRecognizerDelegate {
                     itemView.onDragChanged = { [weak self] isDragging in
                         self?.onDragChanged?(isDragging)
                     }
-                    
+
                     itemView.onDelete = { [weak self] id in
                         self?.onDelete?(id)
                     }
@@ -174,7 +242,7 @@ final class EditorTextOverlayCanvasUIView: UIView, UIGestureRecognizerDelegate {
                             self.normalizedPosition(for: center)
                         )
                     }
-                    
+
                     itemView.onTextChange = { [weak self] id, text in
                         self?.onTextChange?(id, text)
                     }
@@ -182,15 +250,44 @@ final class EditorTextOverlayCanvasUIView: UIView, UIGestureRecognizerDelegate {
                     itemView.onTextEditingFinished = { [weak self] id in
                         self?.onTextEditingFinished?(id)
                     }
-                    
+
                     itemView.onTextEditingStarted = { [weak self] id in
                         self?.onTextEditingStarted?(id)
                     }
+
+                    itemView.onDragChanged = { [weak self] isDragging in
+                        guard let self else {
+                            return
+                        }
+
+                        if isDragging {
+                            self.beginSnapInteraction()
+                        } else {
+                            self.endSnapInteraction()
+                        }
+
+                        self.onDragChanged?(isDragging)
+                    }
+
+                    itemView.onDragMoved = { [weak self, weak itemView] proposedCenter in
+                        guard
+                            let self,
+                            let itemView
+                        else {
+                            return proposedCenter
+                        }
+
+                        return self.snappedCenter(
+                            for: proposedCenter,
+                            itemSize: itemView.bounds.size
+                        )
+                    }
+
                 }
 
                 setNeedsLayout()
     }
-    
+
     // 요청을 실제 UITextView에 전달하는 함수
     private func fulfillTextInputRequestIfNeeded() {
         guard
@@ -217,17 +314,17 @@ final class EditorTextOverlayCanvasUIView: UIView, UIGestureRecognizerDelegate {
         self.textInputRequestID = nil
         onTextInputRequestHandled?(textInputRequestID)
     }
-    
+
     override func layoutSubviews() {
             super.layoutSubviews()
 
             for itemView in itemViews.values {
                 itemView.place(in: bounds.size)
             }
-        
+
             fulfillTextInputRequestIfNeeded()
         }
-    
+
     private func normalizedPosition(
         for center: CGPoint
     ) -> ClipOverlayPosition {
@@ -240,13 +337,177 @@ final class EditorTextOverlayCanvasUIView: UIView, UIGestureRecognizerDelegate {
             y: Double(center.y / bounds.height)
         )
     }
-    
+
+    private func snappedCenter(
+        for proposedCenter: CGPoint,
+        itemSize: CGSize
+    ) -> CGPoint {
+        guard bounds.width > 0, bounds.height > 0 else {
+            return proposedCenter
+        }
+
+        let halfWidth = itemSize.width / 2
+        let halfHeight = itemSize.height / 2
+
+        let clampedX = min(
+            max(proposedCenter.x, halfWidth),
+            bounds.width - halfWidth
+        )
+
+        let clampedY = min(
+            max(proposedCenter.y, halfHeight),
+            bounds.height - halfHeight
+        )
+
+        let horizontalCandidates = [
+            TextOverlaySnapCandidate(
+                anchor: .start,
+                center: halfWidth + snapInset,
+                guideCoordinate: snapInset
+            ),
+            TextOverlaySnapCandidate(
+                anchor: .center,
+                center: bounds.midX,
+                guideCoordinate: bounds.midX
+            ),
+            TextOverlaySnapCandidate(
+                anchor: .end,
+                center: bounds.width - halfWidth - snapInset,
+                guideCoordinate: bounds.width - snapInset
+            )
+        ]
+
+        let verticalCandidates = [
+            TextOverlaySnapCandidate(
+                anchor: .start,
+                center: halfHeight + snapInset,
+                guideCoordinate: snapInset
+            ),
+            TextOverlaySnapCandidate(
+                anchor: .center,
+                center: bounds.midY,
+                guideCoordinate: bounds.midY
+            ),
+            TextOverlaySnapCandidate(
+                anchor: .end,
+                center: bounds.height - halfHeight - snapInset,
+                guideCoordinate: bounds.height - snapInset
+            )
+        ]
+
+        let horizontalSnap = closestSnap(
+            to: clampedX,
+            candidates: horizontalCandidates
+        )
+
+        let verticalSnap = closestSnap(
+            to: clampedY,
+            candidates: verticalCandidates
+        )
+
+        let snappedCenter = CGPoint(
+            x: horizontalSnap?.center ?? clampedX,
+            y: verticalSnap?.center ?? clampedY
+        )
+
+        let newSnapState = TextOverlaySnapState(
+            x: horizontalSnap?.anchor,
+            y: verticalSnap?.anchor
+        )
+
+        updateSnapFeedback(for: newSnapState)
+
+        activeGuideView.show(
+            verticalX: horizontalSnap?.guideCoordinate,
+            horizontalY: verticalSnap?.guideCoordinate
+        )
+
+        return snappedCenter
+    }
+
+    private func closestSnap(
+        to value: CGFloat,
+        candidates: [TextOverlaySnapCandidate]
+    ) -> TextOverlaySnapCandidate? {
+        guard let closest = candidates.min(
+            by: {
+                abs(value - $0.center) < abs(value - $1.center)
+            }
+        ) else {
+            return nil
+        }
+
+        guard abs(value - closest.center) <= snapThreshold else {
+            return nil
+        }
+
+        return closest
+    }
+
+    private func updateSnapFeedback(
+        for newSnapState: TextOverlaySnapState
+    ) {
+        guard activeSnapState != newSnapState else {
+            return
+        }
+
+        activeSnapState = newSnapState
+
+        guard newSnapState.isActive else {
+            return
+        }
+
+        snapFeedback.selectionChanged()
+        snapFeedback.prepare()
+    }
+
+    private func beginSnapInteraction() {
+        activeSnapState = .none
+        snapFeedback.prepare()
+        activeGuideView.hide()
+    }
+
+    private func endSnapInteraction() {
+        activeSnapState = .none
+        activeGuideView.hide()
+    }
+
     @objc // 배경만 감지하는 제스처 처리
     private func handleBackgroundTap() {
         endEditing(true)
         onBackgroundTap?()
     }
-    
+
+    @objc
+    private func handleTemplateSwipe(
+        _ recognizer: UIPanGestureRecognizer
+    ) {
+        guard recognizer.state == .ended else {
+            return
+        }
+
+        let translation = recognizer.translation(in: self)
+        let velocity = recognizer.velocity(in: self)
+
+        let isMostlyHorizontal =
+            abs(translation.x) > abs(translation.y) * 1.5
+
+        let movedEnough = abs(translation.x) >= 44
+        let isFastEnough = abs(velocity.x) >= 400
+
+        guard
+            isMostlyHorizontal,
+            movedEnough,
+            isFastEnough
+        else {
+            return
+        }
+
+        let offset = translation.x < 0 ? 1 : -1
+
+        onTemplateSwipe?(offset)
+    }
+
     func gestureRecognizer(
         _ gestureRecognizer: UIGestureRecognizer,
         shouldReceive touch: UITouch
@@ -273,6 +534,7 @@ final class EditorTextOverlayItemUIView: UIView, UIGestureRecognizerDelegate, UI
     var onTextChange: ((UUID, String) -> Void)?
     var onTextEditingFinished: ((UUID) -> Void)?
     var onTextEditingStarted: ((UUID) -> Void)?
+    var onDragMoved: ((CGPoint) -> CGPoint)?
 
     private let panGesture = UIPanGestureRecognizer()
     private let tapGesture = UITapGestureRecognizer()
@@ -281,10 +543,11 @@ final class EditorTextOverlayItemUIView: UIView, UIGestureRecognizerDelegate, UI
 
     private var itemID: UUID?
     private var position: ClipOverlayPosition = .center
+    private var alignment: ClipTextAlignment = .center
     private var startCenter = CGPoint.zero
     private var isPanning = false
     private let textView = UITextView()
-    
+
     override init(frame: CGRect) {
         super.init(frame: frame)
 
@@ -324,9 +587,9 @@ final class EditorTextOverlayItemUIView: UIView, UIGestureRecognizerDelegate, UI
         textView.panGestureRecognizer.require(
             toFail: panGesture
         )
-        
+
         isUserInteractionEnabled = true
-        
+
         // 테두리 뷰 설정
         selectionBorderView.isUserInteractionEnabled = false
         selectionBorderView.layer.cornerRadius = 8
@@ -352,7 +615,7 @@ final class EditorTextOverlayItemUIView: UIView, UIGestureRecognizerDelegate, UI
                 equalTo: bottomAnchor
             )
         ])
-        
+
         // 삭제 버튼 설정
         clipsToBounds = false
 
@@ -384,7 +647,7 @@ final class EditorTextOverlayItemUIView: UIView, UIGestureRecognizerDelegate, UI
             action: #selector(handleDelete),
             for: .touchUpInside
         )
-        
+
         addSubview(deleteButton)
 
         NSLayoutConstraint.activate([
@@ -404,7 +667,7 @@ final class EditorTextOverlayItemUIView: UIView, UIGestureRecognizerDelegate, UI
 
         panGesture.delegate = self
         tapGesture.delegate = self
-        
+
         panGesture.addTarget(
             self,
             action: #selector(handlePan(_:))
@@ -443,14 +706,15 @@ final class EditorTextOverlayItemUIView: UIView, UIGestureRecognizerDelegate, UI
 
         return true
     }
-    
-    
+
+
     func configure( // 화면 갱신
         item: ClipTextOverlayItemViewData,
         isSelected: Bool
     ) {
         itemID = item.id
         position = item.position
+        alignment = item.alignment
 
         // 사용자가 한 글자를 입력할 때마다 ViewModel도 갱신되지만, 이미 같은 내용이라면 UITextView.text를 다시 넣지 않음. 그래서 커서·한글 조합·입력 흐름이 불필요하게 초기화되지 않음
         if textView.text != item.text {
@@ -459,13 +723,15 @@ final class EditorTextOverlayItemUIView: UIView, UIGestureRecognizerDelegate, UI
 
         textView.font = makeFont(style: item.style)
         textView.textColor = makeTextColor(style: item.style)
-        
+        textView.textAlignment = makeTextAlignment(
+            for: item.alignment
+        )
+        applyContainerStyle(item.style.containerStyle)
+
         selectionBorderView.isHidden = !isSelected
         deleteButton.isHidden = !isSelected
         deleteButton.layer.zPosition = 1
-        
-        layer.cornerRadius = 8
-        
+
         deleteButton.isHidden = !isSelected // 선택되지 않은 텍스트에는 x 버튼이 없고, 텍스트를 탭해 선택되면 x가 나타남
         bringSubviewToFront(deleteButton)
     }
@@ -493,9 +759,33 @@ final class EditorTextOverlayItemUIView: UIView, UIGestureRecognizerDelegate, UI
             height: max(44, ceil(textSize.height) + 12)
         )
 
+        let halfWidth = bounds.width / 2
+        let halfHeight = bounds.height / 2
+        let anchoredX = CGFloat(position.x) * canvasSize.width
+
+        let intendedCenterX: CGFloat
+
+        switch alignment {
+        case .leading:
+            intendedCenterX = anchoredX + halfWidth
+        case .center:
+            intendedCenterX = anchoredX
+        case .trailing:
+            intendedCenterX = anchoredX - halfWidth
+        }
+
         center = CGPoint(
-            x: CGFloat(position.x) * canvasSize.width,
-            y: CGFloat(position.y) * canvasSize.height
+            x: min(
+                max(intendedCenterX, halfWidth),
+                canvasSize.width - halfWidth
+            ),
+            y: min(
+                max(
+                    CGFloat(position.y) * canvasSize.height,
+                    halfHeight
+                ),
+                canvasSize.height - halfHeight
+            )
         )
     }
 
@@ -507,7 +797,7 @@ final class EditorTextOverlayItemUIView: UIView, UIGestureRecognizerDelegate, UI
 
         onTap?(itemID)
     }
-    
+
     @objc // 삭제 함수와 버튼 터치 분리
     private func handleDelete() {
         guard let itemID else {
@@ -543,41 +833,38 @@ final class EditorTextOverlayItemUIView: UIView, UIGestureRecognizerDelegate, UI
             canvas.bringSubviewToFront(self)
 
         case .changed:
-            let translation = recognizer.translation( // translation은 드래그 시작점에서 현재 손가락까지 이동한 거리
-                in: canvas
-            )
+            let translation = recognizer.translation(in: canvas)
 
-            center = CGPoint(
+            let proposedCenter = CGPoint(
                 x: startCenter.x + translation.x,
                 y: startCenter.y + translation.y
             )
 
-            
+            center = onDragMoved?(proposedCenter) ?? proposedCenter
+
+
 //            드래그 중 상태 해제
 //            최종 중심 위치(center)를 바깥쪽에 전달
 //            바깥쪽 ViewModel이나 상태가 이 위치를 저장할 수 있음
 //            “드래그 끝” 알림 전달
-        case .ended, .cancelled:
-            guard let itemID else {
-                return
+        case .ended:
+                guard let itemID else {
+                    return
+                }
+
+                isPanning = false
+                onDragEnded?(itemID, center)
+                onDragChanged?(false)
+
+            case .cancelled, .failed:
+                isPanning = false
+                center = startCenter
+                onDragChanged?(false)
+
+            default:
+                break
             }
-
-            isPanning = false
-
-            onDragEnded?(itemID, center)
-            onDragChanged?(false)
-
-        case .failed:
-            isPanning = false
-            center = startCenter
-
-            onDragChanged?(false)
-
-        default:
-            break
         }
-    }
-
     // UITextView 입력 이벤트
     func textViewDidBeginEditing(
         _ textView: UITextView
@@ -609,8 +896,8 @@ final class EditorTextOverlayItemUIView: UIView, UIGestureRecognizerDelegate, UI
 
         onTextEditingFinished?(itemID)
     }
-    
-    
+
+
     private func makeFont(
         style: ClipTextStyle
     ) -> UIFont {
@@ -713,7 +1000,43 @@ final class EditorTextOverlayItemUIView: UIView, UIGestureRecognizerDelegate, UI
             )
         }
     }
-    
+
+    private func makeTextAlignment(
+        for alignment: ClipTextAlignment
+    ) -> NSTextAlignment {
+        switch alignment {
+        case .leading:
+            return .left
+        case .center:
+            return .center
+        case .trailing:
+            return .right
+        }
+    }
+
+    private func applyContainerStyle(
+        _ style: ClipTextContainerStyle
+    ) {
+        switch style {
+        case .none:
+            backgroundColor = .clear
+            layer.cornerRadius = 8
+            layer.borderWidth = 0
+            layer.borderColor = nil
+
+        case .glass:
+            backgroundColor = UIColor.white.withAlphaComponent(0.22)
+            layer.cornerRadius = 16
+            layer.borderWidth = 1
+            layer.borderColor = UIColor.white
+                .withAlphaComponent(0.55)
+                .cgColor
+        }
+    }
+
+
+
+
     // 텍스트 영역 드래그 → UIPanGestureRecognizer 처리
 //    x 버튼 탭 → UIButton만 처리
     func gestureRecognizer(
@@ -729,5 +1052,73 @@ final class EditorTextOverlayItemUIView: UIView, UIGestureRecognizerDelegate, UI
             || touchedView.isDescendant(of: deleteButton)
 
         return !touchedDeleteButton
+    }
+}
+
+private final class EditorTextOverlayActiveGuideUIView: UIView {
+    private let verticalGuideLayer = CAShapeLayer()
+    private let horizontalGuideLayer = CAShapeLayer()
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+
+        isUserInteractionEnabled = false
+        backgroundColor = .clear
+        isHidden = true
+
+        configure(verticalGuideLayer)
+        configure(horizontalGuideLayer)
+
+        layer.addSublayer(verticalGuideLayer)
+        layer.addSublayer(horizontalGuideLayer)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    func show(
+        verticalX: CGFloat?,
+        horizontalY: CGFloat?
+    ) {
+        isHidden = verticalX == nil && horizontalY == nil
+
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+
+        verticalGuideLayer.isHidden = verticalX == nil
+        horizontalGuideLayer.isHidden = horizontalY == nil
+
+        if let verticalX {
+            let path = UIBezierPath()
+            path.move(to: CGPoint(x: verticalX, y: 0))
+            path.addLine(to: CGPoint(x: verticalX, y: bounds.height))
+            verticalGuideLayer.path = path.cgPath
+        }
+
+        if let horizontalY {
+            let path = UIBezierPath()
+            path.move(to: CGPoint(x: 0, y: horizontalY))
+            path.addLine(to: CGPoint(x: bounds.width, y: horizontalY))
+            horizontalGuideLayer.path = path.cgPath
+        }
+
+        CATransaction.commit()
+    }
+
+    func hide() {
+        isHidden = true
+    }
+
+    private func configure(
+        _ layer: CAShapeLayer
+    ) {
+        layer.strokeColor = UIColor.systemCyan.cgColor
+        layer.lineWidth = 2
+        layer.lineCap = .round
+        layer.shadowColor = UIColor.black.cgColor
+        layer.shadowOpacity = 0.3
+        layer.shadowRadius = 2
+        layer.shadowOffset = .zero
     }
 }

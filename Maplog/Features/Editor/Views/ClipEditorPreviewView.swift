@@ -10,8 +10,8 @@ import SwiftUI
 
 // 영상과 자막 캔버스를 겹쳐서 표시
 struct ClipEditorPreviewView: View {
-    
-    
+
+
     let player: AVPlayer
     let selectedItem: ClipEditorTimelineItemViewData?
 
@@ -31,7 +31,9 @@ struct ClipEditorPreviewView: View {
     let onTextOverlayTextEditingFinished: (UUID) -> Void
     let onPreviewBackgroundTap: () -> Void
     let onTextOverlayTextEditingStarted: (UUID) -> Void
-    
+    let onTemplateSwipe: (Int) -> Void
+    let showsAlignmentGrid: Bool
+
     var body: some View {
         VStack(spacing: MaplogSpacing.xxSmall) {
             ZStack(alignment: .bottomLeading) {
@@ -40,7 +42,7 @@ struct ClipEditorPreviewView: View {
                         .equatable()
                         .background(Color.black)
                         .allowsHitTesting(false) // 영상 View가 터치를 가로채지 않으므로, 영상 위 텍스트의 탭·드래그만 정상적으로 받게됨
-                    
+
                     LinearGradient(
                         colors: [
                             .clear,
@@ -50,7 +52,11 @@ struct ClipEditorPreviewView: View {
                         endPoint: .bottom
                     )
                     .allowsHitTesting(false)
-                    
+
+                    if showsAlignmentGrid {
+                        ClipEditorAlignmentGridView()
+                    }
+
                     ClipEditorUIKitTextOverlayCanvasView(
                         items: textOverlayItems,
                         selectedID: selectedTextOverlayID,
@@ -63,9 +69,10 @@ struct ClipEditorPreviewView: View {
                         onTextChange: onTextOverlayTextChange,
                         onTextEditingFinished: onTextOverlayTextEditingFinished,
                         onBackgroundTap: onPreviewBackgroundTap,
-                        onTextEditingStarted: onTextOverlayTextEditingStarted
+                        onTextEditingStarted: onTextOverlayTextEditingStarted,
+                        onTemplateSwipe: onTemplateSwipe
                     )
-                    
+
                 } else {
                     Color.black
                         .overlay {
@@ -82,8 +89,8 @@ struct ClipEditorPreviewView: View {
                     style: .continuous
                 )
             )
-            
-            
+
+
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityLabel("선택한 클립 미리보기")

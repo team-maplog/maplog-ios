@@ -25,7 +25,7 @@ final class ClipEditorViewModel: ObservableObject {
     @Published private(set) var selectedTextOverlayID: UUID? // 여러 자막 중 사용자가 선택해서 수정 중인 자막 하나
     @Published private(set) var textInputRequestID: UUID? // 입력 시작 요청 상태
     @Published private(set) var editingTextOverlayID: UUID? // 지금 실제로 입력 중인지 상태
-    
+
     private var ignoresPlaybackProgress = false // 드래그 중에는 재생 시간 갱신을 무시
     private let input: ClipEditorInput // Clip Picker에서 넘겨준 선택 결과, 실제 CaptureDraftClip들이 있고, 각 클립의 파일 URL·촬영 날짜·길이가 들어있음
     private let videoThumbnailService: any VideoThumbnailService // 영상 파일 URL로부터 썸네일 Data를 만드는 기술 담당
@@ -35,7 +35,7 @@ final class ClipEditorViewModel: ObservableObject {
     private let videoPlaybackService: any VideoPlaybackService
     private let videoExportService: any VideoExportService
     private var sequenceReloadTask: Task<Void, Never>? // 빠르게 여러 번 드래그했을 때, 이전 순서로 만드는 작업을 취소하고 가장 마지막 순서만 반영하기 위한 프로퍼티
-    
+
     init(
         input: ClipEditorInput,
         videoThumbnailService: any VideoThumbnailService,
@@ -47,8 +47,8 @@ final class ClipEditorViewModel: ObservableObject {
         self.videoPlaybackService = videoPlaybackService
         self.videoExportService = videoExportService
     }
-    
-    
+
+
 //    isPreviewPlaying      → ▶ / ⏸ 아이콘 결정
 //    currentPlaybackTimeText → 2.4s
 //    totalDurationText       → 6.0s
@@ -68,7 +68,7 @@ final class ClipEditorViewModel: ObservableObject {
     var totalDurationText: String {
         playbackTimeText(totalDuration)
     }
-    
+
     var isTextEditing: Bool {
         editingTextOverlayID != nil
     }
@@ -78,14 +78,14 @@ final class ClipEditorViewModel: ObservableObject {
     ) -> String {
         String(format: "%.1fs", seconds)
     }
-    
-    
-    
-    
-    
-    
-    
-    
+
+
+
+
+
+
+
+
 //    Picker 선택: [B, A, C]
 //    input.clips: [B, A, C]
 //    orderedClips: [B, A, C]
@@ -94,21 +94,22 @@ final class ClipEditorViewModel: ObservableObject {
         guard !hasPrepared else {
             return
         }
-        
+
         hasPrepared = true
         state = .loading
+        await Task.yield()
         isPreviewMuted = videoPlaybackService.isMuted
-        
+
         orderedClips = input.clips
-        
+
         editorTimeline = ClipEditorTimeline( // A,B,C 전체 Schedule을 만듦
             clips: orderedClips
         )
-        
+
         timelineItems = orderedClips.map { clip in
             makeTimelineItemViewData(from: clip)
         }
-        
+
         guard let firstVideoClip = orderedClips.first(
             where: { $0.mediaType == .video }
         ) else {
@@ -120,21 +121,22 @@ final class ClipEditorViewModel: ObservableObject {
             )
             return
         }
-        
+
         do {
+            print("1. 편집 준비 시작")
             try await loadSequencePreview() // 실제 A-B-C 영상을 AVPlayer에 준비
-            
+            print("2. 영상 시퀀스 준비 완료")
             guard !Task.isCancelled else {
                 return
             }
-            
+
             selectPreview( // 자동 재생 설정
                 id: firstVideoClip.id,
                 shouldPlay: true
             )
-            
+
             state = .content
-            
+
             await loadThumbnails(
                 for: orderedClips
             )
@@ -142,9 +144,9 @@ final class ClipEditorViewModel: ObservableObject {
             guard !Task.isCancelled else {
                 return
             }
-            
+
             hasPrepared = false
-            
+
             state = .failed(
                 ClipEditorErrorPolicy.playbackPresentation(
                     for: error
@@ -157,10 +159,10 @@ final class ClipEditorViewModel: ObservableObject {
         ) else {
             return nil
         }
-        
+
         return index + 1
     }
-    
+
     func beginTextEditing(id: UUID) {
         guard textOverlays.contains(where: { $0.id == id }) else {
             return
@@ -177,7 +179,7 @@ final class ClipEditorViewModel: ObservableObject {
 
         editingTextOverlayID = nil
     }
-    
+
     // 실제 영상 준비 + 화면 상태 변경 함수 추가
     func selectPreview(
         id: UUID,
@@ -195,7 +197,7 @@ final class ClipEditorViewModel: ObservableObject {
             }
 
         selectedPreview = timelineItem // 상단 화면에 썸네일·길이 표시
-        
+
         movePlayback(
                 to: segment.startTime
             )
@@ -208,16 +210,16 @@ final class ClipEditorViewModel: ObservableObject {
 
             isPreviewPlaying = shouldPlay
     }
-    
+
     func stopPreview() {
         videoPlaybackService.stop()
-        
+
         playbackProgress = 0
         playingClipID = nil
         playingLocalTime = 0
         isPreviewPlaying = false
     }
-    
+
     // 재생·일시정지와 재생 위치 이동 행동
     func togglePreviewPlayback() {
         guard totalDuration > 0 else {
@@ -238,14 +240,14 @@ final class ClipEditorViewModel: ObservableObject {
         videoPlaybackService.pause()
         isPreviewPlaying = false
     }
-    
+
     // 음소거
     func togglePreviewMute() {
         videoPlaybackService.toggleMute()
 
         isPreviewMuted = videoPlaybackService.isMuted
     }
-    
+
 //    T 버튼 탭
 //    → toggleActiveTool(.text)
 //    → T 버튼 라임 활성화
@@ -304,7 +306,7 @@ final class ClipEditorViewModel: ObservableObject {
 
             ignoresPlaybackProgress = isDragging
         }
-    
+
     func seekPreview( // 화면의 0.0 ~ 1.0 슬라이더 값을 실제 영상 시간으로 바꿔서, 이미 있는 movePlayback(to:)에 전달
         to progress: Double
     ) {
@@ -317,53 +319,53 @@ final class ClipEditorViewModel: ObservableObject {
             to: safeProgress * totalDuration
         )
     }
-    
+
     func exportVideo() async {
         guard !orderedClips.isEmpty, !isExporting else {
             return
         }
-        
+
         isExporting = true
         exportError = nil
         exportedVideo = nil
-        
+
         videoPlaybackService.pause()
         isPreviewPlaying = false
-        
+
         defer {
             isExporting = false
         }
-        
+
         do {
             let request = VideoExportRequest(
                 clips: orderedClips,
                 textOverlays: textOverlays
             )
-            
+
             let result = try await videoExportService.export(
                 request: request
             )
-            
+
             guard !Task.isCancelled else {
                         return
                     }
-            
+
             exportedVideo = result
         } catch {
             guard !Task.isCancelled else {
                 return
             }
-            
+
             exportError = ClipEditorErrorPolicy.exportPresentation(for: error)
         }
     }
-    
+
     func textOverlays(for clipID: UUID) -> [ClipTextOverlay] {
         textOverlays
             .filter { $0.clipID == clipID }
             .sorted { $0.startTime < $1.startTime }
     }
-    
+
 //    A 클립 재생 중
 //    → A 클립의 현재 시간에 보일 자막만 표시
 //
@@ -395,7 +397,7 @@ final class ClipEditorViewModel: ObservableObject {
             $0.id == selectedTextOverlayID
         }
     }
-    
+
     var selectedTextOverlayItem: ClipTextOverlayItemViewData? {
         guard let selectedTextOverlay else {
             return nil
@@ -405,7 +407,83 @@ final class ClipEditorViewModel: ObservableObject {
             from: selectedTextOverlay
         )
     }
-    
+
+//    현재 선택된 자막이 있는지 확인
+//    그 자막이 일반 텍스트인지, 위치·시간 자막인지 확인
+//    위치·시간 자막이면 현재 적용된 템플릿(.vlogLine 등)을 반환
+    var selectedLocationTimestampTemplate: ClipLocationTimestampTemplate? {
+        guard let selectedTextOverlay else {
+            return nil
+        }
+
+        guard case let .locationTimestamp(template) = selectedTextOverlay.kind else {
+            return nil
+        }
+
+        return template
+    }
+
+    // 템플릿을 앞 뒤로 바꾸는 함수
+//    위치·시간 자막 묶음을 선택
+//    → 현재 템플릿 확인
+//    → allCases에서 다음 템플릿 찾기
+//    → 해당 묶음을 다음 템플릿의 여러 오버레이로 교체
+//    → UIKit 캔버스가 새 배치를 다시 그림
+    func moveLocationTimestampTemplate(
+        for id: UUID,
+        by offset: Int
+    ) {
+        guard
+            let selectedOverlay = textOverlays.first(
+                where: { $0.id == id }
+            ),
+            case let .locationTimestamp(currentTemplate) =
+                selectedOverlay.kind,
+            let groupID = selectedOverlay.locationTimestampGroupID,
+            let clip = orderedClips.first(
+                where: {
+                    $0.id == selectedOverlay.clipID
+                }
+            ),
+            let currentIndex =
+                ClipLocationTimestampTemplate.allCases.firstIndex(
+                    of: currentTemplate
+                )
+        else {
+            return
+        }
+
+        let templates = ClipLocationTimestampTemplate.allCases
+
+        let nextIndex = (
+            currentIndex
+            + offset
+            + templates.count
+        ) % templates.count
+
+        let nextTemplate = templates[nextIndex]
+
+        let newOverlays =
+            ClipLocationTimestampOverlayFactory.makeOverlays(
+                for: clip,
+                template: nextTemplate,
+                groupID: groupID
+            )
+
+        guard !newOverlays.isEmpty else {
+            return
+        }
+
+        textOverlays.removeAll {
+            $0.locationTimestampGroupID == groupID
+        }
+
+        textOverlays.append(contentsOf: newOverlays)
+
+        selectedTextOverlayID = newOverlays.first?.id
+        activeTool = .location
+    }
+
     // ViewModel에서 변환
     func textOverlayItems(
         for clipID: UUID
@@ -414,18 +492,20 @@ final class ClipEditorViewModel: ObservableObject {
             .map(makeTextOverlayItemViewData)
     }
 
+    // 이 항목은 템플릿 스와이프를 지원한다는 화면용 정보만 받는 구조
     private func makeTextOverlayItemViewData(
         from overlay: ClipTextOverlay
     ) -> ClipTextOverlayItemViewData {
         ClipTextOverlayItemViewData(
-            id: overlay.id,
-            text: overlay.text,
-            displayTimeText: overlayTimeText(
-                for: overlay
-            ),
-            position: overlay.position,
-            style: overlay.style
-        )
+                id: overlay.id,
+                text: overlay.text,
+                displayTimeText: overlayTimeText(
+                    for: overlay
+                ),
+                position: overlay.position,
+                style: overlay.style,
+                alignment: overlay.alignment
+            )
     }
 
     private func overlayTimeText(
@@ -440,7 +520,7 @@ final class ClipEditorViewModel: ObservableObject {
     ) -> String {
         String(format: "%.1f", seconds)
     }
-    
+
     func addTextOverlayToCurrentClip() {
 //        영상이 B 클립을 재생 중이면 → B에 텍스트 생성
 //        아직 재생 위치를 못 찾은 상황이면 → 사용자가 선택한 카드인 selectedPreview 클립에 생성
@@ -454,13 +534,45 @@ final class ClipEditorViewModel: ObservableObject {
         }
 
         pausePreviewForEditing()
-        
+
         addTextOverlay(
             to: clipID,
             text: "텍스트"
         )
     }
-    
+    // 위치·시간 자막 생성 함수
+    func addLocationTimestampOverlayToCurrentClip() {
+        guard
+            let clipID = playingClipID ?? selectedPreview?.id,
+            let clip = orderedClips.first(
+                where: {
+                    $0.id == clipID
+                    && $0.mediaType == .video
+                }
+            ),
+            let duration = clip.duration,
+            duration > 0
+        else {
+            return
+        }
+
+        pausePreviewForEditing()
+
+        let overlays =
+            ClipLocationTimestampOverlayFactory.makeOverlays(
+                for: clip,
+                template: .vlogLine
+            )
+
+        guard !overlays.isEmpty else {
+            return
+        }
+
+        textOverlays.append(contentsOf: overlays)
+        selectedTextOverlayID = overlays.first?.id
+        activeTool = .location
+    }
+
 //    5초짜리 A 클립
 //    현재 1.3초 재생 중
 //    → 새 자막: 1.3초 ~ 3.3초
@@ -498,7 +610,7 @@ final class ClipEditorViewModel: ObservableObject {
         textInputRequestID = overlay.id
         activeTool = .text
     }
-    
+
     func finishTextInputRequest(for id: UUID) {
         guard textInputRequestID == id else {
             return
@@ -506,7 +618,7 @@ final class ClipEditorViewModel: ObservableObject {
 
         textInputRequestID = nil
     }
-    
+
     func updateTextOverlayPosition(
         id: UUID,
         position: ClipOverlayPosition
@@ -519,7 +631,7 @@ final class ClipEditorViewModel: ObservableObject {
 
         textOverlays[index].position = position
     }
-    
+
     // ID 기반 텍스트 수정 함수
 //   UITextView가 “나는 123번 자막이고, 내용이 이렇게 바뀌었어” 전달
 //    → ViewModel이 123번 자막을 찾아
@@ -536,7 +648,7 @@ final class ClipEditorViewModel: ObservableObject {
 
         textOverlays[index].text = text
     }
-    
+
     // 입력 완료도 ID 기준, 입력이 끝났을 때 공백만 남았다면 자막을 삭제하고, 내용이 있으면 앞뒤 공백만 정리
     func finishTextEditing(
         id: UUID
@@ -559,7 +671,7 @@ final class ClipEditorViewModel: ObservableObject {
 
         textOverlays[index].text = trimmedText
     }
-    
+
     func updateSelectedText(
         _ text: String
     ) {
@@ -648,15 +760,36 @@ final class ClipEditorViewModel: ObservableObject {
 
         update(&textOverlays[index])
     }
-    
+
     func deleteTextOverlay(
         id: UUID
     ) {
-        textOverlays.removeAll {
-            $0.id == id
+        guard let overlay = textOverlays.first(
+            where: { $0.id == id }
+        ) else {
+            return
         }
 
-        if selectedTextOverlayID == id {
+        if let groupID = overlay.locationTimestampGroupID {
+            textOverlays.removeAll {
+                $0.locationTimestampGroupID == groupID
+            }
+        } else {
+            textOverlays.removeAll {
+                $0.id == id
+            }
+        }
+
+        let isSelectedTimestampGroup: Bool
+
+        if let groupID = overlay.locationTimestampGroupID {
+            isSelectedTimestampGroup =
+                selectedTextOverlay?.locationTimestampGroupID == groupID
+        } else {
+            isSelectedTimestampGroup = false
+        }
+
+        if selectedTextOverlayID == id || isSelectedTimestampGroup {
             selectedTextOverlayID = nil
             activeTool = .none
         }
@@ -664,7 +797,7 @@ final class ClipEditorViewModel: ObservableObject {
             textInputRequestID = nil
         }
     }
-    
+
     func playExportedVideo(
         _ result: VideoExportResult
     ) {
@@ -677,12 +810,12 @@ final class ClipEditorViewModel: ObservableObject {
 
         videoPlaybackService.play()
     }
-    
+
     private func makeTimelineItemViewData(from clip: CaptureDraftClip) -> ClipEditorTimelineItemViewData {
         ClipEditorTimelineItemViewData(id: clip.id, thumbnailData: nil, durationText: durationText(for: clip)
         )
     }
-    
+
     func restoreSelectedPreview() async {
         editorTimeline = ClipEditorTimeline( // Picker를 닫을 때 새 타임라인 기준으로 다시 재생
             clips: orderedClips
@@ -711,56 +844,56 @@ final class ClipEditorViewModel: ObservableObject {
             )
         }
     }
-    
+
     private func durationText(for clip: CaptureDraftClip) -> String {
         guard clip.mediaType == .video,
               let duration = clip.duration
         else {
             return "사진"
         }
-        
+
         return "\(max(1, Int(duration.rounded())))s"
     }
-    
+
     private func loadThumbnails(for clips: [CaptureDraftClip]
     ) async {
         for clip in clips where clip.mediaType == .video {
             let thumbnailData = try? await videoThumbnailService
                 .makeThumbnailData(for: clip.fileURL)
-            
+
             guard !Task.isCancelled else {
                 return
             }
-            
+
             guard let index = timelineItems.firstIndex(where: { $0.id == clip.id }
             ) else {
                 continue
             }
-            
+
             timelineItems[index].thumbnailData = thumbnailData
-            
+
             if selectedPreview?.id == clip.id {
                 selectedPreview = timelineItems[index]
             }
         }
     }
-    
+
     var editingClipIDs: Set<UUID> { // 지금 편집기에 포함된 클립 ID 모음, + 선택 화면에서 중복 클립을 숨기는 데 사용
         Set(
             orderedClips.map(\.id)
         )
     }
-    
+
     // 현재 편집 순서를 외부에 전달할 프로퍼티
     var editingClipIDsInOrder: [UUID] {
         orderedClips.map(\.id)
     }
-    
+
     // 삭제 순서 변경 행동
     var canRemoveClip: Bool {
         orderedClips.count > 1
     }
-    
+
     // 클립 제외 뒤에도 재생 순서 갱신
     func removeClip(id: UUID) {
         guard canRemoveClip,
@@ -796,7 +929,7 @@ final class ClipEditorViewModel: ObservableObject {
             preferredSelectionID: preferredSelectionID
         )
     }
-    
+
 //    1. Picker 선택 순서 그대로 finalClips 생성
 //    2. 중복 ID 제거
 //    3. 기존 orderedClips를 finalClips로 교체
@@ -890,18 +1023,18 @@ final class ClipEditorViewModel: ObservableObject {
             )
         }
     }
-    
-    
-    
-    
+
+
+
+
     func canMoveClipEarlier(id: UUID) -> Bool {
         guard let index = orderedClips.firstIndex(where: { $0.id == id }) else {
             return false
         }
-        
+
         return index > 0
         }
-        
+
     func canMoveClipLater(id: UUID) -> Bool {
         guard let index = orderedClips.firstIndex(where: { $0.id == id }) else {
             return false
@@ -909,7 +1042,7 @@ final class ClipEditorViewModel: ObservableObject {
         // 현재 클립이 마지막 클립보다 앞에 있으면, 뒤로 이동할 수 있음 true false
         return index < orderedClips.count - 1
     }
-    
+
     func moveClipEarlier(id: UUID) {
         guard let index = orderedClips.firstIndex(where: { $0.id == id }) else {
             return
@@ -922,12 +1055,12 @@ final class ClipEditorViewModel: ObservableObject {
         // 앞으로 이동
         orderedClips.swapAt(index, index - 1)
         timelineItems.swapAt(index, index - 1)
-        
+
         refreshSequencePreview(
             preferredSelectionID: selectedPreview?.id
         )
     }
-    
+
     func moveClipLater(id: UUID) {
         guard let index = orderedClips.firstIndex(where: { $0.id == id }) else {
             return
@@ -936,18 +1069,18 @@ final class ClipEditorViewModel: ObservableObject {
         guard index < orderedClips.count - 1 else {
             return
         }
-        
+
         //        [B, A, C]
         //        B를 뒤로 이동
         //        → [A, B, C]
         orderedClips.swapAt(index, index + 1)
         timelineItems.swapAt(index, index + 1)
-        
+
         refreshSequencePreview(
             preferredSelectionID: selectedPreview?.id
         )
     }
-    
+
 //    B 카드를 길게 누르고 C 위치까지 드래그
 //    → Timeline View가 “B를 C 위치로 옮겨줘” 전달
 //    → ViewModel이 orderedClips와 timelineItems를 같은 순서로 이동
@@ -960,13 +1093,13 @@ final class ClipEditorViewModel: ObservableObject {
         else {
              return
         }
-        
+
         let movingClip = orderedClips.remove(at: sourceIndex)
         let movingItem = timelineItems.remove(at: sourceIndex)
-        
+
         orderedClips.insert(movingClip, at: targetIndex)
         timelineItems.insert(movingItem, at: targetIndex)
-        
+
         refreshSequencePreview(
             preferredSelectionID: selectedPreview?.id
         )
@@ -996,7 +1129,7 @@ final class ClipEditorViewModel: ObservableObject {
             )
         }
     }
-    
+
     // 타임라인 변경 뒤 재생기를 다시 만드는 함수
 //    refreshSequencePreview
 //    → 이전 재로딩 작업 취소
@@ -1022,7 +1155,7 @@ final class ClipEditorViewModel: ObservableObject {
             )
         }
     }
-    
+
     private func rebuildSequencePreview(
         preferredSelectionID: UUID?
     ) async {
@@ -1124,7 +1257,7 @@ final class ClipEditorViewModel: ObservableObject {
             for: globalTime
         )
     }
-    
+
     func retryPrepare() async {
         hasPrepared = false
 
@@ -1137,10 +1270,22 @@ final class ClipEditorViewModel: ObservableObject {
 
         await prepare()
     }
-    
+
     func dismissExportError() {
         exportError = nil
     }
-      
-        
+
+    func moveSelectedLocationTimestampTemplate(
+        by offset: Int
+    ) {
+        guard let selectedTextOverlayID else {
+            return
+        }
+
+        moveLocationTimestampTemplate(
+            for: selectedTextOverlayID,
+            by: offset
+        )
+    }
+
 }

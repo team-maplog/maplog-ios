@@ -34,6 +34,7 @@ struct MainTabView: View {
     private let videoThumbnailService: any VideoThumbnailService
     private let videoPlaybackService: any VideoPlaybackService
     private let videoExportService: any VideoExportService
+    private let captureLocationService: any CaptureLocationService
     @State private var homeNavigationPath: [HomeNavigationRoute] = []
 
 
@@ -44,6 +45,7 @@ struct MainTabView: View {
         videoThumbnailService: any VideoThumbnailService,
         videoPlaybackService: any VideoPlaybackService,
         videoExportService: any VideoExportService,
+        captureLocationService: any CaptureLocationService,
         requestedTab: Binding<MaplogTab?> = .constant(nil),
         requestedCapturePlaceName: Binding<String?> = .constant(nil)
     ) {
@@ -53,7 +55,8 @@ struct MainTabView: View {
         self.videoThumbnailService = videoThumbnailService
         self.videoPlaybackService = videoPlaybackService
         self.videoExportService = videoExportService
-        
+        self.captureLocationService = captureLocationService
+
         _requestedTab = requestedTab
         _requestedCapturePlaceName = requestedCapturePlaceName
         _selectedTab = State(initialValue: .home)
@@ -88,7 +91,7 @@ struct MainTabView: View {
     private var tabBarMorphAnimation: Animation? {
         reduceMotion ? nil : .smooth(duration: 0.4)
     }
-    
+
     @ViewBuilder
     private var bottomContorls: some View {
         if #available(iOS 26, *) {
@@ -99,7 +102,7 @@ struct MainTabView: View {
             bottomControlsContent
         }
     }
-    
+
     private var bottomControlsContent: some View {
         HStack(spacing: MaplogSpacing.small) {
             MaplogTabBar(
@@ -108,7 +111,7 @@ struct MainTabView: View {
                 isReelStyle: usesReelTabBarStyle
             )
             .frame(maxWidth: .infinity)
-            
+
             MaplogCaptureButton(isReelStyle: usesReelTabBarStyle) {
                 withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
                     applyRequestedTab(.capture)
@@ -150,7 +153,8 @@ struct MainTabView: View {
                         mediaDraftRepository: mediaDraftRepository,
                         videoThumbnailService: videoThumbnailService,
                         videoPlaybackService: videoPlaybackService,
-                        videoExportService: videoExportService
+                        videoExportService: videoExportService,
+                        captureLocationService: captureLocationService
                     ) {
                         withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
                             selectedTab = previousTab
@@ -180,7 +184,7 @@ struct MainTabView: View {
                         isReelStyle: usesReelTabBarStyle
                     )
                     .frame(maxWidth: .infinity)
-                    
+
                     MaplogCaptureButton(isReelStyle: usesReelTabBarStyle) {
                         withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
                             applyRequestedTab(.capture)
@@ -278,7 +282,7 @@ struct MaplogTabBar: View {
     @Binding var selectedTab: MaplogTab
     var isCompact = false
     var isReelStyle = false
-    
+
     @ViewBuilder
     var body: some View {
         if isCompact {
@@ -287,7 +291,7 @@ struct MaplogTabBar: View {
             standardTabBar
         }
     }
-    
+
     private var standardTabBar: some View {
         HStack(spacing: 0) {
             ForEach(MaplogTab.navigationTabs) { tab in
@@ -321,7 +325,7 @@ struct MaplogTabBar: View {
                 }
         }
     }
-    
+
     // iOS 버전에 맞춰 유리 표면만 입힘
     @ViewBuilder
     private var compactTabBar: some View {
@@ -354,8 +358,8 @@ struct MaplogTabBar: View {
             )
     }
 
-        
-    
+
+
     // 탭 아이콘·선택 상태·크기만 담당
     private var compactTabBarContent: some View {
         HStack(spacing: 4) {

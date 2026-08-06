@@ -30,6 +30,8 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>Maplog 촬영 화면에서 여행 영상을 기록하기 위해 카메라를 사용합니다.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>촬영한 여행 영상에 위치와 시간을 표시하기 위해 현재 위치를 사용합니다.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Maplog 영상 클립에 현장 소리를 함께 담기 위해 마이크를 사용합니다.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>

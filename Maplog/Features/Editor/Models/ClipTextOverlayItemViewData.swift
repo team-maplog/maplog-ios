@@ -13,6 +13,7 @@ struct ClipTextOverlayItemViewData: Identifiable, Equatable {
     let displayTimeText: String
     let position: ClipOverlayPosition
     let style: ClipTextStyle
+    let alignment: ClipTextAlignment
 }
 
 //ClipTextOverlay

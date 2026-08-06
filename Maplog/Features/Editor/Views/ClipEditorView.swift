@@ -12,12 +12,14 @@ struct ClipEditorView: View {
     @ObservedObject var viewModel: ClipEditorViewModel
     @State private var exportPreviewResult: VideoExportResult?
     @State private var isOverlayDragging = false
-    
+    @State private var hasShownLocationTemplateHint = false
+    @State private var isLocationTemplateHintVisible = false
+
     let previewPlayer: AVPlayer
     let onAddClipTap: () -> Void
-    
+
     @Environment(\.dismiss) private var dismiss
-    
+
     var body: some View {
         ZStack {
                 Color.black
@@ -75,7 +77,7 @@ struct ClipEditorView: View {
 //            VideoExportPreviewView
 //            → 전달받은 AVPlayer를 화면에 표시
 //            → 닫기 버튼으로 자기 화면만 닫음
-            
+
             exportPreviewResult = exportedVideo
         }
         .fullScreenCover(
@@ -94,8 +96,21 @@ struct ClipEditorView: View {
                     }
             )
         }
+        .onChange(
+            of: viewModel.selectedLocationTimestampTemplate
+        ) { template in
+            guard
+                template != nil,
+                !hasShownLocationTemplateHint
+            else {
+                return
+            }
+
+            hasShownLocationTemplateHint = true
+            isLocationTemplateHintVisible = true
+        }
     }
-    
+
     private var contentView: some View {
         GeometryReader { proxy in
             VStack(spacing: 0) {
@@ -130,7 +145,7 @@ struct ClipEditorView: View {
         .background(Color.maplogSurface)
         .ignoresSafeArea(edges: .top)
     }
-    
+
     private func previewCanvas(
         height: CGFloat
     ) -> some View {
@@ -140,6 +155,7 @@ struct ClipEditorView: View {
             textOverlayItems: viewModel.visibleTextOverlayItems,
             selectedTextOverlayID: viewModel.selectedTextOverlayID,
             onTextOverlayTap: { id in
+                isLocationTemplateHintVisible = false
                 viewModel.selectTextOverlay(id: id)
             },
             onTextOverlayPositionChange: { id, position in
@@ -174,11 +190,20 @@ struct ClipEditorView: View {
                 viewModel.endTextEditing(id: id) // 지금 입력 중 상태를 끝냄
             },
             onPreviewBackgroundTap: {
+                isLocationTemplateHintVisible = false
                 viewModel.selectTextOverlay(id: nil)
             },
             onTextOverlayTextEditingStarted: { id in
                 viewModel.beginTextEditing(id: id)
-            }
+            },
+            onTemplateSwipe: { offset in
+                isLocationTemplateHintVisible = false
+
+                viewModel.moveSelectedLocationTimestampTemplate(
+                    by: offset
+                )
+            },
+            showsAlignmentGrid: isOverlayDragging
         )
         .frame(maxWidth: .infinity)
         .frame(height: height)
@@ -212,7 +237,7 @@ struct ClipEditorView: View {
                 .animation(nil, value: isOverlayDragging)
             }
         }
-        
+
         .overlay(alignment: .top) {
             ClipEditorTopControlsView(
                 activeTool: viewModel.activeTool,
@@ -224,7 +249,7 @@ struct ClipEditorView: View {
                     viewModel.addTextOverlayToCurrentClip()
                 },
                 onLocationTap: {
-                    viewModel.toggleActiveTool(.location)
+                    viewModel.addLocationTimestampOverlayToCurrentClip()
                 },
                 onStickerTap: {
                     viewModel.toggleActiveTool(.sticker)
@@ -236,9 +261,25 @@ struct ClipEditorView: View {
             .allowsHitTesting(!isOverlayDragging)
             .animation(nil, value: isOverlayDragging)
         }
+        .overlay(alignment: .bottom) { // 편집 화면을 연 동안 한 번만 표시되고, 다른 곳을 탭하거나 실제 스와이프를 하면 사라짐
+            if isLocationTemplateHintVisible {
+                Text("좌우로 밀어 위치·시간 스타일 변경")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, MaplogSpacing.small)
+                    .padding(.vertical, MaplogSpacing.xxSmall)
+                    .background(
+                        .ultraThinMaterial,
+                        in: Capsule()
+                    )
+                    .padding(.bottom, MaplogSpacing.medium)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
+        }
         .clipped()
     }
-    
+
     // ViewModel의 상태를 화면용 컴포넌트에 전달하고, 버튼·슬라이더에서 발생한 행동은 다시 ViewModel에 전달하는 연결부
 //    사용자 재생 버튼 탭
 //    → ClipEditorPlaybackControlsView의 onPlayPauseTap 실행
@@ -263,7 +304,7 @@ struct ClipEditorView: View {
                     viewModel.seekPreview(to: progress)
                 }
             )    }
-    
+
     private var editorBottomPanel: some View {
         VStack(spacing: MaplogSpacing.small) {
             timelineSection
@@ -275,7 +316,7 @@ struct ClipEditorView: View {
         .padding(.bottom, MaplogSpacing.xxSmall)
         .background(Color.maplogSurface)
     }
-    
+
     private var timelineSection: some View {
         ClipEditorTimelineStripView(
             items: viewModel.timelineItems,
@@ -299,7 +340,7 @@ struct ClipEditorView: View {
             onAdd: onAddClipTap
         )
     }
-    
+
     private func failedView(
         _ presentation: ErrorPresentation
     ) -> some View {
@@ -307,15 +348,15 @@ struct ClipEditorView: View {
             Image(systemName: "video.slash")
                 .font(.largeTitle)
                 .foregroundStyle(.secondary)
-            
+
             Text("미리보기를 열지 못했어요")
                 .font(.title3.weight(.bold))
-            
+
             Text(presentation.message)
                 .font(.body)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
-            
+
             if presentation.recoveryAction == .retry {
                 Button("다시 시도") {
                     Task {
@@ -329,7 +370,7 @@ struct ClipEditorView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
-    
+
     private var exportActionButton: some View {
         Button {
             Task {
@@ -343,7 +384,7 @@ struct ClipEditorView: View {
                 } else {
                     Image(systemName: "film")
                 }
-                
+
                 Text(
                     viewModel.isExporting
                     ? "영상 만드는 중…"
@@ -374,7 +415,7 @@ struct ClipEditorView: View {
             "현재 타임라인 순서대로 클립을 하나의 영상으로 만듭니다."
         )
     }
-    
+
     private var exportErrorBinding: Binding<Bool> {
         Binding(
             get: {

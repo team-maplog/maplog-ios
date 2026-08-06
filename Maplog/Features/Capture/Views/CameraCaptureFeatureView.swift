@@ -10,20 +10,21 @@ import SwiftUI
 struct CameraCaptureFeatureView: View {
     @StateObject private var viewModel: CameraCaptureViewModel // CameraCaptureViewModel을 처음 만들고, 카메라 화면이 유지되는 동안 계속 소유
     @State private var isClipPickerPresented = false
-    
+
     private let mediaDraftRepository: any MediaDraftRepository
     private let videoThumbnailService: any VideoThumbnailService
     private let videoPlaybackService: any VideoPlaybackService
     private let videoExportService: any VideoExportService
-    
+
     let onClose: () -> Void
-    
+
     init(
         cameraCaptureService: any CameraCaptureService,
         mediaDraftRepository: any MediaDraftRepository,
         videoThumbnailService: any VideoThumbnailService,
         videoPlaybackService: any VideoPlaybackService,
         videoExportService: any VideoExportService,
+        captureLocationService: any CaptureLocationService,
         onClose: @escaping () -> Void
     ) {
         self.mediaDraftRepository = mediaDraftRepository
@@ -34,12 +35,13 @@ struct CameraCaptureFeatureView: View {
             wrappedValue: CameraCaptureViewModel(
                 cameraCaptureService: cameraCaptureService,
                 mediaDraftRepository: mediaDraftRepository,
-                videoThumbnailService: videoThumbnailService
+                videoThumbnailService: videoThumbnailService,
+                captureLocationService: captureLocationService
             )
         )
         self.onClose = onClose
     }
-    
+
 //    최근 썸네일 탭
 //    → 카메라 세션 중지
 //    → ClipPickerFeatureView 전체 화면 표시
