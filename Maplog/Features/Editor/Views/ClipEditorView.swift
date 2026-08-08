@@ -14,6 +14,7 @@ struct ClipEditorView: View {
     @State private var isOverlayDragging = false
     @State private var hasShownLocationTemplateHint = false
     @State private var isLocationTemplateHintVisible = false
+    @State private var isEditorPanelExpanded = false // 하단 패널 상태
 
     let previewPlayer: AVPlayer
     let onAddClipTap: () -> Void
@@ -113,30 +114,21 @@ struct ClipEditorView: View {
 
     private var contentView: some View {
         GeometryReader { proxy in
-            VStack(spacing: 0) {
-                let previewHeight = viewModel.isTextEditing
-                    ? proxy.size.height
-                    : max(
-                        ClipEditorLayout.previewMinimumHeight,
-                        proxy.size.height
-                            * ClipEditorLayout.previewHeightRatio
-                    )
-
-                previewCanvas(height: previewHeight)
+            ZStack(alignment: .bottom) {
+                previewCanvas(
+                    height: previewHeight(for: proxy.size)
+                )
+                .frame(
+                    maxWidth: .infinity,
+                    maxHeight: .infinity,
+                    alignment: .top
+                )
 
                 if !viewModel.isTextEditing {
-                    playbackControls
-
-                    Spacer(minLength: 0)
-
                     editorBottomPanel
+                        .zIndex(1)
                 }
             }
-            .frame(
-                maxWidth: .infinity,
-                maxHeight: .infinity,
-                alignment: .top
-            )
             .frame(
                 maxWidth: .infinity,
                 maxHeight: .infinity
@@ -144,6 +136,27 @@ struct ClipEditorView: View {
         }
         .background(Color.maplogSurface)
         .ignoresSafeArea(edges: .top)
+    }
+    
+    private func previewHeight(
+        for size: CGSize
+    ) -> CGFloat {
+        if viewModel.isTextEditing {
+            return size.height
+        }
+
+        let videoHeightForFullWidth =
+            size.width * (16.0 / 9.0)
+
+        let availableHeight =
+            size.height
+            - ClipEditorLayout.playbackControlsHeight
+            - ClipEditorLayout.collapsedEditorPanelHeight
+
+        return min(
+            videoHeightForFullWidth,
+            max(0, availableHeight)
+        )
     }
 
     private func previewCanvas(
@@ -306,15 +319,73 @@ struct ClipEditorView: View {
             )    }
 
     private var editorBottomPanel: some View {
-        VStack(spacing: MaplogSpacing.small) {
-            timelineSection
+        VStack(spacing: 0) {
+            playbackControls
 
-            exportActionButton
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    isEditorPanelExpanded.toggle()
+                }
+            } label: {
+                VStack(spacing: 4) {
+                    Capsule()
+                        .fill(Color.maplogInk.opacity(0.24))
+                        .frame(width: 36, height: 4)
+
+                    HStack {
+                        Text(
+                            "클립 편집 · \(viewModel.timelineItems.count)개"
+                        )
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Color.maplogInk)
+
+                        Spacer()
+
+                        Image(
+                            systemName: isEditorPanelExpanded
+                            ? "chevron.down"
+                            : "chevron.up"
+                        )
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(Color.maplogInk)
+                    }
+                }
+                .padding(.horizontal, MaplogSpacing.page)
+                .frame(
+                    height: ClipEditorLayout.collapsedEditorPanelHeight
+                )
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("클립 편집 패널")
+            .accessibilityValue(
+                isEditorPanelExpanded ? "펼쳐짐" : "접힘"
+            )
+
+            if isEditorPanelExpanded {
+                VStack(spacing: MaplogSpacing.small) {
+                    timelineSection
+                    exportActionButton
+                }
+                .padding(.horizontal, MaplogSpacing.page)
+                .padding(.top, MaplogSpacing.xxSmall)
+                .padding(.bottom, MaplogSpacing.small)
+                .transition(
+                    .move(edge: .bottom)
+                        .combined(with: .opacity)
+                )
+            }
         }
-        .padding(.horizontal, MaplogSpacing.page)
-        .padding(.top, MaplogSpacing.small)
-        .padding(.bottom, MaplogSpacing.xxSmall)
         .background(Color.maplogSurface)
+        .shadow(
+            color: .black.opacity(0.12),
+            radius: 12,
+            y: -4
+        )
+        .animation(
+            .easeInOut(duration: 0.2),
+            value: isEditorPanelExpanded
+        )
     }
 
     private var timelineSection: some View {

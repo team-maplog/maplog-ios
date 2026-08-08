@@ -29,4 +29,11 @@ enum ClipEditorLayout {
     static let playbackScrubberTopInset: CGFloat = 2
     static let playbackTrackHeight: CGFloat = 3
     static let playbackThumbSize: CGFloat = 10
+    
+    static let playbackControlsHeight: CGFloat = 44
+    static let collapsedEditorPanelHeight: CGFloat = 44
+    
+    static let collapsedBottomDrawerHeight: CGFloat =
+        playbackControlsHeight
+        + collapsedEditorPanelHeight
 }
