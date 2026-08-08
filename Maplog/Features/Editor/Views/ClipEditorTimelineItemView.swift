@@ -10,7 +10,6 @@ import UIKit
 
 struct ClipEditorTimelineItemView: View {
     let item: ClipEditorTimelineItemViewData
-    let displayOrder: Int
     let isSelected: Bool
     let onSelect: () -> Void // 카드를 탭하면 onSelect만 호출. view는 viewModel을 직접 모름
     let onRemove: (() -> Void)?
@@ -25,25 +24,17 @@ struct ClipEditorTimelineItemView: View {
     //    let onRemove: () -> Void
     
     var body: some View {
-        ZStack {
-            Button(action: onSelect) {
-                cardContent
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(
-                "\(displayOrder)번 클립, \(item.durationText)"
-            )
-            .accessibilityValue(
-                isSelected ? "선택됨" : "선택 안 됨"
-            )
-            .accessibilityHint(
-                "길게 눌러 다른 카드 위치로 끌어 순서를 바꿀 수 있어요"
-            )
+        Button(action: onSelect) {
+            cardContent
         }
-        .overlay(alignment: .topLeading) {
-            orderBadge
-                .padding(ClipEditorLayout.timelineOverlayInset)
-        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("클립, \(item.durationText)")
+        .accessibilityValue(
+            isSelected ? "선택됨" : "선택 안 됨"
+        )
+        .accessibilityHint(
+            "길게 눌러 다른 카드 위치로 끌어 순서를 바꿀 수 있어요"
+        )
         .overlay(alignment: .topTrailing) {
             if let onRemove {
                 Button(action: onRemove) {
@@ -61,7 +52,7 @@ struct ClipEditorTimelineItemView: View {
                 }
                 .buttonStyle(.plain)
                 .padding(ClipEditorLayout.timelineOverlayInset)
-                .accessibilityLabel("\(displayOrder)번 클립을 타임라인에서 제외")
+                .accessibilityLabel("클립을 타임라인에서 제외")
             }
         }
     }
@@ -95,21 +86,6 @@ struct ClipEditorTimelineItemView: View {
             }
     }
     
-    private var orderBadge: some View {
-        Text("\(displayOrder)")
-            .font(.caption2.weight(.bold))
-            .foregroundStyle(Color.maplogInk)
-            .frame(
-                width: ClipEditorLayout.timelineBadgeSize,
-                height: ClipEditorLayout.timelineBadgeSize
-            )
-            .background(
-                Color.maplogLime,
-                in: Circle()
-            )
-    }
-    
-    
     @ViewBuilder
     private var thumbnail: some View {
         Group {
@@ -141,11 +117,10 @@ struct ClipEditorTimelineItemView: View {
             Text(item.durationText)
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.white)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 4)
+                .padding(.horizontal, 4)
+                .padding(.vertical, 2)
                 .background(.black.opacity(0.55), in: Capsule())
-                .padding(6)
+                .padding(4)
         }
     }
 }
-

@@ -36,13 +36,13 @@ enum ClipLocationTimestampOverlayFactory {
                     template: template,
                     groupID: groupID,
                     duration: duration,
-                    position: ClipOverlayPosition(x: 0.08, y: 0.47),
+                    position: ClipOverlayPosition(x: 0.025, y: 0.52),
                     alignment: .leading,
                     style: ClipTextStyle(
                         font: .standard,
                         weight: .medium,
                         color: .white,
-                        fontSize: 16
+                        fontSize: 10
                     )
                 ),
                 overlay(
@@ -51,13 +51,13 @@ enum ClipLocationTimestampOverlayFactory {
                     template: template,
                     groupID: groupID,
                     duration: duration,
-                    position: ClipOverlayPosition(x: 0.92, y: 0.47),
+                    position: ClipOverlayPosition(x: 0.975, y: 0.52),
                     alignment: .trailing,
                     style: ClipTextStyle(
                         font: .standard,
                         weight: .medium,
                         color: .white,
-                        fontSize: 16
+                        fontSize: 10
                     )
                 ),
                 overlay(
@@ -66,13 +66,13 @@ enum ClipLocationTimestampOverlayFactory {
                     template: template,
                     groupID: groupID,
                     duration: duration,
-                    position: ClipOverlayPosition(x: 0.50, y: 0.57),
+                    position: ClipOverlayPosition(x: 0.50, y: 0.52),
                     alignment: .center,
                     style: ClipTextStyle(
                         font: .rounded,
-                        weight: .bold,
+                        weight: .semibold,
                         color: .white,
-                        fontSize: 30
+                        fontSize: 10
                     )
                 )
             ]
@@ -85,13 +85,13 @@ enum ClipLocationTimestampOverlayFactory {
                     template: template,
                     groupID: groupID,
                     duration: duration,
-                    position: ClipOverlayPosition(x: 0.08, y: 0.88),
+                    position: ClipOverlayPosition(x: 0.04, y: 0.93),
                     alignment: .leading,
                     style: ClipTextStyle(
                         font: .monospaced,
                         weight: .medium,
                         color: .white,
-                        fontSize: 14
+                        fontSize: 11
                     )
                 )
             ]
@@ -104,13 +104,13 @@ enum ClipLocationTimestampOverlayFactory {
                     template: template,
                     groupID: groupID,
                     duration: duration,
-                    position: ClipOverlayPosition(x: 0.08, y: 0.78),
+                    position: ClipOverlayPosition(x: 0.04, y: 0.87),
                     alignment: .leading,
                     style: ClipTextStyle(
                         font: .standard,
                         weight: .semibold,
                         color: .white,
-                        fontSize: 24
+                        fontSize: 18
                     )
                 ),
                 overlay(
@@ -119,13 +119,13 @@ enum ClipLocationTimestampOverlayFactory {
                     template: template,
                     groupID: groupID,
                     duration: duration,
-                    position: ClipOverlayPosition(x: 0.08, y: 0.85),
+                    position: ClipOverlayPosition(x: 0.04, y: 0.93),
                     alignment: .leading,
                     style: ClipTextStyle(
                         font: .standard,
                         weight: .medium,
                         color: .white,
-                        fontSize: 16
+                        fontSize: 11
                     )
                 )
             ]
@@ -138,13 +138,13 @@ enum ClipLocationTimestampOverlayFactory {
                     template: template,
                     groupID: groupID,
                     duration: duration,
-                    position: .center,
-                    alignment: .center,
+                    position: ClipOverlayPosition(x: 0.96, y: 0.92),
+                    alignment: .trailing,
                     style: ClipTextStyle(
                         font: .standard,
                         weight: .semibold,
                         color: .white,
-                        fontSize: 21,
+                        fontSize: 14,
                         containerStyle: .glass
                     )
                 )

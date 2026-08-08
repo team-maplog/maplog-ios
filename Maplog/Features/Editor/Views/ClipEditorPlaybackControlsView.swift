@@ -12,24 +12,14 @@ struct ClipEditorPlaybackControlsView: View {
     let isMuted: Bool
     let currentTimeText: String
     let totalTimeText: String
-    let progress: Double
 
     let onPlayPauseTap: () -> Void
     let onMuteTap: () -> Void
-    let onSeek: (Double) -> Void
 
     var body: some View {
         VStack(spacing: 0) {
-            ClipEditorPlaybackScrubberView(
-                    progress: progress,
-                    onSeek: onSeek
-                )
-            .tint(Color.maplogLime)
-            .frame(height: 12)
-            .padding(.horizontal, MaplogSpacing.xxSmall)
-            .accessibilityLabel("영상 재생 위치")
 
-            HStack(spacing: MaplogSpacing.xSmall) {
+            HStack(spacing: MaplogSpacing.xxSmall) {
                 compactButton(
                     symbol: isPlaying
                     ? "pause.fill"
@@ -41,7 +31,7 @@ struct ClipEditorPlaybackControlsView: View {
                 )
 
                 Text("\(currentTimeText) / \(totalTimeText)")
-                    .font(.caption.weight(.semibold))
+                    .font(.caption2.weight(.semibold))
                     .foregroundStyle(Color.maplogInk)
                     .monospacedDigit()
 

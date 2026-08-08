@@ -17,6 +17,7 @@ struct ClipEditorPreviewView: View {
 
     let textOverlayItems: [ClipTextOverlayItemViewData]
     let selectedTextOverlayID: UUID?
+    let playbackFeedbackSymbol: String?
 
     let onTextOverlayTap: (UUID) -> Void
     let onTextOverlayPositionChange: (
@@ -72,6 +73,27 @@ struct ClipEditorPreviewView: View {
                         onTextEditingStarted: onTextOverlayTextEditingStarted,
                         onTemplateSwipe: onTemplateSwipe
                     )
+
+                    if let playbackFeedbackSymbol {
+                        Image(systemName: playbackFeedbackSymbol)
+                            .font(.system(size: 28, weight: .bold))
+                            .foregroundStyle(.white)
+                            .frame(width: 64, height: 64)
+                            .background(
+                                Color.black.opacity(0.62),
+                                in: Circle()
+                            )
+                            .allowsHitTesting(false)
+                            .accessibilityHidden(true)
+                            .transition(
+                                .scale.combined(with: .opacity)
+                            )
+                            .frame(
+                                maxWidth: .infinity,
+                                maxHeight: .infinity,
+                                alignment: .center
+                            )
+                    }
 
                 } else {
                     Color.black

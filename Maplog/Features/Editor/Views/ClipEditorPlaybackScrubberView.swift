@@ -52,10 +52,6 @@ struct ClipEditorPlaybackScrubberView: View {
                     .offset(x: thumbOffset)
             }
             .frame(height: ClipEditorLayout.playbackThumbSize)
-            .padding(
-                .top,
-                ClipEditorLayout.playbackScrubberTopInset
-            )
             .frame(
                 maxHeight: .infinity,
                 alignment: .top
@@ -73,7 +69,7 @@ struct ClipEditorPlaybackScrubberView: View {
                     }
             )
         }
-        // 실제 바는 얇지만, 손가락으로 잡는 영역은 넉넉하게 유지
+        // 재생바를 영상 바로 아래 경계에 붙인다.
         .frame(height: ClipEditorLayout.playbackScrubberHeight)
         .accessibilityLabel("영상 재생 위치")
     }

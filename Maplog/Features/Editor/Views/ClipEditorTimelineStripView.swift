@@ -14,7 +14,6 @@ struct ClipEditorTimelineStripView: View {
     
     let items: [ClipEditorTimelineItemViewData]
     let selectedID: UUID?
-    let orderForID: (UUID) -> Int?
     let canRemove: Bool
     let onRemove: (UUID) -> Void
     let onSelect: (UUID) -> Void
@@ -23,39 +22,36 @@ struct ClipEditorTimelineStripView: View {
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            LazyHStack(spacing: MaplogSpacing.small) {
+            LazyHStack(spacing: ClipEditorLayout.timelineCardSpacing) {
                 ForEach(items) { item in
-                    if let displayOrder = orderForID(item.id) {
-                        ClipEditorTimelineItemView(
-                            item: item,
-                            displayOrder: displayOrder,
-                            isSelected: item.id == selectedID,
-                            onSelect: {
-                                onSelect(item.id)
-                            },
-                            onRemove: canRemove
-                                ? {
-                                    onRemove(item.id)
-                                }
-                                : nil
-                        )
-                        .buttonStyle(.plain)
-                        .onDrag {
-                            draggingID = item.id
+                    ClipEditorTimelineItemView(
+                        item: item,
+                        isSelected: item.id == selectedID,
+                        onSelect: {
+                            onSelect(item.id)
+                        },
+                        onRemove: canRemove
+                            ? {
+                                onRemove(item.id)
+                            }
+                            : nil
+                    )
+                    .buttonStyle(.plain)
+                    .onDrag {
+                        draggingID = item.id
 
-                            return NSItemProvider(
-                                object: item.id.uuidString as NSString
-                            )
-                        }
-                        .onDrop(
-                            of: [UTType.plainText],
-                            delegate: ClipEditorTimelineDropDelegate(
-                                targetID: item.id,
-                                draggingID: $draggingID,
-                                onMove: onMove
-                            )
+                        return NSItemProvider(
+                            object: item.id.uuidString as NSString
                         )
                     }
+                    .onDrop(
+                        of: [UTType.plainText],
+                        delegate: ClipEditorTimelineDropDelegate(
+                            targetID: item.id,
+                            draggingID: $draggingID,
+                            onMove: onMove
+                        )
+                    )
                 }
                 Button(action: onAdd) {
                     addClipCard
@@ -63,7 +59,6 @@ struct ClipEditorTimelineStripView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("편집할 클립 구성 변경")
             }
-            .padding(.vertical, MaplogSpacing.xxSmall)
         }
         .frame(height: ClipEditorLayout.timelineStripHeight)
         .accessibilityLabel("클립 타임라인")
@@ -73,10 +68,10 @@ struct ClipEditorTimelineStripView: View {
     private var addClipCard: some View {
         VStack(spacing: MaplogSpacing.xxSmall) {
             Image(systemName: "plus")
-                .font(.title3.weight(.semibold))
+                .font(.caption.weight(.bold))
                 .foregroundStyle(Color.maplogInk)
 
-            Text("클립 추가")
+            Text("추가")
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(Color.maplogInk)
         }
