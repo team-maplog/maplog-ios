@@ -14,7 +14,8 @@ struct ClipEditorView: View {
     @State private var isOverlayDragging = false
     @State private var hasShownLocationTemplateHint = false
     @State private var isLocationTemplateHintVisible = false
-    @State private var isEditorPanelExpanded = false // 하단 패널 상태
+    @State private var playbackFeedbackSymbol: String?
+    @State private var playbackFeedbackTask: Task<Void, Never>?
 
     let previewPlayer: AVPlayer
     let onAddClipTap: () -> Void
@@ -43,6 +44,8 @@ struct ClipEditorView: View {
             await viewModel.prepare()
         }
         .onDisappear {
+            playbackFeedbackTask?.cancel()
+
             if exportPreviewResult == nil {
                     viewModel.stopPreview()
                 }
@@ -114,30 +117,26 @@ struct ClipEditorView: View {
 
     private var contentView: some View {
         GeometryReader { proxy in
-            ZStack(alignment: .bottom) {
+            VStack(spacing: 0) {
                 previewCanvas(
                     height: previewHeight(for: proxy.size)
                 )
-                .frame(
-                    maxWidth: .infinity,
-                    maxHeight: .infinity,
-                    alignment: .top
-                )
+                .zIndex(1)
 
                 if !viewModel.isTextEditing {
-                    editorBottomPanel
-                        .zIndex(1)
+                    editorTimelineControls
                 }
             }
             .frame(
                 maxWidth: .infinity,
-                maxHeight: .infinity
+                maxHeight: .infinity,
+                alignment: .top
             )
         }
         .background(Color.maplogSurface)
         .ignoresSafeArea(edges: .top)
     }
-    
+
     private func previewHeight(
         for size: CGSize
     ) -> CGFloat {
@@ -150,8 +149,7 @@ struct ClipEditorView: View {
 
         let availableHeight =
             size.height
-            - ClipEditorLayout.playbackControlsHeight
-            - ClipEditorLayout.collapsedEditorPanelHeight
+            - ClipEditorLayout.timelineControlsHeight
 
         return min(
             videoHeightForFullWidth,
@@ -167,6 +165,7 @@ struct ClipEditorView: View {
             selectedItem: viewModel.selectedPreview,
             textOverlayItems: viewModel.visibleTextOverlayItems,
             selectedTextOverlayID: viewModel.selectedTextOverlayID,
+            playbackFeedbackSymbol: playbackFeedbackSymbol,
             onTextOverlayTap: { id in
                 isLocationTemplateHintVisible = false
                 viewModel.selectTextOverlay(id: id)
@@ -205,6 +204,12 @@ struct ClipEditorView: View {
             onPreviewBackgroundTap: {
                 isLocationTemplateHintVisible = false
                 viewModel.selectTextOverlay(id: nil)
+
+                guard !viewModel.isTextEditing else {
+                    return
+                }
+
+                togglePreviewPlaybackFromCanvas()
             },
             onTextOverlayTextEditingStarted: { id in
                 viewModel.beginTextEditing(id: id)
@@ -291,110 +296,43 @@ struct ClipEditorView: View {
             }
         }
         .clipped()
-    }
-
-    // ViewModel의 상태를 화면용 컴포넌트에 전달하고, 버튼·슬라이더에서 발생한 행동은 다시 ViewModel에 전달하는 연결부
-//    사용자 재생 버튼 탭
-//    → ClipEditorPlaybackControlsView의 onPlayPauseTap 실행
-//    → viewModel.togglePreviewPlayback() 실행
-//    → ViewModel이 PlaybackService에 재생 또는 일시정지 요청
-//    → isPreviewPlaying 값 변경
-//    → SwiftUI가 버튼 아이콘을 다시 그림
-    private var playbackControls: some View {
-        ClipEditorPlaybackControlsView(
-                isPlaying: viewModel.isPreviewPlaying,
-                isMuted: viewModel.isPreviewMuted,
-                currentTimeText: viewModel.currentPlaybackTimeText,
-                totalTimeText: viewModel.totalDurationText,
-                progress: viewModel.playbackProgress,
-                onPlayPauseTap: {
-                    viewModel.togglePreviewPlayback()
-                },
-                onMuteTap: {
-                    viewModel.togglePreviewMute()
-                },
-                onSeek: { progress in
-                    viewModel.seekPreview(to: progress)
-                }
-            )    }
-
-    private var editorBottomPanel: some View {
-        VStack(spacing: 0) {
-            playbackControls
-
-            Button {
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    isEditorPanelExpanded.toggle()
-                }
-            } label: {
-                VStack(spacing: 4) {
-                    Capsule()
-                        .fill(Color.maplogInk.opacity(0.24))
-                        .frame(width: 36, height: 4)
-
-                    HStack {
-                        Text(
-                            "클립 편집 · \(viewModel.timelineItems.count)개"
-                        )
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(Color.maplogInk)
-
-                        Spacer()
-
-                        Image(
-                            systemName: isEditorPanelExpanded
-                            ? "chevron.down"
-                            : "chevron.up"
-                        )
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(Color.maplogInk)
+        .overlay(alignment: .bottom) {
+            if !viewModel.isTextEditing {
+                ClipEditorPlaybackScrubberView(
+                    progress: viewModel.playbackProgress,
+                    onSeek: { progress in
+                        viewModel.seekPreview(to: progress)
                     }
-                }
-                .padding(.horizontal, MaplogSpacing.page)
-                .frame(
-                    height: ClipEditorLayout.collapsedEditorPanelHeight
                 )
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("클립 편집 패널")
-            .accessibilityValue(
-                isEditorPanelExpanded ? "펼쳐짐" : "접힘"
-            )
-
-            if isEditorPanelExpanded {
-                VStack(spacing: MaplogSpacing.small) {
-                    timelineSection
-                    exportActionButton
-                }
-                .padding(.horizontal, MaplogSpacing.page)
-                .padding(.top, MaplogSpacing.xxSmall)
-                .padding(.bottom, MaplogSpacing.small)
-                .transition(
-                    .move(edge: .bottom)
-                        .combined(with: .opacity)
+                .offset(
+                    y: ClipEditorLayout.playbackScrubberHeight / 2
                 )
             }
         }
+    }
+
+    /// 접고 펼치는 시트 대신, 편집에 필요한 타임라인과 완료 버튼을 항상 같은 위치에 둡니다.
+    /// 따라서 패널 확장 시 남는 높이가 부족해 카드나 버튼이 잘리는 문제가 없습니다.
+    private var editorTimelineControls: some View {
+        VStack(spacing: ClipEditorLayout.timelineSectionSpacing) {
+            timelineSection
+
+            exportActionButton
+                .frame(height: ClipEditorLayout.timelineActionHeight)
+        }
+        .padding(.horizontal, MaplogSpacing.page)
+        .padding(.top, ClipEditorLayout.timelineSectionSpacing)
+        .frame(
+            height: ClipEditorLayout.timelineControlsHeight,
+            alignment: .top
+        )
         .background(Color.maplogSurface)
-        .shadow(
-            color: .black.opacity(0.12),
-            radius: 12,
-            y: -4
-        )
-        .animation(
-            .easeInOut(duration: 0.2),
-            value: isEditorPanelExpanded
-        )
     }
 
     private var timelineSection: some View {
         ClipEditorTimelineStripView(
             items: viewModel.timelineItems,
             selectedID: viewModel.selectedPreview?.id,
-            orderForID: { id in
-                viewModel.timelineOrder(for: id)
-            },
             canRemove: viewModel.canRemoveClip,
             onRemove: { id in
                 viewModel.removeClip(id: id)
@@ -448,7 +386,7 @@ struct ClipEditorView: View {
                 await viewModel.exportVideo()
             }
         } label: {
-            HStack(spacing: MaplogSpacing.small) {
+            HStack(spacing: MaplogSpacing.xxSmall) {
                 if viewModel.isExporting {
                     ProgressView()
                         .tint(Color.maplogInk)
@@ -469,7 +407,7 @@ struct ClipEditorView: View {
                     background: .maplogLime,
                     foreground: .maplogInk
                 ),
-                size: .large,
+                size: .compact,
                 fullWidth: true
             )
         )
@@ -485,6 +423,46 @@ struct ClipEditorView: View {
         .accessibilityHint(
             "현재 타임라인 순서대로 클립을 하나의 영상으로 만듭니다."
         )
+    }
+
+    private func togglePreviewPlaybackFromCanvas() {
+        guard viewModel.totalDuration > 0 else {
+            return
+        }
+
+        viewModel.togglePreviewPlayback()
+
+        showPlaybackFeedback(
+            symbol: viewModel.isPreviewPlaying
+            ? "pause.fill"
+            : "play.fill"
+        )
+    }
+
+    private func showPlaybackFeedback(
+        symbol: String
+    ) {
+        playbackFeedbackTask?.cancel()
+
+        withAnimation(.easeOut(duration: 0.14)) {
+            playbackFeedbackSymbol = symbol
+        }
+
+        playbackFeedbackTask = Task { @MainActor in
+            do {
+                try await Task.sleep(nanoseconds: 700_000_000)
+            } catch {
+                return
+            }
+
+            guard !Task.isCancelled else {
+                return
+            }
+
+            withAnimation(.easeOut(duration: 0.18)) {
+                playbackFeedbackSymbol = nil
+            }
+        }
     }
 
     private var exportErrorBinding: Binding<Bool> {

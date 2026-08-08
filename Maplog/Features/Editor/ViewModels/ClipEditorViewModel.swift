@@ -764,37 +764,25 @@ final class ClipEditorViewModel: ObservableObject {
     func deleteTextOverlay(
         id: UUID
     ) {
-        guard let overlay = textOverlays.first(
-            where: { $0.id == id }
-        ) else {
+        guard textOverlays.contains(where: { $0.id == id }) else {
             return
         }
 
-        if let groupID = overlay.locationTimestampGroupID {
-            textOverlays.removeAll {
-                $0.locationTimestampGroupID == groupID
-            }
-        } else {
-            textOverlays.removeAll {
-                $0.id == id
-            }
-        }
+        // 위치·시간 템플릿도 각각 독립적인 자막이다.
+        // 따라서 선택한 자막의 ID만 지우고, 같은 템플릿의 나머지 문구는 유지한다.
+        textOverlays.removeAll { $0.id == id }
 
-        let isSelectedTimestampGroup: Bool
-
-        if let groupID = overlay.locationTimestampGroupID {
-            isSelectedTimestampGroup =
-                selectedTextOverlay?.locationTimestampGroupID == groupID
-        } else {
-            isSelectedTimestampGroup = false
-        }
-
-        if selectedTextOverlayID == id || isSelectedTimestampGroup {
+        if selectedTextOverlayID == id {
             selectedTextOverlayID = nil
             activeTool = .none
         }
+
         if textInputRequestID == id {
             textInputRequestID = nil
+        }
+
+        if editingTextOverlayID == id {
+            editingTextOverlayID = nil
         }
     }
 

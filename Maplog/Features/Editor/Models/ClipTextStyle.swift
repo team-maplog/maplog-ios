@@ -51,7 +51,7 @@ enum ClipTextContainerStyle: Equatable, Sendable {
 }
 
 struct ClipTextStyle: Equatable, Sendable {
-    static let minimumFontSize = 18.0
+    static let minimumFontSize = 10.0
     static let maximumFontSize = 52.0
 
     var font: ClipTextFont

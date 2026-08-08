@@ -112,7 +112,7 @@ final class EditorTextOverlayCanvasUIView: UIView, UIGestureRecognizerDelegate {
         private let snapFeedback = UISelectionFeedbackGenerator()
         private var activeSnapState = TextOverlaySnapState.none
         private let snapThreshold: CGFloat = 12
-        private let snapInset: CGFloat = 18
+        private let snapInset: CGFloat = 8
 
         override init(frame: CGRect) {
             super.init(frame: frame)
@@ -232,14 +232,19 @@ final class EditorTextOverlayCanvasUIView: UIView, UIGestureRecognizerDelegate {
                         self?.onDelete?(id)
                     }
 
-                    itemView.onDragEnded = { [weak self] id, center in
+                    itemView.onDragEnded = { [weak self, weak itemView] id, center in
                         guard let self else {
                             return
                         }
 
+                        let position = itemView?.overlayPosition(
+                            for: center,
+                            in: self.bounds.size
+                        ) ?? self.normalizedPosition(for: center)
+
                         self.onPositionChange?(
                             id,
-                            self.normalizedPosition(for: center)
+                            position
                         )
                     }
 
@@ -786,6 +791,34 @@ final class EditorTextOverlayItemUIView: UIView, UIGestureRecognizerDelegate, UI
                 ),
                 canvasSize.height - halfHeight
             )
+        )
+    }
+
+    // 드래그 중인 View의 중심 좌표를 모델이 저장하는 기준점으로 되돌린다.
+    // leading/trailing은 각각 텍스트의 왼쪽/오른쪽 끝을 기준으로 저장해야
+    // 다음 레이아웃 갱신 때 텍스트가 반대 방향으로 밀리지 않는다.
+    func overlayPosition(
+        for center: CGPoint,
+        in canvasSize: CGSize
+    ) -> ClipOverlayPosition {
+        guard canvasSize.width > 0, canvasSize.height > 0 else {
+            return .center
+        }
+
+        let horizontalAnchor: CGFloat
+
+        switch alignment {
+        case .leading:
+            horizontalAnchor = center.x - bounds.width / 2
+        case .center:
+            horizontalAnchor = center.x
+        case .trailing:
+            horizontalAnchor = center.x + bounds.width / 2
+        }
+
+        return ClipOverlayPosition(
+            x: Double(horizontalAnchor / canvasSize.width),
+            y: Double(center.y / canvasSize.height)
         )
     }
 
