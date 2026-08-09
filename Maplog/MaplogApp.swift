@@ -37,6 +37,8 @@ struct MaplogApp: App { // 앱의 조립 담당자
 
         let apiService = DefaultTourismAPIService(authenticatedAPIClient: authenticatedAPIClient)
 
+        let textOverlayRenderer = VideoTextOverlayRenderer()
+        
         self.authRepository = authRepository
 
         _signOutViewModel = StateObject(wrappedValue: SignOutViewModel(authRepository: authRepository, authSessionStore: sessionStore))
@@ -58,7 +60,7 @@ struct MaplogApp: App { // 앱의 조립 담당자
 
         self.videoPlaybackService = AVVideoPlaybackService()
 
-        self.videoExportService = AVVideoExportService()
+        self.videoExportService = AVVideoExportService(textOverlayRenderer: textOverlayRenderer)
 
         self.captureLocationService = CoreLocationCaptureLocationService()
     }

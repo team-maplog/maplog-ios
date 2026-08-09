@@ -20,9 +20,14 @@ import Foundation
 
 actor AVVideoExportService: VideoExportService {
     private let fileManager: FileManager // 파일 관리자 주입, 영상 결과 파일 저장, 실패한 결과 파일 삭제
+    private let textOverlayRenderer: any VideoTextOverlayRendering
     
-    init(fileManager: FileManager = .default) {
+    init(
+        fileManager: FileManager = .default,
+        textOverlayRenderer: any VideoTextOverlayRendering
+    ) {
         self.fileManager = fileManager
+        self.textOverlayRenderer = textOverlayRenderer
     }
     
 //    → video track, audio track을 각각 삽입
@@ -158,6 +163,17 @@ actor AVVideoExportService: VideoExportService {
         )
         videoComposition.instructions = instructions
 
+        let timeline = ClipEditorTimeline(
+            clips: request.clips
+        )
+
+        videoComposition.animationTool =
+            textOverlayRenderer.makeAnimationTool(
+                overlays: request.textOverlays,
+                timeline: timeline,
+                renderSize: renderSize
+            )
+        
         let outputURL = try makeOutputURL()
 
         guard let exportSession = AVAssetExportSession(
