@@ -94,6 +94,7 @@ struct RootView: View {
     private let videoPlaybackService: any VideoPlaybackService
     private let videoExportService: any VideoExportService
     private let captureLocationService: any CaptureLocationService
+    private let logLocationRepository: any LogLocationRepository
 
     init(
         authRepository: any AuthRepository,
@@ -103,7 +104,8 @@ struct RootView: View {
         videoThumbnailService: any VideoThumbnailService,
         videoPlaybackService: any VideoPlaybackService,
         videoExportService: any VideoExportService,
-        captureLocationService: any CaptureLocationService
+        captureLocationService: any CaptureLocationService,
+        logLocationRepository: any LogLocationRepository
     ) {
         self.authRepository = authRepository
         self.tourismRepository = tourismRepository
@@ -113,6 +115,7 @@ struct RootView: View {
         self.videoPlaybackService = videoPlaybackService
         self.videoExportService = videoExportService
         self.captureLocationService = captureLocationService
+        self.logLocationRepository = logLocationRepository
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("-MaplogSkipOnboarding") {
             _phase = State(initialValue: .app)
@@ -154,6 +157,7 @@ struct RootView: View {
                     videoPlaybackService: videoPlaybackService,
                     videoExportService: videoExportService,
                     captureLocationService: captureLocationService,
+                    logLocationRepository: logLocationRepository,
                     requestedTab: $requestedTab,
                     requestedCapturePlaceName: $requestedCapturePlaceName
                 )

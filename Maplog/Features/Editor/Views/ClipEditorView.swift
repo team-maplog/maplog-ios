@@ -16,8 +16,13 @@ struct ClipEditorView: View {
     @State private var isLocationTemplateHintVisible = false
     @State private var playbackFeedbackSymbol: String?
     @State private var playbackFeedbackTask: Task<Void, Never>?
+    @State private var pendingLogComposeInput: LogComposeInput?
+    @State private var logComposeInput: LogComposeInput?
 
     let previewPlayer: AVPlayer
+    let videoPlaybackService: any VideoPlaybackService
+    let videoThumbnailService: any VideoThumbnailService
+    let logLocationRepository: any LogLocationRepository
     let onAddClipTap: () -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -87,6 +92,12 @@ struct ClipEditorView: View {
         .fullScreenCover(
             item: $exportPreviewResult,
             onDismiss: {
+                if let pendingInput = pendingLogComposeInput {
+                        pendingLogComposeInput = nil
+                        logComposeInput = pendingInput
+                        return
+                    }
+
                 Task {
                         await viewModel.restoreSelectedPreview()
                     }
@@ -97,8 +108,35 @@ struct ClipEditorView: View {
                 player: previewPlayer,
                 onPreviewAppear: {
                         viewModel.playExportedVideo(result)
+                    },
+                onWriteLogTap: {
+                        guard let input = viewModel.makeLogComposeInput(
+                            for: result
+                        ) else {
+                            return
+                        }
+
+                        pendingLogComposeInput = input
+                        exportPreviewResult = nil
                     }
             )
+        }
+        .fullScreenCover(
+            item: $logComposeInput,
+            onDismiss: {
+                Task {
+                    await viewModel.restoreSelectedPreview()
+                }
+            }
+        ) { input in
+            NavigationStack {
+                LogComposeFeatureView(
+                    input: input,
+                    videoPlaybackService: videoPlaybackService,
+                    videoThumbnailService: videoThumbnailService,
+                    logLocationRepository: logLocationRepository
+                )
+            }
         }
         .onChange(
             of: viewModel.selectedLocationTimestampTemplate

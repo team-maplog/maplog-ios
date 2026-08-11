@@ -10,21 +10,24 @@ import SwiftUI
 struct ClipEditorFeatureView: View {
     @StateObject private var viewModel: ClipEditorViewModel
     @State private var isClipSelectionPresented = false
-    
+
     private let mediaDraftRepository: any MediaDraftRepository
     private let videoThumbnailService: any VideoThumbnailService
     private let videoPlaybackService: any VideoPlaybackService // 재생기를 보관
-    
+    private let logLocationRepository: any LogLocationRepository
+
     init(
         input: ClipEditorInput,
         mediaDraftRepository: any MediaDraftRepository,
         videoThumbnailService: any VideoThumbnailService,
         videoPlaybackService: any VideoPlaybackService,
-        videoExportService: any VideoExportService
+        videoExportService: any VideoExportService,
+        logLocationRepository: any LogLocationRepository
     ) {
         self.mediaDraftRepository = mediaDraftRepository
         self.videoThumbnailService = videoThumbnailService
         self.videoPlaybackService = videoPlaybackService
+        self.logLocationRepository = logLocationRepository
         _viewModel = StateObject(wrappedValue: ClipEditorViewModel(
             input: input,
             videoThumbnailService: videoThumbnailService,
@@ -33,11 +36,14 @@ struct ClipEditorFeatureView: View {
         )
         )
     }
-    
+
     var body: some View {
         ClipEditorView(
             viewModel: viewModel,
             previewPlayer: videoPlaybackService.player,
+            videoPlaybackService: videoPlaybackService,
+            videoThumbnailService: videoThumbnailService,
+            logLocationRepository: logLocationRepository,
             onAddClipTap: {
                 isClipSelectionPresented = true
             }
