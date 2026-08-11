@@ -11,23 +11,26 @@ import SwiftUI
 struct ClipPickerFeatureView: View {
     @StateObject private var viewModel: ClipPickerViewModel
     @State private var editorInput: ClipEditorInput? // 편집 화면 전환을 소유
-    
+
     private let mediaDraftRepository: any MediaDraftRepository
     private let videoThumbnailService: any VideoThumbnailService
     private let videoPlaybackService: any VideoPlaybackService
     private let videoExportService: any VideoExportService
-    
+    private let logLocationRepository: any LogLocationRepository
+
     init(
         mediaDraftRepository: any MediaDraftRepository,
         videoThumbnailService: any VideoThumbnailService,
         videoPlaybackService: any VideoPlaybackService,
-        videoExportService: any VideoExportService
-        
+        videoExportService: any VideoExportService,
+        logLocationRepository: any LogLocationRepository
+
     ) {
         self.mediaDraftRepository = mediaDraftRepository
         self.videoThumbnailService = videoThumbnailService
         self.videoPlaybackService = videoPlaybackService
         self.videoExportService = videoExportService
+        self.logLocationRepository = logLocationRepository
         _viewModel = StateObject(
             wrappedValue: ClipPickerViewModel(
                 mediaDraftRepository: mediaDraftRepository,
@@ -35,7 +38,7 @@ struct ClipPickerFeatureView: View {
             )
         )
     }
-    
+
     var body: some View {
         ClipPickerView(
             viewModel: viewModel,
@@ -55,7 +58,8 @@ struct ClipPickerFeatureView: View {
                 mediaDraftRepository: mediaDraftRepository,
                 videoThumbnailService: videoThumbnailService,
                 videoPlaybackService: videoPlaybackService,
-                videoExportService: videoExportService
+                videoExportService: videoExportService,
+                logLocationRepository: logLocationRepository
             )
         }
     }

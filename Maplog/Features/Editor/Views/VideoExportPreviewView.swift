@@ -13,7 +13,8 @@ struct VideoExportPreviewView: View {
     let result: VideoExportResult
     let player: AVPlayer
     let onPreviewAppear: () -> Void
-    
+    let onWriteLogTap: () -> Void
+
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -34,7 +35,7 @@ struct VideoExportPreviewView: View {
                         .frame(maxWidth: .infinity, alignment: .center)
                         .clipShape(
                             RoundedRectangle(
-                                cornerRadius: MaplogRadius.large,
+                                cornerRadius: MaplogRadius.xLarge,
                                 style: .continuous
                             )
                         )
@@ -42,12 +43,12 @@ struct VideoExportPreviewView: View {
 
                     Spacer()
 
-                    Button("편집으로 돌아가기") {
-                        dismiss()
+                    Button("로그 작성하기") {
+                        onWriteLogTap()
                     }
                     .buttonStyle(
                         MaplogButtonStyle(
-                            variant: .secondary,
+                            variant: .primary,
                             size: .large,
                             fullWidth: true
                         )

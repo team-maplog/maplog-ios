@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct CaptureLocation: Equatable, Sendable {
+struct CaptureLocation: Equatable, Hashable, Sendable {
     let latitude: Double
     let longitude: Double
     let placeName: String?

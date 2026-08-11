@@ -799,6 +799,19 @@ final class ClipEditorViewModel: ObservableObject {
         videoPlaybackService.play()
     }
 
+    func makeLogComposeInput(
+        for result: VideoExportResult
+    ) -> LogComposeInput? {
+        guard !orderedClips.isEmpty else {
+            return nil
+        }
+
+        return LogComposeInput(
+            video: result,
+            clips: orderedClips
+        )
+    }
+
     private func makeTimelineItemViewData(from clip: CaptureDraftClip) -> ClipEditorTimelineItemViewData {
         ClipEditorTimelineItemViewData(id: clip.id, thumbnailData: nil, durationText: durationText(for: clip)
         )

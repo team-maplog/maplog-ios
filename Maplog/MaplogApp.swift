@@ -12,6 +12,7 @@ struct MaplogApp: App { // 앱의 조립 담당자
     private let videoPlaybackService: any VideoPlaybackService
     private let videoExportService: any VideoExportService
     private let captureLocationService: any CaptureLocationService
+    private let logLocationRepository: any LogLocationRepository
 
     init() {
         KakaoMapSDKConfiguration.initializeIfNeeded()
@@ -37,8 +38,12 @@ struct MaplogApp: App { // 앱의 조립 담당자
 
         let apiService = DefaultTourismAPIService(authenticatedAPIClient: authenticatedAPIClient)
 
+        let logLocationAPIService = DefaultLogLocationAPIService(authenticatedAPIClient: authenticatedAPIClient)
+
+        let logLocationRepository = DefaultLogLocationRepository(apiService: logLocationAPIService)
+
         let textOverlayRenderer = VideoTextOverlayRenderer()
-        
+
         self.authRepository = authRepository
 
         _signOutViewModel = StateObject(wrappedValue: SignOutViewModel(authRepository: authRepository, authSessionStore: sessionStore))
@@ -63,6 +68,8 @@ struct MaplogApp: App { // 앱의 조립 담당자
         self.videoExportService = AVVideoExportService(textOverlayRenderer: textOverlayRenderer)
 
         self.captureLocationService = CoreLocationCaptureLocationService()
+
+        self.logLocationRepository = logLocationRepository
     }
 
     var body: some Scene {
@@ -75,7 +82,8 @@ struct MaplogApp: App { // 앱의 조립 담당자
                 videoThumbnailService: videoThumbnailService,
                 videoPlaybackService: videoPlaybackService,
                 videoExportService: videoExportService,
-                captureLocationService: captureLocationService
+                captureLocationService: captureLocationService,
+                logLocationRepository: logLocationRepository
             )
             .environmentObject(authSessionStore)
             .environmentObject(signOutViewModel)

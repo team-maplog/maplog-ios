@@ -35,6 +35,7 @@ struct MainTabView: View {
     private let videoPlaybackService: any VideoPlaybackService
     private let videoExportService: any VideoExportService
     private let captureLocationService: any CaptureLocationService
+    private let logLocationRepository: any LogLocationRepository
     @State private var homeNavigationPath: [HomeNavigationRoute] = []
 
 
@@ -46,6 +47,7 @@ struct MainTabView: View {
         videoPlaybackService: any VideoPlaybackService,
         videoExportService: any VideoExportService,
         captureLocationService: any CaptureLocationService,
+        logLocationRepository: any LogLocationRepository,
         requestedTab: Binding<MaplogTab?> = .constant(nil),
         requestedCapturePlaceName: Binding<String?> = .constant(nil)
     ) {
@@ -56,6 +58,7 @@ struct MainTabView: View {
         self.videoPlaybackService = videoPlaybackService
         self.videoExportService = videoExportService
         self.captureLocationService = captureLocationService
+        self.logLocationRepository = logLocationRepository
 
         _requestedTab = requestedTab
         _requestedCapturePlaceName = requestedCapturePlaceName
@@ -154,7 +157,8 @@ struct MainTabView: View {
                         videoThumbnailService: videoThumbnailService,
                         videoPlaybackService: videoPlaybackService,
                         videoExportService: videoExportService,
-                        captureLocationService: captureLocationService
+                        captureLocationService: captureLocationService,
+                        logLocationRepository: logLocationRepository
                     ) {
                         withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
                             selectedTab = previousTab
