@@ -75,10 +75,12 @@ final class ClipLocationEditViewModel: ObservableObject {
         latitude: Double,
         longitude: Double
     ) {
-        selectedLocation = LogLocationDraft(
+        let location = LogLocationDraft(
             latitude: latitude,
             longitude: longitude
         )
+
+        applyLocation(location)
     }
 
     func retryLocationResolution() {
@@ -102,7 +104,6 @@ final class ClipLocationEditViewModel: ObservableObject {
         return updatedClipLocation
     }
 
-    // 새 좌표와 촬영 당시 위치로 경우가 동일하게 주소 조회를 시작
     private func applyLocation(_ location: LogLocationDraft) {
             selectedLocation = location
             locationResolutionError = nil
