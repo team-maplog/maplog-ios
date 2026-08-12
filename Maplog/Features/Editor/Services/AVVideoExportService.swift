@@ -21,7 +21,7 @@ import Foundation
 actor AVVideoExportService: VideoExportService {
     private let fileManager: FileManager // 파일 관리자 주입, 영상 결과 파일 저장, 실패한 결과 파일 삭제
     private let textOverlayRenderer: any VideoTextOverlayRendering
-    
+
     init(
         fileManager: FileManager = .default,
         textOverlayRenderer: any VideoTextOverlayRendering
@@ -29,7 +29,7 @@ actor AVVideoExportService: VideoExportService {
         self.fileManager = fileManager
         self.textOverlayRenderer = textOverlayRenderer
     }
-    
+
 //    → video track, audio track을 각각 삽입
 //    → video track의 preferredTransform 적용
 //    → 결과 영상의 세로 renderSize 지정
@@ -45,12 +45,23 @@ actor AVVideoExportService: VideoExportService {
         guard let compositionVideoTrack = composition.addMutableTrack(
             withMediaType: .video,
             preferredTrackID: kCMPersistentTrackID_Invalid
-        ),
-        let compositionAudioTrack = composition.addMutableTrack(
-            withMediaType: .audio,
-            preferredTrackID: kCMPersistentTrackID_Invalid
         ) else {
             throw VideoExportServiceError.unableToCreateCompositionTrack
+        }
+
+        let compositionAudioTrack: AVMutableCompositionTrack?
+
+        if request.isMuted {
+            compositionAudioTrack = nil
+        } else {
+            guard let audioTrack = composition.addMutableTrack(
+                withMediaType: .audio,
+                preferredTrackID: kCMPersistentTrackID_Invalid
+            ) else {
+                throw VideoExportServiceError.unableToCreateCompositionTrack
+            }
+
+            compositionAudioTrack = audioTrack
         }
 
         var insertionTime = CMTime.zero
@@ -86,16 +97,18 @@ actor AVVideoExportService: VideoExportService {
                 at: insertionTime
             )
 
-            let audioTracks = try await asset.loadTracks(
-                withMediaType: .audio
-            )
-
-            if let audioTrack = audioTracks.first {
-                try compositionAudioTrack.insertTimeRange(
-                    sourceTimeRange,
-                    of: audioTrack,
-                    at: insertionTime
+            if let compositionAudioTrack {
+                let audioTracks = try await asset.loadTracks(
+                    withMediaType: .audio
                 )
+
+                if let audioTrack = audioTracks.first {
+                    try compositionAudioTrack.insertTimeRange(
+                        sourceTimeRange,
+                        of: audioTrack,
+                        at: insertionTime
+                    )
+                }
             }
 
             let preferredTransform = try await videoTrack.load(
@@ -173,7 +186,7 @@ actor AVVideoExportService: VideoExportService {
                 timeline: timeline,
                 renderSize: renderSize
             )
-        
+
         let outputURL = try makeOutputURL()
 
         guard let exportSession = AVAssetExportSession(
@@ -200,12 +213,12 @@ actor AVVideoExportService: VideoExportService {
             throw error
         }
     }
-    
+
 //    composition: A → B → C 순서로 이어진 영상 설계
 //    outputURL: 결과 파일을 저장할 주소
 //    .mov: 결과 포맷
 //    await: 영상 길이에 따라 시간이 걸리므로 완료를 기다림
-    
+
     private func makeOutputURL() throws -> URL { // 앱 전용 저장소인 Application Support 폴더를 가져옴 사진 앱 갤러리가 아니라 Maplog 앱 내부 저장소
         let applicationSupportURL = try fileManager.url(
             for: .applicationSupportDirectory,
@@ -213,7 +226,7 @@ actor AVVideoExportService: VideoExportService {
             appropriateFor: nil,
             create: true
             )
-        
+
         let exportDirectory = applicationSupportURL
                     .appendingPathComponent(
                         "EditedVideos",

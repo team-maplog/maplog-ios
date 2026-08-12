@@ -298,6 +298,7 @@ struct ClipEditorView: View {
             ClipEditorTopControlsView(
                 activeTool: viewModel.activeTool,
                 isTextEditing: viewModel.isTextEditing,
+                isMuted: viewModel.isPreviewMuted,
                 onClose: {
                     dismiss()
                 },
@@ -309,6 +310,9 @@ struct ClipEditorView: View {
                 },
                 onStickerTap: {
                     viewModel.toggleActiveTool(.sticker)
+                },
+                onMuteTap: {
+                    viewModel.togglePreviewMute()
                 }
             )
             .padding(.horizontal, MaplogSpacing.page)
@@ -349,8 +353,8 @@ struct ClipEditorView: View {
         }
     }
 
-    /// 접고 펼치는 시트 대신, 편집에 필요한 타임라인과 완료 버튼을 항상 같은 위치에 둡니다.
-    /// 따라서 패널 확장 시 남는 높이가 부족해 카드나 버튼이 잘리는 문제가 없습니다.
+    /// 접고 펼치는 시트 대신, 편집에 필요한 타임라인과 완료 버튼을 항상 같은 위치에 둠
+    /// 따라서 패널 확장 시 남는 높이가 부족해 카드나 버튼이 잘리는 문제가 없음
     private var editorTimelineControls: some View {
         VStack(spacing: ClipEditorLayout.timelineSectionSpacing) {
             timelineSection

@@ -70,25 +70,40 @@ struct LogComposeView: View {
 
     private var previewSection: some View {
         ZStack {
-            VideoPlayer(player: previewPlayer)
-                .aspectRatio(9.0 / 16.0, contentMode: .fit)
-                .frame(maxWidth: .infinity)
-                .allowsHitTesting(false)
+            previewContent(
+                width: LogComposeLayout.previewWidth,
+                height: LogComposeLayout.previewHeight
+            )
 
             Button {
                 viewModel.togglePreviewPlayback()
             } label: {
                 Color.clear
+                    .frame(
+                        width: LogComposeLayout.previewWidth,
+                        height: LogComposeLayout.previewHeight
+                    )
                     .overlay {
                         Image(
                             systemName: viewModel.isPreviewPlaying
                             ? "pause.fill"
                             : "play.fill"
                         )
-                        .font(.system(size: 24, weight: .bold))
+                        .font(
+                            .system(
+                                size: LogComposeLayout.playbackControlSize * 0.4,
+                                weight: .bold
+                            )
+                        )
                         .foregroundStyle(.white)
-                        .frame(width: 60, height: 60)
-                        .background(.black.opacity(0.54), in: Circle())
+                        .frame(
+                            width: LogComposeLayout.playbackControlSize,
+                            height: LogComposeLayout.playbackControlSize
+                        )
+                        .background(
+                            .black.opacity(0.54),
+                            in: Circle()
+                        )
                     }
             }
             .buttonStyle(.plain)
@@ -98,43 +113,96 @@ struct LogComposeView: View {
                 : "영상 재생"
             )
 
-            VStack {
-                Spacer()
-
-                HStack {
-                    Button(action: onCoverChangeTap) {
-                        Label("커버 변경", systemImage: "photo.on.rectangle")
-                            .font(MaplogFont.caption)
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, MaplogSpacing.small)
-                            .padding(.vertical, MaplogSpacing.xSmall)
-                            .background(.black.opacity(0.58), in: Capsule())
-                    }
-                    .buttonStyle(MaplogPressFeedbackStyle())
-
-                    Spacer()
-
-                    Text(viewModel.videoDurationText)
-                        .font(MaplogFont.caption)
-                        .monospacedDigit()
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, MaplogSpacing.small)
-                        .padding(.vertical, MaplogSpacing.xSmall)
-                        .background(.black.opacity(0.58), in: Capsule())
-                }
-                .padding(MaplogSpacing.small)
-            }
+            previewFooter
         }
+        .frame(
+            width: LogComposeLayout.previewWidth,
+            height: LogComposeLayout.previewHeight
+        )
+        .compositingGroup()
         .clipShape(
             RoundedRectangle(
-                cornerRadius: MaplogRadius.xLarge,
+                cornerRadius: MaplogRadius.hero,
                 style: .continuous
             )
         )
-        .padding(.horizontal, MaplogSpacing.xSmall)
+        .overlay {
+            RoundedRectangle(
+                cornerRadius: MaplogRadius.hero,
+                style: .continuous
+            )
+            .stroke(.white.opacity(0.16), lineWidth: 1)
+        }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("완성된 로그 영상 미리보기")
+    }
+
+    private var previewFooter: some View {
+        VStack {
+            Spacer()
+
+            HStack {
+                Button(action: onCoverChangeTap) {
+                    Label(
+                        "커버 변경",
+                        systemImage: "photo.on.rectangle"
+                    )
+                    .font(MaplogFont.caption)
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, MaplogSpacing.small)
+                    .padding(.vertical, MaplogSpacing.xSmall)
+                    .background(
+                        .black.opacity(0.58),
+                        in: Capsule()
+                    )
+                }
+                .buttonStyle(MaplogPressFeedbackStyle())
+
+                Spacer()
+
+                Text(viewModel.videoDurationText)
+                    .font(MaplogFont.caption)
+                    .monospacedDigit()
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, MaplogSpacing.small)
+                    .padding(.vertical, MaplogSpacing.xSmall)
+                    .background(
+                        .black.opacity(0.58),
+                        in: Capsule()
+                    )
+            }
+            .padding(MaplogSpacing.small)
+        }
+    }
+
+    @ViewBuilder
+    private func previewContent(
+        width: CGFloat,
+        height: CGFloat
+    ) -> some View {
+        if
+            !viewModel.isPreviewPlaying,
+            let thumbnailData = viewModel.selectedCoverThumbnailData,
+            let image = UIImage(data: thumbnailData)
+        {
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFill()
+                .frame(
+                    width: width,
+                    height: height
+                )
+                .clipped()
+        } else {
+            VideoPlayer(player: previewPlayer)
+                .frame(
+                    width: width,
+                    height: height
+                )
+                .clipped()
+                .allowsHitTesting(false)
+        }
     }
 
     private var feedEditor: some View {
@@ -196,4 +264,12 @@ struct LogComposeView: View {
             }
         }
     }
+}
+
+private enum LogComposeLayout {
+    static let previewWidth: CGFloat = 210
+    static let videoWidth: CGFloat = 9
+    static let videoHeight: CGFloat = 16
+    static let previewHeight: CGFloat = previewWidth * videoHeight / videoWidth
+    static let playbackControlSize: CGFloat = 60
 }
