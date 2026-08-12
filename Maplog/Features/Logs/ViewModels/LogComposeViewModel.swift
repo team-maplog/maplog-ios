@@ -10,7 +10,8 @@ import Foundation
 @MainActor
 final class LogComposeViewModel: ObservableObject {
     @Published var caption = ""
-    @Published private(set) var selectedCoverTime: TimeInterval = 0
+    @Published private(set) var selectedCoverTime: TimeInterval = 0 // 몇 초를 골랐는지
+    @Published private(set) var selectedCoverThumbnailData: Data? // 그때의 이미지
     @Published private(set) var isPreviewPlaying = false // 재생 상태
     @Published private(set) var clipLocations: [LogComposeClipLocationDraft]
     @Published private(set) var thumbnailDataByClipID: [UUID: Data] = [:] // 썸네일 상태 함수
@@ -114,8 +115,22 @@ final class LogComposeViewModel: ObservableObject {
         }
     }
 
-    func selectCover(at time: TimeInterval) {
-        selectedCoverTime = min(max(time, 0), video.duration)
+    func selectCover(_ frame: LogCoverFrame) {
+        let selectedTime = min(
+                max(frame.time, 0),
+                video.duration
+            )
+
+        selectedCoverTime = selectedTime
+        selectedCoverThumbnailData = frame.thumbnailData
+
+        videoPlaybackService.loadVideo(at: video.fileURL)
+        isPreviewPlaying = false
+    }
+
+    // 커버 선택 화면용 입력값
+    func makeCoverSelectionInput() -> LogCoverSelectionInput {
+        LogCoverSelectionInput(videoURL: video.fileURL, duration: video.duration, initialSelectedTime: selectedCoverTime)
     }
 
     func prepare() async {

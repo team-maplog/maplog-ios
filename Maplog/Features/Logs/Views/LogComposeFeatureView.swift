@@ -10,7 +10,10 @@ import SwiftUI
 struct LogComposeFeatureView: View {
     @StateObject private var viewModel: LogComposeViewModel
     @State private var selectedClipLocation: LogComposeClipLocationDraft?
+    @State private var coverSelectionInput: LogCoverSelectionInput?
+
     private let videoPlaybackService: any VideoPlaybackService
+    private let videoThumbnailService: any VideoThumbnailService
     private let logLocationRepository: any LogLocationRepository
 
     init(
@@ -20,6 +23,7 @@ struct LogComposeFeatureView: View {
         logLocationRepository: any LogLocationRepository
     ) {
         self.videoPlaybackService = videoPlaybackService
+        self.videoThumbnailService = videoThumbnailService
         self.logLocationRepository = logLocationRepository
 
         _viewModel = StateObject(
@@ -36,7 +40,9 @@ struct LogComposeFeatureView: View {
                 viewModel: viewModel,
                 previewPlayer: videoPlaybackService.player,
                 onCoverChangeTap: {
+                    viewModel.stopPreview() // 커버를 고르는 동안 뒤 화면의 재생 상태가 남지 않게 하기 위해
 
+                    coverSelectionInput = viewModel.makeCoverSelectionInput()
                 },
                 onClipLocationTap: { clipID in
                     selectedClipLocation = viewModel.clipLocation(
@@ -63,6 +69,17 @@ struct LogComposeFeatureView: View {
                         viewModel.updateClipLocation(
                             updatedClipLocation
                         )
+                    }
+                )
+            }
+            .navigationDestination(
+                item: $coverSelectionInput
+            ) { input in
+                LogCoverSelectionFeatureView(
+                    input: input,
+                    videoThumbnailService: videoThumbnailService,
+                    onSave: { selectedFrame in
+                        viewModel.selectCover(selectedFrame)
                     }
                 )
             }

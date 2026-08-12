@@ -339,7 +339,8 @@ final class ClipEditorViewModel: ObservableObject {
         do {
             let request = VideoExportRequest(
                 clips: orderedClips,
-                textOverlays: textOverlays
+                textOverlays: textOverlays,
+                isMuted: isPreviewMuted
             )
 
             let result = try await videoExportService.export(

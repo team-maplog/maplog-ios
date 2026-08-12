@@ -10,11 +10,13 @@ import SwiftUI
 struct ClipEditorTopControlsView: View {
     let activeTool: ClipEditorActiveTool
     let isTextEditing: Bool
+    let isMuted: Bool
 
     let onClose: () -> Void
     let onTextTap: () -> Void
     let onLocationTap: () -> Void
     let onStickerTap: () -> Void
+    let onMuteTap: () -> Void
 
     var body: some View {
         HStack(spacing: MaplogSpacing.xxSmall) {
@@ -53,8 +55,15 @@ struct ClipEditorTopControlsView: View {
                         action: onStickerTap
                     )
 
-                    passiveControl(
-                        symbol: "ellipsis"
+                    glassButton(
+                        symbol: isMuted
+                        ? "speaker.slash.fill"
+                        : "speaker.wave.2.fill",
+                        accessibilityLabel: isMuted
+                        ? "음소거 해제"
+                        : "음소거",
+                        isSelected: isMuted,
+                        action: onMuteTap
                     )
                 }
             }
