@@ -17,13 +17,15 @@ struct ClipPickerFeatureView: View {
     private let videoPlaybackService: any VideoPlaybackService
     private let videoExportService: any VideoExportService
     private let logLocationRepository: any LogLocationRepository
+    private let logPublishingRepository: any LogPublishingRepository
 
     init(
         mediaDraftRepository: any MediaDraftRepository,
         videoThumbnailService: any VideoThumbnailService,
         videoPlaybackService: any VideoPlaybackService,
         videoExportService: any VideoExportService,
-        logLocationRepository: any LogLocationRepository
+        logLocationRepository: any LogLocationRepository,
+        logPublishingRepository: any LogPublishingRepository
 
     ) {
         self.mediaDraftRepository = mediaDraftRepository
@@ -31,6 +33,7 @@ struct ClipPickerFeatureView: View {
         self.videoPlaybackService = videoPlaybackService
         self.videoExportService = videoExportService
         self.logLocationRepository = logLocationRepository
+        self.logPublishingRepository = logPublishingRepository
         _viewModel = StateObject(
             wrappedValue: ClipPickerViewModel(
                 mediaDraftRepository: mediaDraftRepository,
@@ -59,7 +62,8 @@ struct ClipPickerFeatureView: View {
                 videoThumbnailService: videoThumbnailService,
                 videoPlaybackService: videoPlaybackService,
                 videoExportService: videoExportService,
-                logLocationRepository: logLocationRepository
+                logLocationRepository: logLocationRepository,
+                logPublishingRepository: logPublishingRepository
             )
         }
     }

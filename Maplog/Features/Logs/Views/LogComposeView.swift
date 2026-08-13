@@ -16,6 +16,7 @@ struct LogComposeView: View {
     let previewPlayer: AVPlayer
     let onCoverChangeTap: () -> Void
     let onClipLocationTap: (UUID) -> Void
+    let onPublishTap: () -> Void
 
     @Environment(\.dismiss) private var dismiss
 
@@ -47,14 +48,60 @@ struct LogComposeView: View {
         .maplogNavigationAppearance()
         .safeAreaInset(edge: .bottom) {
             PrimaryActionButton(
-                "로그 발행",
-                systemImage: "paperplane.fill",
-                isEnabled: false
+                viewModel.isPublishing
+                ? "로그 발행 중..."
+                : "로그 발행",
+                systemImage: viewModel.isPublishing
+                ? nil
+                : "paperplane.fill",
+                isEnabled: viewModel.canPublish
             ) {
+                onPublishTap()
             }
             .padding(.horizontal, MaplogSpacing.page)
             .padding(.vertical, MaplogSpacing.small)
             .background(Color.maplogSurface)
+        }
+        .alert(
+            "로그를 발행하지 못했어요",
+            isPresented: Binding(
+                get: { viewModel.publishError != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        viewModel.dismissPublishError()
+                    }
+                }
+            )
+        ) {
+            if viewModel.publishError?.recoveryAction == .retry {
+                Button("다시 시도") {
+                    onPublishTap()
+                }
+            }
+
+            Button("확인", role: .cancel) {
+                viewModel.dismissPublishError()
+            }
+        } message: {
+            Text(viewModel.publishError?.message ?? "")
+        }
+        .alert(
+            "로그를 발행했어요",
+            isPresented: Binding(
+                get: { viewModel.publishedLog != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        viewModel.dismissPublishedLog()
+                    }
+                }
+            )
+        ) {
+            Button("확인") {
+                viewModel.dismissPublishedLog()
+                dismiss()
+            }
+        } message: {
+            Text("로그 발행이 완료됐어요.")
         }
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {

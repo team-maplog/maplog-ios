@@ -44,6 +44,27 @@ final class AuthenticatedAPIClient {
         return try await apiClient.request(authorizedRequest, responseType: responseType)
     }
 
+    private func dataWithAccessToken(
+        _ request: URLRequest
+    ) async throws -> Data {
+        var authorizedRequest = request
+
+        let accessToken = try await authSession.currentAccessToken()
+
+        guard let accessToken, !accessToken.isEmpty else {
+            throw APIError.missingAccessToken
+        }
+
+        authorizedRequest.setValue(
+            "Bearer \(accessToken)",
+            forHTTPHeaderField: "Authorization"
+        )
+
+        return try await apiClient.data(
+            for: authorizedRequest
+        )
+    }
+
     // 오류 코드 확인 메서드
     private func backendErrorCode(from error: Error) -> BackendErrorCode? {
         guard case let APIError.server(_, response) = error else {
@@ -98,5 +119,46 @@ final class AuthenticatedAPIClient {
                 }
             }
         }
+
+//    썸네일 요청
+//    → Access Token 첨부
+//    → 401 EXPIRED_TOKEN이면 재발급 1회
+//    → 같은 썸네일 요청 재시도 1회
+    func data(
+        for request: URLRequest
+    ) async throws -> Data {
+        do {
+            return try await dataWithAccessToken(request)
+
+        } catch {
+            guard backendErrorCode(from: error) == .expiredAccessToken else {
+                if shouldEndSession(for: error) {
+                    try? await authSession.endSession()
+                }
+
+                throw error
+            }
+
+            do {
+                try await tokenRefresher.refreshAccessToken()
+            } catch {
+                if shouldEndSession(for: error) {
+                    try? await authSession.endSession()
+                }
+
+                throw error
+            }
+
+            do {
+                return try await dataWithAccessToken(request)
+            } catch {
+                if shouldEndSession(for: error) {
+                    try? await authSession.endSession()
+                }
+
+                throw error
+            }
+        }
+    }
 
 }

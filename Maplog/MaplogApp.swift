@@ -13,6 +13,9 @@ struct MaplogApp: App { // 앱의 조립 담당자
     private let videoExportService: any VideoExportService
     private let captureLocationService: any CaptureLocationService
     private let logLocationRepository: any LogLocationRepository
+    private let logPublishingRepository: any LogPublishingRepository
+    private let logReelRepository: any LogReelRepository
+    private let logMediaRepository: any LogMediaRepository
 
     init() {
         KakaoMapSDKConfiguration.initializeIfNeeded()
@@ -28,21 +31,19 @@ struct MaplogApp: App { // 앱의 조립 담당자
             refreshTokenProvider: sessionStore
         )
 
-        let authRepository = DefaultAuthRepository(
-            apiService: authAPIService
-        )
-
+        let authRepository = DefaultAuthRepository(apiService: authAPIService)
         let tokenRefresher = DefaultAccessTokenRefresher(authRepository: authRepository, authSession: sessionStore)
-
         let authenticatedAPIClient = AuthenticatedAPIClient(apiClient: apiClient, authSession: sessionStore, tokenRefresher: tokenRefresher)
-
         let apiService = DefaultTourismAPIService(authenticatedAPIClient: authenticatedAPIClient)
-
         let logLocationAPIService = DefaultLogLocationAPIService(authenticatedAPIClient: authenticatedAPIClient)
-
         let logLocationRepository = DefaultLogLocationRepository(apiService: logLocationAPIService)
-
+        let logPublishingAPIService = DefaultLogPublishingAPIService(authenticatedAPIClient: authenticatedAPIClient)
+        let logPublishingRepository = DefaultLogPublishingRepository(apiService: logPublishingAPIService)
+        let logReelAPIService = DefaultLogReelAPIService(authenticatedAPIClient: authenticatedAPIClient)
+        let logReelRepository = DefaultLogReelRepository(apiService: logReelAPIService)
         let textOverlayRenderer = VideoTextOverlayRenderer()
+        let logMediaAPIService = DefaultLogMediaAPIService(authenticatedAPIClient: authenticatedAPIClient)
+        let logMediaRepository = DefaultLogMediaRepository(apiService: logMediaAPIService)
 
         self.authRepository = authRepository
 
@@ -56,20 +57,16 @@ struct MaplogApp: App { // 앱의 조립 담당자
         //        실제 객체는 사라지지 않음. Repository가 그 API Service를 가지고 있기 때문
         //        MaplogApp이 원래 가지고 있기로 선언한 저장 프로퍼티를 초기화하는 코드
         self.tourismRepository = DefaultTourismRepository(apiService: apiService)
-
         self.cameraCaptureService = AVCameraCaptureService()
-
         self.mediaDraftRepository = FileMediaDraftRepository()
-
         self.videoThumbnailService = AVVideoThumbnailService()
-
         self.videoPlaybackService = AVVideoPlaybackService()
-
         self.videoExportService = AVVideoExportService(textOverlayRenderer: textOverlayRenderer)
-
         self.captureLocationService = CoreLocationCaptureLocationService()
-
         self.logLocationRepository = logLocationRepository
+        self.logPublishingRepository = logPublishingRepository
+        self.logReelRepository = logReelRepository
+        self.logMediaRepository = logMediaRepository
     }
 
     var body: some Scene {
@@ -83,7 +80,10 @@ struct MaplogApp: App { // 앱의 조립 담당자
                 videoPlaybackService: videoPlaybackService,
                 videoExportService: videoExportService,
                 captureLocationService: captureLocationService,
-                logLocationRepository: logLocationRepository
+                logLocationRepository: logLocationRepository,
+                logPublishingRepository: logPublishingRepository,
+                logReelRepository: logReelRepository,
+                logMediaRepository: logMediaRepository
             )
             .environmentObject(authSessionStore)
             .environmentObject(signOutViewModel)

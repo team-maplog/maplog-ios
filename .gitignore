@@ -3,3 +3,7 @@ DerivedData/
 .DS_Store
 *.xcuserstate
 xcuserdata/
+
+# Local-only collaboration references
+AGENTS.md
+design-review/

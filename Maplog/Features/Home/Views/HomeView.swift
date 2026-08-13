@@ -30,16 +30,16 @@ struct HomeView: View {
     private let aiDigests = MockMaplogData.aiDigests
     private let spotlightEvent = MockMaplogData.spotlightEvent
     private let homeVideos = HomeMaplogThumbnailItem.samples
-    private let homePosts = MockMaplogData.posts
+//    private let homePosts = MockMaplogData.posts
     private let nearbyPlaces = HomeNearbyPlace.samples
 
-    private var featuredPost: VlogPost? {
-        homePosts.first
-    }
-
-    private var discoveryPosts: [VlogPost] {
-        Array(homePosts.dropFirst())
-    }
+//    private var featuredPost: VlogPost? {
+//        homePosts.first
+//    }
+//
+//    private var discoveryPosts: [VlogPost] {
+//        Array(homePosts.dropFirst())
+//    }
 
 //    private var homeTourismEvents: [FeaturedEvent] {
 //        [spotlightEvent] + MockMaplogData.events
@@ -57,12 +57,7 @@ struct HomeView: View {
                     homeIntro
                         .id("home-intro")
 
-                    ForEach(homePosts) { post in
-                        homeMaplogPage(for: post)
-                        .frame(maxWidth: .infinity)
-                        .containerRelativeFrame(.vertical)
-                        .id(post.id)
-                    }
+                    homeReelPages
                 }
                 .scrollTargetLayout()
                 .padding(.top, 12)
@@ -91,7 +86,10 @@ struct HomeView: View {
         .preferredColorScheme(isHomeReelActive ? .dark : nil)
         .maplogReelTabBarStyle(isHomeReelActive)
         .task { // body 안에서 직접 API를 호출하지 않고, View가 화면에 등장하는 생명주기에 맞는 .task에서 호출
-            await viewModel.loadInitialTourisms()
+            async let tourism: Void = viewModel.loadInitialTourisms()
+            async let reels: Void = viewModel.loadInitialReels()
+
+            _ = await (tourism, reels)
         }
         .toolbar(.hidden, for: .navigationBar)
         .navigationDestination(isPresented: $showsThemeSpots) {
@@ -140,6 +138,125 @@ struct HomeView: View {
                 }
         }
     }
+
+    @ViewBuilder
+    private var homeReelPages: some View {
+        switch viewModel.reelState {
+        case .idle, .loading:
+            HomeReelStatusPage(
+                icon: "play.rectangle",
+                title: "로그를 불러오는 중이에요",
+                message: nil,
+                actionTitle: nil,
+                action: nil
+            )
+            .frame(maxWidth: .infinity)
+            .containerRelativeFrame(.vertical)
+            .id("reel-loading")
+
+        case let .content(reels):
+            ForEach(reels) { reel in
+                homeReelPage(for: reel)
+                    .frame(maxWidth: .infinity)
+                    .containerRelativeFrame(.vertical)
+                    .id("reel-\(reel.id)")
+            }
+
+        case .empty:
+            HomeReelStatusPage(
+                icon: "video.slash",
+                title: "아직 발행된 로그가 없어요",
+                message: "첫 번째 영상을 기록해 보세요.",
+                actionTitle: nil,
+                action: nil
+            )
+            .frame(maxWidth: .infinity)
+            .containerRelativeFrame(.vertical)
+            .id("reel-empty")
+
+        case let .failed(presentation):
+            HomeReelStatusPage(
+                icon: "exclamationmark.triangle",
+                title: "로그를 불러오지 못했어요",
+                message: presentation.message,
+                actionTitle: actionTitle(for: presentation),
+                action: {
+                    handleReelErrorAction(
+                        presentation.recoveryAction
+                    )
+                }
+            )
+            .frame(maxWidth: .infinity)
+            .containerRelativeFrame(.vertical)
+            .id("reel-failed")
+        }
+    }
+
+    @ViewBuilder
+    private func homeReelPage(
+        for reel: HomeReelViewData
+    ) -> some View {
+        if reduceMotion {
+            HomeReelPage(
+                reel: reel,
+                thumbnailData: viewModel.thumbnailData(for: reel.id),
+                isLoadingThumbnail: viewModel.isLoadingThumbnail(for: reel.id)
+            )
+            .task(id: reel.id) {
+                await viewModel.loadThumbnail(for: reel.id)
+            }
+        } else {
+            HomeReelPage(
+                reel: reel,
+                thumbnailData: viewModel.thumbnailData(for: reel.id),
+                isLoadingThumbnail: viewModel.isLoadingThumbnail(for: reel.id)
+            )
+            .task(id: reel.id) {
+                await viewModel.loadThumbnail(for: reel.id)
+            }
+                .scrollTransition(.interactive, axis: .vertical) {
+                    content,
+                    phase in
+
+                    content.opacity(
+                        phase.isIdentity ? 1 : 0.18
+                    )
+                }
+        }
+    }
+
+    private func actionTitle(
+        for presentation: ErrorPresentation
+    ) -> String? {
+        switch presentation.recoveryAction {
+        case .retry:
+            return "다시 시도"
+
+        case .signIn:
+            return "다시 로그인"
+
+        case .none:
+            return nil
+        }
+    }
+
+    private func handleReelErrorAction(
+        _ action: ErrorPresentation.RecoveryAction
+    ) {
+        switch action {
+        case .retry:
+            Task {
+                await viewModel.retryInitialReels()
+            }
+
+        case .signIn:
+            performLogout()
+
+        case .none:
+            break
+        }
+    }
+
 
     private var homeIntroContent: some View {
         VStack(alignment: .leading, spacing: MaplogSpacing.xLarge) {
@@ -569,29 +686,29 @@ struct HomeView: View {
         }
     }
 
-    @ViewBuilder
-    private func homeMaplogPage(for post: VlogPost) -> some View {
-        if reduceMotion {
-            HomeMaplogClipPager(
-                post: post,
-                onNext: {
-                    showNextHomePost(after: post)
-                },
-                onReturnHome: returnToHomeIntro
-            )
-        } else {
-            HomeMaplogClipPager(
-                post: post,
-                onNext: {
-                    showNextHomePost(after: post)
-                },
-                onReturnHome: returnToHomeIntro
-            )
-            .scrollTransition(.interactive, axis: .vertical) { content, phase in
-                content.opacity(phase.isIdentity ? 1 : 0.18)
-            }
-        }
-    }
+//    @ViewBuilder
+//    private func homeMaplogPage(for post: VlogPost) -> some View {
+//        if reduceMotion {
+//            HomeMaplogClipPager(
+//                post: post,
+//                onNext: {
+//                    showNextHomePost(after: post)
+//                },
+//                onReturnHome: returnToHomeIntro
+//            )
+//        } else {
+//            HomeMaplogClipPager(
+//                post: post,
+//                onNext: {
+//                    showNextHomePost(after: post)
+//                },
+//                onReturnHome: returnToHomeIntro
+//            )
+//            .scrollTransition(.interactive, axis: .vertical) { content, phase in
+//                content.opacity(phase.isIdentity ? 1 : 0.18)
+//            }
+//        }
+//    }
 
     private func returnToHomeIntro() {
         guard homeScrollPosition != "home-intro" else { return }
@@ -601,16 +718,16 @@ struct HomeView: View {
         }
     }
 
-    private func showNextHomePost(after post: VlogPost) {
-        guard let currentIndex = homePosts.firstIndex(where: { $0.id == post.id }) else {
-            return
-        }
-
-        let nextIndex = (currentIndex + 1) % homePosts.count
-        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.32)) {
-            homeScrollPosition = homePosts[nextIndex].id
-        }
-    }
+//    private func showNextHomePost(after post: VlogPost) {
+//        guard let currentIndex = homePosts.firstIndex(where: { $0.id == post.id }) else {
+//            return
+//        }
+//
+//        let nextIndex = (currentIndex + 1) % homePosts.count
+//        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.32)) {
+//            homeScrollPosition = homePosts[nextIndex].id
+//        }
+//    }
 
     private var nearbyRecommendationSection: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -716,6 +833,44 @@ struct HomeView: View {
             }
         }
     }
+
+    private struct HomeReelStatusPage: View {
+        let icon: String
+        let title: String
+        let message: String?
+        let actionTitle: String?
+        let action: (() -> Void)?
+
+        var body: some View {
+            VStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.system(size: 34, weight: .semibold))
+                    .foregroundStyle(Color.maplogLime)
+
+                Text(title)
+                    .font(.headline)
+                    .foregroundStyle(.white)
+
+                if let message {
+                    Text(message)
+                        .font(.subheadline)
+                        .foregroundStyle(.white.opacity(0.72))
+                        .multilineTextAlignment(.center)
+                }
+
+                if let actionTitle, let action {
+                    Button(actionTitle, action: action)
+                        .buttonStyle(.borderedProminent)
+                        .tint(Color.maplogLime)
+                        .foregroundStyle(Color.maplogInk)
+                }
+            }
+            .padding(32)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(Color.black)
+        }
+    }
+
 
 }
 

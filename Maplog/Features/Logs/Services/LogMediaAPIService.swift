@@ -1,0 +1,12 @@
+//
+//  LogMediaAPIService.swift
+//  Maplog
+//
+//  Created by 한채림 on 8/14/26.
+//
+
+import Foundation
+
+protocol LogMediaAPIService {
+    func fetchThumbnailData(logID: Int64) async throws -> Data
+}

@@ -95,6 +95,9 @@ struct RootView: View {
     private let videoExportService: any VideoExportService
     private let captureLocationService: any CaptureLocationService
     private let logLocationRepository: any LogLocationRepository
+    private let logPublishingRepository: any LogPublishingRepository
+    private let logReelRepository: any LogReelRepository
+    private let logMediaRepository: any LogMediaRepository
 
     init(
         authRepository: any AuthRepository,
@@ -105,7 +108,10 @@ struct RootView: View {
         videoPlaybackService: any VideoPlaybackService,
         videoExportService: any VideoExportService,
         captureLocationService: any CaptureLocationService,
-        logLocationRepository: any LogLocationRepository
+        logLocationRepository: any LogLocationRepository,
+        logPublishingRepository: any LogPublishingRepository,
+        logReelRepository: any LogReelRepository,
+        logMediaRepository: any LogMediaRepository
     ) {
         self.authRepository = authRepository
         self.tourismRepository = tourismRepository
@@ -116,6 +122,9 @@ struct RootView: View {
         self.videoExportService = videoExportService
         self.captureLocationService = captureLocationService
         self.logLocationRepository = logLocationRepository
+        self.logPublishingRepository = logPublishingRepository
+        self.logReelRepository = logReelRepository
+        self.logMediaRepository = logMediaRepository
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("-MaplogSkipOnboarding") {
             _phase = State(initialValue: .app)
@@ -158,6 +167,9 @@ struct RootView: View {
                     videoExportService: videoExportService,
                     captureLocationService: captureLocationService,
                     logLocationRepository: logLocationRepository,
+                    logPublishingRepository: logPublishingRepository,
+                    logReelRepository: logReelRepository,
+                    logMediaRepository: logMediaRepository,
                     requestedTab: $requestedTab,
                     requestedCapturePlaceName: $requestedCapturePlaceName
                 )

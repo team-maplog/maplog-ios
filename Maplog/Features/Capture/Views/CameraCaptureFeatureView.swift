@@ -16,6 +16,7 @@ struct CameraCaptureFeatureView: View {
     private let videoPlaybackService: any VideoPlaybackService
     private let videoExportService: any VideoExportService
     private let logLocationRepository: any LogLocationRepository
+    private let logPublishingRepository: any LogPublishingRepository
 
     let onClose: () -> Void
 
@@ -27,6 +28,7 @@ struct CameraCaptureFeatureView: View {
         videoExportService: any VideoExportService,
         captureLocationService: any CaptureLocationService,
         logLocationRepository: any LogLocationRepository,
+        logPublishingRepository: any LogPublishingRepository,
         onClose: @escaping () -> Void
     ) {
         self.mediaDraftRepository = mediaDraftRepository
@@ -34,6 +36,7 @@ struct CameraCaptureFeatureView: View {
         self.videoPlaybackService = videoPlaybackService
         self.videoExportService = videoExportService
         self.logLocationRepository = logLocationRepository
+        self.logPublishingRepository = logPublishingRepository
         _viewModel = StateObject(
             wrappedValue: CameraCaptureViewModel(
                 cameraCaptureService: cameraCaptureService,
@@ -74,7 +77,8 @@ struct CameraCaptureFeatureView: View {
                 videoThumbnailService: videoThumbnailService,
                 videoPlaybackService: videoPlaybackService,
                 videoExportService: videoExportService,
-                logLocationRepository: logLocationRepository
+                logLocationRepository: logLocationRepository,
+                logPublishingRepository: logPublishingRepository
             )
         }
     }

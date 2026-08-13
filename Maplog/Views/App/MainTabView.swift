@@ -36,6 +36,8 @@ struct MainTabView: View {
     private let videoExportService: any VideoExportService
     private let captureLocationService: any CaptureLocationService
     private let logLocationRepository: any LogLocationRepository
+    private let logPublishingRepository: any LogPublishingRepository
+    private let logReelRepository: any LogReelRepository
     @State private var homeNavigationPath: [HomeNavigationRoute] = []
 
 
@@ -48,6 +50,9 @@ struct MainTabView: View {
         videoExportService: any VideoExportService,
         captureLocationService: any CaptureLocationService,
         logLocationRepository: any LogLocationRepository,
+        logPublishingRepository: any LogPublishingRepository,
+        logReelRepository: any LogReelRepository,
+        logMediaRepository: any LogMediaRepository,
         requestedTab: Binding<MaplogTab?> = .constant(nil),
         requestedCapturePlaceName: Binding<String?> = .constant(nil)
     ) {
@@ -59,6 +64,8 @@ struct MainTabView: View {
         self.videoExportService = videoExportService
         self.captureLocationService = captureLocationService
         self.logLocationRepository = logLocationRepository
+        self.logPublishingRepository = logPublishingRepository
+        self.logReelRepository = logReelRepository
 
         _requestedTab = requestedTab
         _requestedCapturePlaceName = requestedCapturePlaceName
@@ -66,7 +73,9 @@ struct MainTabView: View {
         _previousTab = State(initialValue: .home)
 
         _homeviewModel = StateObject(wrappedValue: HomeViewModel(
-            tourismRepository: tourismRepository
+            tourismRepository: tourismRepository,
+            logReelRepository: logReelRepository,
+            logMediaRepository: logMediaRepository
         )
         )
     }
@@ -158,7 +167,8 @@ struct MainTabView: View {
                         videoPlaybackService: videoPlaybackService,
                         videoExportService: videoExportService,
                         captureLocationService: captureLocationService,
-                        logLocationRepository: logLocationRepository
+                        logLocationRepository: logLocationRepository,
+                        logPublishingRepository: logPublishingRepository
                     ) {
                         withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
                             selectedTab = previousTab
