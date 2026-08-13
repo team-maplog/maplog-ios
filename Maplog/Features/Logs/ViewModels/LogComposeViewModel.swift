@@ -15,21 +15,27 @@ final class LogComposeViewModel: ObservableObject {
     @Published private(set) var isPreviewPlaying = false // 재생 상태
     @Published private(set) var clipLocations: [LogComposeClipLocationDraft]
     @Published private(set) var thumbnailDataByClipID: [UUID: Data] = [:] // 썸네일 상태 함수
+    @Published private(set) var isPublishing = false
+    @Published private(set) var publishError: ErrorPresentation?
+    @Published private(set) var publishedLog: LogPublishResult?
 
     private let input: LogComposeInput // 편집 화면에서 넘겨받은 변하지 않는 재료
     private let videoPlaybackService: any VideoPlaybackService // 재생 약속을 지키는 객체를 받음
     private let videoThumbnailService: any VideoThumbnailService
+    private let logPublishingRepository: any LogPublishingRepository
 
     init(
         input: LogComposeInput,
         videoPlaybackService: any VideoPlaybackService,
-        videoThumbnailService: any VideoThumbnailService
+        videoThumbnailService: any VideoThumbnailService,
+        logPublishingRepository: any LogPublishingRepository
 
     ) {
         self.input = input
         self.videoPlaybackService = videoPlaybackService
         self.clipLocations = Self.makeClipLocationDrafts(from: input.clips)
         self.videoThumbnailService = videoThumbnailService
+        self.logPublishingRepository = logPublishingRepository
 
     }
 
@@ -51,6 +57,97 @@ final class LogComposeViewModel: ObservableObject {
 
     var clipLocationCountText: String {
         "\(clipLocations.count)개"
+    }
+
+    var canPublish: Bool {
+        !isPublishing &&
+        publishedLog == nil &&
+        makePublishDraft() != nil
+    }
+
+    func makePublishDraft() -> LogPublishDraft? {
+        let captionText = caption.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+
+        var publishClips: [LogPublishClipDraft] = []
+
+        for clipLocation in clipLocations {
+            guard let publishClip = makePublishClipDraft(from: clipLocation) else  {
+                return nil
+            }
+
+            publishClips.append(publishClip)
+        }
+
+        guard let representativeAddress = publishClips.first?.location.address else {
+            return nil
+        }
+
+        let thumbnailTimeMillis: Int?
+
+        if selectedCoverThumbnailData == nil {
+                thumbnailTimeMillis = nil
+            } else {
+                thumbnailTimeMillis = milliseconds(
+                    from: selectedCoverTime
+                )
+            }
+
+        return LogPublishDraft(
+                videoFileURL: video.fileURL,
+                caption: captionText,
+                representativeAddress: representativeAddress,
+                thumbnailTimeMillis: thumbnailTimeMillis,
+                clips: publishClips
+            )
+    }
+
+    func publish() async {
+        guard
+            !isPublishing,
+            let draft = makePublishDraft()
+        else {
+            return
+        }
+
+        isPublishing = true
+        publishError = nil
+        stopPreview()
+
+        defer {
+            isPublishing = false
+        }
+
+        do {
+            let result = try await logPublishingRepository.publish(
+                draft: draft
+            )
+
+            guard !Task.isCancelled else {
+                return
+            }
+
+            publishedLog = result
+        } catch is CancellationError {
+            return
+        } catch {
+            guard !Task.isCancelled else {
+                return
+            }
+
+            publishError = LogPublishErrorPolicy.presentation(
+                for: error
+            )
+        }
+    }
+
+    func dismissPublishError() {
+        publishError = nil
+    }
+
+    func dismissPublishedLog() {
+        publishedLog = nil
     }
 
     func thumbnailData(for clipID: UUID) -> Data? {
@@ -192,5 +289,59 @@ final class LogComposeViewModel: ObservableObject {
             minutes,
             remainingSeconds
         )
+    }
+
+    private func makePublishClipDraft(
+        from clipLocation: LogComposeClipLocationDraft
+    ) -> LogPublishClipDraft? {
+        guard
+            let location = clipLocation.location,
+            let address = normalizedText(location.address)
+        else {
+            return nil
+        }
+
+        let startTimeMillis = milliseconds(
+            from: max(clipLocation.startTime, 0)
+        )
+
+        let endTimeMillis = milliseconds(
+            from: min(clipLocation.endTime, video.duration)
+        )
+
+        guard endTimeMillis > startTimeMillis else {
+            return nil
+        }
+
+        return LogPublishClipDraft(
+            location: LogPublishLocationDraft(
+                name: normalizedText(location.name),
+                address: address,
+                latitude: location.latitude,
+                longitude: location.longitude
+            ),
+            startTimeMillis: startTimeMillis,
+            endTimeMillis: endTimeMillis
+        )
+    }
+
+    private func normalizedText(
+        _ text: String?
+    ) -> String? {
+        guard let text else {
+            return nil
+        }
+
+        let trimmedText = text.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+
+        return trimmedText.isEmpty ? nil : trimmedText
+    }
+
+    private func milliseconds(
+        from seconds: TimeInterval
+    ) -> Int {
+        Int((seconds * 1_000).rounded())
     }
 }

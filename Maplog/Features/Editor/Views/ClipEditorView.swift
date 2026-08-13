@@ -23,6 +23,7 @@ struct ClipEditorView: View {
     let videoPlaybackService: any VideoPlaybackService
     let videoThumbnailService: any VideoThumbnailService
     let logLocationRepository: any LogLocationRepository
+    let logPublishingRepository: any LogPublishingRepository
     let onAddClipTap: () -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -134,7 +135,8 @@ struct ClipEditorView: View {
                     input: input,
                     videoPlaybackService: videoPlaybackService,
                     videoThumbnailService: videoThumbnailService,
-                    logLocationRepository: logLocationRepository
+                    logLocationRepository: logLocationRepository,
+                    logPublishingRepository: logPublishingRepository
                 )
             }
         }

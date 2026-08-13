@@ -25,6 +25,16 @@ enum BackendErrorCode: Equatable {
     case commonInvalidRequest
     case tourismNotFound
 
+    case fileTooLarge
+    case unsupportedFileType
+    case missingLogVideo
+    case invalidLogVideo
+    case logVideoTooLong
+    case logVideoResolutionTooLarge
+    case thumbnailGenerationFailed
+    case invalidThumbnailTime
+    case invalidClipTimeRange
+
     init(serverCode: String) {
         switch serverCode {
         case "TOUR-001":
@@ -69,6 +79,33 @@ enum BackendErrorCode: Equatable {
 
         case "TOUR-003":
             self = .tourismNotFound
+
+        case "FILE-002":
+            self = .fileTooLarge
+
+        case "FILE-003":
+            self = .unsupportedFileType
+
+        case "LOG-004":
+            self = .missingLogVideo
+
+        case "LOG-006":
+            self = .invalidLogVideo
+
+        case "LOG-007":
+            self = .logVideoTooLong
+
+        case "LOG-008":
+            self = .logVideoResolutionTooLarge
+
+        case "LOG-009":
+            self = .thumbnailGenerationFailed
+
+        case "LOG-010":
+            self = .invalidThumbnailTime
+
+        case "LOG-012":
+            self = .invalidClipTimeRange
 
         default:
             self = .unknown(serverCode)

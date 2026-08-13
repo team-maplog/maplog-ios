@@ -57,27 +57,38 @@ import Foundation
 @MainActor
 final class HomeViewModel: ObservableObject {
     @Published private(set) var tourismState: HomeTourismSectionState = .idle
+    @Published private(set) var reelState: HomeReelSectionState = .idle
+    @Published private var thumbnailDataByReelID: [Int64: Data] = [:] // [로그 ID: 해당 썸네일 이미지 원본 Data]
+    @Published private var thumbnailLoadingIDs: Set<Int64> = [] //현재 네트워크 요청 중인 로그 ID 모음
 
     private let tourismRepository: any TourismRepository // TourismRepository protocol을 만족하는 어떤 실제 객체 하나(DefaultTourismRepository 객체가 들어감)
-    
-    init(tourismRepository: any TourismRepository) { // HomeViewModel을 만들 때 Repository를 반드시 전달받게 함
+    private let logReelRepository: any LogReelRepository
+    private let logMediaRepository: any LogMediaRepository
+
+    init(
+        tourismRepository: any TourismRepository,
+        logReelRepository: any LogReelRepository,
+        logMediaRepository: any LogMediaRepository
+    ) { // HomeViewModel을 만들 때 Repository를 반드시 전달받게 함
         self.tourismRepository = tourismRepository
+        self.logReelRepository = logReelRepository
+        self.logMediaRepository = logMediaRepository
     }
-    
+
     func loadInitialTourisms() async {
         guard tourismState != .loading else {
             return
         }
 
         tourismState = .loading
-        
+
         do {
             let page = try await tourismRepository.fetchTourisms(category: .events, cursor: nil, size: 10)
-            
+
             let cards = page.tourisms.map { tourism in
                 makeCardViewData(from: tourism) // Tourism들을 카드용 데이터로 변환
             }
-            
+
             tourismState = cards.isEmpty ? .empty : .content(cards)
         } catch is CancellationError { // CancellationError는 탭 이동처럼 화면이 사라져 요청이 취소된 정상 상황이므로 실패 UI로 바꾸지 않음, 실패 화면의 버튼은 retryInitialTourisms()를 호출하는 구조
             return
@@ -85,16 +96,124 @@ final class HomeViewModel: ObservableObject {
             tourismState = .failed(TourismErrorPolicy.presentation(for: error))
         }
     }
-    
+
     func retryInitialTourisms() async {
         guard tourismState != .loading else {
             return
         }
-        
+
         tourismState = .idle
         await loadInitialTourisms()
     }
-    
+
+    func loadInitialReels() async {
+        guard reelState == .idle else {
+            return
+        }
+
+        reelState = .loading
+
+        do {
+            let page = try await logReelRepository.fetchReels(
+                cursor: nil,
+                size: 20
+            )
+
+            let reels = page.reels.map { reel in
+                makeReelViewData(from: reel)
+            }
+
+            reelState = reels.isEmpty
+                ? .empty
+                : .content(reels)
+
+        } catch is CancellationError {
+            reelState = .idle
+
+        } catch {
+            reelState = .failed(
+                HomeReelErrorPolicy.presentation(for: error)
+            )
+        }
+    }
+
+    func thumbnailData(for reelID: Int64) -> Data? {
+        thumbnailDataByReelID[reelID]
+    }
+
+    func isLoadingThumbnail(for reelID: Int64) -> Bool {
+        thumbnailLoadingIDs.contains(reelID)
+    }
+
+    func loadThumbnail(for reelID: Int64) async {
+        guard thumbnailDataByReelID[reelID] == nil,
+              !thumbnailLoadingIDs.contains(reelID) else {
+            return
+        }
+
+        thumbnailLoadingIDs.insert(reelID)
+
+        defer {
+            thumbnailLoadingIDs.remove(reelID)
+        }
+
+        do {
+            let data = try await logMediaRepository.fetchThumbnailData(
+                logID: reelID
+            )
+
+            guard !Task.isCancelled else {
+                return
+            }
+
+            thumbnailDataByReelID[reelID] = data
+
+        } catch is CancellationError {
+            return
+
+        } catch {
+            // 썸네일 하나의 실패가 홈 피드 전체 실패는 아니므로,
+            // 다음 화면 단계에서 기본 이미지로 표시한다.
+        }
+    }
+
+    func retryInitialReels() async {
+        reelState = .idle
+        await loadInitialReels()
+    }
+
+    private func makeReelViewData(
+        from reel: LogReel
+    ) -> HomeReelViewData {
+        HomeReelViewData(
+            id: reel.id,
+            authorName: reel.author.nickname,
+            caption: reel.caption,
+            address: reel.address,
+            thumbnailURL: reel.thumbnailURL,
+            playbackURL: reel.playbackURL,
+            publishedAt: reel.publishedAt,
+            viewCount: reel.viewCount,
+            likeCount: reel.likeCount,
+            commentCount: reel.commentCount,
+            isLikedByViewer: reel.isLikedByViewer,
+            isSavedByViewer: reel.isSavedByViewer,
+            clips: reel.clips.map { clip in
+                HomeReelClipViewData(
+                    id: clip.id,
+                    displayOrder: clip.displayOrder,
+                    startTimeMillis: clip.startTimeMillis,
+                    endTimeMillis: clip.endTimeMillis,
+                    placeName: clip.location.name,
+                    address: clip.location.address,
+                    latitude: clip.location.latitude,
+                    longitude: clip.location.longitude,
+                    thumbnailURL: clip.thumbnailURL
+                )
+            }
+        )
+    }
+
     private func makeCardViewData(from tourism: Tourism) -> HomeTourismCardViewData {
         HomeTourismCardViewData(id: tourism.id,
                                 title: tourism.name,
@@ -103,7 +222,7 @@ final class HomeViewModel: ObservableObject {
                                 dDayText: dDayText(startDate: tourism.startDate, endDate: tourism.endDate),
                                 thumbnailURL: tourism.thumbnailURL)
     }
-    
+
     private let periodDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "ko_KR")
@@ -112,7 +231,7 @@ final class HomeViewModel: ObservableObject {
         formatter.dateFormat = "yyyy. MM. dd."
         return formatter
     }()
-    
+
     private func periodText(startDate: Date?, endDate: Date?) -> String {
         guard let startDate, let endDate else {
                 return "기간 정보 없음"
@@ -120,7 +239,7 @@ final class HomeViewModel: ObservableObject {
 
             return "\(periodDateFormatter.string(from: startDate)) ~ \(periodDateFormatter.string(from: endDate))"
     }
-    
+
     private func dDayText(startDate: Date?, endDate: Date?) -> String? {
         let status = TourismScheduleStatusCalculator.make(startDate: startDate, endDate: endDate)
 
@@ -136,5 +255,5 @@ final class HomeViewModel: ObservableObject {
         }
     }
 
-    
+
 }

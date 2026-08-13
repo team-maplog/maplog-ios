@@ -15,6 +15,7 @@ struct ClipEditorFeatureView: View {
     private let videoThumbnailService: any VideoThumbnailService
     private let videoPlaybackService: any VideoPlaybackService // 재생기를 보관
     private let logLocationRepository: any LogLocationRepository
+    private let logPublishingRepository: any LogPublishingRepository
 
     init(
         input: ClipEditorInput,
@@ -22,12 +23,14 @@ struct ClipEditorFeatureView: View {
         videoThumbnailService: any VideoThumbnailService,
         videoPlaybackService: any VideoPlaybackService,
         videoExportService: any VideoExportService,
-        logLocationRepository: any LogLocationRepository
+        logLocationRepository: any LogLocationRepository,
+        logPublishingRepository: any LogPublishingRepository
     ) {
         self.mediaDraftRepository = mediaDraftRepository
         self.videoThumbnailService = videoThumbnailService
         self.videoPlaybackService = videoPlaybackService
         self.logLocationRepository = logLocationRepository
+        self.logPublishingRepository = logPublishingRepository
         _viewModel = StateObject(wrappedValue: ClipEditorViewModel(
             input: input,
             videoThumbnailService: videoThumbnailService,
@@ -44,6 +47,7 @@ struct ClipEditorFeatureView: View {
             videoPlaybackService: videoPlaybackService,
             videoThumbnailService: videoThumbnailService,
             logLocationRepository: logLocationRepository,
+            logPublishingRepository: logPublishingRepository,
             onAddClipTap: {
                 isClipSelectionPresented = true
             }
