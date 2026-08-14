@@ -38,10 +38,10 @@ final class AVVideoPlaybackService: VideoPlaybackService {
         queuePlayer.isMuted.toggle()
     }
 
-    func loadVideo(at url: URL) {
-        stop()
+    func loadVideo(at url: URL) { // 영상 교체·반복 재생 준비
+        stop() // 새 영상을 넣기 전, Service 상태를 항상 깨끗하게 초기화
 
-        let templateItem = AVPlayerItem(url: url)
+        let templateItem = AVPlayerItem(url: url) // 다운로드한 Caches/LogPlayback/log-2.video 같은 실제 로컬 영상 파일을 재생 가능한 AVPlayerItem으로 감쌈
 
         playerLooper = AVPlayerLooper(
             player: queuePlayer,

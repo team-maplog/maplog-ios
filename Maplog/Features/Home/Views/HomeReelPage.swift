@@ -7,16 +7,19 @@
 
 import SwiftUI
 import UIKit
+import AVFoundation
 
 struct HomeReelPage: View {
     let reel: HomeReelViewData
     let thumbnailData: Data?
     let isLoadingThumbnail: Bool
+    let player: AVPlayer?
+    let isLoadingPlayback: Bool
 
     var body: some View {
         GeometryReader { proxy in
             ZStack(alignment: .bottomLeading) {
-                reelThumbnail
+                reelMedia
                     .frame(
                         width: proxy.size.width,
                         height: proxy.size.height
@@ -55,6 +58,30 @@ struct HomeReelPage: View {
             "\(reel.authorName)의 로그, \(reel.address)"
         )
     }
+
+    private var reelMedia: some View {
+        ZStack {
+            reelThumbnail
+
+            if let player {
+                MaplogVideoPlayerLayerView(
+                    player: player,
+                    videoGravity: .resizeAspectFill
+                )
+                .equatable()
+                .allowsHitTesting(false)
+            }
+
+            if isLoadingPlayback {
+                Color.black.opacity(0.18)
+
+                ProgressView()
+                    .tint(.white)
+            }
+        }
+        .clipped() // 여백 없이 채우고 넘친 부분을 자름
+    }
+
 
 //    인증된 API 요청
 //    → Data

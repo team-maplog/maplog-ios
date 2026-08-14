@@ -53,6 +53,7 @@ struct MainTabView: View {
         logPublishingRepository: any LogPublishingRepository,
         logReelRepository: any LogReelRepository,
         logMediaRepository: any LogMediaRepository,
+        homeReelPlaybackService: any VideoPlaybackService,
         requestedTab: Binding<MaplogTab?> = .constant(nil),
         requestedCapturePlaceName: Binding<String?> = .constant(nil)
     ) {
@@ -75,7 +76,8 @@ struct MainTabView: View {
         _homeviewModel = StateObject(wrappedValue: HomeViewModel(
             tourismRepository: tourismRepository,
             logReelRepository: logReelRepository,
-            logMediaRepository: logMediaRepository
+            logMediaRepository: logMediaRepository,
+            playbackService: homeReelPlaybackService
         )
         )
     }

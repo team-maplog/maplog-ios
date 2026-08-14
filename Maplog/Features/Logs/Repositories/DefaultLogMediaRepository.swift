@@ -17,4 +17,12 @@ final class DefaultLogMediaRepository: LogMediaRepository {
     func fetchThumbnailData(logID: Int64) async throws -> Data {
         try await apiService.fetchThumbnailData(logID: logID)
     }
+
+    func fetchPlaybackFileURL(
+        logID: Int64
+    ) async throws -> URL {
+        try await apiService.fetchPlaybackFileURL(
+            logID: logID
+        )
+    }
 }

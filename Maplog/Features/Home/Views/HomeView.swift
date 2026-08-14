@@ -50,6 +50,24 @@ struct HomeView: View {
         return homeScrollPosition != "home-intro"
     }
 
+    // 릴스 ID를 꺼내는 함수
+//    "home-intro"
+//    "reel-2" -> 여기서 숫자 2만 꺼냄
+//    "reel-15"
+    private func reelID(
+        from scrollPosition: String?
+    ) -> Int64? {
+        guard let scrollPosition,
+              scrollPosition.hasPrefix("reel-")
+        else {
+            return nil
+        }
+
+        return Int64(
+            scrollPosition.dropFirst("reel-".count)
+        )
+    }
+
     var body: some View {
         ScrollViewReader { scrollProxy in
             ScrollView(showsIndicators: false) {
@@ -90,6 +108,19 @@ struct HomeView: View {
             async let reels: Void = viewModel.loadInitialReels()
 
             _ = await (tourism, reels)
+        }
+        .task(id: homeScrollPosition) {
+            guard let reelID = reelID(
+                from: homeScrollPosition
+            ) else {
+                viewModel.stopPlayback()
+                return
+            }
+
+            await viewModel.activatePlayback(for: reelID)
+        }
+        .onDisappear {
+            viewModel.stopPlayback()
         }
         .toolbar(.hidden, for: .navigationBar)
         .navigationDestination(isPresented: $showsThemeSpots) {
@@ -200,7 +231,9 @@ struct HomeView: View {
             HomeReelPage(
                 reel: reel,
                 thumbnailData: viewModel.thumbnailData(for: reel.id),
-                isLoadingThumbnail: viewModel.isLoadingThumbnail(for: reel.id)
+                isLoadingThumbnail: viewModel.isLoadingThumbnail(for: reel.id),
+                player: viewModel.player(for: reel.id),
+                isLoadingPlayback: viewModel.isLoadingPlayback(for: reel.id)
             )
             .task(id: reel.id) {
                 await viewModel.loadThumbnail(for: reel.id)
@@ -209,7 +242,9 @@ struct HomeView: View {
             HomeReelPage(
                 reel: reel,
                 thumbnailData: viewModel.thumbnailData(for: reel.id),
-                isLoadingThumbnail: viewModel.isLoadingThumbnail(for: reel.id)
+                isLoadingThumbnail: viewModel.isLoadingThumbnail(for: reel.id),
+                player: viewModel.player(for: reel.id),
+                isLoadingPlayback: viewModel.isLoadingPlayback(for: reel.id)
             )
             .task(id: reel.id) {
                 await viewModel.loadThumbnail(for: reel.id)

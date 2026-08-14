@@ -65,6 +65,27 @@ final class AuthenticatedAPIClient {
         )
     }
 
+    private func downloadWithAccessToken(
+        _ request: URLRequest
+    ) async throws -> URL {
+        var authorizedRequest = request
+
+        let accessToken = try await authSession.currentAccessToken()
+
+        guard let accessToken, !accessToken.isEmpty else {
+            throw APIError.missingAccessToken
+        }
+
+        authorizedRequest.setValue(
+            "Bearer \(accessToken)",
+            forHTTPHeaderField: "Authorization"
+        )
+
+        return try await apiClient.download(
+            for: authorizedRequest
+        )
+    }
+
     // 오류 코드 확인 메서드
     private func backendErrorCode(from error: Error) -> BackendErrorCode? {
         guard case let APIError.server(_, response) = error else {
@@ -82,6 +103,7 @@ final class AuthenticatedAPIClient {
 
         return backendErrorCode(from: error) == .invalidAuthentication
     }
+
 
 //    첫 요청 만료
 //    → 재발급 1회
@@ -151,6 +173,43 @@ final class AuthenticatedAPIClient {
 
             do {
                 return try await dataWithAccessToken(request)
+            } catch {
+                if shouldEndSession(for: error) {
+                    try? await authSession.endSession()
+                }
+
+                throw error
+            }
+        }
+    }
+
+    func download(
+        for request: URLRequest
+    ) async throws -> URL {
+        do {
+            return try await downloadWithAccessToken(request)
+
+        } catch {
+            guard backendErrorCode(from: error) == .expiredAccessToken else {
+                if shouldEndSession(for: error) {
+                    try? await authSession.endSession()
+                }
+
+                throw error
+            }
+
+            do {
+                try await tokenRefresher.refreshAccessToken()
+            } catch {
+                if shouldEndSession(for: error) {
+                    try? await authSession.endSession()
+                }
+
+                throw error
+            }
+
+            do {
+                return try await downloadWithAccessToken(request)
             } catch {
                 if shouldEndSession(for: error) {
                     try? await authSession.endSession()
