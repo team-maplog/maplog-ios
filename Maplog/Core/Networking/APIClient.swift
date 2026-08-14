@@ -37,40 +37,77 @@ final class APIClient {
     }
 
     func data(for urlRequest: URLRequest) async throws -> Data {
-        let networkResult: (Data, URLResponse)
+        let data: Data
+        let urlResponse: URLResponse
 
         do {
-            networkResult = try await URLSession.shared.data(for: urlRequest)
+            (data, urlResponse) = try await URLSession.shared.data(
+                for: urlRequest
+            )
         } catch {
-            throw APIError.network(error) // 네트워크 자체 실패
+            throw APIError.network(error)
         }
-
-        let data = networkResult.0
-        let urlResponse = networkResult.1
 
         guard let httpResponse = urlResponse as? HTTPURLResponse else {
-            throw APIError.invalidResponse // HTTP 응답이 아닐 때
+            throw APIError.invalidResponse
         }
 
-        //성공했을 시에 data -> responseType에 맞춰 디코딩 -> return
         guard (200..<300).contains(httpResponse.statusCode) else {
-            do {
-                let errorResponse = try JSONDecoder().decode(
-                    APIErrorResponse.self,
-                    from: data
-                )
-
-                throw APIError.server(
-                    statusCode: httpResponse.statusCode,
-                    response: errorResponse
-                )
-            } catch let error as APIError {
-                throw error
-            } catch {
-                throw APIError.decoding(error)
-            }
+            throw makeServerError(
+                statusCode: httpResponse.statusCode,
+                data: data
+            )
         }
 
         return data
+    }
+
+    func download(for urlRequest: URLRequest) async throws -> URL {
+        let temporaryURL: URL
+        let urlResponse: URLResponse
+
+        do {
+            (temporaryURL, urlResponse) = try await URLSession.shared.download(
+                for: urlRequest
+            )
+        } catch {
+            throw APIError.network(error)
+        }
+
+        guard let httpResponse = urlResponse as? HTTPURLResponse else {
+            throw APIError.invalidResponse
+        }
+
+        guard (200..<300).contains(httpResponse.statusCode) else {
+            guard let errorData = try? Data(contentsOf: temporaryURL) else {
+                throw APIError.invalidResponse
+            }
+
+            throw makeServerError(
+                statusCode: httpResponse.statusCode,
+                data: errorData
+            )
+        }
+
+        return temporaryURL
+    }
+
+    private func makeServerError(
+        statusCode: Int,
+        data: Data
+    ) -> APIError {
+        do {
+            let errorResponse = try JSONDecoder().decode(
+                APIErrorResponse.self,
+                from: data
+            )
+
+            return .server(
+                statusCode: statusCode,
+                response: errorResponse
+            )
+        } catch {
+            return .decoding(error)
+        }
     }
 }

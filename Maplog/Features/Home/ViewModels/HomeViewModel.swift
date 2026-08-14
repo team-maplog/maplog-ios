@@ -51,7 +51,7 @@
 //region: String? → locationText: String, Date → periodText: String이라는 분명한 변환이 있으므로 HomeTourismCardViewData를 두는 게 좋음
 //ViewModel은 Repository에게 Tourism을 받아서, 특정 화면이 바로 표시할 수 있는 상태와 문자열
 
-
+import AVFoundation
 import Foundation
 
 @MainActor
@@ -60,19 +60,25 @@ final class HomeViewModel: ObservableObject {
     @Published private(set) var reelState: HomeReelSectionState = .idle
     @Published private var thumbnailDataByReelID: [Int64: Data] = [:] // [로그 ID: 해당 썸네일 이미지 원본 Data]
     @Published private var thumbnailLoadingIDs: Set<Int64> = [] //현재 네트워크 요청 중인 로그 ID 모음
+    @Published private(set) var activePlaybackReelID: Int64? // 현재 재생 대상으로 선택된 릴스
+    @Published private(set) var playbackLoadingReelID: Int64? // 영상을 다운로드 중인 릴스
+    @Published private(set) var playbackFailedReelID: Int64? // 영상 다운로드·재생 준비에 실패한 릴스
 
     private let tourismRepository: any TourismRepository // TourismRepository protocol을 만족하는 어떤 실제 객체 하나(DefaultTourismRepository 객체가 들어감)
     private let logReelRepository: any LogReelRepository
     private let logMediaRepository: any LogMediaRepository
+    private let playbackService: any VideoPlaybackService
 
     init(
         tourismRepository: any TourismRepository,
         logReelRepository: any LogReelRepository,
-        logMediaRepository: any LogMediaRepository
+        logMediaRepository: any LogMediaRepository,
+        playbackService: any VideoPlaybackService
     ) { // HomeViewModel을 만들 때 Repository를 반드시 전달받게 함
         self.tourismRepository = tourismRepository
         self.logReelRepository = logReelRepository
         self.logMediaRepository = logMediaRepository
+        self.playbackService = playbackService
     }
 
     func loadInitialTourisms() async {
@@ -175,6 +181,80 @@ final class HomeViewModel: ObservableObject {
             // 썸네일 하나의 실패가 홈 피드 전체 실패는 아니므로,
             // 다음 화면 단계에서 기본 이미지로 표시한다.
         }
+    }
+
+    func player(for reelID: Int64) -> AVPlayer? {
+        guard activePlaybackReelID == reelID,
+              playbackLoadingReelID != reelID,
+              playbackFailedReelID != reelID
+        else {
+            return nil
+        }
+
+        return playbackService.player
+    }
+
+    func isLoadingPlayback(for reelID: Int64) -> Bool {
+        playbackLoadingReelID == reelID
+    }
+
+    func hasPlaybackFailed(for reelID: Int64) -> Bool {
+        playbackFailedReelID == reelID
+    }
+
+    func activatePlayback(for reelID: Int64) async {
+        guard activePlaybackReelID != reelID ||
+                playbackFailedReelID == reelID
+        else {
+            return
+        }
+
+        playbackService.stop() // 사용자가 다른 릴스를 선택한 즉시 이전 재생 중단
+
+        activePlaybackReelID = reelID
+        playbackLoadingReelID = reelID
+        playbackFailedReelID = nil
+
+        do {
+            let fileURL = try await logMediaRepository.fetchPlaybackFileURL(
+                logID: reelID
+            )
+
+            guard !Task.isCancelled,
+                  activePlaybackReelID == reelID
+            else {
+                return
+            }
+
+            playbackService.loadVideo(at: fileURL)
+            playbackService.play()
+
+            playbackLoadingReelID = nil
+
+        } catch is CancellationError {
+            guard activePlaybackReelID == reelID else {
+                return
+            }
+
+            playbackLoadingReelID = nil
+
+        } catch {
+            guard activePlaybackReelID == reelID else {
+                return
+            }
+
+            playbackService.stop()
+            playbackLoadingReelID = nil
+            playbackFailedReelID = reelID
+        }
+    }
+
+    func stopPlayback() {
+        playbackService.stop()
+
+        activePlaybackReelID = nil
+        playbackLoadingReelID = nil
+        playbackFailedReelID = nil
     }
 
     func retryInitialReels() async {

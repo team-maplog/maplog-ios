@@ -16,6 +16,7 @@ struct MaplogApp: App { // 앱의 조립 담당자
     private let logPublishingRepository: any LogPublishingRepository
     private let logReelRepository: any LogReelRepository
     private let logMediaRepository: any LogMediaRepository
+    private let homeReelPlaybackService: any VideoPlaybackService
 
     init() {
         KakaoMapSDKConfiguration.initializeIfNeeded()
@@ -67,6 +68,7 @@ struct MaplogApp: App { // 앱의 조립 담당자
         self.logPublishingRepository = logPublishingRepository
         self.logReelRepository = logReelRepository
         self.logMediaRepository = logMediaRepository
+        self.homeReelPlaybackService = AVVideoPlaybackService()
     }
 
     var body: some Scene {
@@ -83,7 +85,8 @@ struct MaplogApp: App { // 앱의 조립 담당자
                 logLocationRepository: logLocationRepository,
                 logPublishingRepository: logPublishingRepository,
                 logReelRepository: logReelRepository,
-                logMediaRepository: logMediaRepository
+                logMediaRepository: logMediaRepository,
+                homeReelPlaybackService: homeReelPlaybackService
             )
             .environmentObject(authSessionStore)
             .environmentObject(signOutViewModel)

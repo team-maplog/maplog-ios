@@ -39,6 +39,7 @@
 		E21BAE28300BC20400B95B53 /* KeychainService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E21BAE27300BC20000B95B53 /* KeychainService.swift */; };
 		E21BAE2A300BC21700B95B53 /* AuthViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E21BAE29300BC21300B95B53 /* AuthViewModel.swift */; };
 		E277D473300C975B00648B9A /* AuthValidation.swift in Sources */ = {isa = PBXBuildFile; fileRef = E277D472300C975300648B9A /* AuthValidation.swift */; };
+		E28BFDBE302F759F00CA97BD /* MaplogVideoPlayerLayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E28BFDBD302F758E00CA97BD /* MaplogVideoPlayerLayerView.swift */; };
 		E2AC0FC03000354E0005D226 /* PracticeKakaoMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2AC0FBF3000354E0005D226 /* PracticeKakaoMapView.swift */; };
 		E64345BB3CE1454CD256FE69 /* Cards.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82FCBC8A1A1F73D5ABD6442D /* Cards.swift */; };
 		EDDF28EA911571C5A90929B3 /* CaptureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 691D6E56B0806BACA016DE02 /* CaptureView.swift */; };
@@ -83,6 +84,7 @@
 		E21BAE27300BC20000B95B53 /* KeychainService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainService.swift; sourceTree = "<group>"; };
 		E21BAE29300BC21300B95B53 /* AuthViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthViewModel.swift; sourceTree = "<group>"; };
 		E277D472300C975300648B9A /* AuthValidation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthValidation.swift; sourceTree = "<group>"; };
+		E28BFDBD302F758E00CA97BD /* MaplogVideoPlayerLayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MaplogVideoPlayerLayerView.swift; sourceTree = "<group>"; };
 		E2AC0FBF3000354E0005D226 /* PracticeKakaoMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PracticeKakaoMapView.swift; sourceTree = "<group>"; };
 		E616D005446E65E2A4478814 /* MaplogTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MaplogTheme.swift; sourceTree = "<group>"; };
 		F2B4AB164A4CD66EF46DB763 /* QuickMaplogIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickMaplogIntent.swift; sourceTree = "<group>"; };
@@ -130,11 +132,6 @@
 		E29548F2300FC566008AB637 /* App */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = App;
-			sourceTree = "<group>";
-		};
-		E295D8E9301087AC004F1588 /* Tourisms */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = Tourisms;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -256,7 +253,6 @@
 		79110CE8419A39D6032482EF /* Views */ = {
 			isa = PBXGroup;
 			children = (
-				E295D8E9301087AC004F1588 /* Tourisms */,
 				E29548F2300FC566008AB637 /* App */,
 				B1A126FE1B2603FC7C02B20F /* Composer */,
 				0B31CCB1430D07D077F6095E /* Logs */,
@@ -279,6 +275,7 @@
 		86B65D051A5C8E1403262757 /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				E28BFDBD302F758E00CA97BD /* MaplogVideoPlayerLayerView.swift */,
 				82FCBC8A1A1F73D5ABD6442D /* Cards.swift */,
 				BDDE9E21B157D66A4C02AC14 /* MaplogButtons.swift */,
 				8B45817772DB8C538E6D5D16 /* MaplogLogoView.swift */,
@@ -368,7 +365,6 @@
 				E281F7A9300EAEE000562F7C /* Features */,
 				E281F7AF300EAF6D00562F7C /* Mocks */,
 				E29548F2300FC566008AB637 /* App */,
-				E295D8E9301087AC004F1588 /* Tourisms */,
 			);
 			name = Maplog;
 			packageProductDependencies = (
@@ -427,6 +423,7 @@
 			files = (
 				C0D3E0010A2B3C4D5E6F7003 /* CaptureEditorView.swift in Sources */,
 				C0D3E0010A2B3C4D5E6F7004 /* CaptureRecordingShutterButton.swift in Sources */,
+				E28BFDBE302F759F00CA97BD /* MaplogVideoPlayerLayerView.swift in Sources */,
 				C0D3E0010A2B3C4D5E6F7005 /* VlogCommentsSheet.swift in Sources */,
 				C0D3E0010A2B3C4D5E6F7006 /* MaplogActivityShareSheet.swift in Sources */,
 				EDDF28EA911571C5A90929B3 /* CaptureView.swift in Sources */,

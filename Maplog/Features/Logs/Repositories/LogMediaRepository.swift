@@ -9,4 +9,5 @@ import Foundation
 
 protocol LogMediaRepository {
     func fetchThumbnailData(logID: Int64) async throws -> Data
+    func fetchPlaybackFileURL(logID: Int64) async throws -> URL
 }
