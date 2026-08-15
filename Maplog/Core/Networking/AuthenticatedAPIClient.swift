@@ -103,6 +103,20 @@ final class AuthenticatedAPIClient {
 
         return backendErrorCode(from: error) == .invalidAuthentication
     }
+    
+//    오류 수신
+//    → 세션 종료 대상인지 검사
+//    → 맞으면 AuthSessionStore에게 세션 종료 요청
+//    → 이미 종료된 상태라면 AuthSessionStore가 즉시 return
+    private func endSessionIfNeeded(
+        for error: Error
+    ) async {
+        guard shouldEndSession(for: error) else {
+            return
+        }
+
+        try? await authSession.endSession()
+    }
 
 
 //    첫 요청 만료
@@ -117,26 +131,20 @@ final class AuthenticatedAPIClient {
                 return try await requestWithAccessToken(request, responseType: responseType)
             } catch {
                 guard backendErrorCode(from: error) == .expiredAccessToken else {
-                    if shouldEndSession(for: error) {
-                        try? await authSession.endSession()
-                    }
+                    await endSessionIfNeeded(for: error)
                     throw error
                 }
                 do {
                     try await tokenRefresher.refreshAccessToken()
                 } catch {
-                    if shouldEndSession(for: error) {
-                        try? await authSession.endSession()
-                    }
+                    await endSessionIfNeeded(for: error)
                     throw error
                 }
 
                 do{
                     return try await requestWithAccessToken(request, responseType: responseType)
                 } catch { // 재시도 요청의 복구 불가 오류 처리
-                    if shouldEndSession(for: error) {
-                        try? await authSession.endSession()
-                    }
+                    await endSessionIfNeeded(for: error)
                     throw error
                 }
             }
@@ -154,9 +162,7 @@ final class AuthenticatedAPIClient {
 
         } catch {
             guard backendErrorCode(from: error) == .expiredAccessToken else {
-                if shouldEndSession(for: error) {
-                    try? await authSession.endSession()
-                }
+                await endSessionIfNeeded(for: error)
 
                 throw error
             }
@@ -164,9 +170,7 @@ final class AuthenticatedAPIClient {
             do {
                 try await tokenRefresher.refreshAccessToken()
             } catch {
-                if shouldEndSession(for: error) {
-                    try? await authSession.endSession()
-                }
+                await endSessionIfNeeded(for: error)
 
                 throw error
             }
@@ -174,9 +178,7 @@ final class AuthenticatedAPIClient {
             do {
                 return try await dataWithAccessToken(request)
             } catch {
-                if shouldEndSession(for: error) {
-                    try? await authSession.endSession()
-                }
+                await endSessionIfNeeded(for: error)
 
                 throw error
             }
@@ -191,9 +193,7 @@ final class AuthenticatedAPIClient {
 
         } catch {
             guard backendErrorCode(from: error) == .expiredAccessToken else {
-                if shouldEndSession(for: error) {
-                    try? await authSession.endSession()
-                }
+                await endSessionIfNeeded(for: error)
 
                 throw error
             }
@@ -201,9 +201,7 @@ final class AuthenticatedAPIClient {
             do {
                 try await tokenRefresher.refreshAccessToken()
             } catch {
-                if shouldEndSession(for: error) {
-                    try? await authSession.endSession()
-                }
+                await endSessionIfNeeded(for: error)
 
                 throw error
             }
@@ -211,9 +209,7 @@ final class AuthenticatedAPIClient {
             do {
                 return try await downloadWithAccessToken(request)
             } catch {
-                if shouldEndSession(for: error) {
-                    try? await authSession.endSession()
-                }
+                await endSessionIfNeeded(for: error)
 
                 throw error
             }
