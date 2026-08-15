@@ -78,10 +78,13 @@ struct HomeView: View {
                     homeReelPages
                 }
                 .scrollTargetLayout()
-                .padding(.top, 12)
+                .padding(.top, isHomeReelActive ? 0 : 12)
             }
             .scrollPosition(id: $homeScrollPosition, anchor: .top)
             .scrollTargetBehavior(.viewAligned(limitBehavior: .always))
+            .refreshable {
+                await viewModel.refreshHome()
+            }
             .ignoresSafeArea(
                 .container,
                 edges: isHomeReelActive ? [.top, .bottom] : []
@@ -233,7 +236,8 @@ struct HomeView: View {
                 thumbnailData: viewModel.thumbnailData(for: reel.id),
                 isLoadingThumbnail: viewModel.isLoadingThumbnail(for: reel.id),
                 player: viewModel.player(for: reel.id),
-                isLoadingPlayback: viewModel.isLoadingPlayback(for: reel.id)
+                isLoadingPlayback: viewModel.isLoadingPlayback(for: reel.id),
+                playbackProgress: viewModel.playbackProgress(for: reel.id)
             )
             .task(id: reel.id) {
                 await viewModel.loadThumbnail(for: reel.id)
@@ -244,7 +248,8 @@ struct HomeView: View {
                 thumbnailData: viewModel.thumbnailData(for: reel.id),
                 isLoadingThumbnail: viewModel.isLoadingThumbnail(for: reel.id),
                 player: viewModel.player(for: reel.id),
-                isLoadingPlayback: viewModel.isLoadingPlayback(for: reel.id)
+                isLoadingPlayback: viewModel.isLoadingPlayback(for: reel.id),
+                playbackProgress: viewModel.playbackProgress(for: reel.id)
             )
             .task(id: reel.id) {
                 await viewModel.loadThumbnail(for: reel.id)

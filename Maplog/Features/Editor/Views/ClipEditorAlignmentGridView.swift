@@ -12,8 +12,71 @@ struct ClipEditorAlignmentGridView: View {
         GeometryReader { proxy in
             let width = proxy.size.width
             let height = proxy.size.height
+            let horizontalSafeInset =
+                width * CGFloat(
+                    ClipTextOverlaySafeArea.horizontalInset
+                )
+            let verticalSafeInset =
+                height * CGFloat(
+                    ClipTextOverlaySafeArea.verticalInset
+                )
 
             ZStack {
+                Path { path in
+                    path.move(
+                        to: CGPoint(x: horizontalSafeInset, y: 0)
+                    )
+                    path.addLine(
+                        to: CGPoint(
+                            x: horizontalSafeInset,
+                            y: height
+                        )
+                    )
+
+                    path.move(
+                        to: CGPoint(
+                            x: width - horizontalSafeInset,
+                            y: 0
+                        )
+                    )
+                    path.addLine(
+                        to: CGPoint(
+                            x: width - horizontalSafeInset,
+                            y: height
+                        )
+                    )
+
+                    path.move(
+                        to: CGPoint(x: 0, y: verticalSafeInset)
+                    )
+                    path.addLine(
+                        to: CGPoint(
+                            x: width,
+                            y: verticalSafeInset
+                        )
+                    )
+
+                    path.move(
+                        to: CGPoint(
+                            x: 0,
+                            y: height - verticalSafeInset
+                        )
+                    )
+                    path.addLine(
+                        to: CGPoint(
+                            x: width,
+                            y: height - verticalSafeInset
+                        )
+                    )
+                }
+                .stroke(
+                    .cyan.opacity(0.62),
+                    style: StrokeStyle(
+                        lineWidth: 1,
+                        dash: [5, 4]
+                    )
+                )
+
                 Path { path in
                     path.move(
                         to: CGPoint(x: width / 3, y: 0)

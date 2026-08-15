@@ -63,6 +63,7 @@ final class HomeViewModel: ObservableObject {
     @Published private(set) var activePlaybackReelID: Int64? // 현재 재생 대상으로 선택된 릴스
     @Published private(set) var playbackLoadingReelID: Int64? // 영상을 다운로드 중인 릴스
     @Published private(set) var playbackFailedReelID: Int64? // 영상 다운로드·재생 준비에 실패한 릴스
+    @Published private(set) var reelPlaybackProgress: Double = 0 // 재생 진행 바 진행률
 
     private let tourismRepository: any TourismRepository // TourismRepository protocol을 만족하는 어떤 실제 객체 하나(DefaultTourismRepository 객체가 들어감)
     private let logReelRepository: any LogReelRepository
@@ -89,11 +90,8 @@ final class HomeViewModel: ObservableObject {
         tourismState = .loading
 
         do {
-            let page = try await tourismRepository.fetchTourisms(category: .events, cursor: nil, size: 10)
-
-            let cards = page.tourisms.map { tourism in
-                makeCardViewData(from: tourism) // Tourism들을 카드용 데이터로 변환
-            }
+            let cards = try await fetchTourismCards()
+            
 
             tourismState = cards.isEmpty ? .empty : .content(cards)
         } catch is CancellationError { // CancellationError는 탭 이동처럼 화면이 사라져 요청이 취소된 정상 상황이므로 실패 UI로 바꾸지 않음, 실패 화면의 버튼은 retryInitialTourisms()를 호출하는 구조
@@ -120,14 +118,7 @@ final class HomeViewModel: ObservableObject {
         reelState = .loading
 
         do {
-            let page = try await logReelRepository.fetchReels(
-                cursor: nil,
-                size: 20
-            )
-
-            let reels = page.reels.map { reel in
-                makeReelViewData(from: reel)
-            }
+            let reels = try await fetchReelViewData()
 
             reelState = reels.isEmpty
                 ? .empty
@@ -212,6 +203,7 @@ final class HomeViewModel: ObservableObject {
         playbackService.stop() // 사용자가 다른 릴스를 선택한 즉시 이전 재생 중단
 
         activePlaybackReelID = reelID
+        reelPlaybackProgress = 0
         playbackLoadingReelID = reelID
         playbackFailedReelID = nil
 
@@ -227,6 +219,15 @@ final class HomeViewModel: ObservableObject {
             }
 
             playbackService.loadVideo(at: fileURL)
+            playbackService.observeProgress { [weak self] progress in
+                guard let self,
+                      self.activePlaybackReelID == reelID
+                else {
+                    return
+                }
+
+                self.reelPlaybackProgress = progress
+            }
             playbackService.play()
 
             playbackLoadingReelID = nil
@@ -253,6 +254,7 @@ final class HomeViewModel: ObservableObject {
         playbackService.stop()
 
         activePlaybackReelID = nil
+        reelPlaybackProgress = 0
         playbackLoadingReelID = nil
         playbackFailedReelID = nil
     }
@@ -261,7 +263,119 @@ final class HomeViewModel: ObservableObject {
         reelState = .idle
         await loadInitialReels()
     }
+    
+    // 실제 새로고침 함수
+    func refreshHome() async {
+        guard tourismState != .loading,
+              reelState != .loading
+        else {
+            return
+        }
 
+        async let tourism: Void = refreshTourisms()
+        async let reels: Void = refreshReels()
+
+        _ = await (tourism, reels)
+    }
+    
+    func playbackProgress(
+        for reelID: Int64
+    ) -> Double {
+        guard activePlaybackReelID == reelID,
+              playbackFailedReelID != reelID
+        else {
+            return 0
+        }
+
+        return reelPlaybackProgress
+    }
+
+    // API 요청 + Domain Model을 ViewData로 변환
+    private func fetchTourismCards() async throws
+        -> [HomeTourismCardViewData] {
+        let page = try await tourismRepository.fetchTourisms(
+            category: .events,
+            cursor: nil,
+            size: 10
+        )
+
+        return page.tourisms.map { tourism in
+            makeCardViewData(from: tourism)
+        }
+    }
+
+    private func fetchReelViewData() async throws
+        -> [HomeReelViewData] {
+        let page = try await logReelRepository.fetchReels(
+            cursor: nil,
+            size: 20
+        )
+
+        return page.reels.map { reel in
+            makeReelViewData(from: reel)
+        }
+    }
+    
+    // 내부 새로고침 함수 
+    private func refreshTourisms() async {
+        let previousState = tourismState
+
+        do {
+            let cards = try await fetchTourismCards()
+
+            guard !Task.isCancelled else {
+                return
+            }
+
+            tourismState = cards.isEmpty
+                ? .empty
+                : .content(cards)
+
+        } catch is CancellationError {
+            return
+
+        } catch {
+            guard case .content(_) = previousState else {
+                tourismState = .failed(
+                    TourismErrorPolicy.presentation(for: error)
+                )
+                return
+            }
+
+            // 기존 카드가 보이는 중이었다면,
+            // 새로고침 실패로 화면을 실패 화면으로 바꾸지 않는다.
+        }
+    }
+
+    private func refreshReels() async {
+        let previousState = reelState
+
+        do {
+            let reels = try await fetchReelViewData()
+
+            guard !Task.isCancelled else {
+                return
+            }
+
+            reelState = reels.isEmpty
+                ? .empty
+                : .content(reels)
+
+        } catch is CancellationError {
+            return
+
+        } catch {
+            guard case .content(_) = previousState else {
+                reelState = .failed(
+                    HomeReelErrorPolicy.presentation(for: error)
+                )
+                return
+            }
+
+            // 기존 릴스가 있다면 그대로 유지한다.
+        }
+    }
+    
     private func makeReelViewData(
         from reel: LogReel
     ) -> HomeReelViewData {
