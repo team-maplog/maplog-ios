@@ -15,25 +15,55 @@ struct HomeReelPage: View {
     let isLoadingThumbnail: Bool
     let player: AVPlayer?
     let isLoadingPlayback: Bool
+    let playbackProgress: Double
 
+    private let reelBottomBlurHeight: CGFloat =
+        VideoRenderCanvas.reelBottomTrayHeight
+    private let reelPlaybackBarHeight: CGFloat = 4
+    
     var body: some View {
         GeometryReader { proxy in
+            let mediaSize = VideoRenderCanvas.reelMediaSize(
+                in: proxy.size
+            )
+
+            let bottomTrayHeight =
+                VideoRenderCanvas.reelBottomTrayHeight(
+                    in: proxy.size
+                )
+
             ZStack(alignment: .bottomLeading) {
-                reelMedia
+                VStack(spacing: 0) {
+                    reelMedia(in: mediaSize)
+
+                    reelBottomBlur(
+                        mediaSize: mediaSize,
+                        trayHeight: bottomTrayHeight
+                    )
                     .frame(
                         width: proxy.size.width,
-                        height: proxy.size.height
+                        height: bottomTrayHeight
                     )
-
-                LinearGradient(
-                    colors: [
-                        .black.opacity(0.18),
-                        .clear,
-                        .black.opacity(0.88)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
+                    .allowsHitTesting(false)
+                }
+                .frame(
+                    width: proxy.size.width,
+                    height: proxy.size.height,
+                    alignment: .top
                 )
+
+                reelPlaybackBar(progress: playbackProgress)
+                    .padding(.horizontal, MaplogSpacing.page)
+                    .padding(
+                        .bottom,
+                        reelPlaybackBarBottomInset
+                    )
+                    .frame(
+                        maxWidth: .infinity,
+                        maxHeight: .infinity,
+                        alignment: .bottom
+                    )
+                    .allowsHitTesting(false)
 
                 HStack(alignment: .bottom, spacing: 16) {
                     reelInformation
@@ -47,8 +77,7 @@ struct HomeReelPage: View {
                 .padding(.horizontal, MaplogSpacing.page)
                 .padding(
                     .bottom,
-                    proxy.safeAreaInsets.bottom
-                        + MaplogSpacing.reelTabBarClearance
+                    reelBottomBlurHeight + MaplogSpacing.small
                 )
             }
         }
@@ -59,9 +88,44 @@ struct HomeReelPage: View {
         )
     }
 
-    private var reelMedia: some View {
+    private func reelMedia(
+        in size: CGSize
+    ) -> some View {
+        originalMedia
+            .frame(
+                width: size.width,
+                height: size.height
+            )
+            .background(Color.black)
+            .clipped()
+    }
+
+    private func reelBottomBlur(
+        mediaSize: CGSize,
+        trayHeight: CGFloat
+    ) -> some View {
+        originalMedia
+            .frame(
+                width: mediaSize.width,
+                height: mediaSize.height
+            )
+            .blur(
+                radius: 24,
+                opaque: true
+            )
+            .frame(
+                width: mediaSize.width,
+                height: trayHeight,
+                alignment: .bottom
+            )
+            .clipped()
+    }
+    
+    
+    // 실제 원본 영상
+    private var originalMedia: some View {
         ZStack {
-            reelThumbnail
+            originalThumbnail
 
             if let player {
                 MaplogVideoPlayerLayerView(
@@ -79,9 +143,35 @@ struct HomeReelPage: View {
                     .tint(.white)
             }
         }
-        .clipped() // 여백 없이 채우고 넘친 부분을 자름
+        .background(Color.black)
+        .clipped()
     }
+    
+    @ViewBuilder
+    private var originalThumbnail: some View {
+        if let thumbnailData,
+           let image = UIImage(data: thumbnailData) {
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFill()
+                .frame(
+                    maxWidth: .infinity,
+                    maxHeight: .infinity
+                )
+                .background(Color.black)
 
+        } else if isLoadingThumbnail {
+            ZStack {
+                Color.black
+
+                ProgressView()
+                    .tint(.white)
+            }
+
+        } else {
+            thumbnailFallback
+        }
+    }
 
 //    인증된 API 요청
 //    → Data
@@ -190,6 +280,51 @@ struct HomeReelPage: View {
         let text = String(format: "%.1f", value)
 
         return "\(text.replacingOccurrences(of: ".0", with: ""))K"
+    }
+    
+    private func reelPlaybackBar(
+        progress: Double
+    ) -> some View {
+        let safeProgress = min(
+            max(progress, 0),
+            1
+        )
+
+        return GeometryReader { proxy in
+            ZStack(alignment: .leading) {
+                Capsule()
+                    .fill(.white.opacity(0.32))
+
+                Capsule()
+                    .fill(Color.maplogLime)
+                    .frame(
+                        width: max(
+                            4,
+                            proxy.size.width * safeProgress
+                        )
+                    )
+            }
+        }
+        
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("영상 재생 위치")
+        .accessibilityValue(
+            "\(Int(safeProgress * 100))퍼센트"
+        )
+        .frame(height: reelPlaybackBarHeight)
+        
+    }
+    
+    private let reelPlaybackBarVerticalSpacing: CGFloat =
+        MaplogSpacing.large
+
+    private var reelPlaybackBarBottomInset: CGFloat {
+        max(
+            0,
+            reelBottomBlurHeight
+                - reelPlaybackBarHeight
+                - reelPlaybackBarVerticalSpacing
+        )
     }
 }
 

@@ -106,7 +106,10 @@ struct ClipEditorPreviewView: View {
                         }
                 }
             }
-            .aspectRatio(9.0 / 16.0, contentMode: .fit)
+            .aspectRatio(
+                VideoRenderCanvas.standardPortraitAspectRatio,
+                contentMode: .fit
+            )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .clipShape(
                 RoundedRectangle(

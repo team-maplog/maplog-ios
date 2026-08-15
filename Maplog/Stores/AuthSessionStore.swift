@@ -66,6 +66,10 @@ final class AuthSessionStore: ObservableObject, AuthSessionManaging { // AuthSes
 
     // 로그아웃 토큰 무효시 세션 종료
     func endSession() throws {
+        guard isAuthenticated else { // 첫 번째 호출이 토큰을 지우고 isAuthenticated = false로 바꾸고, 뒤따라 들어온 호출은 guard에서 바로 종료. 멱등성
+            return
+        }
+        
         try KeychainService.delete(for: TokenKey.accessToken)
 
         try KeychainService.delete(for: TokenKey.refreshToken)

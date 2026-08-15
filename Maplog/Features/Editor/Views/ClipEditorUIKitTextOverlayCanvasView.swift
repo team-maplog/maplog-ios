@@ -112,7 +112,6 @@ final class EditorTextOverlayCanvasUIView: UIView, UIGestureRecognizerDelegate {
         private let snapFeedback = UISelectionFeedbackGenerator()
         private var activeSnapState = TextOverlaySnapState.none
         private let snapThreshold: CGFloat = 12
-        private let snapInset: CGFloat = 8
 
         override init(frame: CGRect) {
             super.init(frame: frame)
@@ -353,22 +352,38 @@ final class EditorTextOverlayCanvasUIView: UIView, UIGestureRecognizerDelegate {
 
         let halfWidth = itemSize.width / 2
         let halfHeight = itemSize.height / 2
+        let horizontalSafeInset = safeInset(
+            for: bounds.width,
+            itemExtent: itemSize.width,
+            normalizedInset: ClipTextOverlaySafeArea.horizontalInset
+        )
+        let verticalSafeInset = safeInset(
+            for: bounds.height,
+            itemExtent: itemSize.height,
+            normalizedInset: ClipTextOverlaySafeArea.verticalInset
+        )
 
         let clampedX = min(
-            max(proposedCenter.x, halfWidth),
-            bounds.width - halfWidth
+            max(
+                proposedCenter.x,
+                halfWidth + horizontalSafeInset
+            ),
+            bounds.width - halfWidth - horizontalSafeInset
         )
 
         let clampedY = min(
-            max(proposedCenter.y, halfHeight),
-            bounds.height - halfHeight
+            max(
+                proposedCenter.y,
+                halfHeight + verticalSafeInset
+            ),
+            bounds.height - halfHeight - verticalSafeInset
         )
 
         let horizontalCandidates = [
             TextOverlaySnapCandidate(
                 anchor: .start,
-                center: halfWidth + snapInset,
-                guideCoordinate: snapInset
+                center: halfWidth + horizontalSafeInset,
+                guideCoordinate: horizontalSafeInset
             ),
             TextOverlaySnapCandidate(
                 anchor: .center,
@@ -377,16 +392,16 @@ final class EditorTextOverlayCanvasUIView: UIView, UIGestureRecognizerDelegate {
             ),
             TextOverlaySnapCandidate(
                 anchor: .end,
-                center: bounds.width - halfWidth - snapInset,
-                guideCoordinate: bounds.width - snapInset
+                center: bounds.width - halfWidth - horizontalSafeInset,
+                guideCoordinate: bounds.width - horizontalSafeInset
             )
         ]
 
         let verticalCandidates = [
             TextOverlaySnapCandidate(
                 anchor: .start,
-                center: halfHeight + snapInset,
-                guideCoordinate: snapInset
+                center: halfHeight + verticalSafeInset,
+                guideCoordinate: verticalSafeInset
             ),
             TextOverlaySnapCandidate(
                 anchor: .center,
@@ -395,8 +410,8 @@ final class EditorTextOverlayCanvasUIView: UIView, UIGestureRecognizerDelegate {
             ),
             TextOverlaySnapCandidate(
                 anchor: .end,
-                center: bounds.height - halfHeight - snapInset,
-                guideCoordinate: bounds.height - snapInset
+                center: bounds.height - halfHeight - verticalSafeInset,
+                guideCoordinate: bounds.height - verticalSafeInset
             )
         ]
 
@@ -428,6 +443,20 @@ final class EditorTextOverlayCanvasUIView: UIView, UIGestureRecognizerDelegate {
         )
 
         return snappedCenter
+    }
+
+    private func safeInset(
+        for canvasExtent: CGFloat,
+        itemExtent: CGFloat,
+        normalizedInset: Double
+    ) -> CGFloat {
+        let requestedInset = canvasExtent * CGFloat(normalizedInset)
+        let maximumInset = max(
+            0,
+            (canvasExtent - itemExtent) / 2
+        )
+
+        return min(requestedInset, maximumInset)
     }
 
     private func closestSnap(

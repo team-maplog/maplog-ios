@@ -47,6 +47,16 @@
 		FDBA21967A87837768F80E5D /* SavedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC728AC0952CD66D16711F60 /* SavedView.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		E28B01163030D75D00CA97BD /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 32CABE552FAA06EB89A91E7A /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 22526D9D7DA8B4179D559524;
+			remoteInfo = Maplog;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		030655D170DFF7F7C85ED748 /* ProfileViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileViewModel.swift; sourceTree = "<group>"; };
 		041F9B0198AC4A718A00360E /* TravelImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TravelImageView.swift; sourceTree = "<group>"; };
@@ -84,6 +94,7 @@
 		E21BAE27300BC20000B95B53 /* KeychainService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainService.swift; sourceTree = "<group>"; };
 		E21BAE29300BC21300B95B53 /* AuthViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthViewModel.swift; sourceTree = "<group>"; };
 		E277D472300C975300648B9A /* AuthValidation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthValidation.swift; sourceTree = "<group>"; };
+		E28B01123030D75D00CA97BD /* MaplogTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MaplogTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E28BFDBD302F758E00CA97BD /* MaplogVideoPlayerLayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MaplogVideoPlayerLayerView.swift; sourceTree = "<group>"; };
 		E2AC0FBF3000354E0005D226 /* PracticeKakaoMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PracticeKakaoMapView.swift; sourceTree = "<group>"; };
 		E616D005446E65E2A4478814 /* MaplogTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MaplogTheme.swift; sourceTree = "<group>"; };
@@ -129,6 +140,11 @@
 			path = Mocks;
 			sourceTree = "<group>";
 		};
+		E28B01133030D75D00CA97BD /* MaplogTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = MaplogTests;
+			sourceTree = "<group>";
+		};
 		E29548F2300FC566008AB637 /* App */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = App;
@@ -142,6 +158,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				0F38CC8E9CFCBB2E9982A900 /* KakaoMapsSDK-SPM in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E28B010F3030D75D00CA97BD /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -229,6 +252,7 @@
 			children = (
 				0E6798589C394E181A9305C3 /* Config */,
 				0412E684700AC4A45E6C638E /* Maplog */,
+				E28B01133030D75D00CA97BD /* MaplogTests */,
 				89737E8A663CE85CB215E1ED /* Products */,
 			);
 			sourceTree = "<group>";
@@ -290,6 +314,7 @@
 			isa = PBXGroup;
 			children = (
 				C9D76282FF2FFEEC0209C7A9 /* Maplog.app */,
+				E28B01123030D75D00CA97BD /* MaplogTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -374,6 +399,29 @@
 			productReference = C9D76282FF2FFEEC0209C7A9 /* Maplog.app */;
 			productType = "com.apple.product-type.application";
 		};
+		E28B01113030D75D00CA97BD /* MaplogTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E28B01183030D75D00CA97BD /* Build configuration list for PBXNativeTarget "MaplogTests" */;
+			buildPhases = (
+				E28B010E3030D75D00CA97BD /* Sources */,
+				E28B010F3030D75D00CA97BD /* Frameworks */,
+				E28B01103030D75D00CA97BD /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				E28B01173030D75D00CA97BD /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				E28B01133030D75D00CA97BD /* MaplogTests */,
+			);
+			name = MaplogTests;
+			packageProductDependencies = (
+			);
+			productName = MaplogTests;
+			productReference = E28B01123030D75D00CA97BD /* MaplogTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -381,7 +429,14 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
+				LastSwiftUpdateCheck = 2660;
 				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					E28B01113030D75D00CA97BD = {
+						CreatedOnToolsVersion = 26.6;
+						TestTargetID = 22526D9D7DA8B4179D559524;
+					};
+				};
 			};
 			buildConfigurationList = D2F312217372D9F5DDA134A7 /* Build configuration list for PBXProject "Maplog" */;
 			developmentRegion = ko;
@@ -401,6 +456,7 @@
 			projectRoot = "";
 			targets = (
 				22526D9D7DA8B4179D559524 /* Maplog */,
+				E28B01113030D75D00CA97BD /* MaplogTests */,
 			);
 		};
 /* End PBXProject section */
@@ -411,6 +467,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				77DB9C9792EBE33C03EC4360 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E28B01103030D75D00CA97BD /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -460,7 +523,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		E28B010E3030D75D00CA97BD /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		E28B01173030D75D00CA97BD /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 22526D9D7DA8B4179D559524 /* Maplog */;
+			targetProxy = E28B01163030D75D00CA97BD /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		4290D0F1A15549CF04FB7A68 /* Debug */ = {
@@ -606,6 +684,66 @@
 			};
 			name = Debug;
 		};
+		E28B01193030D75D00CA97BD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6K7Z5G4HYN;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = cozyrim.MaplogTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Maplog.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Maplog";
+			};
+			name = Debug;
+		};
+		E28B011A3030D75D00CA97BD /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 6K7Z5G4HYN;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = cozyrim.MaplogTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Maplog.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Maplog";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 		ECFF37281D4ACA3869DB7270 /* Release */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 8D9314A18D17963AF051A613 /* Secrets.xcconfig */;
@@ -643,6 +781,15 @@
 			buildConfigurations = (
 				4290D0F1A15549CF04FB7A68 /* Debug */,
 				9A27DA7BED0302F117B7CB37 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		E28B01183030D75D00CA97BD /* Build configuration list for PBXNativeTarget "MaplogTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E28B01193030D75D00CA97BD /* Debug */,
+				E28B011A3030D75D00CA97BD /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
