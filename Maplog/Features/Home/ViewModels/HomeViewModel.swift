@@ -289,6 +289,49 @@ final class HomeViewModel: ObservableObject {
 
         return reelPlaybackProgress
     }
+    
+    func isPlaying(reelID: Int64) -> Bool {
+        guard activePlaybackReelID == reelID,
+              playbackFailedReelID != reelID,
+              playbackLoadingReelID == nil else {
+            return false
+        }
+
+        return playbackService.player.timeControlStatus == .playing
+    }
+
+    func togglePlayback(for reelID: Int64) async {
+        guard activePlaybackReelID == reelID,
+              playbackFailedReelID != reelID else {
+            await activatePlayback(for: reelID)
+            return
+        }
+
+        if playbackService.player.timeControlStatus == .playing {
+            playbackService.pause()
+        } else {
+            playbackService.play()
+        }
+    }
+
+    func seekPlayback(to progress: Double, for reelID: Int64) {
+        guard activePlaybackReelID == reelID,
+              playbackFailedReelID != reelID else {
+            return
+        }
+
+        guard let duration = playbackService.player.currentItem?.duration.seconds,
+              duration.isFinite,
+              duration > 0 else {
+            return
+        }
+
+        let safeProgress = min(max(progress, 0), 1)
+        let targetSeconds = duration * safeProgress
+
+        playbackService.seek(to: targetSeconds)
+        reelPlaybackProgress = safeProgress
+    }
 
     // API 요청 + Domain Model을 ViewData로 변환
     private func fetchTourismCards() async throws

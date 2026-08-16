@@ -99,7 +99,9 @@ struct LogComposeView: View {
         ) {
             Button("확인") {
                 viewModel.dismissPublishedLog()
+//                dismiss() 없는 게 더 부드러워서 일단은 제거, 문제 생기면 넣기
                 selectTab(.home)
+                
             }
         } message: {
             Text("로그 발행이 완료됐어요.")

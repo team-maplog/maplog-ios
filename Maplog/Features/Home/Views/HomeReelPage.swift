@@ -16,6 +16,14 @@ struct HomeReelPage: View {
     let player: AVPlayer?
     let isLoadingPlayback: Bool
     let playbackProgress: Double
+    let onPlayToggle: () -> Void
+    let onSeek: (Double) -> Void
+    let isPlaying: Bool
+
+    @State private var isScrubbing = false
+    @State private var scrubbingProgress = 0.0
+    @State private var showPlayStateBadge = false
+    @State private var hideBadgeTask: Task<Void, Never>?
 
     private let reelBottomBlurHeight: CGFloat =
         VideoRenderCanvas.reelBottomTrayHeight
@@ -63,7 +71,6 @@ struct HomeReelPage: View {
                         maxHeight: .infinity,
                         alignment: .bottom
                     )
-                    .allowsHitTesting(false)
 
                 HStack(alignment: .bottom, spacing: 16) {
                     reelInformation
@@ -142,6 +149,31 @@ struct HomeReelPage: View {
                 ProgressView()
                     .tint(.white)
             }
+            
+            if showPlayStateBadge {
+                    ZStack {
+                        Circle()
+                            .fill(.black.opacity(0.45))
+                            .frame(width: 56, height: 56)
+
+                        Image(systemName: "play.fill")
+                            .font(.system(size: 26, weight: .bold))
+                            .foregroundStyle(.white)
+                    }
+                    .zIndex(10)
+                    .transition(.scale.combined(with: .opacity))
+                    .allowsHitTesting(false)
+                }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            guard player != nil else { return }
+
+                if isPlaying {
+                    showPlayPauseBadge() // 정지시키는 동작 직전에 호출
+                }
+
+                onPlayToggle()
         }
         .background(Color.black)
         .clipped()
@@ -285,34 +317,52 @@ struct HomeReelPage: View {
     private func reelPlaybackBar(
         progress: Double
     ) -> some View {
-        let safeProgress = min(
-            max(progress, 0),
-            1
-        )
+        let safeProgress = progress.isFinite ? min(max(progress, 0), 1) : 0
+        let displayProgress = isScrubbing ? scrubbingProgress : safeProgress
 
         return GeometryReader { proxy in
+            let clampedWidth = max(proxy.size.width, 1)
+            let clampedProgress = min(max(displayProgress, 0), 1)
+
             ZStack(alignment: .leading) {
                 Capsule()
                     .fill(.white.opacity(0.32))
+                    .frame(
+                        width: clampedWidth,
+                        height: reelPlaybackBarHeight
+                    )
 
                 Capsule()
                     .fill(Color.maplogLime)
                     .frame(
-                        width: max(
-                            4,
-                            proxy.size.width * safeProgress
-                        )
+                        width: max(4, clampedWidth * clampedProgress),
+                        height: reelPlaybackBarHeight
                     )
             }
+            .frame(
+                width: clampedWidth,
+                height: reelPlaybackBarHeight
+            )
+            .contentShape(Rectangle())
+            .highPriorityGesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        let clamped = min(max(value.location.x / clampedWidth, 0), 1)
+                        isScrubbing = true
+                        scrubbingProgress = clamped
+                    }
+                    .onEnded { value in
+                        let clamped = min(max(value.location.x / clampedWidth, 0), 1)
+                        isScrubbing = false
+                        scrubbingProgress = clamped
+                        onSeek(clamped)
+                    }
+            )
         }
-        
+        .frame(height: reelPlaybackBarHeight)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("영상 재생 위치")
-        .accessibilityValue(
-            "\(Int(safeProgress * 100))퍼센트"
-        )
-        .frame(height: reelPlaybackBarHeight)
-        
+        .accessibilityValue("\(Int(displayProgress * 100))퍼센트")
     }
     
     private let reelPlaybackBarVerticalSpacing: CGFloat =
@@ -325,6 +375,20 @@ struct HomeReelPage: View {
                 - reelPlaybackBarHeight
                 - reelPlaybackBarVerticalSpacing
         )
+    }
+    
+    private func showPlayPauseBadge() {
+        showPlayStateBadge = true
+        hideBadgeTask?.cancel()
+
+        hideBadgeTask = Task {
+            try? await Task.sleep(for: .milliseconds(750))
+            if !Task.isCancelled {
+                withAnimation(.easeOut(duration: 0.2)) {
+                    showPlayStateBadge = false
+                }
+            }
+        }
     }
 }
 
