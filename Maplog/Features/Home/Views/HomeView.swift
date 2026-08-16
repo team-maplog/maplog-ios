@@ -237,7 +237,16 @@ struct HomeView: View {
                 isLoadingThumbnail: viewModel.isLoadingThumbnail(for: reel.id),
                 player: viewModel.player(for: reel.id),
                 isLoadingPlayback: viewModel.isLoadingPlayback(for: reel.id),
-                playbackProgress: viewModel.playbackProgress(for: reel.id)
+                playbackProgress: viewModel.playbackProgress(for: reel.id),
+                onPlayToggle: {
+                    Task {
+                        await viewModel.togglePlayback(for: reel.id)
+                    }
+                },
+                onSeek: { progress in
+                    viewModel.seekPlayback(to: progress, for: reel.id)
+                },
+                isPlaying: viewModel.isPlaying(reelID: reel.id)
             )
             .task(id: reel.id) {
                 await viewModel.loadThumbnail(for: reel.id)
@@ -249,7 +258,16 @@ struct HomeView: View {
                 isLoadingThumbnail: viewModel.isLoadingThumbnail(for: reel.id),
                 player: viewModel.player(for: reel.id),
                 isLoadingPlayback: viewModel.isLoadingPlayback(for: reel.id),
-                playbackProgress: viewModel.playbackProgress(for: reel.id)
+                playbackProgress: viewModel.playbackProgress(for: reel.id),
+                onPlayToggle: {
+                    Task {
+                        await viewModel.togglePlayback(for: reel.id)
+                    }
+                },
+                onSeek: { progress in
+                    viewModel.seekPlayback(to: progress, for: reel.id)
+                },
+                isPlaying: viewModel.isPlaying(reelID: reel.id)
             )
             .task(id: reel.id) {
                 await viewModel.loadThumbnail(for: reel.id)
