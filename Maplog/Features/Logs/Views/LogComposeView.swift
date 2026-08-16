@@ -12,6 +12,7 @@ import SwiftUI
 struct LogComposeView: View {
     @ObservedObject var viewModel: LogComposeViewModel
     @FocusState private var isCaptionFocused: Bool
+    @Environment(\.maplogSelectTab) private var selectTab
 
     let previewPlayer: AVPlayer
     let onCoverChangeTap: () -> Void
@@ -98,7 +99,7 @@ struct LogComposeView: View {
         ) {
             Button("확인") {
                 viewModel.dismissPublishedLog()
-                dismiss()
+                selectTab(.home)
             }
         } message: {
             Text("로그 발행이 완료됐어요.")
