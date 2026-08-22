@@ -1,13 +1,22 @@
 import SwiftUI
 
 struct HomeView: View {
+    private static let viewportCoordinateSpace = "home-viewport"
+
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.maplogSelectTab) private var selectTab
     @EnvironmentObject private var sessionStore: MaplogSessionStore
     @Environment(\.maplogLogout) private var performLogout
     @ObservedObject var viewModel: HomeViewModel // MainTabView가 만든 하나를 받아서 관찰
+    let topSafeAreaInset: CGFloat // 전체 화면 높이는 고정하고 홈 콘텐츠만 상태바 아래에서 시작하기 위한 값
     let onShowAllTourisms: () -> Void
     let onShowTourismDetail: (Int64) -> Void
+
+    private enum HomePanel: Int, CaseIterable, Identifiable {
+        case reels
+        case map
+        var id: Int { rawValue }
+    }
 
     @State private var selectedCategory = "추천"
     @State private var selectedChip = "전체"
@@ -18,8 +27,9 @@ struct HomeView: View {
     @State private var categoryDestination: HomeCategoryDestination?
     @State private var chipDestination: HomeChipDestination?
     @State private var homeScrollPosition: String? = "home-intro"
+    @State private var selectedPanel: HomePanel = .reels
 
-    private let categories = ["여행", "추천", "AI", "테마", "지역", "관광"]
+    private let categories = ["여행", "추천", "테마", "지역", "관광"]
     private let chips = ["전체", "축제", "맛집", "야경", "가족", "자연", "카페", "포토스팟"]
     private let services = [
         ("디지털\n관광주민증", "badge.plus.radiowaves.right"),
@@ -27,7 +37,6 @@ struct HomeView: View {
         ("맛집차트", "fork.knife"),
         ("가볼래-터", "safari")
     ]
-    private let aiDigests = MockMaplogData.aiDigests
     private let spotlightEvent = MockMaplogData.spotlightEvent
     private let homeVideos = HomeMaplogThumbnailItem.samples
 //    private let homePosts = MockMaplogData.posts
@@ -68,64 +77,40 @@ struct HomeView: View {
         )
     }
 
-    var body: some View {
-        ScrollViewReader { scrollProxy in
-            ScrollView(showsIndicators: false) {
-                LazyVStack(alignment: .leading, spacing: 0) {
-                    homeIntro
-                        .id("home-intro")
-
-                    homeReelPages
+    private struct HomeMapPanelPlaceholder: View {
+        var body: some View {
+            Color.black
+                .ignoresSafeArea()
+                .overlay {
+                    Text("지도 패널 자리")
+                        .foregroundStyle(.white)
                 }
-                .scrollTargetLayout()
-                .padding(.top, isHomeReelActive ? 0 : 12)
-            }
-            .scrollPosition(id: $homeScrollPosition, anchor: .top)
-            .scrollTargetBehavior(.viewAligned(limitBehavior: .always))
-            .refreshable {
-                await viewModel.refreshHome()
-            }
-            .ignoresSafeArea(
-                .container,
-                edges: isHomeReelActive ? [.top, .bottom] : []
-            )
-            .onChange(of: homeScrollPosition) { previousPosition, newPosition in
-                guard
-                    previousPosition == "home-intro",
-                    let newPosition,
-                    newPosition != "home-intro"
-                else {
-                    return
-                }
-
-                withAnimation(reduceMotion ? nil : .easeOut(duration: 0.24)) {
-                    scrollProxy.scrollTo(newPosition, anchor: .top)
-                }
-            }
         }
-        .background(isHomeReelActive ? Color.black : Color(uiColor: .systemBackground))
-        .preferredColorScheme(isHomeReelActive ? .dark : nil)
-        .maplogReelTabBarStyle(isHomeReelActive)
+    }
+
+    var body: some View {
+        TabView(selection: $selectedPanel) {
+            reelsPanel
+                .tag(HomePanel.reels)
+
+            HomeMapPanelPlaceholder()
+                .tag(HomePanel.map)
+        }
+        .tabViewStyle(.page(indexDisplayMode: .never))
+        .coordinateSpace(name: Self.viewportCoordinateSpace)
+        // 홈 ↔ 릴스 전환 중에도 GeometryReader의 페이지 높이가 바뀌지 않게 유지
+        .ignoresSafeArea(
+            .container,
+            edges: [.top, .bottom]
+        )
+        .toolbar(.hidden, for: .navigationBar)
         .task { // body 안에서 직접 API를 호출하지 않고, View가 화면에 등장하는 생명주기에 맞는 .task에서 호출
             async let tourism: Void = viewModel.loadInitialTourisms()
             async let reels: Void = viewModel.loadInitialReels()
 
             _ = await (tourism, reels)
         }
-        .task(id: homeScrollPosition) {
-            guard let reelID = reelID(
-                from: homeScrollPosition
-            ) else {
-                viewModel.stopPlayback()
-                return
-            }
 
-            await viewModel.activatePlayback(for: reelID)
-        }
-        .onDisappear {
-            viewModel.stopPlayback()
-        }
-        .toolbar(.hidden, for: .navigationBar)
         .navigationDestination(isPresented: $showsThemeSpots) {
             ThemeSpotsView {
                 showsThemeSpots = false
@@ -160,6 +145,89 @@ struct HomeView: View {
         }
     }
 
+    private var reelsPanel: some View {
+        GeometryReader { proxy in
+            // PageTabView가 자식 페이지를 아래로 배치한 실제 거리만큼 렌더링 위치를 되돌림
+            let pageTopOffset = max(
+                proxy.frame(
+                    in: .named(Self.viewportCoordinateSpace)
+                ).minY,
+                0
+            )
+
+            ScrollViewReader { scrollProxy in
+                ScrollView(showsIndicators: false) {
+                    LazyVStack(alignment: .leading, spacing: 0) {
+                        homeIntro
+                            .padding(
+                                .top,
+                                topSafeAreaInset + 12 + pageTopOffset
+                            )
+                            .id("home-intro")
+
+                        homeReelPages(
+                            viewportSize: proxy.size
+                        )
+                    }
+                    .scrollTargetLayout()
+                }
+                .scrollPosition(
+                    id: $homeScrollPosition,
+                    anchor: .top
+                )
+                .scrollTargetBehavior(
+                    .viewAligned(limitBehavior: .always)
+                )
+                .refreshable {
+                    await viewModel.refreshHome()
+                }
+                .onChange(of: homeScrollPosition) {
+                    previousPosition,
+                    newPosition in
+
+                    guard
+                        previousPosition == "home-intro",
+                        let newPosition,
+                        newPosition != "home-intro"
+                    else {
+                        return
+                    }
+
+                    withAnimation(
+                        reduceMotion
+                            ? nil
+                            : .easeOut(duration: 0.24)
+                    ) {
+                        scrollProxy.scrollTo(
+                            newPosition,
+                            anchor: .top
+                        )
+                    }
+                }
+            }
+            .offset(y: -pageTopOffset)
+        }
+        .background(
+            isHomeReelActive
+                ? Color.black
+                : Color(uiColor: .systemBackground)
+        )
+        .maplogReelTabBarStyle(isHomeReelActive)
+        .task(id: homeScrollPosition) {
+            guard let reelID = reelID(
+                from: homeScrollPosition
+            ) else {
+                viewModel.stopPlayback()
+                return
+            }
+
+            await viewModel.activatePlayback(for: reelID)
+        }
+        .onDisappear {
+            viewModel.stopPlayback()
+        }
+    }
+
     @ViewBuilder
     private var homeIntro: some View {
         if reduceMotion {
@@ -170,59 +238,6 @@ struct HomeView: View {
                     content
                         .opacity(phase.isIdentity ? 1 : 0.12)
                 }
-        }
-    }
-
-    @ViewBuilder
-    private var homeReelPages: some View {
-        switch viewModel.reelState {
-        case .idle, .loading:
-            HomeReelStatusPage(
-                icon: "play.rectangle",
-                title: "로그를 불러오는 중이에요",
-                message: nil,
-                actionTitle: nil,
-                action: nil
-            )
-            .frame(maxWidth: .infinity)
-            .containerRelativeFrame(.vertical)
-            .id("reel-loading")
-
-        case let .content(reels):
-            ForEach(reels) { reel in
-                homeReelPage(for: reel)
-                    .frame(maxWidth: .infinity)
-                    .containerRelativeFrame(.vertical)
-                    .id("reel-\(reel.id)")
-            }
-
-        case .empty:
-            HomeReelStatusPage(
-                icon: "video.slash",
-                title: "아직 발행된 로그가 없어요",
-                message: "첫 번째 영상을 기록해 보세요.",
-                actionTitle: nil,
-                action: nil
-            )
-            .frame(maxWidth: .infinity)
-            .containerRelativeFrame(.vertical)
-            .id("reel-empty")
-
-        case let .failed(presentation):
-            HomeReelStatusPage(
-                icon: "exclamationmark.triangle",
-                title: "로그를 불러오지 못했어요",
-                message: presentation.message,
-                actionTitle: actionTitle(for: presentation),
-                action: {
-                    handleReelErrorAction(
-                        presentation.recoveryAction
-                    )
-                }
-            )
-            .frame(maxWidth: .infinity)
-            .containerRelativeFrame(.vertical)
-            .id("reel-failed")
         }
     }
 
@@ -280,6 +295,69 @@ struct HomeView: View {
                         phase.isIdentity ? 1 : 0.18
                     )
                 }
+        }
+    }
+
+    @ViewBuilder
+    private func homeReelPages(
+        viewportSize: CGSize
+    ) -> some View {
+        switch viewModel.reelState {
+        case .idle, .loading:
+            HomeReelStatusPage(
+                icon: "play.rectangle",
+                title: "로그를 불러오는 중이에요",
+                message: nil,
+                actionTitle: nil,
+                action: nil
+            )
+            .frame(
+                width: viewportSize.width,
+                height: viewportSize.height
+            )
+            .id("reel-loading")
+
+        case let .content(reels):
+            ForEach(reels) { reel in
+                homeReelPage(for: reel)
+                    .frame(
+                        width: viewportSize.width,
+                        height: viewportSize.height
+                )
+                .id("reel-\(reel.id)")
+            }
+
+        case .empty:
+            HomeReelStatusPage(
+                icon: "video.slash",
+                title: "아직 발행된 로그가 없어요",
+                message: "첫 번째 영상을 기록해 보세요.",
+                actionTitle: nil,
+                action: nil
+            )
+            .frame(
+                width: viewportSize.width,
+                height: viewportSize.height
+            )
+            .id("reel-empty")
+
+        case let .failed(presentation):
+            HomeReelStatusPage(
+                icon: "exclamationmark.triangle",
+                title: "로그를 불러오지 못했어요",
+                message: presentation.message,
+                actionTitle: actionTitle(for: presentation),
+                action: {
+                    handleReelErrorAction(
+                        presentation.recoveryAction
+                    )
+                }
+            )
+            .frame(
+                width: viewportSize.width,
+                height: viewportSize.height
+            )
+            .id("reel-failed")
         }
     }
 
@@ -400,8 +478,6 @@ struct HomeView: View {
         switch category {
         case "여행":
             categoryDestination = .routes
-        case "AI":
-            categoryDestination = .ai
         case "테마":
             showsThemeSpots = true
         case "지역":
@@ -417,15 +493,6 @@ struct HomeView: View {
         VStack(spacing: 4) {
             HStack(spacing: 4) {
                 Text(category)
-                if category == "AI" {
-                    Text("AI")
-                        .font(.system(size: 10, weight: .black))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 4)
-                        .padding(.vertical, 1)
-                        .background(Color.blue)
-                        .clipShape(RoundedRectangle(cornerRadius: 3, style: .continuous))
-                }
             }
             .font(.headline.weight(selectedCategory == category ? .bold : .semibold))
             .foregroundStyle(selectedCategory == category ? Color.maplogInk : Color.maplogMuted)
@@ -523,7 +590,7 @@ struct HomeView: View {
             .background(Color(uiColor: .tertiarySystemFill))
             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
-        .accessibilityHint("여행, AI, 테마, 지역, 관광 메뉴를 엽니다")
+        .accessibilityHint("여행, 테마, 지역, 관광 메뉴를 엽니다")
     }
 
     private var horizontalChips: some View {
@@ -853,8 +920,6 @@ struct HomeView: View {
         switch destination {
         case .routes:
             RouteLibraryView()
-        case .ai:
-            AIDigestHubView(digests: aiDigests)
         case .region:
             MapSearchView(query: "서울 성수동")
 
@@ -866,29 +931,6 @@ struct HomeView: View {
         switch destination {
         case .mapSearch(let query):
             MapSearchView(query: query)
-        }
-    }
-
-    private var aiSummary: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("AI 여행 요약\n여행기사 · 사용자 후기를 요약했어요.")
-                .font(.system(size: 22, weight: .bold))
-                .foregroundStyle(Color.maplogInk)
-                .lineSpacing(3)
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 14) {
-                    ForEach(aiDigests) { digest in
-                        NavigationLink {
-                            AIDigestDetailView(digest: digest)
-                        } label: {
-                            SummaryCard(digest: digest)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding(.vertical, 2)
-            }
         }
     }
 
@@ -1708,13 +1750,11 @@ private struct HomeNearbyPlaceCard: View {
 
 private enum HomeCategoryDestination: Hashable, Identifiable {
     case routes
-    case ai
     case region
 
     var id: String {
         switch self {
         case .routes: return "routes"
-        case .ai: return "ai"
         case .region: return "region"
         }
     }
@@ -1727,315 +1767,6 @@ private enum HomeChipDestination: Hashable, Identifiable {
         switch self {
         case .mapSearch(let query):
             return "map-search-\(query)"
-        }
-    }
-}
-
-private struct SummaryCard: View {
-    let digest: AIDigest
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: MaplogSpacing.small) {
-            Text(digest.badge)
-                .font(.system(size: 12, weight: .black))
-                .foregroundStyle(.white)
-                .padding(.horizontal, MaplogSpacing.xSmall)
-                .padding(.vertical, 5)
-                .background(Color.blue)
-                .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
-
-            Text(digest.title)
-                .font(.system(size: 19, weight: .bold))
-                .foregroundStyle(.blue)
-                .lineLimit(2)
-
-            Text(digest.summary)
-                .font(MaplogFont.callout)
-                .foregroundStyle(Color.maplogMuted)
-                .lineSpacing(5)
-                .lineLimit(6)
-
-            Spacer(minLength: 0)
-
-            Label(digest.readTime, systemImage: "sparkles")
-                .font(.system(size: 12, weight: .black))
-                .foregroundStyle(Color.maplogInk)
-        }
-        .padding(MaplogSpacing.medium)
-        .frame(width: 250, height: 230, alignment: .topLeading)
-        .maplogCard()
-    }
-}
-
-private struct AIDigestHubView: View {
-    let digests: [AIDigest]
-
-    var body: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 22) {
-                VStack(alignment: .leading, spacing: 9) {
-                    Text("AI 여행 요약")
-                        .font(.system(size: 29, weight: .black))
-                        .foregroundStyle(Color.maplogInk)
-                    Text("기사와 사용자 후기를 묶어 오늘 바로 볼 만한 여행 힌트로 정리했어요.")
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundStyle(Color.maplogMuted)
-                        .lineSpacing(4)
-                }
-
-                ForEach(digests) { digest in
-                    NavigationLink {
-                        AIDigestDetailView(digest: digest)
-                    } label: {
-                        AIDigestListCard(digest: digest)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(MaplogSpacing.page)
-            .padding(.bottom, 116)
-        }
-        .background(Color.maplogSurface)
-        .navigationTitle("AI")
-        .navigationBarTitleDisplayMode(.inline)
-        .maplogTabBarHidden()
-    }
-}
-
-private struct AIDigestListCard: View {
-    let digest: AIDigest
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            TravelImageView(style: digest.imageStyle, height: 168, cornerRadius: 14, showsSymbol: false)
-                .overlay(alignment: .topLeading) {
-                    Text(digest.badge)
-                        .font(.system(size: 12, weight: .black))
-                        .foregroundStyle(Color.maplogInk)
-                        .padding(.horizontal, 10)
-                        .frame(height: 28)
-                        .background(Color.maplogLime)
-                        .clipShape(Capsule())
-                        .padding(MaplogSpacing.small)
-                }
-
-            VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
-                Text(digest.title)
-                    .font(MaplogFont.screenTitle)
-                    .foregroundStyle(Color.maplogInk)
-                    .lineLimit(2)
-                Text(digest.summary)
-                    .font(MaplogFont.callout)
-                    .foregroundStyle(Color.maplogMuted)
-                    .lineSpacing(4)
-                    .lineLimit(3)
-                HStack(spacing: 10) {
-                    Label(digest.source, systemImage: "doc.text.fill")
-                    Label(digest.readTime, systemImage: "clock.fill")
-                }
-                .font(.system(size: 12, weight: .bold))
-                .foregroundStyle(Color.maplogMuted)
-            }
-            .padding(.horizontal, 2)
-        }
-        .padding(14)
-        .maplogCard()
-    }
-}
-
-struct AIDigestDetailView: View {
-    let digest: AIDigest
-    @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject private var sessionStore: MaplogSessionStore
-    @State private var toastText: String?
-
-    private var isSaved: Bool {
-        sessionStore.hasSavedDigest(digest)
-    }
-
-    var body: some View {
-        ZStack(alignment: .bottom) {
-            ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 22) {
-                    hero
-                    if isSaved {
-                        SavedConfirmationCard(
-                            title: "저장한 요약에 보관됨",
-                            subtitle: "보관함에서 다시 읽고 관련 장소로 이어갈 수 있어요.",
-                            buttonTitle: "보관함에서 확인",
-                            systemImage: "bookmark.fill"
-                        ) {
-                            SavedView()
-                        }
-                    }
-                    insightSection
-                    relatedSpot
-                    mapCTA
-                }
-                .padding(.horizontal, MaplogSpacing.page)
-                .padding(.top, 16)
-                .padding(.bottom, 112)
-            }
-
-            if let toastText {
-                Text(toastText)
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(Color.maplogInk)
-                    .padding(.horizontal, 18)
-                    .frame(height: 48)
-                    .background(Color.maplogSurface)
-                    .clipShape(Capsule())
-                    .shadow(color: .black.opacity(0.14), radius: 18, x: 0, y: 8)
-                    .padding(.bottom, 24)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-            }
-        }
-        .background(Color.maplogSurface)
-        .navigationTitle("AI 여행 요약")
-        .navigationBarTitleDisplayMode(.inline)
-        .maplogTabBarHidden()
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    toggleDigestSaved()
-                } label: {
-                    Image(systemName: isSaved ? "bookmark.fill" : "bookmark")
-                        .font(.system(size: 17, weight: .bold))
-                        .foregroundStyle(Color.maplogInk)
-                }
-            }
-        }
-    }
-
-    private var hero: some View {
-        TravelImageView(style: digest.imageStyle, height: 250, cornerRadius: 14, showsSymbol: false)
-            .overlay {
-                LinearGradient(colors: [.clear, .black.opacity(0.74)], startPoint: .top, endPoint: .bottom)
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            }
-            .overlay(alignment: .bottomLeading) {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(digest.badge)
-                        .font(.system(size: 12, weight: .black))
-                        .foregroundStyle(Color.maplogInk)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(Color.maplogLime)
-                        .clipShape(Capsule())
-
-                    Text(digest.title)
-                        .font(.system(size: 27, weight: .black))
-                        .foregroundStyle(.white)
-                        .lineLimit(2)
-
-                    HStack(spacing: 10) {
-                        Label(digest.source, systemImage: "doc.text.fill")
-                        Label(digest.readTime, systemImage: "clock.fill")
-                    }
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(.white.opacity(0.9))
-                }
-                .padding(18)
-            }
-    }
-
-    private var insightSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            SectionHeader(title: "요약", subtitle: digest.summary)
-
-            VStack(spacing: 10) {
-                ForEach(Array(digest.points.enumerated()), id: \.offset) { index, point in
-                    HStack(alignment: .top, spacing: MaplogSpacing.small) {
-                        Text("\(index + 1)")
-                            .font(.system(size: 13, weight: .black))
-                            .foregroundStyle(Color.maplogInk)
-                            .frame(width: 30, height: 30)
-                            .background(Color.maplogLime)
-                            .clipShape(Circle())
-
-                        Text(point)
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(Color.maplogInk)
-                            .lineSpacing(4)
-
-                        Spacer(minLength: 0)
-                    }
-                    .padding(14)
-                    .background(Color.maplogCanvas)
-                    .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous))
-                }
-            }
-        }
-    }
-
-    private var relatedSpot: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            SectionHeader(title: "추천 장소", subtitle: "요약과 함께 보면 좋은 장소")
-
-            NavigationLink {
-                SpotDetailView(spot: digest.spot)
-            } label: {
-                HStack(spacing: 14) {
-                    TravelImageView(style: digest.spot.imageStyle, height: 82, cornerRadius: 10, showsSymbol: false)
-                        .frame(width: 82)
-
-                    VStack(alignment: .leading, spacing: 7) {
-                        Text(digest.spot.name)
-                            .font(.system(size: 18, weight: .black))
-                            .foregroundStyle(Color.maplogInk)
-                        Text(digest.spot.summary)
-                            .font(.system(size: 13, weight: .medium))
-                            .foregroundStyle(Color.maplogMuted)
-                            .lineLimit(2)
-                    }
-
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 13, weight: .black))
-                        .foregroundStyle(Color.maplogMuted)
-                }
-                .padding(MaplogSpacing.small)
-                .maplogCard()
-            }
-            .buttonStyle(.plain)
-        }
-    }
-
-    private var mapCTA: some View {
-        NavigationLink {
-            MapSearchView(query: digest.query)
-        } label: {
-            Label("지도에서 관련 루트 보기", systemImage: "map.fill")
-                .font(MaplogFont.cardTitle)
-                .foregroundStyle(Color.maplogInk)
-                .frame(maxWidth: .infinity)
-                .frame(height: 56)
-                .background(Color.maplogLime)
-                .clipShape(Capsule())
-        }
-        .buttonStyle(.plain)
-    }
-
-    private func showToast(_ text: String) {
-        withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
-            toastText = text
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.45) {
-            withAnimation(.easeOut(duration: 0.2)) {
-                if toastText == text {
-                    toastText = nil
-                }
-            }
-        }
-    }
-
-    private func toggleDigestSaved() {
-        if isSaved {
-            sessionStore.removeSavedDigest(digest)
-            showToast("AI 요약 저장을 해제했어요")
-        } else {
-            sessionStore.saveDigest(digest)
-            showToast("AI 요약을 보관함에 저장했어요")
         }
     }
 }

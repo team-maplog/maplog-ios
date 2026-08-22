@@ -214,14 +214,6 @@ struct SearchView: View {
                     .padding(MaplogSpacing.small)
                 }
 
-                if sessionStore.hasSavedRoute(routeTrip) {
-                    NavigationLink {
-                        SavedView()
-                    } label: {
-                        SearchSavedShortcut(title: "루트가 보관함에 저장됨")
-                    }
-                    .buttonStyle(MaplogPressFeedbackStyle())
-                }
             }
         }
     }
@@ -629,32 +621,6 @@ private struct SearchRouteCard: View {
         .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.large, style: .continuous))
         .maplogCard(cornerRadius: MaplogRadius.large, style: .photo)
         .accessibilityValue(isSaved ? "저장됨" : "저장 안 됨")
-    }
-}
-
-private struct SearchSavedShortcut: View {
-    let title: String
-
-    var body: some View {
-        HStack(spacing: 10) {
-            Label(title, systemImage: "bookmark.fill")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.primary)
-                .lineLimit(1)
-
-            Spacer(minLength: 8)
-
-            Text("보관함")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.secondary)
-            Image(systemName: "chevron.right")
-                .font(.system(size: 12, weight: .black))
-                .foregroundStyle(Color.maplogMuted)
-        }
-        .padding(.horizontal, 14)
-        .frame(minHeight: 48)
-        .background(Color.maplogSurfaceRaised)
-        .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous))
     }
 }
 

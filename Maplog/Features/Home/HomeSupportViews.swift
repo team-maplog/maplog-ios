@@ -654,16 +654,13 @@ struct ServiceDetailView: View {
                 serviceTopBar
 
                 ScrollView(showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 22) {
-                        serviceHero
-                        issueButton
-                        if isIssued {
-                            issuedPassConfirmation
-                        }
-                        benefitSection
-                        howToUseSection
-                        nearbyRouteCard
-                    }
+                VStack(alignment: .leading, spacing: 22) {
+                    serviceHero
+                    issueButton
+                    benefitSection
+                    howToUseSection
+                    nearbyRouteCard
+                }
                     .padding(.horizontal, 22)
                     .padding(.top, 14)
                     .padding(.bottom, 112)
@@ -793,17 +790,6 @@ struct ServiceDetailView: View {
                 .shadow(color: Color.maplogLime.opacity(0.35), radius: 16, x: 0, y: 8)
         }
         .buttonStyle(.plain)
-    }
-
-    private var issuedPassConfirmation: some View {
-        SavedConfirmationCard(
-            title: "여행 패스가 발급됨",
-            subtitle: "보관함에서 패스 혜택과 주변 장소를 다시 확인할 수 있어요.",
-            buttonTitle: "보관함에서 확인",
-            systemImage: "ticket.fill"
-        ) {
-            SavedView()
-        }
     }
 
     private var benefitSection: some View {
@@ -1572,21 +1558,15 @@ struct FeaturedEventDetailView: View {
                     eventHero
                     introCard
                     if isSaved {
-                        NavigationLink {
-                            SavedView()
-                        } label: {
-                            HStack(spacing: 8) {
-                                Image(systemName: "bookmark.fill")
-                                Text("관심 행사에 저장됨")
-                                Spacer()
-                                Image(systemName: "chevron.right")
-                            }
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(Color.maplogOlive)
-                            .frame(minHeight: 44)
+                        HStack(spacing: 8) {
+                            Image(systemName: "bookmark.fill")
+                            Text("관심 행사에 저장됨")
+                            Spacer()
                         }
-                        .buttonStyle(MaplogPressFeedbackStyle())
                         .padding(.horizontal, MaplogSpacing.page)
+                        .frame(height: 44)
+                        .background(Color.maplogSurfaceRaised)
+                        .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous))
                     }
                     infoGrid
                     locationCard
