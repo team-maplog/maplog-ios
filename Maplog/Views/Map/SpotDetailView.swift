@@ -65,9 +65,6 @@ struct SpotDetailView: View {
                         .padding(.top, MaplogSpacing.small)
 
                     VStack(alignment: .leading, spacing: MaplogSpacing.large) {
-                        if sessionStore.hasVisitChecklistSpot(spot) {
-                            visitChecklistConfirmation
-                        }
                         if isLoadingDetails {
                             loadingDetailContent
                         } else {
@@ -240,17 +237,6 @@ struct SpotDetailView: View {
         }
         .buttonStyle(MaplogPressFeedbackStyle(pressedScale: 0.98))
         .accessibilityLabel(title)
-    }
-
-    private var visitChecklistConfirmation: some View {
-        SavedConfirmationCard(
-            title: "방문 전 확인에 저장됨",
-            subtitle: "보관함에서 전화, 영업시간, 주소를 다시 확인할 수 있어요.",
-            buttonTitle: "보관함에서 확인",
-            systemImage: "checkmark.circle.fill"
-        ) {
-            SavedView()
-        }
     }
 
     private var detailTabs: some View {

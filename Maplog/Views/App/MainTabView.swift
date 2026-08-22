@@ -107,9 +107,9 @@ struct MainTabView: View {
     }
 
     @ViewBuilder
-    private var bottomContorls: some View {
+    private var bottomControls: some View {
         if #available(iOS 26, *) {
-            GlassEffectContainer(spacing: 0) { // 각 컴포넌트에 넣은 .glassEffect가 재질을 만들고, 컨테이너는 가까운 유리 두 개를 같은 장면으로 렌더링해 자연스럽고 효율적으로 보이게 해줌
+            GlassEffectContainer(spacing: MaplogSpacing.small) { // 각 컴포넌트에 넣은 .glassEffect가 재질을 만들고, 컨테이너는 가까운 유리 두 개를 같은 장면으로 렌더링해 자연스럽고 효율적으로 보이게 해줌
                 bottomControlsContent
             }
         } else {
@@ -138,9 +138,11 @@ struct MainTabView: View {
         Group {
             switch selectedTab {
             case .home:
-                NavigationStack(path: $homeNavigationPath) {
-                    HomeView(
+                GeometryReader { rootProxy in
+                    NavigationStack(path: $homeNavigationPath) {
+                        HomeView(
                             viewModel: homeviewModel,
+                            topSafeAreaInset: rootProxy.safeAreaInsets.top,
                             onShowAllTourisms: {
                                 homeNavigationPath.append(.tourismList)
                             },
@@ -150,14 +152,24 @@ struct MainTabView: View {
                                 )
                             }
                         )
-                    .navigationDestination(for: HomeNavigationRoute.self) { route in
-                        switch route {
-                        case .tourismList:
-                            TourismListView(tourismRepository: tourismRepository)
+                        .navigationDestination(for: HomeNavigationRoute.self) { route in
+                            switch route {
+                            case .tourismList:
+                                TourismListView(
+                                    tourismRepository: tourismRepository
+                                )
 
-                        case .tourismDetail(let tourismID):
-                            TourismDetailView(tourismID: tourismID, tourismRepository: tourismRepository)
+                            case .tourismDetail(let tourismID):
+                                TourismDetailView(
+                                    tourismID: tourismID,
+                                    tourismRepository: tourismRepository
+                                )
+                            }
                         }
+                        .ignoresSafeArea(
+                            .container,
+                            edges: [.top, .bottom]
+                        )
                     }
                 }
             case .capture:
@@ -185,36 +197,28 @@ struct MainTabView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            if !isTabBarHidden && !usesReelTabBarStyle {
-                Color.clear
-                    .frame(height: usesCompactTabBar ? MaplogSize.tabBarHeight : 0)
-            }
-        }
         .overlay(alignment: .bottom) {
             if !isTabBarHidden {
-                HStack(spacing: MaplogSpacing.small) {
-                    MaplogTabBar(
-                        selectedTab: tabSelection,
-                        isCompact: usesCompactTabBar,
-                        isReelStyle: usesReelTabBarStyle
-                    )
-                    .frame(maxWidth: .infinity)
-
-                    MaplogCaptureButton(isReelStyle: usesReelTabBarStyle) {
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
-                            applyRequestedTab(.capture)
+                bottomControls
+                    .padding(.horizontal, MaplogSpacing.page)
+                                .transition(.move(edge: .bottom).combined(with: .opacity))
+                                .animation(
+                                    tabBarMorphAnimation,
+                                    value: usesReelTabBarStyle
+                                )
                         }
-                    }
-                }
-                .padding(.horizontal, MaplogSpacing.page)
-                .padding(.bottom, usesCompactTabBar ? 0 : 0)
-                .transition(.move(edge: .bottom).combined(with: .opacity))
-                .animation(tabBarMorphAnimation, value: usesReelTabBarStyle)
-            }
         }
-        .background(Color(uiColor: .systemBackground))
-        .preferredColorScheme(.light)
+        .background {
+            (
+                usesReelTabBarStyle
+                    ? Color.black
+                    : Color(uiColor: .systemBackground)
+            )
+            .ignoresSafeArea()
+        }
+        .preferredColorScheme(
+            usesReelTabBarStyle ? .dark : .light
+        )
         .onPreferenceChange(MaplogTabBarHiddenPreferenceKey.self) { hidden in
             withAnimation(.spring(response: 0.32, dampingFraction: 0.9)) {
                 isTabBarHidden = hidden
@@ -367,7 +371,6 @@ struct MaplogTabBar: View {
                     )
             }
         }
-        .scaleEffect(isReelStyle ? 0.90 : 1.0, anchor: .bottom)
         .animation(
             reduceMotion ? nil : .smooth(duration: 0.4),
                 value: isReelStyle
@@ -378,46 +381,69 @@ struct MaplogTabBar: View {
 
     // 탭 아이콘·선택 상태·크기만 담당
     private var compactTabBarContent: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 0) {
             ForEach(MaplogTab.navigationTabs) { tab in
                 Button {
-                    select(tab, response: 0.32, dampingFraction: 0.88)
+                    select(
+                        tab,
+                        response: 0.32,
+                        dampingFraction: 0.88
+                    )
                 } label: {
-                    Image(systemName: tab.icon)
-                        .font(.system(size: isReelStyle ? 18 : 21,
-                              weight: .semibold))
-                        .foregroundStyle(isReelStyle ? Color.maplogInk : Color.primary)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: isReelStyle ? MaplogSize.minimumTapTarget : 48)
-                                            .background {
-                                                if selectedTab == tab {
-                                                    Capsule()
-                                                        .fill(Color.maplogPrimary.opacity(0.24))
-                                                        .padding(.horizontal, 0)
-                                                        .padding(.vertical, isReelStyle ? 2 : 0)
-                                                }
-                                            }
-                                            .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                            .accessibilityLabel(tab.title)
-                            .accessibilityAddTraits(
-                                selectedTab == tab ? .isSelected : []
+                    ZStack {
+                        if selectedTab == tab {
+                            Capsule()
+                                .fill(
+                                    Color.maplogPrimary.opacity(0.24)
+                                )
+                                .padding(
+                                    .vertical,
+                                    isReelStyle ? 2 : 0
+                                )
+                        }
+
+                        Image(systemName: tab.icon)
+                            .font(
+                                .system(
+                                    size: isReelStyle ? 18 : 21,
+                                    weight: .semibold
+                                )
                             )
+                            .foregroundStyle(Color.maplogInk)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .frame(
+                        height: isReelStyle
+                            ? MaplogSize.minimumTapTarget
+                            : 48
+                    )
+                    .contentShape(Rectangle())
+                }
+                .frame(maxWidth: .infinity)
+                .buttonStyle(.plain)
+                .accessibilityLabel(tab.title)
+                .accessibilityAddTraits(
+                    selectedTab == tab
+                        ? .isSelected
+                        : []
+                )
             }
         }
-        .padding(
-                .horizontal,
-                isReelStyle
-                    ? MaplogSpacing.xxSmall
-                    : MaplogSpacing.xxSmall
-            )
-            .frame(maxWidth: isReelStyle ? 286 : 330)
-            .frame(height: isReelStyle ? 48 : 56)
-            .animation(
-                reduceMotion ? nil : .smooth(duration: 0.4),
-                value: isReelStyle
-            )
+        .padding(.horizontal, MaplogSpacing.xxSmall)
+        .frame(
+            maxWidth: isReelStyle
+                ? 258
+                : .infinity
+        )
+        .frame(
+            height: isReelStyle
+                ? 48
+                : 56
+        )
+        .animation(
+            reduceMotion ? nil : .smooth(duration: 0.4),
+            value: isReelStyle
+        )
     }
 
     private func itemColor(for tab: MaplogTab) -> Color {

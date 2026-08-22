@@ -324,37 +324,6 @@ struct ProfileView: View {
         .buttonStyle(.plain)
     }
 
-    private var savedPlacesShortcut: some View {
-        NavigationLink {
-            SavedView()
-        } label: {
-            HStack(spacing: MaplogSpacing.small) {
-                Image(systemName: "heart.fill")
-                    .font(.system(size: 21, weight: .bold))
-                    .foregroundStyle(Color.maplogPrimary)
-                    .frame(width: 48, height: 48)
-                    .contentShape(Rectangle())
-
-                VStack(alignment: .leading, spacing: 5) {
-                    Text("장소 보관함")
-                        .font(.system(size: 17, weight: .bold))
-                        .foregroundStyle(Color.maplogInk)
-                    Text(sessionStore.savedSpots.isEmpty ? "추천 장소와 저장한 장소를 확인해요" : "\(sessionStore.savedSpots.count)개 장소 저장됨")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(Color.maplogMuted)
-                }
-
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 13, weight: .bold))
-                    .foregroundStyle(Color.maplogMuted)
-            }
-            .padding(14)
-            .maplogCard()
-        }
-        .buttonStyle(.plain)
-    }
-
     private var savedRoutes: some View {
         VStack(spacing: MaplogSpacing.small) {
             SectionHeader(title: "저장된 경로", subtitle: "\(sessionStore.savedRoutes.count)개 루트가 프로필에 표시됩니다")

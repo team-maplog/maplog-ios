@@ -869,14 +869,18 @@ struct PopularMaplogDetailView: View {
     }
 
     private var savedRouteConfirmation: some View {
-        SavedConfirmationCard(
-            title: "루트가 보관함에 저장됨",
-            subtitle: "보관함에서 이 동선과 방문 순서를 다시 열 수 있어요.",
-            buttonTitle: "보관함에서 확인",
-            systemImage: "bookmark.fill"
-        ) {
-            SavedView()
+        HStack(spacing: MaplogSpacing.small) {
+            Image(systemName: "bookmark.fill")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Color.maplogPrimary)
+            Text("루트가 저장되어 있어요")
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(Color.maplogInk)
+            Spacer()
         }
+        .frame(minHeight: 48)
+        .padding(.horizontal, MaplogSpacing.medium)
+        .maplogCard()
     }
 
     private var bottomBar: some View {
@@ -2545,14 +2549,18 @@ struct RouteDetailView: View {
     }
 
     private var savedRouteConfirmation: some View {
-        SavedConfirmationCard(
-            title: "루트가 보관함에 저장됨",
-            subtitle: "보관함에서 이 동선과 방문 순서를 다시 열 수 있어요.",
-            buttonTitle: "보관함에서 확인",
-            systemImage: "bookmark.fill"
-        ) {
-            SavedView()
+        HStack(spacing: MaplogSpacing.small) {
+            Image(systemName: "bookmark.fill")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Color.maplogPrimary)
+            Text("루트가 저장되어 있어요")
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(Color.maplogInk)
+            Spacer()
         }
+        .frame(minHeight: 48)
+        .padding(.horizontal, MaplogSpacing.medium)
+        .maplogCard()
     }
 
     private var nearbySpotGrid: some View {

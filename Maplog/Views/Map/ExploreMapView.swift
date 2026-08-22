@@ -333,30 +333,6 @@ struct ExploreMapView: View {
         }
     }
 
-    private var savedRouteShortcut: some View {
-        NavigationLink {
-            SavedView()
-        } label: {
-            HStack(spacing: 10) {
-                Label("경로가 보관함에 저장됨", systemImage: "bookmark.fill")
-                    .font(.footnote.weight(.medium))
-                    .foregroundStyle(Color.maplogTextSecondary)
-                    .lineLimit(1)
-                
-                Spacer(minLength: 8)
-                
-                Text("확인")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Color.maplogTextPrimary)
-                Image(systemName: "chevron.right")
-                    .font(.footnote.weight(.semibold))
-                    .foregroundStyle(Color.maplogTextSecondary)
-            }
-            .frame(minHeight: MaplogSize.minimumTapTarget)
-        }
-        .buttonStyle(.plain)
-    }
-
     private var mapEmptyState: some View {
         VStack(spacing: 10) {
             Image(systemName: "map")
@@ -511,9 +487,6 @@ struct ExploreMapView: View {
     
     private func routeSheetDetails(for selectedSpot: MaplogSpot) -> some View {
         VStack(alignment: .leading, spacing: MaplogSpacing.small) {
-            if sessionStore.hasSavedRoute(selectedTrip) {
-                savedRouteShortcut
-            }
             Text("경로 주변 명소")
                 .font(.headline)
                 .foregroundStyle(Color.maplogTextPrimary)

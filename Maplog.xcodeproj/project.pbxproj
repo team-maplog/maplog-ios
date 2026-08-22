@@ -44,7 +44,6 @@
 		E64345BB3CE1454CD256FE69 /* Cards.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82FCBC8A1A1F73D5ABD6442D /* Cards.swift */; };
 		EDDF28EA911571C5A90929B3 /* CaptureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 691D6E56B0806BACA016DE02 /* CaptureView.swift */; };
 		FB89B8F9095093D254CFC7CE /* ProfileViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 030655D170DFF7F7C85ED748 /* ProfileViewModel.swift */; };
-		FDBA21967A87837768F80E5D /* SavedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC728AC0952CD66D16711F60 /* SavedView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -78,7 +77,6 @@
 		AF44666EFC016FEA25AB3362 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		B178E7FBFB73E78FCFC05218 /* MockMaplogData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockMaplogData.swift; sourceTree = "<group>"; };
 		BBD4570766EEE062B0D9957F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		BC728AC0952CD66D16711F60 /* SavedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedView.swift; sourceTree = "<group>"; };
 		BDDE9E21B157D66A4C02AC14 /* MaplogButtons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MaplogButtons.swift; sourceTree = "<group>"; };
 		C0D3E0010A2B3C4D5E6F7001 /* CaptureEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureEditorView.swift; sourceTree = "<group>"; };
 		C0D3E0010A2B3C4D5E6F7002 /* CaptureRecordingShutterButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureRecordingShutterButton.swift; sourceTree = "<group>"; };
@@ -283,7 +281,6 @@
 				B667F9C71476AEC311DF80F2 /* Map */,
 				7C67C8425758FDBB0E2204F3 /* Onboarding */,
 				F03A0B02B0EFF1360FA43192 /* Profile */,
-				F236B17438C4B5605872EAC3 /* Saved */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -359,14 +356,6 @@
 				301951B5ED69D1CB3A145958 /* SettingsView.swift */,
 			);
 			path = Profile;
-			sourceTree = "<group>";
-		};
-		F236B17438C4B5605872EAC3 /* Saved */ = {
-			isa = PBXGroup;
-			children = (
-				BC728AC0952CD66D16711F60 /* SavedView.swift */,
-			);
-			path = Saved;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -514,7 +503,6 @@
 				28E82DEB362C514D0763D2DC /* ProfileView.swift in Sources */,
 				FB89B8F9095093D254CFC7CE /* ProfileViewModel.swift in Sources */,
 				B8BBE3F5A7C53D50B176913A /* QuickMaplogIntent.swift in Sources */,
-				FDBA21967A87837768F80E5D /* SavedView.swift in Sources */,
 				E21BAE28300BC20400B95B53 /* KeychainService.swift in Sources */,
 				DA6721EE38D0CF3507A10E92 /* SettingsView.swift in Sources */,
 				E21BAE2A300BC21700B95B53 /* AuthViewModel.swift in Sources */,
