@@ -8,6 +8,7 @@ struct HomeView: View {
     @EnvironmentObject private var sessionStore: MaplogSessionStore
     @Environment(\.maplogLogout) private var performLogout
     @ObservedObject var viewModel: HomeViewModel // MainTabView가 만든 하나를 받아서 관찰
+    @ObservedObject var mapPanelViewModel: HomeMapPanelViewModel
     let topSafeAreaInset: CGFloat // 전체 화면 높이는 고정하고 홈 콘텐츠만 상태바 아래에서 시작하기 위한 값
     let onShowAllTourisms: () -> Void
     let onShowTourismDetail: (Int64) -> Void
@@ -16,6 +17,11 @@ struct HomeView: View {
         case reels
         case map
         var id: Int { rawValue }
+    }
+
+    private struct MapRouteLoadRequest: Equatable {
+        let panel: HomePanel
+        let reelID: Int64?
     }
 
     @State private var selectedCategory = "추천"
@@ -77,14 +83,60 @@ struct HomeView: View {
         )
     }
 
-    private struct HomeMapPanelPlaceholder: View {
+    private var activeReelID: Int64? {
+        reelID(
+            from: homeScrollPosition
+        )
+    }
+
+    // 상단 영상/지도 전환 버튼
+    private struct HomePanelSwitcher: View {
+        @Binding var selection: HomePanel
+
         var body: some View {
-            Color.black
-                .ignoresSafeArea()
-                .overlay {
-                    Text("지도 패널 자리")
-                        .foregroundStyle(.white)
+            HStack(spacing: 6) {
+                Button {
+                    selection = .reels
+                } label: {
+                    Image(systemName: "play.rectangle.fill")
+                        .foregroundStyle(
+                            selection == .reels
+                                ? Color.maplogInk
+                                : .white
+                        )
+                        .frame(width: 42, height: 32)
+                        .background(
+                            selection == .reels
+                                ? Color.maplogLime
+                                : .black.opacity(0.46),
+                            in: Capsule()
+                        )
                 }
+
+                Button {
+                    selection = .map
+                } label: {
+                    Image(systemName: "map.fill")
+                        .foregroundStyle(
+                            selection == .map
+                                ? Color.maplogInk
+                                : .white
+                        )
+                        .frame(width: 42, height: 32)
+                        .background(
+                            selection == .map
+                                ? Color.maplogLime
+                                : .black.opacity(0.46),
+                            in: Capsule()
+                        )
+                }
+            }
+            .padding(4)
+            .background(
+                .black.opacity(0.30),
+                in: Capsule()
+            )
+            .accessibilityElement(children: .contain)
         }
     }
 
@@ -93,8 +145,11 @@ struct HomeView: View {
             reelsPanel
                 .tag(HomePanel.reels)
 
-            HomeMapPanelPlaceholder()
-                .tag(HomePanel.map)
+            HomeMapPanel(
+                viewModel: mapPanelViewModel,
+                onRequestSignIn: performLogout
+            )
+            .tag(HomePanel.map)
         }
         .tabViewStyle(.page(indexDisplayMode: .never))
         .coordinateSpace(name: Self.viewportCoordinateSpace)
@@ -104,11 +159,43 @@ struct HomeView: View {
             edges: [.top, .bottom]
         )
         .toolbar(.hidden, for: .navigationBar)
+        .overlay(alignment: .top) {
+            if isHomeReelActive {
+                HomePanelSwitcher(
+                    selection: $selectedPanel
+                )
+                .padding(
+                    .top,
+                    topSafeAreaInset + 10
+                )
+            }
+        }
         .task { // body 안에서 직접 API를 호출하지 않고, View가 화면에 등장하는 생명주기에 맞는 .task에서 호출
             async let tourism: Void = viewModel.loadInitialTourisms()
             async let reels: Void = viewModel.loadInitialReels()
 
             _ = await (tourism, reels)
+        }
+        .task(
+            id: MapRouteLoadRequest(
+                panel: selectedPanel,
+                reelID: activeReelID
+            )
+        ) {
+            guard selectedPanel == .map else {
+                return
+            }
+
+            viewModel.pausePlayback()
+
+            guard let activeReelID else {
+                mapPanelViewModel.clear()
+                return
+            }
+
+            await mapPanelViewModel.loadRoute(
+                for: activeReelID
+            )
         }
 
         .navigationDestination(isPresented: $showsThemeSpots) {

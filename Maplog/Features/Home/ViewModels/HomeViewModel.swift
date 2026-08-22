@@ -91,7 +91,7 @@ final class HomeViewModel: ObservableObject {
 
         do {
             let cards = try await fetchTourismCards()
-            
+
 
             tourismState = cards.isEmpty ? .empty : .content(cards)
         } catch is CancellationError { // CancellationError는 탭 이동처럼 화면이 사라져 요청이 취소된 정상 상황이므로 실패 UI로 바꾸지 않음, 실패 화면의 버튼은 retryInitialTourisms()를 호출하는 구조
@@ -250,6 +250,16 @@ final class HomeViewModel: ObservableObject {
         }
     }
 
+    func pausePlayback() {
+        guard activePlaybackReelID != nil,
+              playbackLoadingReelID == nil,
+              playbackFailedReelID == nil else {
+            return
+        }
+
+        playbackService.pause()
+    }
+
     func stopPlayback() {
         playbackService.stop()
 
@@ -263,7 +273,7 @@ final class HomeViewModel: ObservableObject {
         reelState = .idle
         await loadInitialReels()
     }
-    
+
     // 실제 새로고침 함수
     func refreshHome() async {
         guard tourismState != .loading,
@@ -277,7 +287,7 @@ final class HomeViewModel: ObservableObject {
 
         _ = await (tourism, reels)
     }
-    
+
     func playbackProgress(
         for reelID: Int64
     ) -> Double {
@@ -289,7 +299,7 @@ final class HomeViewModel: ObservableObject {
 
         return reelPlaybackProgress
     }
-    
+
     func isPlaying(reelID: Int64) -> Bool {
         guard activePlaybackReelID == reelID,
               playbackFailedReelID != reelID,
@@ -358,8 +368,8 @@ final class HomeViewModel: ObservableObject {
             makeReelViewData(from: reel)
         }
     }
-    
-    // 내부 새로고침 함수 
+
+    // 내부 새로고침 함수
     private func refreshTourisms() async {
         let previousState = tourismState
 
@@ -418,7 +428,7 @@ final class HomeViewModel: ObservableObject {
             // 기존 릴스가 있다면 그대로 유지한다.
         }
     }
-    
+
     private func makeReelViewData(
         from reel: LogReel
     ) -> HomeReelViewData {
