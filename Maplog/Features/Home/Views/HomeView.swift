@@ -6,7 +6,6 @@ struct HomeView: View {
     private static let panelSwipeMinimumDistance: CGFloat = 56
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @Environment(\.maplogSelectTab) private var selectTab
     @EnvironmentObject private var sessionStore: MaplogSessionStore
     @Environment(\.maplogLogout) private var performLogout
     @ObservedObject var viewModel: HomeViewModel // MainTabView가 만든 하나를 받아서 관찰
@@ -26,29 +25,14 @@ struct HomeView: View {
         let reelID: Int64?
     }
 
-    @State private var selectedCategory = "추천"
-    @State private var selectedChip = "전체"
-    @State private var showsThemeSpots = false
-    @State private var showsNearbyRecommendations = false
     @State private var showsLocationPermissionPrompt = false
     @State private var showsCurrentLocationSearch = false
-    @State private var categoryDestination: HomeCategoryDestination?
-    @State private var chipDestination: HomeChipDestination?
     @State private var homeScrollPosition: String? = "home-intro"
     @State private var selectedPanel: HomePanel = .reels
+    @State private var videoPreviewRequest: HomeMapRoutePlaybackRequest?
 
-    private let categories = ["여행", "추천", "테마", "지역", "관광"]
-    private let chips = ["전체", "축제", "맛집", "야경", "가족", "자연", "카페", "포토스팟"]
-    private let services = [
-        ("디지털\n관광주민증", "badge.plus.radiowaves.right"),
-        ("대한민국\n반값여행", "percent"),
-        ("맛집차트", "fork.knife"),
-        ("가볼래-터", "safari")
-    ]
     private let spotlightEvent = MockMaplogData.spotlightEvent
-    private let homeVideos = HomeMaplogThumbnailItem.samples
 //    private let homePosts = MockMaplogData.posts
-    private let nearbyPlaces = HomeNearbyPlace.samples
 
 //    private var featuredPost: VlogPost? {
 //        homePosts.first
@@ -260,6 +244,9 @@ struct HomeView: View {
                 )
             }
         }
+        .overlay {
+            mapVideoPreviewOverlay
+        }
         .task { // body 안에서 직접 API를 호출하지 않고, View가 화면에 등장하는 생명주기에 맞는 .task에서 호출
             async let tourism: Void = viewModel.loadInitialTourisms()
             async let reels: Void = viewModel.loadInitialReels()
@@ -288,22 +275,6 @@ struct HomeView: View {
             )
         }
 
-        .navigationDestination(isPresented: $showsThemeSpots) {
-            ThemeSpotsView {
-                showsThemeSpots = false
-            }
-        }
-        .navigationDestination(isPresented: $showsNearbyRecommendations) {
-            NearbyRecommendationsView {
-                showsNearbyRecommendations = false
-            }
-        }
-        .navigationDestination(item: $categoryDestination) { destination in
-            categoryDestinationView(for: destination)
-        }
-        .navigationDestination(item: $chipDestination) { destination in
-            chipDestinationView(for: destination)
-        }
         .navigationDestination(isPresented: $showsCurrentLocationSearch) {
             MapSearchView(query: "서울 성수동")
         }
@@ -322,16 +293,73 @@ struct HomeView: View {
         }
     }
 
+    @ViewBuilder
+    private var mapVideoPreviewOverlay: some View {
+        if let request = videoPreviewRequest {
+            ZStack {
+                Color.black.opacity(0.46)
+                    .ignoresSafeArea()
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        dismissVideoPreview()
+                    }
+
+                HomeMapVideoPreview(
+                    player: viewModel.player(for: request.logID),
+                    isLoading: viewModel.isLoadingPlayback(
+                        for: request.logID
+                    ),
+                    hasPlaybackFailed: viewModel.hasPlaybackFailed(
+                        for: request.logID
+                    ),
+                    playbackProgress: viewModel.playbackProgress(
+                        for: request.logID
+                    ),
+                    isPlaying: viewModel.isPlaying(
+                        reelID: request.logID
+                    ),
+                    onPlayToggle: {
+                        Task {
+                            await viewModel.togglePlayback(
+                                for: request.logID
+                            )
+                        }
+                    },
+                    onSeek: { progress in
+                        viewModel.seekPlayback(
+                            to: progress,
+                            for: request.logID
+                        )
+                    },
+                    onRetry: {
+                        Task {
+                            await viewModel.playReel(
+                                withID: request.logID,
+                                from: request.startTimeMillis
+                            )
+                        }
+                    }
+                )
+                .frame(maxWidth: 252)
+                .padding(.horizontal, 48)
+            }
+            .accessibilityAddTraits(.isModal)
+        }
+    }
+
+    private func dismissVideoPreview() {
+        viewModel.stopPlayback()
+        videoPreviewRequest = nil
+    }
+
     private func playRoutePoint(
         _ request: HomeMapRoutePlaybackRequest
     ) {
-        /// 현재 지도는 활성 릴스의 경로만 보여 주므로,
-        /// 오래된 지도 데이터가 잘못 재생시키는 상황을 막는다.
         guard request.logID == activeReelID else {
             return
         }
 
-        selectedPanel = .reels
+        videoPreviewRequest = request
 
         Task {
             await viewModel.playReel(
@@ -647,58 +675,6 @@ struct HomeView: View {
         }
     }
 
-    private var topCategoryBar: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 18) {
-                Image(systemName: "flag.fill")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundStyle(Color.maplogInk)
-
-                ForEach(categories, id: \.self) { category in
-                    Button {
-                        openCategory(category)
-                    } label: {
-                        categoryLabel(category)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-            .padding(.vertical, 2)
-        }
-        .contentMargins(.horizontal, 1, for: .scrollContent)
-    }
-
-    private func openCategory(_ category: String) {
-        selectedCategory = category
-
-        switch category {
-        case "여행":
-            categoryDestination = .routes
-        case "테마":
-            showsThemeSpots = true
-        case "지역":
-            categoryDestination = .region
-        case "관광":
-            onShowAllTourisms()
-        default:
-            break
-        }
-    }
-
-    private func categoryLabel(_ category: String) -> some View {
-        VStack(spacing: 4) {
-            HStack(spacing: 4) {
-                Text(category)
-            }
-            .font(.headline.weight(selectedCategory == category ? .bold : .semibold))
-            .foregroundStyle(selectedCategory == category ? Color.maplogInk : Color.maplogMuted)
-
-            Rectangle()
-                .fill(selectedCategory == category ? Color.maplogLime : .clear)
-                .frame(height: 2)
-        }
-    }
-
     private var greetingHeader: some View {
         HStack(alignment: .center) {
             VStack(alignment: .leading, spacing: 7) {
@@ -738,91 +714,6 @@ struct HomeView: View {
                 }
             }
             .buttonStyle(.plain)
-        }
-    }
-
-    private var searchField: some View {
-        MaplogSearchButton(placeholder: "축제, 장소, 루트를 검색해보세요") {
-            SearchView()
-        }
-    }
-
-    private var discoverySection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            MaplogSectionHeader(
-                "더 둘러보기",
-                subtitle: "검색하거나 관심 있는 여행 테마를 골라보세요"
-            )
-            searchField
-            horizontalChips
-            secondaryCategoryMenu
-        }
-        .padding(18)
-        .background(Color.maplogCanvas)
-        .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.xLarge, style: .continuous))
-    }
-
-    private var secondaryCategoryMenu: some View {
-        Menu {
-            ForEach(categories, id: \.self) { category in
-                Button(category) {
-                    openCategory(category)
-                }
-            }
-        } label: {
-            HStack(spacing: 10) {
-                Image(systemName: "sparkles")
-                    .foregroundStyle(Color.maplogOlive)
-                Text("여행 아이디어 더 보기")
-                Spacer()
-                Image(systemName: "chevron.down")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(.secondary)
-            }
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(.primary)
-            .padding(.horizontal, 14)
-            .frame(minHeight: 48)
-            .background(Color(uiColor: .tertiarySystemFill))
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        }
-        .accessibilityHint("여행, 테마, 지역, 관광 메뉴를 엽니다")
-    }
-
-    private var horizontalChips: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 10) {
-                ForEach(chips, id: \.self) { chip in
-                    Button {
-                        selectedChip = chip
-                        openChip(chip)
-                    } label: {
-                        MaplogFilterChip(title: chip, isSelected: selectedChip == chip)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
-    }
-
-    private func openChip(_ chip: String) {
-        switch chip {
-        case "축제":
-            onShowAllTourisms()
-        case "맛집":
-            showsNearbyRecommendations = true
-        case "야경":
-            chipDestination = .mapSearch("야경")
-        case "가족":
-            chipDestination = .mapSearch("가족 여행")
-        case "자연":
-            chipDestination = .mapSearch("자연 산책")
-        case "카페":
-            chipDestination = .mapSearch("성수동 카페")
-        case "포토스팟":
-            chipDestination = .mapSearch("포토스팟")
-        default:
-            break
         }
     }
 
@@ -956,57 +847,6 @@ struct HomeView: View {
         }
     }
 
-    private var maplogClipSection: some View {
-        VStack(alignment: .leading, spacing: MaplogSpacing.small) {
-            MaplogSectionHeader("릴스 피드", systemImage: "play.rectangle.fill") {
-                Button {
-                    categoryDestination = .routes
-                } label: {
-                    Label("전체보기", systemImage: "chevron.right")
-                        .font(MaplogFont.caption)
-                }
-                .buttonStyle(MaplogPressFeedbackStyle(pressedScale: 0.98))
-            }
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: MaplogSpacing.medium) {
-                    ForEach(homeVideos) { clip in
-                        NavigationLink {
-                            SpotDetailView(spot: clip.spot)
-                        } label: {
-                            HomeMaplogThumbnailCard(clip: clip)
-                        }
-                        .buttonStyle(MaplogPressFeedbackStyle(pressedScale: 0.98))
-                    }
-                }
-                .padding(.trailing, MaplogSpacing.xLarge)
-            }
-            .padding(.trailing, -MaplogSpacing.page)
-        }
-    }
-
-    private var serviceShortcuts: some View {
-        HStack(spacing: MaplogSpacing.medium) {
-            ForEach(services, id: \.0) { item in
-                if item.0.contains("맛집") {
-                    Button {
-                        showsNearbyRecommendations = true
-                    } label: {
-                        serviceShortcutLabel(title: item.0, icon: item.1)
-                    }
-                    .buttonStyle(.plain)
-                } else {
-                    NavigationLink {
-                        serviceDestination(for: item.0)
-                    } label: {
-                        serviceShortcutLabel(title: item.0, icon: item.1)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
-    }
-
 //    @ViewBuilder
 //    private func homeMaplogPage(for post: VlogPost) -> some View {
 //        if reduceMotion {
@@ -1050,83 +890,11 @@ struct HomeView: View {
 //        }
 //    }
 
-    private var nearbyRecommendationSection: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            MaplogSectionHeader(
-                "추천 장소",
-                systemImage: "mappin.and.ellipse",
-                subtitle: "서울 성수동에서 지금 가볼 만한 곳"
-            )
-
-            VStack(spacing: 14) {
-                ForEach(nearbyPlaces) { place in
-                    NavigationLink {
-                        SpotDetailView(spot: place.spot)
-                    } label: {
-                        HomeNearbyPlaceCard(place: place)
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-        }
-    }
-
-    private func serviceShortcutLabel(title: String, icon: String) -> some View {
-        let accessibilityTitle = title.replacingOccurrences(of: "\n", with: " ")
-
-        return VStack(spacing: 10) {
-            Image(systemName: icon)
-                .font(.system(size: 24, weight: .bold))
-                .foregroundStyle(Color.maplogPrimary)
-                .frame(width: MaplogSize.minimumTapTarget, height: MaplogSize.minimumTapTarget)
-            Text(title)
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(Color.maplogMuted)
-                .multilineTextAlignment(.center)
-        }
-        .frame(maxWidth: .infinity)
-        .frame(height: 108, alignment: .top)
-        .contentShape(Rectangle())
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(accessibilityTitle)
-    }
-
     private func toggleSpotlightEventSaved() {
         if sessionStore.hasSavedEvent(spotlightEvent) {
             sessionStore.removeSavedEvent(spotlightEvent)
         } else {
             sessionStore.saveEvent(spotlightEvent)
-        }
-    }
-
-    @ViewBuilder
-    private func serviceDestination(for title: String) -> some View {
-        let cleanTitle = title.replacingOccurrences(of: "\n", with: " ")
-        if title.contains("맛집") {
-            NearbyRecommendationsView()
-        } else if title.contains("가볼래") {
-            RouteLibraryView()
-        } else {
-            ServiceDetailView(title: cleanTitle)
-        }
-    }
-
-    @ViewBuilder
-    private func categoryDestinationView(for destination: HomeCategoryDestination) -> some View {
-        switch destination {
-        case .routes:
-            RouteLibraryView()
-        case .region:
-            MapSearchView(query: "서울 성수동")
-
-        }
-    }
-
-    @ViewBuilder
-    private func chipDestinationView(for destination: HomeChipDestination) -> some View {
-        switch destination {
-        case .mapSearch(let query):
-            MapSearchView(query: query)
         }
     }
 
@@ -1740,230 +1508,6 @@ private struct CaptionTextMeasurementPreferenceKey: PreferenceKey {
 
     static func reduce(value: inout [CaptionTextMeasurement], nextValue: () -> [CaptionTextMeasurement]) {
         value.append(contentsOf: nextValue())
-    }
-}
-
-private struct HomeMaplogThumbnailItem: Identifiable {
-    let id: String
-    let title: String
-    let author: String
-    let duration: String
-    let assetName: String?
-    let style: PhotoStyle
-    let spot: MaplogSpot
-
-    static let samples: [HomeMaplogThumbnailItem] = [
-        HomeMaplogThumbnailItem(
-            id: "home-vlog-cafe",
-            title: "성수동 카페거리 완벽 가이드",
-            author: "@seoul_vibe",
-            duration: "0:15",
-            assetName: "home_clip_seongsu",
-            style: .cafe,
-            spot: MockMaplogData.forestCafe
-        ),
-        HomeMaplogThumbnailItem(
-            id: "home-vlog-night",
-            title: "남산 로맨틱 야경 코스",
-            author: "@night_walker",
-            duration: "0:32",
-            assetName: "home_clip_namsan",
-            style: .night,
-            spot: MockMaplogData.seoulTower
-        ),
-        HomeMaplogThumbnailItem(
-            id: "home-vlog-date",
-            title: "주말 데이트 산책 루트",
-            author: "@date_map",
-            duration: "0:28",
-            assetName: nil,
-            style: .forest,
-            spot: MockMaplogData.jejuOreum
-        )
-    ]
-}
-
-private struct HomeMaplogThumbnailCard: View {
-    let clip: HomeMaplogThumbnailItem
-
-    private var imageName: String {
-        clip.assetName ?? clip.style.assetName
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
-            ZStack(alignment: .topTrailing) {
-                Image(imageName)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: 140, height: 250)
-                    .background(Color.maplogCanvas)
-                    .clipped()
-                    .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous))
-
-                Label(clip.duration, systemImage: "play.fill")
-                    .font(MaplogFont.badge)
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, MaplogSpacing.xSmall)
-                    .frame(height: 24)
-                    .background(.black.opacity(0.44))
-                    .clipShape(Capsule())
-                    .padding(MaplogSpacing.xSmall)
-            }
-
-            Text(clip.title)
-                .font(MaplogFont.callout)
-                .foregroundStyle(Color.maplogTextPrimary)
-                .lineLimit(2)
-                .frame(width: 140, alignment: .leading)
-
-            Text(clip.author)
-                .font(MaplogFont.caption)
-                .foregroundStyle(Color.maplogTextSecondary)
-                .frame(width: 140, alignment: .leading)
-        }
-    }
-}
-
-private struct HomeNearbyPlace: Identifiable {
-    let id: String
-    let title: String
-    let summary: String
-    let category: String
-    let rating: String
-    let distance: String
-    let assetName: String?
-    let style: PhotoStyle
-    let spot: MaplogSpot
-
-    static let samples: [HomeNearbyPlace] = [
-        HomeNearbyPlace(
-            id: "nearby-dining-wood",
-            title: "다이닝 우드",
-            summary: "분위기 좋은 모던 한식 파인다이닝",
-            category: "맛집",
-            rating: "4.8",
-            distance: "300m",
-            assetName: "nearby_dining",
-            style: .cafe,
-            spot: MaplogSpot(
-                id: "home-nearby-dining-wood",
-                name: "다이닝 우드",
-                category: "맛집",
-                area: "서울 성수동",
-                summary: "분위기 좋은 모던 한식 파인다이닝. 조용한 저녁 코스로 추천되는 장소입니다.",
-                rating: 4.8,
-                imageStyle: .cafe,
-                tags: ["맛집", "파인다이닝", "성수동"],
-                pinX: 0.44,
-                pinY: 0.58
-            )
-        ),
-        HomeNearbyPlace(
-            id: "nearby-seoul-forest",
-            title: "서울숲 공원",
-            summary: "도심 속에서 즐기는 여유로운 산책",
-            category: "자연",
-            rating: "4.7",
-            distance: "800m",
-            assetName: nil,
-            style: .forest,
-            spot: MaplogSpot(
-                id: "home-nearby-seoul-forest",
-                name: "서울숲 공원",
-                category: "자연",
-                area: "서울 성동구",
-                summary: "도심 속에서 여유롭게 산책하기 좋은 공원. 카페거리와 함께 묶기 좋아요.",
-                rating: 4.7,
-                imageStyle: .forest,
-                tags: ["자연", "산책", "성수동"],
-                pinX: 0.54,
-                pinY: 0.48
-            )
-        )
-    ]
-}
-
-private struct HomeNearbyPlaceCard: View {
-    let place: HomeNearbyPlace
-
-    var body: some View {
-        HStack(spacing: MaplogSpacing.medium) {
-            Group {
-                if let assetName = place.assetName {
-                    Image(assetName)
-                        .resizable()
-                        .scaledToFill()
-                } else {
-                    Image(place.style.assetName)
-                        .resizable()
-                        .scaledToFill()
-                }
-            }
-            .frame(width: 80, height: 80)
-            .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.small, style: .continuous))
-
-            VStack(alignment: .leading, spacing: 7) {
-                Text(place.title)
-                    .font(.headline)
-                    .foregroundStyle(Color.maplogInk)
-                    .lineLimit(2)
-
-                Text(place.summary)
-                    .font(.subheadline)
-                    .foregroundStyle(Color.maplogMuted)
-                    .lineLimit(2)
-
-                HStack(spacing: MaplogSpacing.xSmall) {
-                    Label(place.rating, systemImage: "star.fill")
-                        .foregroundStyle(Color.maplogLime)
-                    Text("•")
-                        .foregroundStyle(Color.maplogMuted.opacity(0.65))
-                    Text(place.distance)
-                        .foregroundStyle(Color.maplogMuted)
-                }
-                .font(.caption.weight(.semibold))
-            }
-            .layoutPriority(1)
-
-            Spacer(minLength: 0)
-
-            Text(place.category)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(Color.maplogOlive)
-                .padding(.horizontal, 9)
-                .frame(height: 25)
-                .background(Color.maplogLime.opacity(0.35))
-                .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
-                .frame(maxHeight: .infinity, alignment: .top)
-        }
-        .padding(MaplogSpacing.small)
-        .background(Color.maplogSurfaceRaised)
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .shadow(color: .black.opacity(0.035), radius: 14, x: 0, y: 6)
-    }
-}
-
-private enum HomeCategoryDestination: Hashable, Identifiable {
-    case routes
-    case region
-
-    var id: String {
-        switch self {
-        case .routes: return "routes"
-        case .region: return "region"
-        }
-    }
-}
-
-private enum HomeChipDestination: Hashable, Identifiable {
-    case mapSearch(String)
-
-    var id: String {
-        switch self {
-        case .mapSearch(let query):
-            return "map-search-\(query)"
-        }
     }
 }
 

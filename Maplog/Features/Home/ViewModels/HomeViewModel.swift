@@ -229,6 +229,7 @@ final class HomeViewModel: ObservableObject {
            playbackLoadingReelID == nil,
            playbackFailedReelID != reelID {
             seekAndPlay(
+                for: reelID,
                 from: safeStartTimeMillis
             )
             return
@@ -274,6 +275,7 @@ final class HomeViewModel: ObservableObject {
             }
 
             seekAndPlay(
+                for: reelID,
                 from: pendingPlaybackStartTimeMillis
             )
 
@@ -298,15 +300,17 @@ final class HomeViewModel: ObservableObject {
     }
 
     private func seekAndPlay(
+        for reelID: Int64,
         from startTimeMillis: Int64
     ) {
-        let targetSeconds = TimeInterval(
-            max(startTimeMillis, 0)
-        ) / 1_000
-
-        playbackService.seek(
-            to: targetSeconds
+        let safeStartTimeMillis = max(
+            startTimeMillis,
+            0
         )
+
+        let targetSeconds = TimeInterval(
+            safeStartTimeMillis
+        ) / 1_000
 
         if let duration = playbackService.player.currentItem?
             .duration.seconds,
@@ -318,7 +322,22 @@ final class HomeViewModel: ObservableObject {
             )
         }
 
-        playbackService.play()
+        playbackService.seek(
+            to: targetSeconds
+        ) { [weak self] finished in
+            Task { @MainActor [weak self] in
+                guard finished,
+                      let self,
+                      self.activePlaybackReelID == reelID,
+                      self.pendingPlaybackStartTimeMillis
+                        == safeStartTimeMillis
+                else {
+                    return
+                }
+
+                self.playbackService.play()
+            }
+        }
     }
 
     func pausePlayback() {
