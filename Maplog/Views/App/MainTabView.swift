@@ -16,8 +16,8 @@ import SwiftUI
 
 struct MainTabView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @StateObject private var homeviewModel: HomeViewModel // @StateObject를 MainTabView에 두는 이유는 MainTabView가 HomeViewModel의 소유자이기 때문
-    // 홈 탭이 다시 그려져도 같은 ViewModel 인스턴스를 유지하기 좋음
+    @StateObject private var homeviewModel: HomeViewModel // @StateObject를 MainTabView에 두는 이유는 MainTabView가 HomeViewModel의 소유자이기 때문, 홈 탭이 다시 그려져도 같은 ViewModel 인스턴스를 유지하기 좋음
+    @StateObject private var homeMapPanelViewModel: HomeMapPanelViewModel
 
     @Binding private var requestedTab: MaplogTab?
     @Binding private var requestedCapturePlaceName: String?
@@ -38,6 +38,7 @@ struct MainTabView: View {
     private let logLocationRepository: any LogLocationRepository
     private let logPublishingRepository: any LogPublishingRepository
     private let logReelRepository: any LogReelRepository
+    private let logRouteRepository: any LogRouteRepository
     @State private var homeNavigationPath: [HomeNavigationRoute] = []
 
 
@@ -54,6 +55,7 @@ struct MainTabView: View {
         logReelRepository: any LogReelRepository,
         logMediaRepository: any LogMediaRepository,
         homeReelPlaybackService: any VideoPlaybackService,
+        logRouteRepository: any LogRouteRepository,
         requestedTab: Binding<MaplogTab?> = .constant(nil),
         requestedCapturePlaceName: Binding<String?> = .constant(nil)
     ) {
@@ -67,6 +69,7 @@ struct MainTabView: View {
         self.logLocationRepository = logLocationRepository
         self.logPublishingRepository = logPublishingRepository
         self.logReelRepository = logReelRepository
+        self.logRouteRepository = logRouteRepository
 
         _requestedTab = requestedTab
         _requestedCapturePlaceName = requestedCapturePlaceName
@@ -79,6 +82,13 @@ struct MainTabView: View {
             logMediaRepository: logMediaRepository,
             playbackService: homeReelPlaybackService
         )
+        )
+
+        _homeMapPanelViewModel = StateObject(
+            wrappedValue: HomeMapPanelViewModel(
+                logRouteRepository: logRouteRepository,
+                logMediaRepository: logMediaRepository
+            )
         )
     }
 
@@ -142,6 +152,7 @@ struct MainTabView: View {
                     NavigationStack(path: $homeNavigationPath) {
                         HomeView(
                             viewModel: homeviewModel,
+                            mapPanelViewModel: homeMapPanelViewModel,
                             topSafeAreaInset: rootProxy.safeAreaInsets.top,
                             onShowAllTourisms: {
                                 homeNavigationPath.append(.tourismList)
