@@ -86,7 +86,8 @@ struct MainTabView: View {
 
         _homeMapPanelViewModel = StateObject(
             wrappedValue: HomeMapPanelViewModel(
-                logRouteRepository: logRouteRepository
+                logRouteRepository: logRouteRepository,
+                logMediaRepository: logMediaRepository
             )
         )
     }

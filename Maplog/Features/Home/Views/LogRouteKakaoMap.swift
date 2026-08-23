@@ -13,6 +13,7 @@ struct LogRouteKakaoMap: View {
     let points: [HomeMapRoutePointViewData]
     let selectedPointID: Int64?
     let onPointSelected: (Int64) -> Void
+    let thumbnailDataByPointID: [Int64: Data]
 
     @State private var shouldDrawMap = true
 
@@ -23,7 +24,8 @@ struct LogRouteKakaoMap: View {
                     shouldDrawMap: $shouldDrawMap,
                     points: points,
                     selectedPointID: selectedPointID,
-                    onPointSelected: onPointSelected
+                    onPointSelected: onPointSelected,
+                    thumbnailDataByPointID: thumbnailDataByPointID
                 )
                 .onAppear {
                     KakaoMapSDKConfiguration.initializeIfNeeded()
@@ -45,6 +47,7 @@ private struct LogRouteKakaoMapRepresentable: UIViewRepresentable {
     let points: [HomeMapRoutePointViewData]
     let selectedPointID: Int64?
     let onPointSelected: (Int64) -> Void
+    let thumbnailDataByPointID: [Int64: Data]
 
     func makeUIView(
         context: Context
@@ -66,6 +69,7 @@ private struct LogRouteKakaoMapRepresentable: UIViewRepresentable {
     ) {
         context.coordinator.updateRoute(
             points: points,
+            thumbnailDataByPointID: thumbnailDataByPointID,
             selectedPointID: selectedPointID
         )
 
@@ -87,7 +91,8 @@ private struct LogRouteKakaoMapRepresentable: UIViewRepresentable {
         Coordinator(
             points: points,
             selectedPointID: selectedPointID,
-            onPointSelected: onPointSelected
+            onPointSelected: onPointSelected,
+            thumbnailDataByPointID: thumbnailDataByPointID
         )
     }
 
@@ -106,6 +111,7 @@ private struct LogRouteKakaoMapRepresentable: UIViewRepresentable {
         private var points: [HomeMapRoutePointViewData]
         private var selectedPointID: Int64?
         private let onPointSelected: (Int64) -> Void
+        private var thumbnailDataByPointID: [Int64: Data]
 
         private var needsRouteRender = true
         private var needsCameraFit = true
@@ -116,11 +122,13 @@ private struct LogRouteKakaoMapRepresentable: UIViewRepresentable {
         init(
             points: [HomeMapRoutePointViewData],
             selectedPointID: Int64?,
-            onPointSelected: @escaping (Int64) -> Void
+            onPointSelected: @escaping (Int64) -> Void,
+            thumbnailDataByPointID: [Int64: Data]
         ) {
             self.points = points
             self.selectedPointID = selectedPointID
             self.onPointSelected = onPointSelected
+            self.thumbnailDataByPointID = thumbnailDataByPointID
 
             super.init()
         }
@@ -167,26 +175,27 @@ private struct LogRouteKakaoMapRepresentable: UIViewRepresentable {
 
         func updateRoute(
             points: [HomeMapRoutePointViewData],
+            thumbnailDataByPointID: [Int64: Data],
             selectedPointID: Int64?
         ) {
             let routeChanged = self.points != points
-            let selectedPointChanged =
-                self.selectedPointID != selectedPointID
+            let thumbnailsChanged =
+                self.thumbnailDataByPointID != thumbnailDataByPointID
 
             self.points = points
+            self.thumbnailDataByPointID = thumbnailDataByPointID
             self.selectedPointID = selectedPointID
 
-            if routeChanged {
+            if routeChanged || thumbnailsChanged {
                 needsRouteRender = true
+            }
+
+            if routeChanged {
                 needsCameraFit = true
             }
 
             renderRouteIfNeeded()
 
-            if !routeChanged,
-               selectedPointChanged {
-                moveCameraToSelectedPointIfPossible()
-            }
         }
 
         @objc func addViews() {
@@ -194,7 +203,7 @@ private struct LogRouteKakaoMapRepresentable: UIViewRepresentable {
                 viewName: mapViewName,
                 viewInfoName: "map",
                 defaultPosition: initialPosition,
-                defaultLevel: 15
+                defaultLevel: 13
             )
 
             controller?.addView(mapviewInfo)
@@ -448,13 +457,19 @@ private struct LogRouteKakaoMapRepresentable: UIViewRepresentable {
                     continue
                 }
 
+                let thumbnailData = thumbnailDataByPointID[
+                    point.id
+                ]
+
                 let styleID = markerStyleID(
-                    for: point
+                    for: point,
+                    hasThumbnail: thumbnailData != nil
                 )
 
                 registerMarkerStyleIfNeeded(
                     styleID: styleID,
                     sequence: point.sequence,
+                    thumbnailData: thumbnailData,
                     on: labelManager
                 )
 
@@ -493,6 +508,7 @@ private struct LogRouteKakaoMapRepresentable: UIViewRepresentable {
         private func registerMarkerStyleIfNeeded(
             styleID: String,
             sequence: Int,
+            thumbnailData: Data?,
             on labelManager: LabelManager
         ) {
             guard !registeredMarkerStyleIDs.contains(
@@ -502,7 +518,8 @@ private struct LogRouteKakaoMapRepresentable: UIViewRepresentable {
             }
 
             let markerImage = makeMarkerImage(
-                sequence: sequence
+                sequence: sequence,
+                thumbnailData: thumbnailData
             )
 
             let iconStyle = PoiIconStyle(
@@ -533,17 +550,121 @@ private struct LogRouteKakaoMapRepresentable: UIViewRepresentable {
         }
 
         private func markerStyleID(
-            for point: HomeMapRoutePointViewData
+            for point: HomeMapRoutePointViewData,
+            hasThumbnail: Bool
         ) -> String {
-            "home-log-route-marker-\(point.id)-\(point.sequence)"
+            let imageState = hasThumbnail
+                ? "thumbnail"
+                : "fallback"
+
+            return "home-log-route-marker-\(point.id)-\(point.sequence)-\(imageState)"
         }
 
         private func makeMarkerImage(
+            sequence: Int,
+            thumbnailData: Data?
+        ) -> UIImage {
+            guard let thumbnailData,
+                  let thumbnailImage = UIImage(data: thumbnailData)
+            else {
+                return makeNumberMarkerImage(
+                    sequence: sequence
+                )
+            }
+
+            let size = CGSize(
+                width: 38,
+                height: 38
+            )
+
+            let renderer = UIGraphicsImageRenderer(
+                size: size
+            )
+
+            return renderer.image { context in
+                let markerRect = CGRect(
+                    origin: .zero,
+                    size: size
+                ).insetBy(
+                    dx: 2,
+                    dy: 2
+                )
+
+                let markerPath = UIBezierPath(
+                    roundedRect: markerRect,
+                    cornerRadius: 9
+                )
+
+                context.cgContext.saveGState()
+                markerPath.addClip()
+
+                drawAspectFill(
+                    thumbnailImage,
+                    in: markerRect
+                )
+
+                context.cgContext.restoreGState()
+
+                context.cgContext.setStrokeColor(
+                    UIColor(
+                        red: 0.72,
+                        green: 0.95,
+                        blue: 0.0,
+                        alpha: 1
+                    ).cgColor
+                )
+                context.cgContext.setLineWidth(2)
+                markerPath.stroke()
+
+                let badgeRect = CGRect(
+                    x: 21,
+                    y: 0,
+                    width: 16,
+                    height: 16
+                )
+
+                context.cgContext.setFillColor(
+                    UIColor(
+                        red: 0.72,
+                        green: 0.95,
+                        blue: 0.0,
+                        alpha: 1
+                    ).cgColor
+                )
+                context.cgContext.fillEllipse(
+                    in: badgeRect
+                )
+
+                let paragraphStyle = NSMutableParagraphStyle()
+                paragraphStyle.alignment = .center
+
+                let attributes: [NSAttributedString.Key: Any] = [
+                    .font: UIFont.systemFont(
+                        ofSize: 10,
+                        weight: .bold
+                    ),
+                    .foregroundColor: UIColor.black,
+                    .paragraphStyle: paragraphStyle
+                ]
+
+                String(sequence).draw(
+                    in: CGRect(
+                        x: badgeRect.minX,
+                        y: badgeRect.minY + 3,
+                        width: badgeRect.width,
+                        height: badgeRect.height
+                    ),
+                    withAttributes: attributes
+                )
+            }
+        }
+
+        private func makeNumberMarkerImage(
             sequence: Int
         ) -> UIImage {
             let size = CGSize(
-                width: 44,
-                height: 44
+                width: 38,
+                height: 38
             )
 
             let renderer = UIGraphicsImageRenderer(
@@ -567,7 +688,6 @@ private struct LogRouteKakaoMapRepresentable: UIViewRepresentable {
                         alpha: 1
                     ).cgColor
                 )
-
                 context.cgContext.fillEllipse(
                     in: circleRect
                 )
@@ -577,7 +697,6 @@ private struct LogRouteKakaoMapRepresentable: UIViewRepresentable {
                         .withAlphaComponent(0.22)
                         .cgColor
                 )
-
                 context.cgContext.setLineWidth(2)
                 context.cgContext.strokeEllipse(
                     in: circleRect
@@ -588,25 +707,58 @@ private struct LogRouteKakaoMapRepresentable: UIViewRepresentable {
 
                 let attributes: [NSAttributedString.Key: Any] = [
                     .font: UIFont.systemFont(
-                        ofSize: 17,
+                        ofSize: 15,
                         weight: .bold
                     ),
                     .foregroundColor: UIColor.black,
                     .paragraphStyle: paragraphStyle
                 ]
 
-                let textRect = CGRect(
-                    x: 0,
-                    y: 11,
-                    width: size.width,
-                    height: 24
-                )
-
                 String(sequence).draw(
-                    in: textRect,
+                    in: CGRect(
+                        x: 0,
+                    y: 9,
+                        width: size.width,
+                        height: 24
+                    ),
                     withAttributes: attributes
                 )
             }
+        }
+
+        private func drawAspectFill(
+            _ image: UIImage,
+            in rect: CGRect
+        ) {
+            let sourceSize = image.size
+
+            guard sourceSize.width > 0,
+                  sourceSize.height > 0
+            else {
+                return
+            }
+
+            let scale = max(
+                rect.width / sourceSize.width,
+                rect.height / sourceSize.height
+            )
+
+            let drawSize = CGSize(
+                width: sourceSize.width * scale,
+                height: sourceSize.height * scale
+            )
+
+            let drawOrigin = CGPoint(
+                x: rect.midX - drawSize.width / 2,
+                y: rect.midY - drawSize.height / 2
+            )
+
+            image.draw(
+                in: CGRect(
+                    origin: drawOrigin,
+                    size: drawSize
+                )
+            )
         }
 
         private func fitCameraToRoute(
@@ -623,7 +775,7 @@ private struct LogRouteKakaoMapRepresentable: UIViewRepresentable {
             if mapPoints.count == 1 {
                 let cameraUpdate = CameraUpdate.make(
                     target: firstPoint,
-                    zoomLevel: 15,
+                    zoomLevel: 13,
                     mapView: mapView
                 )
 
@@ -634,12 +786,10 @@ private struct LogRouteKakaoMapRepresentable: UIViewRepresentable {
                 return
             }
 
-            let area = AreaRect(
-                points: mapPoints
-            )
-
             let cameraUpdate = CameraUpdate.make(
-                area: area
+                area: paddedRouteArea(
+                    for: points
+                )
             )
 
             mapView.moveCamera(
@@ -647,26 +797,52 @@ private struct LogRouteKakaoMapRepresentable: UIViewRepresentable {
             )
         }
 
-        private func moveCameraToSelectedPointIfPossible() {
-            guard let mapView = currentMapView,
-                  let selectedPointID,
-                  let point = points.first(
-                    where: { $0.id == selectedPointID }
-                  ),
-                  let mapPoint = mapPoint(
-                    from: point
-                  ) else {
-                return
-            }
+        private func paddedRouteArea(
+            for points: [HomeMapRoutePointViewData]
+        ) -> AreaRect {
+            let latitudes = points.map(\.latitude)
+            let longitudes = points.map(\.longitude)
 
-            let cameraUpdate = CameraUpdate.make(
-                target: mapPoint,
-                zoomLevel: 15,
-                mapView: mapView
+            let minimumLatitude = latitudes.min() ?? 37.4979
+            let maximumLatitude = latitudes.max() ?? 37.4979
+            let minimumLongitude = longitudes.min() ?? 127.0276
+            let maximumLongitude = longitudes.max() ?? 127.0276
+
+            let latitudePadding = max(
+                (maximumLatitude - minimumLatitude) * 0.30,
+                0.0015
             )
 
-            mapView.moveCamera(
-                cameraUpdate
+            let longitudePadding = max(
+                (maximumLongitude - minimumLongitude) * 0.30,
+                0.0015
+            )
+
+            let southWest = MapPoint(
+                longitude: max(
+                    -180,
+                    minimumLongitude - longitudePadding
+                ),
+                latitude: max(
+                    -90,
+                    minimumLatitude - latitudePadding
+                )
+            )
+
+            let northEast = MapPoint(
+                longitude: min(
+                    180,
+                    maximumLongitude + longitudePadding
+                ),
+                latitude: min(
+                    90,
+                    maximumLatitude + latitudePadding
+                )
+            )
+
+            return AreaRect(
+                southWest: southWest,
+                northEast: northEast
             )
         }
 

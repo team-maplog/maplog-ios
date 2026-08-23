@@ -31,3 +31,9 @@ struct HomeMapRoutePointViewData: Identifiable, Equatable {
         clipID
     }
 }
+
+/// 지도에서 선택한 장소의 영상 재생 요청
+struct HomeMapRoutePlaybackRequest: Equatable {
+    let logID: Int64
+    let startTimeMillis: Int64
+}

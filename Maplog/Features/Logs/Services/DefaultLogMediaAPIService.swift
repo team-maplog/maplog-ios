@@ -8,9 +8,14 @@
 import Foundation
 
 final class DefaultLogMediaAPIService: LogMediaAPIService {
+    private let apiClient: APIClient
     private let authenticatedAPIClient: AuthenticatedAPIClient
 
-    init(authenticatedAPIClient: AuthenticatedAPIClient) {
+    init(
+        apiClient: APIClient,
+        authenticatedAPIClient: AuthenticatedAPIClient
+    ) {
+        self.apiClient = apiClient
         self.authenticatedAPIClient = authenticatedAPIClient
     }
 
@@ -43,6 +48,37 @@ final class DefaultLogMediaAPIService: LogMediaAPIService {
             from: temporaryURL,
             logID: logID
         )
+    }
+
+    func fetchRoutePointThumbnailData(
+        from url: URL
+    ) async throws -> Data {
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue(
+            "image/*",
+            forHTTPHeaderField: "Accept"
+        )
+
+        if isMaplogAPIURL(url) {
+            return try await authenticatedAPIClient.data(
+                for: request
+            )
+        }
+
+        return try await apiClient.data(
+            for: request
+        )
+    }
+
+    private func isMaplogAPIURL(
+        _ url: URL
+    ) -> Bool {
+        let baseURL = APIConfiguration.baseURL
+
+        return url.scheme == baseURL.scheme
+            && url.host == baseURL.host
+            && url.port == baseURL.port
     }
 
     private func logMediaURL(

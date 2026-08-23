@@ -6,10 +6,12 @@
 //
 
 import SwiftUI
+import UIKit
 
 struct HomeMapPanel: View {
     @ObservedObject var viewModel: HomeMapPanelViewModel
     let onRequestSignIn: () -> Void
+    let onPlayRoutePoint: (HomeMapRoutePlaybackRequest) -> Void
 
     var body: some View {
         Group {
@@ -81,10 +83,11 @@ struct HomeMapPanel: View {
                     viewModel.selectPoint(
                         id: pointID
                     )
-                }
+                },
+                thumbnailDataByPointID: viewModel.thumbnailDataByPointID
             )
 
-            VStack(spacing: 12) {
+            VStack(spacing: 8) {
                 ScrollView(
                     .horizontal,
                     showsIndicators: false
@@ -108,26 +111,74 @@ struct HomeMapPanel: View {
                     .padding(.horizontal, 20)
                 }
 
-                if let selectedPoint = viewModel.selectedPoint {
-                    selectedPlaceCard(
-                        selectedPoint
-                    )
-                }
+                placeCardPager(route)
             }
             .padding(.bottom, 112)
         }
+        .task(id: route.logID) {
+            await viewModel.loadThumbnails(
+                for: route
+            )
+        }
+    }
+
+    private func placeCardPager(
+        _ route: HomeMapRouteViewData
+    ) -> some View {
+        TabView(
+            selection: selectedPointBinding(
+                for: route
+            )
+        ) {
+            ForEach(route.points) { point in
+                selectedPlaceCard(
+                    point,
+                    logID: route.logID,
+                    thumbnailData: viewModel.thumbnailDataByPointID[
+                        point.id
+                    ],
+                    isLoadingThumbnail: viewModel.isLoadingThumbnail(
+                        for: point.id
+                    )
+                )
+                .tag(point.id)
+            }
+        }
+        .tabViewStyle(.page(indexDisplayMode: .never))
+        .frame(height: 142)
+        .accessibilityLabel("장소 카드")
+    }
+
+    private func selectedPointBinding(
+        for route: HomeMapRouteViewData
+    ) -> Binding<Int64> {
+        let fallbackID = route.points[0].id
+
+        return Binding(
+            get: {
+                viewModel.selectedPointID ?? fallbackID
+            },
+            set: { pointID in
+                viewModel.selectPoint(
+                    id: pointID
+                )
+            }
+        )
     }
 
     private func selectedPlaceCard(
-        _ point: HomeMapRoutePointViewData
+        _ point: HomeMapRoutePointViewData,
+        logID: Int64,
+        thumbnailData: Data?,
+        isLoadingThumbnail: Bool
     ) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
                 Text("\(point.sequence)번째 장소")
-                    .font(.caption.weight(.bold))
+                    .font(.caption2.weight(.bold))
                     .foregroundStyle(Color.maplogInk)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
                     .background(
                         Color.maplogLime,
                         in: Capsule()
@@ -136,42 +187,124 @@ struct HomeMapPanel: View {
                 Spacer()
 
                 Image(systemName: "play.fill")
-                    .font(.caption.weight(.bold))
+                    .font(.caption2.weight(.bold))
                     .foregroundStyle(Color.maplogInk)
 
-                Text(videoTimeText(
-                    milliseconds: point.startTimeMillis
-                ))
-                .font(.caption.weight(.bold))
+                Text(
+                    videoTimeText(
+                        milliseconds: point.startTimeMillis
+                    )
+                )
+                .font(.caption2.weight(.bold))
                 .foregroundStyle(Color.maplogInk)
             }
 
-            Text(point.placeName)
-                .font(.title3.weight(.bold))
-                .foregroundStyle(Color.maplogInk)
-                .lineLimit(1)
+            HStack(alignment: .top, spacing: 8) {
+                routePointThumbnail(
+                    data: thumbnailData,
+                    isLoading: isLoadingThumbnail
+                )
 
-            Label(
-                point.address,
-                systemImage: "mappin.and.ellipse"
-            )
-            .font(.subheadline)
-            .foregroundStyle(Color.maplogMuted)
-            .lineLimit(1)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(point.placeName)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(Color.maplogInk)
+                        .lineLimit(1)
+
+                    Label(
+                        point.address,
+                        systemImage: "mappin.and.ellipse"
+                    )
+                    .font(.caption)
+                    .foregroundStyle(Color.maplogMuted)
+                    .lineLimit(1)
+                }
+
+                Spacer(minLength: 0)
+            }
+
+            Button {
+                onPlayRoutePoint(
+                    HomeMapRoutePlaybackRequest(
+                        logID: logID,
+                        startTimeMillis: point.startTimeMillis
+                    )
+                )
+            } label: {
+                Label(
+                    "\(videoTimeText(milliseconds: point.startTimeMillis))부터 영상에서 보기",
+                    systemImage: "play.fill"
+                )
+                .font(.caption.weight(.bold))
+                .foregroundStyle(Color.maplogInk)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+                .background(
+                    Color.maplogLime,
+                    in: Capsule()
+                )
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("릴스 영상의 해당 장소가 시작되는 시점부터 재생합니다")
         }
-        .padding(18)
+        .padding(12)
         .background(
             Color.white.opacity(0.96),
             in: RoundedRectangle(
-                cornerRadius: 24,
+                cornerRadius: 20,
                 style: .continuous
             )
         )
-        .padding(.horizontal, 20)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(
-            "\(point.sequence)번째 장소, \(point.placeName), \(point.address)"
+        .padding(.horizontal, 24)
+        .accessibilityElement(children: .contain)
+    }
+
+    @ViewBuilder
+    private func routePointThumbnail(
+        data: Data?,
+        isLoading: Bool
+    ) -> some View {
+        Group {
+            if let data,
+               let image = UIImage(data: data) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+
+            } else if isLoading {
+                ZStack {
+                    Color(uiColor: .secondarySystemFill)
+
+                    ProgressView()
+                        .tint(Color.maplogInk)
+                }
+
+            } else {
+                ZStack {
+                    Color(uiColor: .secondarySystemFill)
+
+                    Image(systemName: "photo")
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .frame(width: 48, height: 48)
+        .clipShape(
+            RoundedRectangle(
+                cornerRadius: 10,
+                style: .continuous
+            )
         )
+        .overlay {
+            RoundedRectangle(
+                cornerRadius: 10,
+                style: .continuous
+            )
+            .stroke(
+                Color.maplogLime,
+                lineWidth: 1
+            )
+        }
     }
 
     private func statusView(

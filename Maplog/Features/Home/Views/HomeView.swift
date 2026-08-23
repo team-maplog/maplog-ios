@@ -2,6 +2,8 @@ import SwiftUI
 
 struct HomeView: View {
     private static let viewportCoordinateSpace = "home-viewport"
+    private static let panelSwipeEdgeWidth: CGFloat = 28
+    private static let panelSwipeMinimumDistance: CGFloat = 56
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.maplogSelectTab) private var selectTab
@@ -140,18 +142,103 @@ struct HomeView: View {
         }
     }
 
-    var body: some View {
-        TabView(selection: $selectedPanel) {
-            reelsPanel
-                .tag(HomePanel.reels)
+    /// 지도 위의 팬·핀치 제스처를 방해하지 않도록 화면 가장자리에서만 패널 전환 스와이프를 받는다.
+    @ViewBuilder
+    private var panelEdgeSwipeOverlay: some View {
+        if isHomeReelActive {
+            switch selectedPanel {
+            case .reels:
+                panelEdgeSwipeArea(
+                    isLeading: false,
+                    expectedDirection: -1
+                ) {
+                    selectedPanel = .map
+                }
 
-            HomeMapPanel(
-                viewModel: mapPanelViewModel,
-                onRequestSignIn: performLogout
-            )
-            .tag(HomePanel.map)
+            case .map:
+                panelEdgeSwipeArea(
+                    isLeading: true,
+                    expectedDirection: 1
+                ) {
+                    selectedPanel = .reels
+                }
+            }
         }
-        .tabViewStyle(.page(indexDisplayMode: .never))
+    }
+
+    private func panelEdgeSwipeArea(
+        isLeading: Bool,
+        expectedDirection: CGFloat,
+        action: @escaping () -> Void
+    ) -> some View {
+        HStack(spacing: 0) {
+            if isLeading {
+                panelEdgeSwipeHandle(
+                    expectedDirection: expectedDirection,
+                    action: action
+                )
+
+                Spacer(minLength: 0)
+                    .allowsHitTesting(false)
+            } else {
+                Spacer(minLength: 0)
+                    .allowsHitTesting(false)
+
+                panelEdgeSwipeHandle(
+                    expectedDirection: expectedDirection,
+                    action: action
+                )
+            }
+        }
+    }
+
+    private func panelEdgeSwipeHandle(
+        expectedDirection: CGFloat,
+        action: @escaping () -> Void
+    ) -> some View {
+        Color.black.opacity(0.001)
+            .frame(width: Self.panelSwipeEdgeWidth)
+            .contentShape(Rectangle())
+            .gesture(
+                DragGesture(minimumDistance: 12)
+                    .onEnded { value in
+                        let horizontalDistance = value.translation.width
+                        let verticalDistance = value.translation.height
+
+                        guard abs(horizontalDistance) > abs(verticalDistance),
+                              horizontalDistance * expectedDirection
+                                >= Self.panelSwipeMinimumDistance
+                        else {
+                            return
+                        }
+
+                        action()
+                    }
+            )
+    }
+
+    var body: some View {
+        ZStack {
+            switch selectedPanel {
+            case .reels:
+                reelsPanel
+                    .transition(.opacity)
+
+            case .map:
+                HomeMapPanel(
+                    viewModel: mapPanelViewModel,
+                    onRequestSignIn: performLogout,
+                    onPlayRoutePoint: playRoutePoint
+                )
+                .transition(.opacity)
+            }
+        }
+        .animation(
+            reduceMotion
+                ? nil
+                : .easeInOut(duration: 0.20),
+            value: selectedPanel
+        )
         .coordinateSpace(name: Self.viewportCoordinateSpace)
         // 홈 ↔ 릴스 전환 중에도 GeometryReader의 페이지 높이가 바뀌지 않게 유지
         .ignoresSafeArea(
@@ -159,6 +246,9 @@ struct HomeView: View {
             edges: [.top, .bottom]
         )
         .toolbar(.hidden, for: .navigationBar)
+        .overlay {
+            panelEdgeSwipeOverlay
+        }
         .overlay(alignment: .top) {
             if isHomeReelActive {
                 HomePanelSwitcher(
@@ -229,6 +319,25 @@ struct HomeView: View {
             )
             .presentationDetents([.height(384)])
             .presentationDragIndicator(.hidden)
+        }
+    }
+
+    private func playRoutePoint(
+        _ request: HomeMapRoutePlaybackRequest
+    ) {
+        /// 현재 지도는 활성 릴스의 경로만 보여 주므로,
+        /// 오래된 지도 데이터가 잘못 재생시키는 상황을 막는다.
+        guard request.logID == activeReelID else {
+            return
+        }
+
+        selectedPanel = .reels
+
+        Task {
+            await viewModel.playReel(
+                withID: request.logID,
+                from: request.startTimeMillis
+            )
         }
     }
 

@@ -25,4 +25,12 @@ final class DefaultLogMediaRepository: LogMediaRepository {
             logID: logID
         )
     }
+
+    func fetchRoutePointThumbnailData(
+        from url: URL
+    ) async throws -> Data {
+        try await apiService.fetchRoutePointThumbnailData(
+            from: url
+        )
+    }
 }

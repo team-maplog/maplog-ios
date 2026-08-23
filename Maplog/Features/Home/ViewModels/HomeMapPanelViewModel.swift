@@ -13,16 +13,21 @@ final class HomeMapPanelViewModel: ObservableObject {
 
     /// 현재 사용자가 선택한 지도 마커의 clipID
     @Published private(set) var selectedPointID: Int64?
+    @Published private(set) var thumbnailDataByPointID: [Int64: Data] = [:]
 
+    private var thumbnailLoadingPointIDs: Set<Int64> = []
     private let logRouteRepository: any LogRouteRepository
+    private let logMediaRepository: any LogMediaRepository
 
     /// 재시도할 때 어느 로그를 다시 요청해야 하는지 기억
     private var requestedLogID: Int64?
 
     init(
-        logRouteRepository: any LogRouteRepository
+        logRouteRepository: any LogRouteRepository,
+        logMediaRepository: any LogMediaRepository
     ) {
         self.logRouteRepository = logRouteRepository
+        self.logMediaRepository = logMediaRepository
     }
 
     func loadRoute(
@@ -41,6 +46,7 @@ final class HomeMapPanelViewModel: ObservableObject {
 
         requestedLogID = logID
         selectedPointID = nil
+        clearThumbnailState()
         state = .loading
 
         do {
@@ -110,9 +116,80 @@ final class HomeMapPanelViewModel: ObservableObject {
         selectedPointID = id
     }
 
+    func loadThumbnails(
+        for route: HomeMapRouteViewData
+    ) async {
+        guard requestedLogID == route.logID else {
+            return
+        }
+
+        for point in route.points {
+            guard !Task.isCancelled else {
+                return
+            }
+
+            await loadThumbnail(
+                for: point,
+                logID: route.logID
+            )
+        }
+    }
+
+    func isLoadingThumbnail(
+        for pointID: Int64
+    ) -> Bool {
+        thumbnailLoadingPointIDs.contains(pointID)
+    }
+
+    private func loadThumbnail(
+        for point: HomeMapRoutePointViewData,
+        logID: Int64
+    ) async {
+        guard let thumbnailURL = point.thumbnailURL,
+              thumbnailDataByPointID[point.id] == nil,
+              !thumbnailLoadingPointIDs.contains(point.id)
+        else {
+            return
+        }
+
+        thumbnailLoadingPointIDs.insert(point.id)
+
+        defer {
+            thumbnailLoadingPointIDs.remove(point.id)
+        }
+
+        do {
+            let data = try await logMediaRepository
+                .fetchRoutePointThumbnailData(
+                    from: thumbnailURL
+                )
+
+            guard !Task.isCancelled,
+                  requestedLogID == logID
+            else {
+                return
+            }
+
+            thumbnailDataByPointID[point.id] = data
+
+        } catch is CancellationError {
+            return
+
+        } catch {
+            // 썸네일 하나의 실패는 지도 경로 전체 실패가 아니다.
+            // View는 기본 마커/기본 이미지를 유지한다.
+        }
+    }
+
+    private func clearThumbnailState() {
+        thumbnailDataByPointID = [:]
+        thumbnailLoadingPointIDs = []
+    }
+
     func clear() {
         requestedLogID = nil
         selectedPointID = nil
+        clearThumbnailState()
         state = .idle
     }
 

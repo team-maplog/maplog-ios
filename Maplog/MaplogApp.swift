@@ -45,7 +45,7 @@ struct MaplogApp: App { // 앱의 조립 담당자
         let logReelAPIService = DefaultLogReelAPIService(authenticatedAPIClient: authenticatedAPIClient)
         let logReelRepository = DefaultLogReelRepository(apiService: logReelAPIService)
         let textOverlayRenderer = VideoTextOverlayRenderer()
-        let logMediaAPIService = DefaultLogMediaAPIService(authenticatedAPIClient: authenticatedAPIClient)
+        let logMediaAPIService = DefaultLogMediaAPIService(apiClient: apiClient, authenticatedAPIClient: authenticatedAPIClient)
         let logMediaRepository = DefaultLogMediaRepository(apiService: logMediaAPIService)
         let logRouteAPIService = DefaultLogRouteAPIService(authenticatedAPIClient: authenticatedAPIClient)
         let logRouteRepository = DefaultLogRouteRepository(apiService: logRouteAPIService)

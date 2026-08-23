@@ -64,6 +64,7 @@ final class HomeViewModel: ObservableObject {
     @Published private(set) var playbackLoadingReelID: Int64? // 영상을 다운로드 중인 릴스
     @Published private(set) var playbackFailedReelID: Int64? // 영상 다운로드·재생 준비에 실패한 릴스
     @Published private(set) var reelPlaybackProgress: Double = 0 // 재생 진행 바 진행률
+    private var pendingPlaybackStartTimeMillis: Int64 = 0 /// 현재 하나만 존재하는 플레이어가 준비된 뒤 이동할 목표 시점
 
     private let tourismRepository: any TourismRepository // TourismRepository protocol을 만족하는 어떤 실제 객체 하나(DefaultTourismRepository 객체가 들어감)
     private let logReelRepository: any LogReelRepository
@@ -193,14 +194,54 @@ final class HomeViewModel: ObservableObject {
         playbackFailedReelID == reelID
     }
 
-    func activatePlayback(for reelID: Int64) async {
-        guard activePlaybackReelID != reelID ||
-                playbackFailedReelID == reelID
-        else {
+    func activatePlayback(
+        for reelID: Int64
+    ) async {
+        await startPlayback(
+            for: reelID,
+            from: 0
+        )
+    }
+
+    func playReel(
+        withID reelID: Int64,
+        from startTimeMillis: Int64
+    ) async {
+        await startPlayback(
+            for: reelID,
+            from: startTimeMillis
+        )
+    }
+
+    private func startPlayback(
+        for reelID: Int64,
+        from startTimeMillis: Int64
+    ) async {
+        let safeStartTimeMillis = max(
+            startTimeMillis,
+            0
+        )
+
+        pendingPlaybackStartTimeMillis = safeStartTimeMillis
+
+        /// 이미 같은 영상이 준비돼 있으면 다운로드를 다시 하지 않고 즉시 이동·재생
+        if activePlaybackReelID == reelID,
+           playbackLoadingReelID == nil,
+           playbackFailedReelID != reelID {
+            seekAndPlay(
+                from: safeStartTimeMillis
+            )
             return
         }
 
-        playbackService.stop() // 사용자가 다른 릴스를 선택한 즉시 이전 재생 중단
+        /// 같은 영상을 다운로드 중이라면 목표 시점만 갱신한다.
+        /// 다운로드가 끝나면 아래 do 블록에서 가장 최근 시점으로 이동한다.
+        if activePlaybackReelID == reelID,
+           playbackLoadingReelID == reelID {
+            return
+        }
+
+        playbackService.stop()
 
         activePlaybackReelID = reelID
         reelPlaybackProgress = 0
@@ -218,7 +259,10 @@ final class HomeViewModel: ObservableObject {
                 return
             }
 
-            playbackService.loadVideo(at: fileURL)
+            playbackService.loadVideo(
+                at: fileURL
+            )
+
             playbackService.observeProgress { [weak self] progress in
                 guard let self,
                       self.activePlaybackReelID == reelID
@@ -228,7 +272,10 @@ final class HomeViewModel: ObservableObject {
 
                 self.reelPlaybackProgress = progress
             }
-            playbackService.play()
+
+            seekAndPlay(
+                from: pendingPlaybackStartTimeMillis
+            )
 
             playbackLoadingReelID = nil
 
@@ -250,6 +297,30 @@ final class HomeViewModel: ObservableObject {
         }
     }
 
+    private func seekAndPlay(
+        from startTimeMillis: Int64
+    ) {
+        let targetSeconds = TimeInterval(
+            max(startTimeMillis, 0)
+        ) / 1_000
+
+        playbackService.seek(
+            to: targetSeconds
+        )
+
+        if let duration = playbackService.player.currentItem?
+            .duration.seconds,
+           duration.isFinite,
+           duration > 0 {
+            reelPlaybackProgress = min(
+                max(targetSeconds / duration, 0),
+                1
+            )
+        }
+
+        playbackService.play()
+    }
+
     func pausePlayback() {
         guard activePlaybackReelID != nil,
               playbackLoadingReelID == nil,
@@ -267,6 +338,7 @@ final class HomeViewModel: ObservableObject {
         reelPlaybackProgress = 0
         playbackLoadingReelID = nil
         playbackFailedReelID = nil
+        pendingPlaybackStartTimeMillis = 0
     }
 
     func retryInitialReels() async {
