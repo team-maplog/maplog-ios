@@ -26,6 +26,16 @@ final class AVVideoPlaybackService: VideoPlaybackService {
     private var playerLooper: AVPlayerLooper?
     private var periodicTimeObserver: Any? // AVPlayer가 주기적으로 알려주는 재생 시간을 해제하기 위해 보관하는 토큰
 
+    private struct PendingSeek {
+        let time: CMTime
+        let completion: @Sendable (Bool) -> Void
+    }
+
+    private var pendingSeek: PendingSeek?
+    private var currentItemObservation: NSKeyValueObservation?
+    private var itemStatusObservation: NSKeyValueObservation?
+    private weak var observedItem: AVPlayerItem?
+
     var player: AVPlayer {
         queuePlayer
     }
@@ -80,6 +90,13 @@ final class AVVideoPlaybackService: VideoPlaybackService {
     func seek(
         to seconds: TimeInterval
     ) {
+        seek(to: seconds) { _ in }
+    }
+
+    func seek(
+        to seconds: TimeInterval,
+        completion: @escaping @Sendable (Bool) -> Void
+    ) {
         let safeSeconds = max(seconds, 0)
 
         let time = CMTime(
@@ -87,7 +104,95 @@ final class AVVideoPlaybackService: VideoPlaybackService {
             preferredTimescale: 600
         )
 
-        queuePlayer.seek(to: time)
+        cancelPendingSeek()
+
+        pendingSeek = PendingSeek(
+            time: time,
+            completion: completion
+        )
+
+        observeCurrentItem()
+        performPendingSeekIfPossible()
+    }
+
+    private func observeCurrentItem() {
+        guard currentItemObservation == nil else {
+            return
+        }
+
+        currentItemObservation = queuePlayer.observe(
+            \.currentItem,
+            options: [.initial, .new]
+        ) { [weak self] _, _ in
+            Task { @MainActor [weak self] in
+                self?.performPendingSeekIfPossible()
+            }
+        }
+    }
+
+    private func performPendingSeekIfPossible() {
+        guard let pendingSeek,
+              let item = queuePlayer.currentItem
+        else {
+            return
+        }
+
+        switch item.status {
+        case .readyToPlay:
+            let request = pendingSeek
+
+            cancelPendingSeek()
+
+            queuePlayer.seek(
+                to: request.time,
+                toleranceBefore: .zero,
+                toleranceAfter: .zero,
+                completionHandler: request.completion
+            )
+
+        case .failed:
+            pendingSeek.completion(false)
+            cancelPendingSeek()
+
+        case .unknown:
+            observeStatus(of: item)
+
+        @unknown default:
+            pendingSeek.completion(false)
+            cancelPendingSeek()
+        }
+    }
+
+    private func observeStatus(
+        of item: AVPlayerItem
+    ) {
+        guard observedItem !== item else {
+            return
+        }
+
+        itemStatusObservation?.invalidate()
+        observedItem = item
+
+        itemStatusObservation = item.observe(
+            \.status,
+            options: [.initial, .new]
+        ) { [weak self] _, _ in
+            Task { @MainActor [weak self] in
+                self?.performPendingSeekIfPossible()
+            }
+        }
+    }
+
+    private func cancelPendingSeek() {
+        pendingSeek = nil
+
+        currentItemObservation?.invalidate()
+        currentItemObservation = nil
+
+        itemStatusObservation?.invalidate()
+        itemStatusObservation = nil
+
+        observedItem = nil
     }
 
     func play() {
@@ -99,6 +204,7 @@ final class AVVideoPlaybackService: VideoPlaybackService {
     }
 
     func stop() {
+        cancelPendingSeek()
         removeProgressObserver()
         queuePlayer.pause()
 

@@ -22,7 +22,12 @@ protocol VideoPlaybackService: AnyObject {
     func seek(
         to seconds: TimeInterval
     )
-    
+
+    func seek(
+        to seconds: TimeInterval,
+        completion: @escaping @Sendable (Bool) -> Void
+    )
+
     func toggleMute() // AVQueuePlayer가 실제 소리를 내는 객체라서, 음소거 기술 처리는 Service
     func play()
     func pause()
