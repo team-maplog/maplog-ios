@@ -18,6 +18,7 @@ struct MaplogApp: App { // 앱의 조립 담당자
     private let logMediaRepository: any LogMediaRepository
     private let homeReelPlaybackService: any VideoPlaybackService
     private let logRouteRepository: any LogRouteRepository
+    private let profileRepository: any ProfileRepository
 
 
     init() {
@@ -49,6 +50,10 @@ struct MaplogApp: App { // 앱의 조립 담당자
         let logMediaRepository = DefaultLogMediaRepository(apiService: logMediaAPIService)
         let logRouteAPIService = DefaultLogRouteAPIService(authenticatedAPIClient: authenticatedAPIClient)
         let logRouteRepository = DefaultLogRouteRepository(apiService: logRouteAPIService)
+        let profileAPIService = DefaultProfileAPIService(
+            authenticatedAPIClient: authenticatedAPIClient
+        )
+        let profileRepository = DefaultProfileRepository(apiService: profileAPIService)
 
         self.authRepository = authRepository
 
@@ -74,6 +79,7 @@ struct MaplogApp: App { // 앱의 조립 담당자
         self.logMediaRepository = logMediaRepository
         self.homeReelPlaybackService = AVVideoPlaybackService()
         self.logRouteRepository = logRouteRepository
+        self.profileRepository = profileRepository
     }
 
     var body: some Scene {
@@ -92,7 +98,8 @@ struct MaplogApp: App { // 앱의 조립 담당자
                 logReelRepository: logReelRepository,
                 logMediaRepository: logMediaRepository,
                 homeReelPlaybackService: homeReelPlaybackService,
-                logRouteRepository: logRouteRepository
+                logRouteRepository: logRouteRepository,
+                profileRepository: profileRepository
 
             )
             .environmentObject(authSessionStore)

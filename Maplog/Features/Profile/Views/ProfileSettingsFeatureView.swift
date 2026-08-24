@@ -1,0 +1,325 @@
+import SwiftUI
+
+struct ProfileSettingsFeatureView: View {
+    @Environment(\.maplogLogout) private var performLogout
+    @EnvironmentObject private var signOutViewModel: SignOutViewModel
+
+    private let profile: ProfileHeaderViewData
+    private let avatarImageData: Data?
+    private let profileRepository: any ProfileRepository
+    private let onProfileSaved: () async -> Void
+
+    @AppStorage("maplog.profile.pushNotificationsEnabled")
+    private var pushNotificationsEnabled = true
+
+    @AppStorage("maplog.profile.serviceAnnouncementsEnabled")
+    private var serviceAnnouncementsEnabled = true
+
+    @StateObject private var viewModel: ProfileSettingsViewModel
+    @State private var showsLogoutConfirmation = false
+    @State private var showsWithdrawalConfirmation = false
+
+    init(
+        profile: ProfileHeaderViewData,
+        avatarImageData: Data?,
+        profileRepository: any ProfileRepository,
+        onProfileSaved: @escaping () async -> Void
+    ) {
+        self.profile = profile
+        self.avatarImageData = avatarImageData
+        self.profileRepository = profileRepository
+        self.onProfileSaved = onProfileSaved
+        _viewModel = StateObject(
+            wrappedValue: ProfileSettingsViewModel(
+                profileRepository: profileRepository
+            )
+        )
+    }
+
+    var body: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 24) {
+                ProfileSettingsSection(title: "계정") {
+                    NavigationLink {
+                        ProfileEditFeatureView(
+                            profile: profile,
+                            avatarImageData: avatarImageData,
+                            profileRepository: profileRepository,
+                            onSaved: onProfileSaved
+                        )
+                    } label: {
+                        ProfileSettingsNavigationRow(
+                            title: "프로필 편집"
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                ProfileSettingsSection(title: "알림") {
+                    ProfileSettingsToggleRow(
+                        title: "푸시 알림",
+                        subtitle: "좋아요와 댓글 등 활동 알림을 받아요.",
+                        isOn: $pushNotificationsEnabled
+                    )
+
+                    ProfileSettingsDivider()
+
+                    ProfileSettingsToggleRow(
+                        title: "서비스 공지 알림",
+                        subtitle: "새 기능과 서비스 소식을 받아요.",
+                        isOn: $serviceAnnouncementsEnabled
+                    )
+                }
+
+                ProfileSettingsSection(title: "서비스 정보") {
+                    NavigationLink {
+                        ProfileSettingsInformationView(
+                            title: "이용약관",
+                            message: "서비스 이용에 필요한 약관은 추후 제공되는 공식 문서와 연결됩니다."
+                        )
+                    } label: {
+                        ProfileSettingsNavigationRow(title: "이용약관")
+                    }
+                    .buttonStyle(.plain)
+
+                    ProfileSettingsDivider()
+
+                    NavigationLink {
+                        ProfileSettingsInformationView(
+                            title: "개인정보 처리방침",
+                            message: "프로필과 위치·여행 기록 데이터의 처리 기준은 공식 개인정보 처리방침에서 안내합니다."
+                        )
+                    } label: {
+                        ProfileSettingsNavigationRow(title: "개인정보 처리방침")
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                ProfileSettingsSection(title: "앱 정보") {
+                    ProfileSettingsValueRow(
+                        title: "현재 버전",
+                        value: appVersion
+                    )
+                }
+
+                ProfileSettingsSection(title: "기타") {
+                    Button(action: requestLogout) {
+                        ProfileSettingsActionRow(
+                            title: signOutViewModel.isLoading
+                                ? "로그아웃 중..."
+                                : "로그아웃"
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(signOutViewModel.isLoading)
+
+                    ProfileSettingsDivider()
+
+                    Button(action: requestWithdrawal) {
+                        ProfileSettingsActionRow(
+                            title: viewModel.isDeletingAccount
+                                ? "탈퇴 처리 중..."
+                                : "회원 탈퇴",
+                            tint: .red
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(viewModel.isDeletingAccount)
+                }
+
+                if let errorMessage = signOutViewModel.errorMessage ?? viewModel.deleteErrorMessage {
+                    Text(errorMessage)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .padding(.horizontal, MaplogSpacing.page)
+            .padding(.top, 24)
+            .maplogListBottomPadding()
+        }
+        .background(Color.maplogSurface)
+        .navigationTitle("설정")
+        .navigationBarTitleDisplayMode(.inline)
+        .maplogTabBarHidden()
+        .confirmationDialog(
+            "로그아웃할까요?",
+            isPresented: $showsLogoutConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("로그아웃", action: signOut)
+            Button("취소", role: .cancel) {}
+        } message: {
+            Text("현재 계정으로 다시 로그인할 수 있습니다.")
+        }
+        .confirmationDialog(
+            "정말 회원 탈퇴할까요?",
+            isPresented: $showsWithdrawalConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("회원 탈퇴", role: .destructive, action: deleteAccount)
+            Button("취소", role: .cancel) {}
+        } message: {
+            Text("계정과 연결된 데이터는 복구할 수 없습니다.")
+        }
+    }
+
+    private var appVersion: String {
+        let version = Bundle.main.object(
+            forInfoDictionaryKey: "CFBundleShortVersionString"
+        ) as? String ?? "-"
+        let build = Bundle.main.object(
+            forInfoDictionaryKey: "CFBundleVersion"
+        ) as? String
+
+        guard let build, !build.isEmpty else {
+            return "v\(version)"
+        }
+
+        return "v\(version) (\(build))"
+    }
+
+    private func requestLogout() {
+        showsLogoutConfirmation = true
+    }
+
+    private func requestWithdrawal() {
+        showsWithdrawalConfirmation = true
+    }
+
+    private func signOut() {
+        Task {
+            await signOutViewModel.signOut()
+        }
+    }
+
+    private func deleteAccount() {
+        Task {
+            guard await viewModel.deleteAccount() else {
+                return
+            }
+
+            performLogout()
+        }
+    }
+}
+
+private struct ProfileSettingsSection<Content: View>: View {
+    let title: String
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(Color.maplogMuted)
+                .padding(.horizontal, 4)
+
+            VStack(spacing: 0) {
+                content
+            }
+            .padding(.horizontal, 16)
+            .background(
+                Color.maplogCanvas,
+                in: RoundedRectangle(cornerRadius: 18, style: .continuous)
+            )
+        }
+    }
+}
+
+private struct ProfileSettingsNavigationRow: View {
+    let title: String
+
+    var body: some View {
+        HStack {
+            Text(title)
+                .font(.body)
+                .foregroundStyle(Color.maplogInk)
+
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.bold))
+                .foregroundStyle(Color.maplogMuted)
+        }
+        .frame(minHeight: 54)
+    }
+}
+
+private struct ProfileSettingsToggleRow: View {
+    let title: String
+    let subtitle: String
+    @Binding var isOn: Bool
+
+    var body: some View {
+        Toggle(isOn: $isOn) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .font(.body)
+                    .foregroundStyle(Color.maplogInk)
+
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(Color.maplogMuted)
+            }
+            .padding(.vertical, 12)
+        }
+        .tint(Color.maplogLime)
+    }
+}
+
+private struct ProfileSettingsValueRow: View {
+    let title: String
+    let value: String
+
+    var body: some View {
+        HStack {
+            Text(title)
+                .font(.body)
+                .foregroundStyle(Color.maplogInk)
+
+            Spacer()
+
+            Text(value)
+                .font(.subheadline)
+                .foregroundStyle(Color.maplogMuted)
+        }
+        .frame(minHeight: 54)
+    }
+}
+
+private struct ProfileSettingsActionRow: View {
+    let title: String
+    var tint: Color = .maplogInk
+
+    var body: some View {
+        Text(title)
+            .font(.body.weight(.semibold))
+            .foregroundStyle(tint)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(minHeight: 54)
+    }
+}
+
+private struct ProfileSettingsDivider: View {
+    var body: some View {
+        Divider()
+            .overlay(Color.maplogLine)
+    }
+}
+
+private struct ProfileSettingsInformationView: View {
+    let title: String
+    let message: String
+
+    var body: some View {
+        Text(message)
+            .font(.body)
+            .foregroundStyle(Color.maplogMuted)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .padding(MaplogSpacing.page)
+            .background(Color.maplogSurface)
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+    }
+}
