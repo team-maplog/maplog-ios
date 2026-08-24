@@ -35,6 +35,10 @@ enum BackendErrorCode: Equatable {
     case invalidThumbnailTime
     case invalidClipTimeRange
 
+    case logNotFound
+    case logNotReadable
+    case logNotOwner
+
     init(serverCode: String) {
         switch serverCode {
         case "TOUR-001":
@@ -106,6 +110,15 @@ enum BackendErrorCode: Equatable {
 
         case "LOG-012":
             self = .invalidClipTimeRange
+
+        case "LOG-001":
+            self = .logNotFound
+
+        case "LOG-002":
+            self = .logNotReadable
+
+        case "LOG-003":
+            self = .logNotOwner
 
         default:
             self = .unknown(serverCode)

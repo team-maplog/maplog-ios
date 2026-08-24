@@ -39,7 +39,9 @@ struct MainTabView: View {
     private let logLocationRepository: any LogLocationRepository
     private let logPublishingRepository: any LogPublishingRepository
     private let logReelRepository: any LogReelRepository
+    private let logMediaRepository: any LogMediaRepository
     private let logRouteRepository: any LogRouteRepository
+    private let logDetailRepository: any LogDetailRepository
     private let profileRepository: any ProfileRepository
     @State private var homeNavigationPath: [HomeNavigationRoute] = []
 
@@ -58,6 +60,7 @@ struct MainTabView: View {
         logMediaRepository: any LogMediaRepository,
         homeReelPlaybackService: any VideoPlaybackService,
         logRouteRepository: any LogRouteRepository,
+        logDetailRepository: any LogDetailRepository,
         profileRepository: any ProfileRepository,
         requestedTab: Binding<MaplogTab?> = .constant(nil),
         requestedCapturePlaceName: Binding<String?> = .constant(nil)
@@ -72,7 +75,9 @@ struct MainTabView: View {
         self.logLocationRepository = logLocationRepository
         self.logPublishingRepository = logPublishingRepository
         self.logReelRepository = logReelRepository
+        self.logMediaRepository = logMediaRepository
         self.logRouteRepository = logRouteRepository
+        self.logDetailRepository = logDetailRepository
         self.profileRepository = profileRepository
 
         _requestedTab = requestedTab
@@ -215,6 +220,9 @@ struct MainTabView: View {
                 NavigationStack {
                     ProfileTabView(
                         profileRepository: profileRepository,
+                        logDetailRepository: logDetailRepository,
+                        logMediaRepository: logMediaRepository,
+                        playbackService: videoPlaybackService,
                         viewModel: profileViewModel
                     )
                 }

@@ -100,6 +100,7 @@ struct RootView: View {
     private let logMediaRepository: any LogMediaRepository
     private let homeReelPlaybackService: any VideoPlaybackService
     private let logRouteRepository: any LogRouteRepository
+    private let logDetailRepository: any LogDetailRepository
     private let profileRepository: any ProfileRepository
 
     init(
@@ -117,6 +118,7 @@ struct RootView: View {
         logMediaRepository: any LogMediaRepository,
         homeReelPlaybackService: any VideoPlaybackService,
         logRouteRepository: any LogRouteRepository,
+        logDetailRepository: any LogDetailRepository,
         profileRepository: any ProfileRepository
     ) {
         self.authRepository = authRepository
@@ -133,6 +135,7 @@ struct RootView: View {
         self.logMediaRepository = logMediaRepository
         self.homeReelPlaybackService = homeReelPlaybackService
         self.logRouteRepository = logRouteRepository
+        self.logDetailRepository = logDetailRepository
         self.profileRepository = profileRepository
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("-MaplogSkipOnboarding") {
@@ -181,6 +184,7 @@ struct RootView: View {
                     logMediaRepository: logMediaRepository,
                     homeReelPlaybackService: homeReelPlaybackService,
                     logRouteRepository: logRouteRepository,
+                    logDetailRepository: logDetailRepository,
                     profileRepository: profileRepository,
                     requestedTab: $requestedTab,
                     requestedCapturePlaceName: $requestedCapturePlaceName

@@ -18,11 +18,6 @@ struct HomeMapVideoPreview: View {
     let onSeek: (Double) -> Void
     let onRetry: () -> Void
 
-    @State private var isScrubbing = false
-    @State private var scrubbingProgress = 0.0
-
-    private let playbackBarHeight: CGFloat = 4
-
     var body: some View {
         ZStack {
             Color.black
@@ -131,8 +126,9 @@ struct HomeMapVideoPreview: View {
     }
 
     private var bottomPlaybackBar: some View {
-        previewPlaybackBar(
-            progress: playbackProgress
+        MaplogVideoPlaybackBar(
+            progress: playbackProgress,
+            onSeek: onSeek
         )
         .padding(.horizontal, 14)
         .padding(.bottom, 8)
@@ -143,72 +139,4 @@ struct HomeMapVideoPreview: View {
         )
     }
 
-    private func previewPlaybackBar(
-        progress: Double
-    ) -> some View {
-        let safeProgress = progress.isFinite
-            ? min(max(progress, 0), 1)
-            : 0
-
-        let displayProgress = isScrubbing
-            ? scrubbingProgress
-            : safeProgress
-
-        return GeometryReader { proxy in
-            let width = max(proxy.size.width, 1)
-
-            ZStack(alignment: .leading) {
-                Capsule()
-                    .fill(.white.opacity(0.32))
-
-                Capsule()
-                    .fill(Color.maplogLime)
-                    .frame(
-                        width: max(4, width * displayProgress)
-                    )
-
-                Circle()
-                    .fill(.white)
-                    .frame(width: 12, height: 12)
-                    .shadow(
-                        color: .black.opacity(0.24),
-                        radius: 2
-                    )
-                    .position(
-                        x: min(
-                            max(width * displayProgress, 6),
-                            width - 6
-                        ),
-                        y: playbackBarHeight / 2
-                    )
-            }
-            .contentShape(Rectangle())
-            .highPriorityGesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { value in
-                        isScrubbing = true
-                        scrubbingProgress = min(
-                            max(value.location.x / width, 0),
-                            1
-                        )
-                    }
-                    .onEnded { value in
-                        let progress = min(
-                            max(value.location.x / width, 0),
-                            1
-                        )
-
-                        isScrubbing = false
-                        scrubbingProgress = progress
-                        onSeek(progress)
-                    }
-            )
-        }
-        .frame(height: playbackBarHeight)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("영상 재생 위치")
-        .accessibilityValue(
-            "\(Int(displayProgress * 100))퍼센트"
-        )
-    }
 }
