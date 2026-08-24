@@ -18,6 +18,7 @@ struct MainTabView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @StateObject private var homeviewModel: HomeViewModel // @StateObject를 MainTabView에 두는 이유는 MainTabView가 HomeViewModel의 소유자이기 때문, 홈 탭이 다시 그려져도 같은 ViewModel 인스턴스를 유지하기 좋음
     @StateObject private var homeMapPanelViewModel: HomeMapPanelViewModel
+    @StateObject private var profileViewModel: ProfileTabViewModel
 
     @Binding private var requestedTab: MaplogTab?
     @Binding private var requestedCapturePlaceName: String?
@@ -39,6 +40,7 @@ struct MainTabView: View {
     private let logPublishingRepository: any LogPublishingRepository
     private let logReelRepository: any LogReelRepository
     private let logRouteRepository: any LogRouteRepository
+    private let profileRepository: any ProfileRepository
     @State private var homeNavigationPath: [HomeNavigationRoute] = []
 
 
@@ -56,6 +58,7 @@ struct MainTabView: View {
         logMediaRepository: any LogMediaRepository,
         homeReelPlaybackService: any VideoPlaybackService,
         logRouteRepository: any LogRouteRepository,
+        profileRepository: any ProfileRepository,
         requestedTab: Binding<MaplogTab?> = .constant(nil),
         requestedCapturePlaceName: Binding<String?> = .constant(nil)
     ) {
@@ -70,6 +73,7 @@ struct MainTabView: View {
         self.logPublishingRepository = logPublishingRepository
         self.logReelRepository = logReelRepository
         self.logRouteRepository = logRouteRepository
+        self.profileRepository = profileRepository
 
         _requestedTab = requestedTab
         _requestedCapturePlaceName = requestedCapturePlaceName
@@ -89,6 +93,10 @@ struct MainTabView: View {
                 logRouteRepository: logRouteRepository,
                 logMediaRepository: logMediaRepository
             )
+        )
+
+        _profileViewModel = StateObject(
+            wrappedValue: ProfileTabViewModel(profileRepository: profileRepository)
         )
     }
 
@@ -204,7 +212,12 @@ struct MainTabView: View {
             case .map:
                 NavigationStack { ExploreMapView() }
             case .profile:
-                NavigationStack { ProfileView() }
+                NavigationStack {
+                    ProfileTabView(
+                        profileRepository: profileRepository,
+                        viewModel: profileViewModel
+                    )
+                }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

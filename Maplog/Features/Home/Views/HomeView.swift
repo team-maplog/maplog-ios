@@ -629,28 +629,9 @@ struct HomeView: View {
 
     private var homeHeader: some View {
         HStack(spacing: MaplogSpacing.small) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text("Maplog")
-                    .font(.title2.weight(.bold))
-                    .foregroundStyle(.primary)
-
-                Button {
-                    if !sessionStore.locationPermissionStatus.isAllowed {
-                        showsLocationPermissionPrompt = true
-                    }
-                } label: {
-                    HStack(spacing: 3) {
-                        Image(systemName: "mappin.and.ellipse")
-                        Text(sessionStore.locationPermissionStatus.isAllowed ? "서울 성수동" : "위치 설정")
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 10, weight: .bold))
-                    }
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-                .accessibilityHint("현재 위치 권한 설정을 엽니다")
-            }
+            Text("Maplog")
+                .font(.title2.weight(.bold))
+                .foregroundStyle(.primary)
 
             Spacer()
 
