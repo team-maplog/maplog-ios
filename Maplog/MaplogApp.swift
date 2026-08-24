@@ -20,6 +20,7 @@ struct MaplogApp: App { // 앱의 조립 담당자
     private let logRouteRepository: any LogRouteRepository
     private let logDetailRepository: any LogDetailRepository
     private let profileRepository: any ProfileRepository
+    private let mapRepository: any MapRepository
 
 
     init() {
@@ -51,16 +52,12 @@ struct MaplogApp: App { // 앱의 조립 담당자
         let logMediaRepository = DefaultLogMediaRepository(apiService: logMediaAPIService)
         let logRouteAPIService = DefaultLogRouteAPIService(authenticatedAPIClient: authenticatedAPIClient)
         let logRouteRepository = DefaultLogRouteRepository(apiService: logRouteAPIService)
-        let logDetailAPIService = DefaultLogDetailAPIService(
-            authenticatedAPIClient: authenticatedAPIClient
-        )
-        let logDetailRepository = DefaultLogDetailRepository(
-            apiService: logDetailAPIService
-        )
-        let profileAPIService = DefaultProfileAPIService(
-            authenticatedAPIClient: authenticatedAPIClient
-        )
+        let logDetailAPIService = DefaultLogDetailAPIService(authenticatedAPIClient: authenticatedAPIClient)
+        let logDetailRepository = DefaultLogDetailRepository(apiService: logDetailAPIService)
+        let profileAPIService = DefaultProfileAPIService(authenticatedAPIClient: authenticatedAPIClient)
         let profileRepository = DefaultProfileRepository(apiService: profileAPIService)
+        let mapAPIService = DefaultMapAPIService(authenticatedAPIClient: authenticatedAPIClient)
+        let mapRepository = DefaultMapRepository(apiService: mapAPIService)
 
         self.authRepository = authRepository
 
@@ -88,6 +85,7 @@ struct MaplogApp: App { // 앱의 조립 담당자
         self.logRouteRepository = logRouteRepository
         self.logDetailRepository = logDetailRepository
         self.profileRepository = profileRepository
+        self.mapRepository = mapRepository
     }
 
     var body: some Scene {
@@ -108,7 +106,8 @@ struct MaplogApp: App { // 앱의 조립 담당자
                 homeReelPlaybackService: homeReelPlaybackService,
                 logRouteRepository: logRouteRepository,
                 logDetailRepository: logDetailRepository,
-                profileRepository: profileRepository
+                profileRepository: profileRepository,
+                mapRepository: mapRepository
 
             )
             .environmentObject(authSessionStore)

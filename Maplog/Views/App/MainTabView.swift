@@ -43,6 +43,7 @@ struct MainTabView: View {
     private let logRouteRepository: any LogRouteRepository
     private let logDetailRepository: any LogDetailRepository
     private let profileRepository: any ProfileRepository
+    private let mapRepository: any MapRepository
     @State private var homeNavigationPath: [HomeNavigationRoute] = []
 
 
@@ -62,6 +63,7 @@ struct MainTabView: View {
         logRouteRepository: any LogRouteRepository,
         logDetailRepository: any LogDetailRepository,
         profileRepository: any ProfileRepository,
+        mapRepository: any MapRepository,
         requestedTab: Binding<MaplogTab?> = .constant(nil),
         requestedCapturePlaceName: Binding<String?> = .constant(nil)
     ) {
@@ -79,6 +81,7 @@ struct MainTabView: View {
         self.logRouteRepository = logRouteRepository
         self.logDetailRepository = logDetailRepository
         self.profileRepository = profileRepository
+        self.mapRepository = mapRepository
 
         _requestedTab = requestedTab
         _requestedCapturePlaceName = requestedCapturePlaceName
@@ -215,7 +218,15 @@ struct MainTabView: View {
                     .id(activeCapturePlaceName ?? "manual-capture")
                 }
             case .map:
-                NavigationStack { ExploreMapView() }
+                NavigationStack {
+                    ExploreMapFeatureView(
+                        mapRepository: mapRepository,
+                        tourismRepository: tourismRepository,
+                        logDetailRepository: logDetailRepository,
+                        logMediaRepository: logMediaRepository,
+                        playbackService: videoPlaybackService
+                    )
+                    }
             case .profile:
                 NavigationStack {
                     ProfileTabView(
