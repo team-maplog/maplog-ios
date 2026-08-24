@@ -5,12 +5,19 @@ struct ProfileLogSection: View {
     let logs: [ProfileLogCardViewData]
     let thumbnailData: (Int64) -> Data?
     let isLoadingThumbnail: (Int64) -> Bool
+    let logDetailRepository: any LogDetailRepository
+    let logMediaRepository: any LogMediaRepository
+    let playbackService: any VideoPlaybackService
     let hasNextPage: Bool
     let isLoadingNextPage: Bool
     let nextPageError: ErrorPresentation?
     let onLoadNextPage: () -> Void
     let onRetryNextPage: () -> Void
     let onSelectCapture: () -> Void
+    let onLogRemoved: () async -> Void
+
+    @State private var selectedLogID: Int64?
+    @State private var showsLogDetail = false
 
     private let columns = [
         GridItem(.flexible(), spacing: MaplogSpacing.small),
@@ -41,15 +48,37 @@ struct ProfileLogSection: View {
                     spacing: 20
                 ) {
                     ForEach(logs) { log in
-                        ProfileLogCard(
-                            log: log,
-                            thumbnailData: thumbnailData(log.id),
-                            isLoadingThumbnail: isLoadingThumbnail(log.id)
-                        )
+                        Button {
+                            selectedLogID = log.id
+                            showsLogDetail = true
+                        } label: {
+                            ProfileLogCard(
+                                log: log,
+                                thumbnailData: thumbnailData(log.id),
+                                isLoadingThumbnail: isLoadingThumbnail(log.id)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .contentShape(Rectangle())
+                        .accessibilityHint("맵로그 상세를 엽니다")
                     }
                 }
 
                 paginationFooter
+            }
+        }
+        .navigationDestination(isPresented: $showsLogDetail) {
+            if let selectedLogID {
+                LogDetailFeatureView(
+                    logID: selectedLogID,
+                    allowsManagement: true,
+                    logDetailRepository: logDetailRepository,
+                    logMediaRepository: logMediaRepository,
+                    playbackService: playbackService,
+                    onLogRemoved: onLogRemoved
+                )
+            } else {
+                EmptyView()
             }
         }
     }
@@ -91,17 +120,7 @@ private struct ProfileLogCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            ZStack(alignment: .bottomLeading) {
-                thumbnail
-
-                Text(log.durationText)
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 5)
-                    .background(.black.opacity(0.56), in: Capsule())
-                    .padding(8)
-            }
+            thumbnail
             .frame(height: 164)
             .clipShape(
                 RoundedRectangle(
@@ -109,20 +128,27 @@ private struct ProfileLogCard: View {
                     style: .continuous
                 )
             )
+            .overlay(alignment: .bottomLeading) {
+                Label(log.viewCountText, systemImage: "eye.fill")
+                    .font(.caption2.weight(.medium))
+                    .foregroundStyle(.white)
+                    .shadow(color: .black.opacity(0.64), radius: 2, x: 0, y: 1)
+                    .padding(8)
+            }
+            .overlay(alignment: .bottomTrailing) {
+                Text(log.durationText)
+                    .font(.caption2.weight(.medium))
+                    .foregroundStyle(.white)
+                    .shadow(color: .black.opacity(0.64), radius: 2, x: 0, y: 1)
+                    .padding(8)
+            }
 
             Text(log.addressText)
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(Color.maplogInk)
                 .lineLimit(2)
 
-            HStack(spacing: 5) {
-                Label(
-                    log.viewCountText,
-                    systemImage: "eye"
-                )
-                Text("·")
-                Text(log.createdAtText)
-            }
+            Text(log.createdAtText)
             .font(.caption2)
             .foregroundStyle(Color.maplogMuted)
         }

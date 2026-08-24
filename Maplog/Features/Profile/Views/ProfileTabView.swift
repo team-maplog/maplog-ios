@@ -6,6 +6,9 @@ struct ProfileTabView: View {
     @Environment(\.maplogSelectTab) private var selectTab
 
     let profileRepository: any ProfileRepository
+    let logDetailRepository: any LogDetailRepository
+    let logMediaRepository: any LogMediaRepository
+    let playbackService: any VideoPlaybackService
     @ObservedObject var viewModel: ProfileTabViewModel
 
     var body: some View {
@@ -82,12 +85,16 @@ struct ProfileTabView: View {
                     logs: viewModel.logs,
                     thumbnailData: viewModel.thumbnailData(for:),
                     isLoadingThumbnail: viewModel.isLoadingThumbnail(for:),
+                    logDetailRepository: logDetailRepository,
+                    logMediaRepository: logMediaRepository,
+                    playbackService: playbackService,
                     hasNextPage: viewModel.hasNextPage,
                     isLoadingNextPage: viewModel.isLoadingNextPage,
                     nextPageError: viewModel.nextPageError,
                     onLoadNextPage: loadNextPage,
                     onRetryNextPage: retryNextPage,
-                    onSelectCapture: selectCaptureTab
+                    onSelectCapture: selectCaptureTab,
+                    onLogRemoved: reloadProfile
                 )
             }
 

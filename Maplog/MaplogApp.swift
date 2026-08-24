@@ -18,6 +18,7 @@ struct MaplogApp: App { // 앱의 조립 담당자
     private let logMediaRepository: any LogMediaRepository
     private let homeReelPlaybackService: any VideoPlaybackService
     private let logRouteRepository: any LogRouteRepository
+    private let logDetailRepository: any LogDetailRepository
     private let profileRepository: any ProfileRepository
 
 
@@ -50,6 +51,12 @@ struct MaplogApp: App { // 앱의 조립 담당자
         let logMediaRepository = DefaultLogMediaRepository(apiService: logMediaAPIService)
         let logRouteAPIService = DefaultLogRouteAPIService(authenticatedAPIClient: authenticatedAPIClient)
         let logRouteRepository = DefaultLogRouteRepository(apiService: logRouteAPIService)
+        let logDetailAPIService = DefaultLogDetailAPIService(
+            authenticatedAPIClient: authenticatedAPIClient
+        )
+        let logDetailRepository = DefaultLogDetailRepository(
+            apiService: logDetailAPIService
+        )
         let profileAPIService = DefaultProfileAPIService(
             authenticatedAPIClient: authenticatedAPIClient
         )
@@ -79,6 +86,7 @@ struct MaplogApp: App { // 앱의 조립 담당자
         self.logMediaRepository = logMediaRepository
         self.homeReelPlaybackService = AVVideoPlaybackService()
         self.logRouteRepository = logRouteRepository
+        self.logDetailRepository = logDetailRepository
         self.profileRepository = profileRepository
     }
 
@@ -99,6 +107,7 @@ struct MaplogApp: App { // 앱의 조립 담당자
                 logMediaRepository: logMediaRepository,
                 homeReelPlaybackService: homeReelPlaybackService,
                 logRouteRepository: logRouteRepository,
+                logDetailRepository: logDetailRepository,
                 profileRepository: profileRepository
 
             )
