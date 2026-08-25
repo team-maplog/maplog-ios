@@ -70,6 +70,10 @@ struct MapLogMarker: Equatable {
     let address: String?
     let thumbnailURL: URL?
     let coordinate: MapCoordinate
+
+    var mapMarkerID: String {
+        "log-\(logID)-\(clipID)"
+    }
 }
 
 // 관광 핀 하나
@@ -91,7 +95,7 @@ enum MapMarker: Identifiable, Equatable {
     var id: String {
         switch self {
         case let .log(marker):
-            return "log-\(marker.logID)-\(marker.clipID)"
+            return marker.mapMarkerID
 
         case let .tourism(marker):
             return "tourism-\(marker.tourismID)"
@@ -105,6 +109,16 @@ enum MapMarker: Identifiable, Equatable {
 
         case let .tourism(marker):
             return marker.coordinate
+        }
+    }
+
+    var kind: MapMarkerKind {
+        switch self {
+        case .log:
+            return .log
+
+        case .tourism:
+            return .tourism
         }
     }
 
@@ -137,6 +151,29 @@ enum MapMarker: Identifiable, Equatable {
             return marker.thumbnailURL
         }
     }
+
+    var searchableTexts: [String] {
+        switch self {
+        case let .log(marker):
+            return [
+                marker.placeName,
+                marker.address,
+                marker.caption
+            ]
+            .compactMap { $0 }
+
+        case let .tourism(marker):
+            return [
+                marker.name
+            ]
+            .compactMap { $0 }
+        }
+    }
+}
+
+enum MapMarkerKind: Equatable {
+    case log
+    case tourism
 }
 
 enum MapRepositoryError: Error, Equatable {

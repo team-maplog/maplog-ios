@@ -103,6 +103,7 @@ struct RootView: View {
     private let logDetailRepository: any LogDetailRepository
     private let profileRepository: any ProfileRepository
     private let mapRepository: any MapRepository
+    private let mapCurrentLocationService: any MapCurrentLocationService
 
     init(
         authRepository: any AuthRepository,
@@ -122,6 +123,7 @@ struct RootView: View {
         logDetailRepository: any LogDetailRepository,
         profileRepository: any ProfileRepository,
         mapRepository: any MapRepository,
+        mapCurrentLocationService: any MapCurrentLocationService,
     ) {
         self.authRepository = authRepository
         self.tourismRepository = tourismRepository
@@ -140,6 +142,7 @@ struct RootView: View {
         self.logDetailRepository = logDetailRepository
         self.profileRepository = profileRepository
         self.mapRepository = mapRepository
+        self.mapCurrentLocationService = mapCurrentLocationService
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("-MaplogSkipOnboarding") {
             _phase = State(initialValue: .app)
@@ -190,6 +193,7 @@ struct RootView: View {
                     logDetailRepository: logDetailRepository,
                     profileRepository: profileRepository,
                     mapRepository: mapRepository,
+                    mapCurrentLocationService: mapCurrentLocationService,
                     requestedTab: $requestedTab,
                     requestedCapturePlaceName: $requestedCapturePlaceName
                 )

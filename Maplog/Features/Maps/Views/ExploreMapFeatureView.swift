@@ -17,26 +17,31 @@ struct ExploreMapFeatureView: View {
     private let logDetailRepository: any LogDetailRepository
     private let logMediaRepository: any LogMediaRepository
     private let playbackService: any VideoPlaybackService
+    private let currentLocationService: any MapCurrentLocationService
 
     @StateObject private var viewModel: ExploreMapFeatureViewModel
     @State private var destination: ExploreMapDestination?
+    @FocusState private var isSearchFieldFocused: Bool
 
     init(
         mapRepository: any MapRepository,
         tourismRepository: any TourismRepository,
         logDetailRepository: any LogDetailRepository,
         logMediaRepository: any LogMediaRepository,
-        playbackService: any VideoPlaybackService
+        playbackService: any VideoPlaybackService,
+        currentLocationService: any MapCurrentLocationService
     ) {
         self.tourismRepository = tourismRepository
         self.logDetailRepository = logDetailRepository
         self.logMediaRepository = logMediaRepository
         self.playbackService = playbackService
+        self.currentLocationService = currentLocationService
 
         _viewModel = StateObject(
             wrappedValue: ExploreMapFeatureViewModel(
                 mapRepository: mapRepository,
-                logMediaRepository: logMediaRepository
+                logMediaRepository: logMediaRepository,
+                currentLocationService: currentLocationService
             )
         )
     }
@@ -44,18 +49,41 @@ struct ExploreMapFeatureView: View {
     var body: some View {
         ZStack {
             ExploreKakaoMap(
-                markers: viewModel.state.content?.markers ?? [],
+                markers: viewModel.filteredMarkers,
+                thumbnailDataByMarkerID: viewModel.mapLogThumbnailDataByMarkerID,
                 selectedMarkerID: viewModel.selectedMarkerID,
+                currentLocation: viewModel.currentLocation,
+                currentLocationFocusRequestID: viewModel.currentLocationFocusRequestID,
                 onViewportChanged: handleViewportChanged,
-                onMarkerSelected: handleMarkerSelected
+                onMarkerSelected: handleMarkerSelected,
+                onMapTapped: dismissSearchKeyboard
             )
             .ignoresSafeArea()
 
-            ExploreMapStateOverlay(
-                state: viewModel.state,
-                refreshError: viewModel.refreshError,
-                onRetry: retry
-            )
+        }
+        .overlay(alignment: .top) {
+            VStack(alignment: .leading, spacing: 10) {
+                ExploreMapSearchControls(
+                    query: searchQueryBinding,
+                    isSearchFieldFocused: $isSearchFieldFocused,
+                    selectedScope: viewModel.selectedSearchScope,
+                    markerCount: {
+                        viewModel.markerCount(
+                            for: $0
+                        )
+                    },
+                    onSelectScope: handleSearchScopeSelected,
+                    onClearSearch: viewModel.clearSearch
+                )
+
+                ExploreMapStateOverlay(
+                    state: viewModel.state,
+                    refreshError: viewModel.refreshError,
+                    onRetry: retry
+                )
+            }
+            .padding(.top, 8)
+            .padding(.horizontal, MaplogSpacing.page)
         }
         .overlay(alignment: .bottom) {
             if let marker = viewModel.selectedMarker {
@@ -76,10 +104,25 @@ struct ExploreMapFeatureView: View {
                     .move(edge: .bottom)
                         .combined(with: .opacity)
                 )
+
             }
+        }
+        .overlay(alignment: .bottomTrailing) {
+            ExploreMapCurrentLocationButton(
+                isLoading: viewModel.isLoadingCurrentLocation,
+                action: focusCurrentLocation
+            )
+            .padding(.trailing, MaplogSpacing.page)
+            .padding(
+                .bottom,
+                currentLocationButtonBottomInset
+            )
         }
         .toolbar(.hidden, for: .navigationBar)
         .maplogTabBarHidden(false)
+        .task {
+            await viewModel.loadCurrentLocationIfNeeded()
+        }
         .animation(
             .smooth(duration: 0.25),
             value: viewModel.selectedMarkerID
@@ -118,8 +161,43 @@ struct ExploreMapFeatureView: View {
     private func handleMarkerSelected(
         _ markerID: String
     ) {
+        dismissSearchKeyboard()
+
         viewModel.selectMarker(
             id: markerID
+        )
+    }
+
+    private func handleSearchScopeSelected(
+        _ scope: ExploreMapSearchScope
+    ) {
+        dismissSearchKeyboard()
+        viewModel.selectSearchScope(scope)
+    }
+
+    private func dismissSearchKeyboard() {
+        isSearchFieldFocused = false
+    }
+
+    private var currentLocationButtonBottomInset: CGFloat {
+        MaplogSize.tabBarHeight
+        + (viewModel.selectedMarker == nil ? 16 : 164)
+    }
+
+    private func focusCurrentLocation() {
+        Task {
+            await viewModel.focusCurrentLocation()
+        }
+    }
+
+    private var searchQueryBinding: Binding<String> {
+        Binding(
+            get: {
+                viewModel.searchQuery
+            },
+            set: {
+                viewModel.updateSearchQuery($0)
+            }
         )
     }
 
@@ -144,13 +222,44 @@ struct ExploreMapFeatureView: View {
     }
 }
 
+private struct ExploreMapCurrentLocationButton: View {
+    let isLoading: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Group {
+                if isLoading {
+                    ProgressView()
+                        .tint(Color.maplogInk)
+
+                } else {
+                    Image(systemName: "location.fill")
+                        .font(.title3.weight(.semibold))
+                }
+            }
+            .foregroundStyle(Color.maplogInk)
+            .frame(width: 50, height: 50)
+            .background(.regularMaterial, in: Circle())
+        }
+        .buttonStyle(.plain)
+        .shadow(
+            color: .black.opacity(0.16),
+            radius: 8,
+            x: 0,
+            y: 4
+        )
+        .accessibilityLabel("현재 위치로 지도 이동")
+    }
+}
+
 private struct ExploreMapStateOverlay: View {
     let state: ExploreMapState
     let refreshError: ErrorPresentation?
     let onRetry: () -> Void
 
     var body: some View {
-        VStack {
+        Group {
             switch state {
             case .idle:
                 EmptyView()
@@ -171,11 +280,7 @@ private struct ExploreMapStateOverlay: View {
                     content: content
                 )
             }
-
-            Spacer()
         }
-        .padding(.top, 18)
-        .padding(.horizontal, MaplogSpacing.page)
     }
 
     private var loadingMessage: some View {
