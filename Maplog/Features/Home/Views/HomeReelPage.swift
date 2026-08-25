@@ -19,6 +19,10 @@ struct HomeReelPage: View {
     let onPlayToggle: () -> Void
     let onSeek: (Double) -> Void
     let isPlaying: Bool
+    let isUpdatingLike: Bool
+    let isUpdatingSave: Bool
+    let onToggleLike: () -> Void
+    let onToggleSave: () -> Void
 
     @State private var isScrubbing = false
     @State private var scrubbingProgress = 0.0
@@ -274,7 +278,11 @@ struct HomeReelPage: View {
                 tint: reel.isLikedByViewer
                     ? Color.maplogLime
                     : .white,
-                accessibilityLabel: "좋아요 \(reel.likeCount)개"
+                accessibilityLabel: reel.isLikedByViewer
+                    ? "좋아요 취소, \(reel.likeCount)개"
+                    : "좋아요, \(reel.likeCount)개",
+                isLoading: isUpdatingLike,
+                action: onToggleLike
             )
 
             HomeReelMetric(
@@ -297,7 +305,11 @@ struct HomeReelPage: View {
                 tint: reel.isSavedByViewer
                     ? Color.maplogLime
                     : .white,
-                accessibilityLabel: "저장"
+                accessibilityLabel: reel.isSavedByViewer
+                    ? "저장 취소"
+                    : "저장",
+                isLoading: isUpdatingSave,
+                action: onToggleSave
             )
         }
         .frame(width: 44)
@@ -397,12 +409,37 @@ private struct HomeReelMetric: View {
     let text: String
     var tint: Color = .white
     let accessibilityLabel: String
+    var isLoading = false
+    var action: (() -> Void)?
 
     var body: some View {
+        if let action {
+            Button(action: action) {
+                metricContent
+            }
+            .buttonStyle(MaplogPressFeedbackStyle())
+            .disabled(isLoading)
+            .accessibilityLabel(accessibilityLabel)
+        } else {
+            metricContent
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(accessibilityLabel)
+        }
+    }
+
+    private var metricContent: some View {
         VStack(spacing: 3) {
-            Image(systemName: systemImage)
-                .font(.system(size: 21, weight: .medium))
-                .foregroundStyle(tint)
+            if isLoading {
+                ProgressView()
+                    .controlSize(.small)
+                    .tint(.white)
+                    .frame(width: 21, height: 21)
+            } else {
+                Image(systemName: systemImage)
+                    .font(.system(size: 21, weight: .medium))
+                    .foregroundStyle(tint)
+                    .frame(width: 21, height: 21)
+            }
 
             Text(text)
                 .font(.caption2.weight(.medium))
@@ -412,7 +449,5 @@ private struct HomeReelMetric: View {
         }
         .frame(width: 44)
         .frame(minHeight: 45)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(accessibilityLabel)
     }
 }

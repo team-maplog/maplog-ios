@@ -31,6 +31,17 @@ struct HomeView: View {
     @State private var selectedPanel: HomePanel = .reels
     @State private var videoPreviewRequest: HomeMapRoutePlaybackRequest?
 
+    private var reelInteractionErrorPresented: Binding<Bool> {
+        Binding(
+            get: { viewModel.interactionError != nil },
+            set: { isPresented in
+                if !isPresented {
+                    viewModel.dismissInteractionError()
+                }
+            }
+        )
+    }
+
     private let spotlightEvent = MockMaplogData.spotlightEvent
 //    private let homePosts = MockMaplogData.posts
 
@@ -291,6 +302,31 @@ struct HomeView: View {
             .presentationDetents([.height(384)])
             .presentationDragIndicator(.hidden)
         }
+        .alert(
+            "작업을 완료하지 못했어요",
+            isPresented: reelInteractionErrorPresented
+        ) {
+            switch viewModel.interactionError?.recoveryAction {
+            case .retry:
+                Button("다시 시도") {
+                    Task {
+                        await viewModel.retryLastInteraction()
+                    }
+                }
+
+            case .signIn:
+                Button("다시 로그인", action: performLogout)
+
+            case .some(.none), nil:
+                EmptyView()
+            }
+
+            Button("확인", role: .cancel) {
+                viewModel.dismissInteractionError()
+            }
+        } message: {
+            Text(viewModel.interactionError?.message ?? "")
+        }
     }
 
     @ViewBuilder
@@ -485,7 +521,19 @@ struct HomeView: View {
                 onSeek: { progress in
                     viewModel.seekPlayback(to: progress, for: reel.id)
                 },
-                isPlaying: viewModel.isPlaying(reelID: reel.id)
+                isPlaying: viewModel.isPlaying(reelID: reel.id),
+                isUpdatingLike: viewModel.isUpdatingLike(for: reel.id),
+                isUpdatingSave: viewModel.isUpdatingSave(for: reel.id),
+                onToggleLike: {
+                    Task {
+                        await viewModel.toggleLike(for: reel.id)
+                    }
+                },
+                onToggleSave: {
+                    Task {
+                        await viewModel.toggleSaved(for: reel.id)
+                    }
+                }
             )
             .task(id: reel.id) {
                 await viewModel.loadThumbnail(for: reel.id)
@@ -506,7 +554,19 @@ struct HomeView: View {
                 onSeek: { progress in
                     viewModel.seekPlayback(to: progress, for: reel.id)
                 },
-                isPlaying: viewModel.isPlaying(reelID: reel.id)
+                isPlaying: viewModel.isPlaying(reelID: reel.id),
+                isUpdatingLike: viewModel.isUpdatingLike(for: reel.id),
+                isUpdatingSave: viewModel.isUpdatingSave(for: reel.id),
+                onToggleLike: {
+                    Task {
+                        await viewModel.toggleLike(for: reel.id)
+                    }
+                },
+                onToggleSave: {
+                    Task {
+                        await viewModel.toggleSaved(for: reel.id)
+                    }
+                }
             )
             .task(id: reel.id) {
                 await viewModel.loadThumbnail(for: reel.id)

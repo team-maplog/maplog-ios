@@ -25,6 +25,47 @@ struct HomeReelViewData: Identifiable, Equatable {
     let isSavedByViewer: Bool
 
     let clips: [HomeReelClipViewData]
+
+    func replacingLike(
+        isLikedByViewer: Bool,
+        likeCount: Int64
+    ) -> HomeReelViewData {
+        HomeReelViewData(
+            id: id,
+            authorName: authorName,
+            caption: caption,
+            address: address,
+            thumbnailURL: thumbnailURL,
+            playbackURL: playbackURL,
+            publishedAt: publishedAt,
+            viewCount: viewCount,
+            likeCount: likeCount,
+            commentCount: commentCount,
+            isLikedByViewer: isLikedByViewer,
+            isSavedByViewer: isSavedByViewer,
+            clips: clips
+        )
+    }
+
+    func replacingSaved(
+        isSavedByViewer: Bool
+    ) -> HomeReelViewData {
+        HomeReelViewData(
+            id: id,
+            authorName: authorName,
+            caption: caption,
+            address: address,
+            thumbnailURL: thumbnailURL,
+            playbackURL: playbackURL,
+            publishedAt: publishedAt,
+            viewCount: viewCount,
+            likeCount: likeCount,
+            commentCount: commentCount,
+            isLikedByViewer: isLikedByViewer,
+            isSavedByViewer: isSavedByViewer,
+            clips: clips
+        )
+    }
 }
 
 struct HomeReelClipViewData: Identifiable, Equatable {
