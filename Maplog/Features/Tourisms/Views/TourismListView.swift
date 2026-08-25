@@ -9,15 +9,24 @@
 import SwiftUI
 
 struct TourismListView: View {
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.maplogLogout) private var performLogout
     @StateObject private var viewModel: TourismListViewModel // 홈과 달리 TourismListView가 @StateObject를 소유하는 이유는, 목록 ViewModel은 이 목록 화면만을 위해 만들어지고 다른 화면과 공유되지 않기 때문
 
     private let tourismRepository: any TourismRepository
 
-    private let gridColums: [GridItem] = [
-        GridItem(.flexible(minimum: 0), spacing: 32), // 가로: 카드와 카드 사이
-        GridItem(.flexible(minimum: 0), spacing: 32)
-    ]
+    private var gridCategoryTitle: String {
+        switch viewModel.selectedCategory {
+        case .all:
+            return "관광"
+        case .events:
+            return "행사"
+        default:
+            return viewModel.categoryTabs.first {
+                $0.category == viewModel.selectedCategory
+            }?.title ?? "관광"
+        }
+    }
 
     init(tourismRepository: any TourismRepository) {
         self.tourismRepository = tourismRepository // MaplogApp → MainTabView → TourismListView로 이미 주입된 같은 객체
@@ -29,37 +38,42 @@ struct TourismListView: View {
     var body: some View {
         VStack(spacing: 0) {
             categoryCarousel
+            Divider()
             tourismContent
         }
-            .navigationTitle("관광")
-            .navigationBarTitleDisplayMode(.inline)
-            .task(id: viewModel.selectedCategory) {
-                await viewModel.loadInitialTourisms()
-            }
+        // iOS의 기본 뒤로가기 버튼은 OS 버전에 따라 원형 유리 버튼이 된다.
+        // 시안처럼 얇은 chevron을 고정하기 위해 이 화면만 자체 헤더를 사용한다.
+        .toolbar(.hidden, for: .navigationBar)
+        .safeAreaInset(edge: .top, spacing: 0) {
+            TourismListNavigationBar(onBack: dismiss.callAsFunction)
+        }
+        .background(Color.white.ignoresSafeArea())
+        .maplogTabBarHidden()
+        .task(id: viewModel.selectedCategory) {
+            await viewModel.loadInitialTourisms()
+        }
     }
 
     private var categoryCarousel: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             LazyHStack(spacing: MaplogSpacing.xSmall) {
                 ForEach(viewModel.categoryTabs) { tab in
-                    Button {
-                        viewModel.selectCategory(tab.category)
-                    } label: {
+                    Button(action: { selectCategory(tab.category) }) {
                         Text(tab.title)
-                            .font(MaplogFont.calloutStrong)
+                            .font(.system(size: 14, weight: .semibold))
                             .foregroundStyle(
                                 tab.category == viewModel.selectedCategory
                                 ? Color.maplogOnPrimary
                                 : Color.maplogTextPrimary
                             )
-                            .padding(.horizontal, MaplogSpacing.medium)
-                            .frame(minHeight: MaplogSize.minimumTapTarget)
+                            .padding(.horizontal, 14)
+                            .frame(height: 32)
                             .background {
                                 Capsule()
                                     .fill(
                                         tab.category == viewModel.selectedCategory
-                                        ? Color.maplogPrimary
-                                        : Color.maplogSurface
+                                ? Color.maplogPrimary
+                                : Color.white
                                     )
                             }
                             .overlay {
@@ -71,6 +85,7 @@ struct TourismListView: View {
                             }
                     }
                     .buttonStyle(.plain)
+                    .frame(minHeight: MaplogSize.minimumTapTarget)
                     .accessibilityLabel("\(tab.title) 카테고리")
                     .accessibilityValue(
                         tab.category == viewModel.selectedCategory ? "선택됨" : "선택되지 않음"
@@ -82,12 +97,8 @@ struct TourismListView: View {
             }
             .padding(.horizontal, MaplogSpacing.page)
         }
-        .padding(.vertical, MaplogSpacing.xxSmall)
-        .frame(
-                height: MaplogSize.minimumTapTarget
-                    + (MaplogSpacing.xxSmall * 2)
-            )
-        .background(Color.maplogSurface)
+        .frame(height: 52)
+        .background(Color.white)
     }
 
 
@@ -135,53 +146,130 @@ struct TourismListView: View {
     }
 
     private var tourismGrid: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                Text("현재 \(viewModel.items.count)개 표시 중")
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.secondary)
+        GeometryReader { proxy in
+            // 카드가 사용할 수 있는 실제 가로 폭을 먼저 계산한다.
+            // 그 값을 GridItem과 카드에 동시에 전달해야 텍스트가 길어도
+            // 두 번째 열이 화면 밖으로 밀려나지 않는다.
+            let horizontalPadding = MaplogSpacing.xLarge
+            let columnSpacing = MaplogSpacing.small
+            let cardWidth = max(
+                0,
+                (proxy.size.width - (horizontalPadding * 2) - columnSpacing) / 2
+            )
+            let columns = [
+                GridItem(.fixed(cardWidth), spacing: columnSpacing),
+                GridItem(.fixed(cardWidth), spacing: columnSpacing)
+            ]
 
-                LazyVGrid(columns: gridColums, spacing: 16) {
-                    ForEach(viewModel.items) { item in
-                        NavigationLink{
-                            TourismDetailView(tourismID: item.id, tourismRepository: tourismRepository)
-                        } label: {
-                            TourismGridCard(item: item)
-                                .frame(maxWidth: .infinity, alignment: .topLeading)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityHint("관광 상세 정보 보기")
-                        .task {
-                            guard item.id == viewModel.items.last?.id else {
-                                return
+            ScrollView {
+                VStack(alignment: .leading, spacing: MaplogSpacing.large) {
+                    HStack {
+                        Text("\(viewModel.items.count)개")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundStyle(Color.maplogTextSecondary)
+
+                        Spacer()
+
+                        Label("추천순", systemImage: "arrow.up.arrow.down")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundStyle(Color.maplogTextSecondary)
+                    }
+
+                    LazyVGrid(
+                        columns: columns,
+                        alignment: .leading,
+                        spacing: MaplogSpacing.xLarge
+                    ) {
+                        ForEach(viewModel.items) { item in
+                            NavigationLink {
+                                TourismDetailView(tourismID: item.id, tourismRepository: tourismRepository)
+                            } label: {
+                                TourismGridCard(
+                                    item: item,
+                                    categoryTitle: gridCategoryTitle,
+                                    cardWidth: cardWidth
+                                )
                             }
-
-                            await viewModel.loadNextPage()
+                            .buttonStyle(.plain)
+                            .frame(width: cardWidth, alignment: .topLeading)
+                            .accessibilityHint("관광 상세 정보 보기")
+                            .task {
+                                await loadNextPageIfNeeded(for: item)
+                            }
                         }
                     }
-                }
-                if viewModel.isLoadingNextPage {
-                    ProgressView("더 불러오는 중이에요")
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                }
 
-                if let presentation = viewModel.nextPageError {
-                    TourismNextPageErrorFooter(
-                        presentation: presentation,
-                        onRetry: {
-                            Task {
-                                await viewModel.retryNextPage()
-                            }
-                        },
-                        onSignIn: performLogout
-                    )
-                }
+                    if viewModel.isLoadingNextPage {
+                        ProgressView("더 불러오는 중이에요")
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                    }
 
+                    if let presentation = viewModel.nextPageError {
+                        TourismNextPageErrorFooter(
+                            presentation: presentation,
+                            onRetry: {
+                                Task {
+                                    await viewModel.retryNextPage()
+                                }
+                            },
+                            onSignIn: performLogout
+                        )
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, horizontalPadding)
+                .padding(.top, MaplogSpacing.large)
+                .padding(.bottom, MaplogSpacing.xxLarge)
             }
-            .padding(.horizontal, MaplogSpacing.page)
-            .padding(.vertical, 16)
+            .background(Color.white)
         }
+    }
+
+    private func selectCategory(_ category: TourismCategory) {
+        viewModel.selectCategory(category)
+    }
+
+    private func loadNextPageIfNeeded(
+        for item: TourismListItemViewData
+    ) async {
+        guard item.id == viewModel.items.last?.id else {
+            return
+        }
+
+        await viewModel.loadNextPage()
+    }
+}
+
+private struct TourismListNavigationBar: View {
+    let onBack: () -> Void
+
+    var body: some View {
+        HStack {
+            Button(action: onBack) {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 21, weight: .medium))
+                    .foregroundStyle(Color.maplogTextPrimary)
+                    .frame(width: MaplogSize.minimumTapTarget, height: MaplogSize.minimumTapTarget)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("뒤로가기")
+
+            Spacer()
+
+            Text("관광")
+                .font(.system(size: 20, weight: .bold))
+                .foregroundStyle(Color.maplogTextPrimary)
+
+            Spacer()
+
+            Color.clear
+                .frame(width: MaplogSize.minimumTapTarget, height: MaplogSize.minimumTapTarget)
+        }
+        .padding(.horizontal, MaplogSpacing.xLarge)
+        .frame(height: 52)
+        .background(Color.white)
     }
 }
 
