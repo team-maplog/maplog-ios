@@ -44,6 +44,7 @@ struct MainTabView: View {
     private let logDetailRepository: any LogDetailRepository
     private let profileRepository: any ProfileRepository
     private let mapRepository: any MapRepository
+    private let mapCurrentLocationService: any MapCurrentLocationService
     @State private var homeNavigationPath: [HomeNavigationRoute] = []
 
 
@@ -64,6 +65,7 @@ struct MainTabView: View {
         logDetailRepository: any LogDetailRepository,
         profileRepository: any ProfileRepository,
         mapRepository: any MapRepository,
+        mapCurrentLocationService: any MapCurrentLocationService,
         requestedTab: Binding<MaplogTab?> = .constant(nil),
         requestedCapturePlaceName: Binding<String?> = .constant(nil)
     ) {
@@ -82,6 +84,7 @@ struct MainTabView: View {
         self.logDetailRepository = logDetailRepository
         self.profileRepository = profileRepository
         self.mapRepository = mapRepository
+        self.mapCurrentLocationService = mapCurrentLocationService
 
         _requestedTab = requestedTab
         _requestedCapturePlaceName = requestedCapturePlaceName
@@ -224,7 +227,8 @@ struct MainTabView: View {
                         tourismRepository: tourismRepository,
                         logDetailRepository: logDetailRepository,
                         logMediaRepository: logMediaRepository,
-                        playbackService: videoPlaybackService
+                        playbackService: videoPlaybackService,
+                        currentLocationService: mapCurrentLocationService
                     )
                     }
             case .profile:

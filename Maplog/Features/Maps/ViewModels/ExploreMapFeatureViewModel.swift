@@ -14,21 +14,52 @@ final class ExploreMapFeatureViewModel: ObservableObject {
     @Published private(set) var refreshError: ErrorPresentation?
     @Published private(set) var selectedMarkerThumbnailData: Data?
     @Published private(set) var isLoadingSelectedMarkerThumbnail = false
+    @Published private(set) var searchQuery = ""
+    @Published private(set) var selectedSearchScope: ExploreMapSearchScope = .all
+    @Published private(set) var mapLogThumbnailDataByMarkerID: [String: Data] = [:]
+    @Published private(set) var currentLocation: MapCoordinate?
+    @Published private(set) var currentLocationFocusRequestID: UUID?
+    @Published private(set) var isLoadingCurrentLocation = false
 
     private let mapRepository: any MapRepository
     private let logMediaRepository: any LogMediaRepository // 썸네일 내려받음
+    private let currentLocationService: any MapCurrentLocationService
 
     private var scheduledLoadTask: Task<Void, Never>?
     private var selectedMarkerThumbnailTask: Task<Void, Never>?
+    private var mapMarkerThumbnailLoadTask: Task<Void, Never>?
     private var latestObservedViewport: MapViewport?
     private var latestRequestedViewport: MapViewport?
 
+    private static let mapThumbnailPrefetchLimit = 24
+
     init(
         mapRepository: any MapRepository,
-        logMediaRepository: any LogMediaRepository
+        logMediaRepository: any LogMediaRepository,
+        currentLocationService: any MapCurrentLocationService
     ) {
         self.mapRepository = mapRepository
         self.logMediaRepository = logMediaRepository
+        self.currentLocationService = currentLocationService
+    }
+
+    /// 지도 탭이 처음 열릴 때 도트 표시용 좌표를 한 번 받아온다.
+    func loadCurrentLocationIfNeeded() async {
+        guard currentLocation == nil else {
+            return
+        }
+
+        _ = await refreshCurrentLocation()
+    }
+
+    /// 버튼을 누르면 최신 좌표를 요청하고, 지도 이동 명령을 새로 만든다.
+    func focusCurrentLocation() async {
+        guard let coordinate = await refreshCurrentLocation() else {
+            return
+        }
+
+        currentLocationFocusRequestID = UUID()
+        currentLocation = coordinate
     }
 
     /// 지도의 드래그·확대·축소가 끝났을 때 호출
@@ -77,10 +108,9 @@ final class ExploreMapFeatureViewModel: ObservableObject {
     func selectMarker(
         id: String
     ) {
-        guard let content = state.content,
-              let marker = content.markers.first(
+        guard let marker = filteredMarkers.first(
                 where: { $0.id == id }
-              )
+        )
         else {
             return
         }
@@ -114,6 +144,41 @@ final class ExploreMapFeatureViewModel: ObservableObject {
         return content.markers.first {
             $0.id == selectedMarkerID
         }
+    }
+
+    var filteredMarkers: [MapMarker] {
+        markers(
+            matching: selectedSearchScope
+        )
+    }
+
+    func markerCount(
+        for scope: ExploreMapSearchScope
+    ) -> Int {
+        markers(
+            matching: scope
+        )
+        .count
+    }
+
+    func updateSearchQuery(
+        _ query: String
+    ) {
+        searchQuery = query
+        clearSelectionIfFilteredOut()
+    }
+
+    func selectSearchScope(
+        _ scope: ExploreMapSearchScope
+    ) {
+        selectedSearchScope = scope
+        clearSelectionIfFilteredOut()
+    }
+
+    func clearSearch() {
+        searchQuery = ""
+        selectedSearchScope = .all
+        clearSelectionIfFilteredOut()
     }
 
     func retrySelectedMarkerThumbnail() {
@@ -153,10 +218,12 @@ final class ExploreMapFeatureViewModel: ObservableObject {
             if content.markers.isEmpty {
                 state = .empty
                 clearSelection()
+                mapMarkerThumbnailLoadTask?.cancel()
             } else {
                 state = .content(content)
-                removeSelectionIfNeeded(
-                    from: content
+                clearSelectionIfFilteredOut()
+                loadMapLogThumbnails(
+                    for: content.logMarkers
                 )
             }
 
@@ -178,6 +245,26 @@ final class ExploreMapFeatureViewModel: ObservableObject {
             } else {
                 state = .failed(presentation)
             }
+        }
+    }
+
+    private func refreshCurrentLocation() async -> MapCoordinate? {
+        isLoadingCurrentLocation = true
+
+        defer {
+            isLoadingCurrentLocation = false
+        }
+
+        do {
+            let coordinate = try await currentLocationService
+                .requestCurrentLocation()
+
+            currentLocation = coordinate
+            return coordinate
+
+        } catch {
+            // 위치 권한을 거절해도 지도 탐색과 기존 핀은 계속 사용할 수 있어야 한다.
+            return currentLocation
         }
     }
 
@@ -236,14 +323,101 @@ final class ExploreMapFeatureViewModel: ObservableObject {
         }
     }
 
-    private func removeSelectionIfNeeded(
-        from content: MapViewportContent
+    private func loadMapLogThumbnails(
+        for markers: [MapLogMarker]
     ) {
+        mapMarkerThumbnailLoadTask?.cancel()
+
+        let pendingMarkers = markers
+            .filter {
+                $0.thumbnailURL != nil
+                && mapLogThumbnailDataByMarkerID[$0.mapMarkerID] == nil
+            }
+            .prefix(Self.mapThumbnailPrefetchLimit)
+
+        guard !pendingMarkers.isEmpty else {
+            return
+        }
+
+        mapMarkerThumbnailLoadTask = Task { [weak self] in
+            guard let self else {
+                return
+            }
+
+            for marker in pendingMarkers {
+                guard !Task.isCancelled,
+                      let thumbnailURL = marker.thumbnailURL
+                else {
+                    return
+                }
+
+                do {
+                    let data = try await logMediaRepository
+                        .fetchRoutePointThumbnailData(
+                            from: thumbnailURL
+                        )
+
+                    guard !Task.isCancelled,
+                          isVisibleMapLogMarker(
+                            id: marker.mapMarkerID
+                          )
+                    else {
+                        return
+                    }
+
+                    mapLogThumbnailDataByMarkerID[
+                        marker.mapMarkerID
+                    ] = data
+
+                } catch is CancellationError {
+                    return
+
+                } catch {
+                    continue
+                }
+            }
+        }
+    }
+
+    private var normalizedSearchQuery: String {
+        searchQuery.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+    }
+
+    private func markers(
+        matching scope: ExploreMapSearchScope
+    ) -> [MapMarker] {
+        guard let content = state.content else {
+            return []
+        }
+
+        return content.markers.filter { marker in
+            scope.includes(marker)
+            && markerMatchesSearchQuery(marker)
+        }
+    }
+
+    private func markerMatchesSearchQuery(
+        _ marker: MapMarker
+    ) -> Bool {
+        guard !normalizedSearchQuery.isEmpty else {
+            return true
+        }
+
+        return marker.searchableTexts.contains {
+            $0.localizedCaseInsensitiveContains(
+                normalizedSearchQuery
+            )
+        }
+    }
+
+    private func clearSelectionIfFilteredOut() {
         guard let selectedMarkerID else {
             return
         }
 
-        let stillExists = content.markers.contains {
+        let stillExists = filteredMarkers.contains {
             $0.id == selectedMarkerID
         }
 
@@ -252,9 +426,57 @@ final class ExploreMapFeatureViewModel: ObservableObject {
         }
     }
 
+    private func isVisibleMapLogMarker(
+        id: String
+    ) -> Bool {
+        state.content?.logMarkers.contains {
+            $0.mapMarkerID == id
+        }
+        ?? false
+    }
+
     deinit {
         scheduledLoadTask?.cancel()
         selectedMarkerThumbnailTask?.cancel()
+        mapMarkerThumbnailLoadTask?.cancel()
+    }
+}
+
+enum ExploreMapSearchScope: CaseIterable, Equatable, Identifiable {
+    case all
+    case maplog
+    case tourism
+
+    var id: Self {
+        self
+    }
+
+    var title: String {
+        switch self {
+        case .all:
+            return "전체"
+
+        case .maplog:
+            return "맵로그"
+
+        case .tourism:
+            return "관광"
+        }
+    }
+
+    func includes(
+        _ marker: MapMarker
+    ) -> Bool {
+        switch self {
+        case .all:
+            return true
+
+        case .maplog:
+            return marker.kind == .log
+
+        case .tourism:
+            return marker.kind == .tourism
+        }
     }
 }
 
