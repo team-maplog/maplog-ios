@@ -11,53 +11,67 @@ import SwiftUI
 
 struct TourismGridCard: View {
     let item: TourismListItemViewData
-    
+    let categoryTitle: String
+    let cardWidth: CGFloat
+
+    // 목록 사진은 카드 폭보다 조금 낮게 잡아, 제목과 기간 정보까지 한 화면에 안정적으로 보이게 한다.
+    private var imageHeight: CGFloat {
+        cardWidth * 0.82
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        VStack(alignment: .leading, spacing: MaplogSpacing.xxSmall) {
             thumbnail
-                .frame(maxWidth: .infinity)
-                .frame(height: 128)
+                .frame(width: cardWidth)
+                .frame(height: imageHeight)
                 .clipped()
-            
-            VStack(alignment: .leading, spacing: 6) {
-                Text(item.title)
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(.primary)
-                    .lineLimit(2)
-                    .frame(
-                        maxWidth: .infinity,
-                        minHeight: 40,
-                        alignment: .topLeading
+                .clipShape(
+                    RoundedRectangle(
+                        cornerRadius: MaplogRadius.medium,
+                        style: .continuous
                     )
-                
-                Label(item.periodText, systemImage: "calendar")
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-                
-                Label(item.locationText, systemImage: "mappin.and.ellipse")
-                    .lineLimit(1)
-            }
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .padding(12)
+                )
+                // 캡슐을 이미지의 overlay로 올리면 썸네일의 크기와 관계없이
+                // 항상 카드 안쪽 좌측 상단(8pt)에 고정된다.
+                .overlay(alignment: .topLeading) {
+                Text(categoryTitle)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Color.maplogTextPrimary)
+                    .padding(.horizontal, 7)
+                    .padding(.vertical, 4)
+                    .background(Color.white, in: Capsule())
+                    .padding(MaplogSpacing.xSmall)
+                }
+
+            Text(item.title)
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(Color.maplogTextPrimary)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .frame(
+                    width: cardWidth,
+                    height: 18,
+                    alignment: .topLeading
+                )
+
+            Text(item.periodText)
+                .font(.system(size: 11))
+                .foregroundStyle(Color.maplogTextSecondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.72)
+                .allowsTightening(true)
+                .frame(width: cardWidth, alignment: .leading)
         }
-        .background(Color(uiColor: .secondarySystemBackground))
-        .clipShape(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-        )
-        .overlay {
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(.black.opacity(0.06), lineWidth: 1)
-        }
+        .frame(width: cardWidth, alignment: .leading)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
-            "\(item.title), \(item.periodText), \(item.locationText)"
+            "\(categoryTitle), \(item.title), \(item.periodText), \(item.locationText)"
         )
     }
-    
+
     @ViewBuilder
     private var thumbnail: some View {
-        if let thumbnailURL = item.thumbnailURL{
+        if let thumbnailURL = item.thumbnailURL {
             AsyncImage(url: thumbnailURL) { phase in
                 switch phase {
                 case .empty:
@@ -70,10 +84,11 @@ struct TourismGridCard: View {
                     image
                         .resizable()
                         .scaledToFill()
-                    
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+
                 case .failure:
                     imagePlaceholder
-                    
+
                 @unknown default:
                     imagePlaceholder
                 }
@@ -85,11 +100,11 @@ struct TourismGridCard: View {
     
     private var imagePlaceholder: some View {
         Color(uiColor: .tertiarySystemFill)
-                    .overlay {
-                        Image(systemName: "photo")
-                            .font(.title3)
-                            .foregroundStyle(.secondary)
-                    }
+            .overlay {
+                Image(systemName: "photo")
+                    .font(.title3)
+                    .foregroundStyle(.secondary)
+            }
     }
 }
 
@@ -101,7 +116,9 @@ struct TourismGridCard: View {
             locationText: "경상북도 안동시",
             periodText: "2026. 07. 25. ~ 2026. 08. 02.",
             thumbnailURL: nil
-        )
+        ),
+        categoryTitle: "축제",
+        cardWidth: 170
     )
     .frame(width: 170)
     .padding()
@@ -116,7 +133,9 @@ struct TourismGridCard: View {
             locationText: "서울특별시",
             periodText: "2026. 08. 14. ~ 2026. 08. 14.",
             thumbnailURL: nil
-        )
+        ),
+        categoryTitle: "공연",
+        cardWidth: 170
     )
     .frame(width: 170)
     .padding()
@@ -130,5 +149,4 @@ struct TourismGridCard: View {
 //│
 //└─ 텍스트 영역
 //   ├─ 제목
-//   ├─ 기간
-//   └─ 지역
+//   └─ 기간 · 지역
