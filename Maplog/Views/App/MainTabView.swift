@@ -46,6 +46,7 @@ struct MainTabView: View {
     private let logDetailRepository: any LogDetailRepository
     private let profileRepository: any ProfileRepository
     private let mapRepository: any MapRepository
+    private let homeSearchRepository: any HomeSearchRepository
     private let mapCurrentLocationService: any MapCurrentLocationService
     @State private var homeNavigationPath: [HomeNavigationRoute] = []
 
@@ -69,6 +70,7 @@ struct MainTabView: View {
         logDetailRepository: any LogDetailRepository,
         profileRepository: any ProfileRepository,
         mapRepository: any MapRepository,
+        homeSearchRepository: any HomeSearchRepository,
         mapCurrentLocationService: any MapCurrentLocationService,
         requestedTab: Binding<MaplogTab?> = .constant(nil),
         requestedCapturePlaceName: Binding<String?> = .constant(nil)
@@ -90,6 +92,7 @@ struct MainTabView: View {
         self.logDetailRepository = logDetailRepository
         self.profileRepository = profileRepository
         self.mapRepository = mapRepository
+        self.homeSearchRepository = homeSearchRepository
         self.mapCurrentLocationService = mapCurrentLocationService
 
         _requestedTab = requestedTab
@@ -125,6 +128,7 @@ struct MainTabView: View {
     private enum HomeNavigationRoute: Hashable { // Hashable인 이유는 NavigationStack의 경로에 넣을 값, 홈에서 갈 수 있는 목적지 이름표
         case tourismList // 관광 목록 화면으로 이동하라는 경로 값
         case tourismDetail(tourismID: Int64)
+        case logDetail(logID: Int64)
     }
 
     private var tabSelection: Binding<MaplogTab> {
@@ -185,6 +189,8 @@ struct MainTabView: View {
                             mapPanelViewModel: homeMapPanelViewModel,
                             logCommentRepository: logCommentRepository,
                             profileRepository: profileRepository,
+                            homeSearchRepository: homeSearchRepository,
+                            logMediaRepository: logMediaRepository,
                             topSafeAreaInset: rootProxy.safeAreaInsets.top,
                             onShowAllTourisms: {
                                 homeNavigationPath.append(.tourismList)
@@ -192,6 +198,11 @@ struct MainTabView: View {
                             onShowTourismDetail: { tourismID in
                                 homeNavigationPath.append(
                                     .tourismDetail(tourismID: tourismID)
+                                )
+                            },
+                            onShowLogDetail: { logID in
+                                homeNavigationPath.append(
+                                    .logDetail(logID: logID)
                                 )
                             }
                         )
@@ -206,6 +217,16 @@ struct MainTabView: View {
                                 TourismDetailView(
                                     tourismID: tourismID,
                                     tourismRepository: tourismRepository
+                                )
+
+                            case .logDetail(let logID):
+                                LogDetailFeatureView(
+                                    logID: logID,
+                                    allowsManagement: false,
+                                    logDetailRepository: logDetailRepository,
+                                    logMediaRepository: logMediaRepository,
+                                    playbackService: videoPlaybackService,
+                                    onLogRemoved: {}
                                 )
                             }
                         }

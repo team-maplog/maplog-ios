@@ -105,6 +105,7 @@ struct RootView: View {
     private let logDetailRepository: any LogDetailRepository
     private let profileRepository: any ProfileRepository
     private let mapRepository: any MapRepository
+    private let homeSearchRepository: any HomeSearchRepository
     private let mapCurrentLocationService: any MapCurrentLocationService
     private let locationPermissionService: any LocationPermissionService
     @State private var isRequestingLocationPermission = false
@@ -129,6 +130,7 @@ struct RootView: View {
         logDetailRepository: any LogDetailRepository,
         profileRepository: any ProfileRepository,
         mapRepository: any MapRepository,
+        homeSearchRepository: any HomeSearchRepository,
         mapCurrentLocationService: any MapCurrentLocationService,
         locationPermissionService: any LocationPermissionService,
     ) {
@@ -151,6 +153,7 @@ struct RootView: View {
         self.logDetailRepository = logDetailRepository
         self.profileRepository = profileRepository
         self.mapRepository = mapRepository
+        self.homeSearchRepository = homeSearchRepository
         self.mapCurrentLocationService = mapCurrentLocationService
         self.locationPermissionService = locationPermissionService
         #if DEBUG
@@ -196,6 +199,7 @@ struct RootView: View {
                     logDetailRepository: logDetailRepository,
                     profileRepository: profileRepository,
                     mapRepository: mapRepository,
+                    homeSearchRepository: homeSearchRepository,
                     mapCurrentLocationService: mapCurrentLocationService,
                     requestedTab: $requestedTab,
                     requestedCapturePlaceName: $requestedCapturePlaceName

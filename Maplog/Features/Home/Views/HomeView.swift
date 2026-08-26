@@ -12,9 +12,12 @@ struct HomeView: View {
     @ObservedObject var mapPanelViewModel: HomeMapPanelViewModel
     let logCommentRepository: any LogCommentRepository
     let profileRepository: any ProfileRepository
+    let homeSearchRepository: any HomeSearchRepository
+    let logMediaRepository: any LogMediaRepository
     let topSafeAreaInset: CGFloat // 전체 화면 높이는 고정하고 홈 콘텐츠만 상태바 아래에서 시작하기 위한 값
     let onShowAllTourisms: () -> Void
     let onShowTourismDetail: (Int64) -> Void
+    let onShowLogDetail: (Int64) -> Void
 
     private enum HomePanel: Int, CaseIterable, Identifiable {
         case reels
@@ -738,7 +741,12 @@ struct HomeView: View {
             Spacer()
 
             NavigationLink {
-                SearchView()
+                HomeSearchFeatureView(
+                    searchRepository: homeSearchRepository,
+                    logMediaRepository: logMediaRepository,
+                    onShowLogDetail: onShowLogDetail,
+                    onShowTourismDetail: onShowTourismDetail
+                )
             } label: {
                 Image(systemName: "magnifyingglass")
                     .font(.system(size: 19, weight: .semibold))

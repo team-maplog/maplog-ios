@@ -213,8 +213,8 @@ struct LogFeedView: View {
 
     private func topBar(for post: VlogPost) -> some View {
         HStack(spacing: MaplogSpacing.small) {
-            NavigationLink {
-                SearchView()
+            Button {
+                showToast("검색은 홈 탭에서 이용할 수 있어요")
             } label: {
                 Image(systemName: "magnifyingglass")
                     .font(.body.weight(.semibold))
