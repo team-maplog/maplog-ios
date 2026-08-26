@@ -23,6 +23,7 @@ struct MaplogApp: App { // 앱의 조립 담당자
     private let logDetailRepository: any LogDetailRepository
     private let profileRepository: any ProfileRepository
     private let mapRepository: any MapRepository
+    private let homeSearchRepository: any HomeSearchRepository
     private let mapCurrentLocationService: any MapCurrentLocationService
     private let locationPermissionService: any LocationPermissionService
 
@@ -74,6 +75,12 @@ struct MaplogApp: App { // 앱의 조립 담당자
         let profileRepository = DefaultProfileRepository(apiService: profileAPIService)
         let mapAPIService = DefaultMapAPIService(authenticatedAPIClient: authenticatedAPIClient)
         let mapRepository = DefaultMapRepository(apiService: mapAPIService)
+        let homeSearchAPIService = DefaultHomeSearchAPIService(
+            authenticatedAPIClient: authenticatedAPIClient
+        )
+        let homeSearchRepository = DefaultHomeSearchRepository(
+            apiService: homeSearchAPIService
+        )
 
         self.authRepository = authRepository
 
@@ -104,6 +111,7 @@ struct MaplogApp: App { // 앱의 조립 담당자
         self.logDetailRepository = logDetailRepository
         self.profileRepository = profileRepository
         self.mapRepository = mapRepository
+        self.homeSearchRepository = homeSearchRepository
         self.mapCurrentLocationService = CoreLocationMapCurrentLocationService()
         self.locationPermissionService = CoreLocationPermissionService()
     }
@@ -130,6 +138,7 @@ struct MaplogApp: App { // 앱의 조립 담당자
                 logDetailRepository: logDetailRepository,
                 profileRepository: profileRepository,
                 mapRepository: mapRepository,
+                homeSearchRepository: homeSearchRepository,
                 mapCurrentLocationService: mapCurrentLocationService,
                 locationPermissionService: locationPermissionService
 
