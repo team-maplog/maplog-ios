@@ -60,26 +60,43 @@ final class HomeViewModel: ObservableObject {
     @Published private(set) var reelState: HomeReelSectionState = .idle
     @Published private var thumbnailDataByReelID: [Int64: Data] = [:] // [로그 ID: 해당 썸네일 이미지 원본 Data]
     @Published private var thumbnailLoadingIDs: Set<Int64> = [] //현재 네트워크 요청 중인 로그 ID 모음
+    @Published private var authorProfileImageDataByReelID: [Int64: Data] = [:]
+    @Published private var authorProfileImageLoadingIDs: Set<Int64> = []
     @Published private(set) var activePlaybackReelID: Int64? // 현재 재생 대상으로 선택된 릴스
     @Published private(set) var playbackLoadingReelID: Int64? // 영상을 다운로드 중인 릴스
     @Published private(set) var playbackFailedReelID: Int64? // 영상 다운로드·재생 준비에 실패한 릴스
     @Published private(set) var reelPlaybackProgress: Double = 0 // 재생 진행 바 진행률
+    @Published private(set) var likeUpdatingReelIDs = Set<Int64>()
+    @Published private(set) var saveUpdatingReelIDs = Set<Int64>()
+    @Published private(set) var interactionError: ErrorPresentation?
     private var pendingPlaybackStartTimeMillis: Int64 = 0 /// 현재 하나만 존재하는 플레이어가 준비된 뒤 이동할 목표 시점
 
     private let tourismRepository: any TourismRepository // TourismRepository protocol을 만족하는 어떤 실제 객체 하나(DefaultTourismRepository 객체가 들어감)
     private let logReelRepository: any LogReelRepository
+    private let logInteractionRepository: any LogInteractionRepository
     private let logMediaRepository: any LogMediaRepository
+    private let profileRepository: any ProfileRepository
     private let playbackService: any VideoPlaybackService
+    private var failedInteraction: FailedInteraction?
+
+    private enum FailedInteraction {
+        case like(logID: Int64, isLiked: Bool)
+        case save(logID: Int64, isSaved: Bool)
+    }
 
     init(
         tourismRepository: any TourismRepository,
         logReelRepository: any LogReelRepository,
+        logInteractionRepository: any LogInteractionRepository,
         logMediaRepository: any LogMediaRepository,
+        profileRepository: any ProfileRepository,
         playbackService: any VideoPlaybackService
     ) { // HomeViewModel을 만들 때 Repository를 반드시 전달받게 함
         self.tourismRepository = tourismRepository
         self.logReelRepository = logReelRepository
+        self.logInteractionRepository = logInteractionRepository
         self.logMediaRepository = logMediaRepository
+        self.profileRepository = profileRepository
         self.playbackService = playbackService
     }
 
@@ -141,6 +158,44 @@ final class HomeViewModel: ObservableObject {
 
     func isLoadingThumbnail(for reelID: Int64) -> Bool {
         thumbnailLoadingIDs.contains(reelID)
+    }
+
+    func authorProfileImageData(
+        for reelID: Int64
+    ) -> Data? {
+        authorProfileImageDataByReelID[reelID]
+    }
+
+    func loadAuthorProfileImage(
+        for reel: HomeReelViewData
+    ) async {
+        guard let profileImageURL = reel.authorProfileImageURL,
+              authorProfileImageDataByReelID[reel.id] == nil,
+              !authorProfileImageLoadingIDs.contains(reel.id)
+        else {
+            return
+        }
+
+        authorProfileImageLoadingIDs.insert(reel.id)
+
+        defer {
+            authorProfileImageLoadingIDs.remove(reel.id)
+        }
+
+        do {
+            let data = try await profileRepository.fetchImageData(
+                from: profileImageURL
+            )
+
+            guard !Task.isCancelled else {
+                return
+            }
+
+            authorProfileImageDataByReelID[reel.id] = data
+        } catch {
+            // 프로필 사진 실패는 릴스 피드 실패가 아니므로 이니셜 fallback을 유지한다.
+            return
+        }
     }
 
     func loadThumbnail(for reelID: Int64) async {
@@ -365,6 +420,72 @@ final class HomeViewModel: ObservableObject {
         await loadInitialReels()
     }
 
+    func isUpdatingLike(for reelID: Int64) -> Bool {
+        likeUpdatingReelIDs.contains(reelID)
+    }
+
+    func isUpdatingSave(for reelID: Int64) -> Bool {
+        saveUpdatingReelIDs.contains(reelID)
+    }
+
+    func toggleLike(for reelID: Int64) async {
+        guard let reel = reel(withID: reelID) else {
+            return
+        }
+
+        await setLike(
+            for: reel,
+            isLiked: !reel.isLikedByViewer
+        )
+    }
+
+    func toggleSaved(for reelID: Int64) async {
+        guard let reel = reel(withID: reelID) else {
+            return
+        }
+
+        await setSaved(
+            for: reel,
+            isSaved: !reel.isSavedByViewer
+        )
+    }
+
+    func retryLastInteraction() async {
+        guard let failedInteraction else {
+            return
+        }
+
+        switch failedInteraction {
+        case let .like(logID, isLiked):
+            guard let reel = reel(withID: logID) else {
+                return
+            }
+            await setLike(for: reel, isLiked: isLiked)
+
+        case let .save(logID, isSaved):
+            guard let reel = reel(withID: logID) else {
+                return
+            }
+            await setSaved(for: reel, isSaved: isSaved)
+        }
+    }
+
+    func dismissInteractionError() {
+        interactionError = nil
+        failedInteraction = nil
+    }
+
+    func adjustCommentCount(
+        for reelID: Int64,
+        by delta: Int64
+    ) {
+        replaceReel(withID: reelID) { reel in
+            reel.replacingCommentCount(
+                max(0, reel.commentCount + delta)
+            )
+        }
+    }
+
     // 실제 새로고침 함수
     func refreshHome() async {
         guard tourismState != .loading,
@@ -520,12 +641,148 @@ final class HomeViewModel: ObservableObject {
         }
     }
 
+    private func setLike(
+        for reel: HomeReelViewData,
+        isLiked: Bool
+    ) async {
+        guard !likeUpdatingReelIDs.contains(reel.id) else {
+            return
+        }
+
+        likeUpdatingReelIDs.insert(reel.id)
+        interactionError = nil
+
+        defer {
+            likeUpdatingReelIDs.remove(reel.id)
+        }
+
+        do {
+            let result = try await logInteractionRepository.setLike(
+                logID: reel.id,
+                isLiked: isLiked
+            )
+
+            guard !Task.isCancelled else {
+                return
+            }
+
+            replaceReel(withID: reel.id) { current in
+                let countChange: Int64
+                if current.isLikedByViewer == result.isLiked {
+                    countChange = 0
+                } else {
+                    countChange = result.isLiked ? 1 : -1
+                }
+
+                return current.replacingLike(
+                    isLikedByViewer: result.isLiked,
+                    likeCount: max(0, current.likeCount + countChange)
+                )
+            }
+            failedInteraction = nil
+
+        } catch is CancellationError {
+            return
+
+        } catch {
+            guard !Task.isCancelled else {
+                return
+            }
+
+            failedInteraction = .like(
+                logID: reel.id,
+                isLiked: isLiked
+            )
+            interactionError = LogInteractionErrorPolicy.presentation(
+                for: error,
+                actionName: isLiked ? "좋아요" : "좋아요 취소"
+            )
+        }
+    }
+
+    private func setSaved(
+        for reel: HomeReelViewData,
+        isSaved: Bool
+    ) async {
+        guard !saveUpdatingReelIDs.contains(reel.id) else {
+            return
+        }
+
+        saveUpdatingReelIDs.insert(reel.id)
+        interactionError = nil
+
+        defer {
+            saveUpdatingReelIDs.remove(reel.id)
+        }
+
+        do {
+            let result = try await logInteractionRepository.setSaved(
+                logID: reel.id,
+                isSaved: isSaved
+            )
+
+            guard !Task.isCancelled else {
+                return
+            }
+
+            replaceReel(withID: reel.id) { current in
+                current.replacingSaved(
+                    isSavedByViewer: result.isSaved
+                )
+            }
+            failedInteraction = nil
+
+        } catch is CancellationError {
+            return
+
+        } catch {
+            guard !Task.isCancelled else {
+                return
+            }
+
+            failedInteraction = .save(
+                logID: reel.id,
+                isSaved: isSaved
+            )
+            interactionError = LogInteractionErrorPolicy.presentation(
+                for: error,
+                actionName: isSaved ? "저장" : "저장 취소"
+            )
+        }
+    }
+
+    private func reel(
+        withID reelID: Int64
+    ) -> HomeReelViewData? {
+        guard case let .content(reels) = reelState else {
+            return nil
+        }
+
+        return reels.first { $0.id == reelID }
+    }
+
+    private func replaceReel(
+        withID reelID: Int64,
+        transform: (HomeReelViewData) -> HomeReelViewData
+    ) {
+        guard case let .content(reels) = reelState else {
+            return
+        }
+
+        reelState = .content(
+            reels.map { reel in
+                reel.id == reelID ? transform(reel) : reel
+            }
+        )
+    }
+
     private func makeReelViewData(
         from reel: LogReel
     ) -> HomeReelViewData {
         HomeReelViewData(
             id: reel.id,
             authorName: reel.author.nickname,
+            authorProfileImageURL: reel.author.profileImageURL,
             caption: reel.caption,
             address: reel.address,
             thumbnailURL: reel.thumbnailURL,

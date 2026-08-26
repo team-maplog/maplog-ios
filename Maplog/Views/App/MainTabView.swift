@@ -39,6 +39,8 @@ struct MainTabView: View {
     private let logLocationRepository: any LogLocationRepository
     private let logPublishingRepository: any LogPublishingRepository
     private let logReelRepository: any LogReelRepository
+    private let logInteractionRepository: any LogInteractionRepository
+    private let logCommentRepository: any LogCommentRepository
     private let logMediaRepository: any LogMediaRepository
     private let logRouteRepository: any LogRouteRepository
     private let logDetailRepository: any LogDetailRepository
@@ -59,6 +61,8 @@ struct MainTabView: View {
         logLocationRepository: any LogLocationRepository,
         logPublishingRepository: any LogPublishingRepository,
         logReelRepository: any LogReelRepository,
+        logInteractionRepository: any LogInteractionRepository,
+        logCommentRepository: any LogCommentRepository,
         logMediaRepository: any LogMediaRepository,
         homeReelPlaybackService: any VideoPlaybackService,
         logRouteRepository: any LogRouteRepository,
@@ -79,6 +83,8 @@ struct MainTabView: View {
         self.logLocationRepository = logLocationRepository
         self.logPublishingRepository = logPublishingRepository
         self.logReelRepository = logReelRepository
+        self.logInteractionRepository = logInteractionRepository
+        self.logCommentRepository = logCommentRepository
         self.logMediaRepository = logMediaRepository
         self.logRouteRepository = logRouteRepository
         self.logDetailRepository = logDetailRepository
@@ -94,7 +100,9 @@ struct MainTabView: View {
         _homeviewModel = StateObject(wrappedValue: HomeViewModel(
             tourismRepository: tourismRepository,
             logReelRepository: logReelRepository,
+            logInteractionRepository: logInteractionRepository,
             logMediaRepository: logMediaRepository,
+            profileRepository: profileRepository,
             playbackService: homeReelPlaybackService
         )
         )
@@ -172,6 +180,8 @@ struct MainTabView: View {
                         HomeView(
                             viewModel: homeviewModel,
                             mapPanelViewModel: homeMapPanelViewModel,
+                            logCommentRepository: logCommentRepository,
+                            profileRepository: profileRepository,
                             topSafeAreaInset: rootProxy.safeAreaInsets.top,
                             onShowAllTourisms: {
                                 homeNavigationPath.append(.tourismList)

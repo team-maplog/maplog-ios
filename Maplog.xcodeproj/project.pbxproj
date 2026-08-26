@@ -30,6 +30,7 @@
 		C0D3E0010A2B3C4D5E6F7004 /* CaptureRecordingShutterButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0D3E0010A2B3C4D5E6F7002 /* CaptureRecordingShutterButton.swift */; };
 		C0D3E0010A2B3C4D5E6F7005 /* VlogCommentsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0D3E0010A2B3C4D5E6F7007 /* VlogCommentsSheet.swift */; };
 		C0D3E0010A2B3C4D5E6F7006 /* MaplogActivityShareSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0D3E0010A2B3C4D5E6F7008 /* MaplogActivityShareSheet.swift */; };
+		C0D3E0010A2B3C4D5E6F7010 /* MaplogProfileAvatar.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0D3E0010A2B3C4D5E6F7011 /* MaplogProfileAvatar.swift */; };
 		D4C0A1B2C3D4E5F607080902 /* MaplogVideoPlaybackBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4C0A1B2C3D4E5F607080901 /* MaplogVideoPlaybackBar.swift */; };
 		DA6721EE38D0CF3507A10E92 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 301951B5ED69D1CB3A145958 /* SettingsView.swift */; };
 		DD1EC98CABBDFB2928455C19 /* MaplogLogoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B45817772DB8C538E6D5D16 /* MaplogLogoView.swift */; };
@@ -83,6 +84,7 @@
 		C0D3E0010A2B3C4D5E6F7002 /* CaptureRecordingShutterButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureRecordingShutterButton.swift; sourceTree = "<group>"; };
 		C0D3E0010A2B3C4D5E6F7007 /* VlogCommentsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VlogCommentsSheet.swift; sourceTree = "<group>"; };
 		C0D3E0010A2B3C4D5E6F7008 /* MaplogActivityShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MaplogActivityShareSheet.swift; sourceTree = "<group>"; };
+		C0D3E0010A2B3C4D5E6F7011 /* MaplogProfileAvatar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MaplogProfileAvatar.swift; sourceTree = "<group>"; };
 		C9D76282FF2FFEEC0209C7A9 /* Maplog.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Maplog.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CA24E71BC2577A1A15EBBAB7 /* ComposerViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComposerViewModel.swift; sourceTree = "<group>"; };
 		D0C944E2B4B65B383EDBD76C /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
@@ -298,6 +300,7 @@
 		86B65D051A5C8E1403262757 /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				C0D3E0010A2B3C4D5E6F7011 /* MaplogProfileAvatar.swift */,
 				E28BFDBD302F758E00CA97BD /* MaplogVideoPlayerLayerView.swift */,
 				D4C0A1B2C3D4E5F607080901 /* MaplogVideoPlaybackBar.swift */,
 				82FCBC8A1A1F73D5ABD6442D /* Cards.swift */,
@@ -512,6 +515,7 @@
 				E21BAE2A300BC21700B95B53 /* AuthViewModel.swift in Sources */,
 				48B52C7259727D2951382F80 /* SpotDetailView.swift in Sources */,
 				BD1E134CF66A662A18C9C841 /* TravelImageView.swift in Sources */,
+				C0D3E0010A2B3C4D5E6F7010 /* MaplogProfileAvatar.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

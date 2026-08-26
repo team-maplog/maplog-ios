@@ -13,12 +13,19 @@ struct HomeReelPage: View {
     let reel: HomeReelViewData
     let thumbnailData: Data?
     let isLoadingThumbnail: Bool
+    let authorProfileImageData: Data?
     let player: AVPlayer?
     let isLoadingPlayback: Bool
     let playbackProgress: Double
     let onPlayToggle: () -> Void
     let onSeek: (Double) -> Void
     let isPlaying: Bool
+    let isUpdatingLike: Bool
+    let isUpdatingSave: Bool
+    let onToggleLike: () -> Void
+    let onToggleSave: () -> Void
+    let onShowComments: () -> Void
+    let onShare: () -> Void
 
     @State private var isScrubbing = false
     @State private var scrubbingProgress = 0.0
@@ -244,8 +251,14 @@ struct HomeReelPage: View {
     private var reelInformation: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 6) {
-                Image(systemName: "person.crop.circle.fill")
-                    .font(.title2)
+                MaplogProfileAvatar(
+                    imageData: authorProfileImageData,
+                    nickname: reel.authorName,
+                    size: 28,
+                    fallbackBackground: .white.opacity(0.22),
+                    fallbackForeground: .white,
+                    borderColor: .white.opacity(0.48)
+                )
 
                 Text(reel.authorName)
                     .font(.headline)
@@ -274,13 +287,25 @@ struct HomeReelPage: View {
                 tint: reel.isLikedByViewer
                     ? Color.maplogLime
                     : .white,
-                accessibilityLabel: "좋아요 \(reel.likeCount)개"
+                accessibilityLabel: reel.isLikedByViewer
+                    ? "좋아요 취소, \(reel.likeCount)개"
+                    : "좋아요, \(reel.likeCount)개",
+                isLoading: isUpdatingLike,
+                action: onToggleLike
             )
 
             HomeReelMetric(
                 systemImage: "message.fill",
                 text: countText(reel.commentCount),
-                accessibilityLabel: "댓글 \(reel.commentCount)개"
+                accessibilityLabel: "댓글 \(reel.commentCount)개",
+                action: onShowComments
+            )
+
+            HomeReelMetric(
+                systemImage: "square.and.arrow.up",
+                text: "공유",
+                accessibilityLabel: "공유",
+                action: onShare
             )
 
             HomeReelMetric(
@@ -297,7 +322,11 @@ struct HomeReelPage: View {
                 tint: reel.isSavedByViewer
                     ? Color.maplogLime
                     : .white,
-                accessibilityLabel: "저장"
+                accessibilityLabel: reel.isSavedByViewer
+                    ? "저장 취소"
+                    : "저장",
+                isLoading: isUpdatingSave,
+                action: onToggleSave
             )
         }
         .frame(width: 44)
@@ -397,12 +426,37 @@ private struct HomeReelMetric: View {
     let text: String
     var tint: Color = .white
     let accessibilityLabel: String
+    var isLoading = false
+    var action: (() -> Void)?
 
     var body: some View {
+        if let action {
+            Button(action: action) {
+                metricContent
+            }
+            .buttonStyle(MaplogPressFeedbackStyle())
+            .disabled(isLoading)
+            .accessibilityLabel(accessibilityLabel)
+        } else {
+            metricContent
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(accessibilityLabel)
+        }
+    }
+
+    private var metricContent: some View {
         VStack(spacing: 3) {
-            Image(systemName: systemImage)
-                .font(.system(size: 21, weight: .medium))
-                .foregroundStyle(tint)
+            if isLoading {
+                ProgressView()
+                    .controlSize(.small)
+                    .tint(.white)
+                    .frame(width: 21, height: 21)
+            } else {
+                Image(systemName: systemImage)
+                    .font(.system(size: 21, weight: .medium))
+                    .foregroundStyle(tint)
+                    .frame(width: 21, height: 21)
+            }
 
             Text(text)
                 .font(.caption2.weight(.medium))
@@ -412,7 +466,5 @@ private struct HomeReelMetric: View {
         }
         .frame(width: 44)
         .frame(minHeight: 45)
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(accessibilityLabel)
     }
 }
