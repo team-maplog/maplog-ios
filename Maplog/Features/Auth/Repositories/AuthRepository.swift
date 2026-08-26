@@ -8,6 +8,10 @@
 import Foundation
 
 protocol AuthRepository {
+    func signUp(
+        credentials: SignUpCredentials
+    ) async throws -> AuthToken
+
     func signIn(
         credentials: SignInCredentials
     ) async throws -> AuthToken

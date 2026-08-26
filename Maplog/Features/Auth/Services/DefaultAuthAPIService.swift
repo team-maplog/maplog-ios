@@ -21,6 +21,43 @@ final class DefaultAuthAPIService: AuthAPIService {
         self.refreshTokenProvider = refreshTokenProvider
     }
 
+    func signUp(
+        request: SignUpRequestDTO
+    ) async throws -> SignUpResponseDTO {
+        let url = APIConfiguration.baseURL
+            .appendingPathComponent("api")
+            .appendingPathComponent("v1")
+            .appendingPathComponent("auth")
+            .appendingPathComponent("signup")
+
+        var urlRequest = URLRequest(url: url)
+        urlRequest.httpMethod = "POST"
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Accept")
+        urlRequest.httpBody = try JSONEncoder().encode(request)
+
+        let response: APIResponse<SignUpResponseDTO> =
+            try await apiClient.request(
+                urlRequest,
+                responseType: APIResponse<SignUpResponseDTO>.self
+            )
+
+        guard response.successFlag,
+              response.code == "SUCCESS-005"
+        else {
+            throw APIError.unexpectedResponse(
+                code: response.code,
+                message: response.message
+            )
+        }
+
+        guard let data = response.data else {
+            throw APIError.missingData
+        }
+
+        return data
+    }
+
     func signIn(request: SignInRequestDTO) async throws -> SignInResponseDTO {
         let url = APIConfiguration.baseURL
             .appendingPathComponent("api")

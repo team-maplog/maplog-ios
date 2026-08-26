@@ -49,6 +49,12 @@ private actor AuthRepositorySpy: AuthRepository {
         refreshedToken
     }
 
+    func signUp(
+        credentials: SignUpCredentials
+    ) async throws -> AuthToken {
+        refreshedToken
+    }
+
     func signOut() async throws { }
 
     func reissueToken() async throws -> AuthToken {

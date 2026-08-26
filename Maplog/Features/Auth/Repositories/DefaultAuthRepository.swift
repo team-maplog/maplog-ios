@@ -14,6 +14,22 @@ final class DefaultAuthRepository: AuthRepository {
         self.apiService = apiService
     }
 
+    func signUp(
+        credentials: SignUpCredentials
+    ) async throws -> AuthToken {
+        let request = SignUpRequestDTO(
+            email: credentials.email,
+            password: credentials.password,
+            passwordConfirmation: credentials.passwordConfirmation,
+            nickname: credentials.nickname,
+            termsAgreed: credentials.termsAgreed,
+            privacyPolicyAgreed: credentials.privacyPolicyAgreed
+        )
+
+        let response = try await apiService.signUp(request: request)
+        return makeAuthToken(from: response.token)
+    }
+
     func signIn(credentials: SignInCredentials) async throws -> AuthToken {
         let request = SignInRequestDTO(email: credentials.email, password: credentials.password)
 
