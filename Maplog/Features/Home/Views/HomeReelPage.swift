@@ -13,6 +13,7 @@ struct HomeReelPage: View {
     let reel: HomeReelViewData
     let thumbnailData: Data?
     let isLoadingThumbnail: Bool
+    let authorProfileImageData: Data?
     let player: AVPlayer?
     let isLoadingPlayback: Bool
     let playbackProgress: Double
@@ -23,6 +24,8 @@ struct HomeReelPage: View {
     let isUpdatingSave: Bool
     let onToggleLike: () -> Void
     let onToggleSave: () -> Void
+    let onShowComments: () -> Void
+    let onShare: () -> Void
 
     @State private var isScrubbing = false
     @State private var scrubbingProgress = 0.0
@@ -248,8 +251,14 @@ struct HomeReelPage: View {
     private var reelInformation: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 6) {
-                Image(systemName: "person.crop.circle.fill")
-                    .font(.title2)
+                MaplogProfileAvatar(
+                    imageData: authorProfileImageData,
+                    nickname: reel.authorName,
+                    size: 28,
+                    fallbackBackground: .white.opacity(0.22),
+                    fallbackForeground: .white,
+                    borderColor: .white.opacity(0.48)
+                )
 
                 Text(reel.authorName)
                     .font(.headline)
@@ -288,7 +297,15 @@ struct HomeReelPage: View {
             HomeReelMetric(
                 systemImage: "message.fill",
                 text: countText(reel.commentCount),
-                accessibilityLabel: "댓글 \(reel.commentCount)개"
+                accessibilityLabel: "댓글 \(reel.commentCount)개",
+                action: onShowComments
+            )
+
+            HomeReelMetric(
+                systemImage: "square.and.arrow.up",
+                text: "공유",
+                accessibilityLabel: "공유",
+                action: onShare
             )
 
             HomeReelMetric(

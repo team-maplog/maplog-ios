@@ -16,6 +16,7 @@ struct MaplogApp: App { // 앱의 조립 담당자
     private let logPublishingRepository: any LogPublishingRepository
     private let logReelRepository: any LogReelRepository
     private let logInteractionRepository: any LogInteractionRepository
+    private let logCommentRepository: any LogCommentRepository
     private let logMediaRepository: any LogMediaRepository
     private let homeReelPlaybackService: any VideoPlaybackService
     private let logRouteRepository: any LogRouteRepository
@@ -55,6 +56,12 @@ struct MaplogApp: App { // 앱의 조립 담당자
         let logInteractionRepository = DefaultLogInteractionRepository(
             apiService: logInteractionAPIService
         )
+        let logCommentAPIService = DefaultLogCommentAPIService(
+            authenticatedAPIClient: authenticatedAPIClient
+        )
+        let logCommentRepository = DefaultLogCommentRepository(
+            apiService: logCommentAPIService
+        )
         let textOverlayRenderer = VideoTextOverlayRenderer()
         let logMediaAPIService = DefaultLogMediaAPIService(apiClient: apiClient, authenticatedAPIClient: authenticatedAPIClient)
         let logMediaRepository = DefaultLogMediaRepository(apiService: logMediaAPIService)
@@ -89,6 +96,7 @@ struct MaplogApp: App { // 앱의 조립 담당자
         self.logPublishingRepository = logPublishingRepository
         self.logReelRepository = logReelRepository
         self.logInteractionRepository = logInteractionRepository
+        self.logCommentRepository = logCommentRepository
         self.logMediaRepository = logMediaRepository
         self.homeReelPlaybackService = AVVideoPlaybackService()
         self.logRouteRepository = logRouteRepository
@@ -113,6 +121,7 @@ struct MaplogApp: App { // 앱의 조립 담당자
                 logPublishingRepository: logPublishingRepository,
                 logReelRepository: logReelRepository,
                 logInteractionRepository: logInteractionRepository,
+                logCommentRepository: logCommentRepository,
                 logMediaRepository: logMediaRepository,
                 homeReelPlaybackService: homeReelPlaybackService,
                 logRouteRepository: logRouteRepository,

@@ -10,6 +10,8 @@ struct HomeView: View {
     @Environment(\.maplogLogout) private var performLogout
     @ObservedObject var viewModel: HomeViewModel // MainTabView가 만든 하나를 받아서 관찰
     @ObservedObject var mapPanelViewModel: HomeMapPanelViewModel
+    let logCommentRepository: any LogCommentRepository
+    let profileRepository: any ProfileRepository
     let topSafeAreaInset: CGFloat // 전체 화면 높이는 고정하고 홈 콘텐츠만 상태바 아래에서 시작하기 위한 값
     let onShowAllTourisms: () -> Void
     let onShowTourismDetail: (Int64) -> Void
@@ -30,6 +32,8 @@ struct HomeView: View {
     @State private var homeScrollPosition: String? = "home-intro"
     @State private var selectedPanel: HomePanel = .reels
     @State private var videoPreviewRequest: HomeMapRoutePlaybackRequest?
+    @State private var commentsReel: HomeReelViewData?
+    @State private var shareReel: HomeReelViewData?
 
     private var reelInteractionErrorPresented: Binding<Bool> {
         Binding(
@@ -302,6 +306,24 @@ struct HomeView: View {
             .presentationDetents([.height(384)])
             .presentationDragIndicator(.hidden)
         }
+        .sheet(item: $commentsReel) { reel in
+            LogCommentsFeatureSheet(
+                logID: reel.id,
+                commentRepository: logCommentRepository,
+                profileRepository: profileRepository,
+                onCommentCountChange: { delta in
+                    viewModel.adjustCommentCount(
+                        for: reel.id,
+                        by: delta
+                    )
+                }
+            )
+            .presentationDetents([.fraction(0.62), .large])
+            .presentationDragIndicator(.hidden)
+        }
+        .sheet(item: $shareReel) { reel in
+            HomeReelShareSheet(reel: reel)
+        }
         .alert(
             "작업을 완료하지 못했어요",
             isPresented: reelInteractionErrorPresented
@@ -510,6 +532,7 @@ struct HomeView: View {
                 reel: reel,
                 thumbnailData: viewModel.thumbnailData(for: reel.id),
                 isLoadingThumbnail: viewModel.isLoadingThumbnail(for: reel.id),
+                authorProfileImageData: viewModel.authorProfileImageData(for: reel.id),
                 player: viewModel.player(for: reel.id),
                 isLoadingPlayback: viewModel.isLoadingPlayback(for: reel.id),
                 playbackProgress: viewModel.playbackProgress(for: reel.id),
@@ -533,16 +556,26 @@ struct HomeView: View {
                     Task {
                         await viewModel.toggleSaved(for: reel.id)
                     }
+                },
+                onShowComments: {
+                    commentsReel = reel
+                },
+                onShare: {
+                    shareReel = reel
                 }
             )
             .task(id: reel.id) {
                 await viewModel.loadThumbnail(for: reel.id)
+            }
+            .task(id: reel.authorProfileImageURL) {
+                await viewModel.loadAuthorProfileImage(for: reel)
             }
         } else {
             HomeReelPage(
                 reel: reel,
                 thumbnailData: viewModel.thumbnailData(for: reel.id),
                 isLoadingThumbnail: viewModel.isLoadingThumbnail(for: reel.id),
+                authorProfileImageData: viewModel.authorProfileImageData(for: reel.id),
                 player: viewModel.player(for: reel.id),
                 isLoadingPlayback: viewModel.isLoadingPlayback(for: reel.id),
                 playbackProgress: viewModel.playbackProgress(for: reel.id),
@@ -566,10 +599,19 @@ struct HomeView: View {
                     Task {
                         await viewModel.toggleSaved(for: reel.id)
                     }
+                },
+                onShowComments: {
+                    commentsReel = reel
+                },
+                onShare: {
+                    shareReel = reel
                 }
             )
             .task(id: reel.id) {
                 await viewModel.loadThumbnail(for: reel.id)
+            }
+            .task(id: reel.authorProfileImageURL) {
+                await viewModel.loadAuthorProfileImage(for: reel)
             }
                 .scrollTransition(.interactive, axis: .vertical) {
                     content,

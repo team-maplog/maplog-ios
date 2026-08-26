@@ -60,6 +60,8 @@ final class HomeViewModel: ObservableObject {
     @Published private(set) var reelState: HomeReelSectionState = .idle
     @Published private var thumbnailDataByReelID: [Int64: Data] = [:] // [로그 ID: 해당 썸네일 이미지 원본 Data]
     @Published private var thumbnailLoadingIDs: Set<Int64> = [] //현재 네트워크 요청 중인 로그 ID 모음
+    @Published private var authorProfileImageDataByReelID: [Int64: Data] = [:]
+    @Published private var authorProfileImageLoadingIDs: Set<Int64> = []
     @Published private(set) var activePlaybackReelID: Int64? // 현재 재생 대상으로 선택된 릴스
     @Published private(set) var playbackLoadingReelID: Int64? // 영상을 다운로드 중인 릴스
     @Published private(set) var playbackFailedReelID: Int64? // 영상 다운로드·재생 준비에 실패한 릴스
@@ -73,6 +75,7 @@ final class HomeViewModel: ObservableObject {
     private let logReelRepository: any LogReelRepository
     private let logInteractionRepository: any LogInteractionRepository
     private let logMediaRepository: any LogMediaRepository
+    private let profileRepository: any ProfileRepository
     private let playbackService: any VideoPlaybackService
     private var failedInteraction: FailedInteraction?
 
@@ -86,12 +89,14 @@ final class HomeViewModel: ObservableObject {
         logReelRepository: any LogReelRepository,
         logInteractionRepository: any LogInteractionRepository,
         logMediaRepository: any LogMediaRepository,
+        profileRepository: any ProfileRepository,
         playbackService: any VideoPlaybackService
     ) { // HomeViewModel을 만들 때 Repository를 반드시 전달받게 함
         self.tourismRepository = tourismRepository
         self.logReelRepository = logReelRepository
         self.logInteractionRepository = logInteractionRepository
         self.logMediaRepository = logMediaRepository
+        self.profileRepository = profileRepository
         self.playbackService = playbackService
     }
 
@@ -153,6 +158,44 @@ final class HomeViewModel: ObservableObject {
 
     func isLoadingThumbnail(for reelID: Int64) -> Bool {
         thumbnailLoadingIDs.contains(reelID)
+    }
+
+    func authorProfileImageData(
+        for reelID: Int64
+    ) -> Data? {
+        authorProfileImageDataByReelID[reelID]
+    }
+
+    func loadAuthorProfileImage(
+        for reel: HomeReelViewData
+    ) async {
+        guard let profileImageURL = reel.authorProfileImageURL,
+              authorProfileImageDataByReelID[reel.id] == nil,
+              !authorProfileImageLoadingIDs.contains(reel.id)
+        else {
+            return
+        }
+
+        authorProfileImageLoadingIDs.insert(reel.id)
+
+        defer {
+            authorProfileImageLoadingIDs.remove(reel.id)
+        }
+
+        do {
+            let data = try await profileRepository.fetchImageData(
+                from: profileImageURL
+            )
+
+            guard !Task.isCancelled else {
+                return
+            }
+
+            authorProfileImageDataByReelID[reel.id] = data
+        } catch {
+            // 프로필 사진 실패는 릴스 피드 실패가 아니므로 이니셜 fallback을 유지한다.
+            return
+        }
     }
 
     func loadThumbnail(for reelID: Int64) async {
@@ -430,6 +473,17 @@ final class HomeViewModel: ObservableObject {
     func dismissInteractionError() {
         interactionError = nil
         failedInteraction = nil
+    }
+
+    func adjustCommentCount(
+        for reelID: Int64,
+        by delta: Int64
+    ) {
+        replaceReel(withID: reelID) { reel in
+            reel.replacingCommentCount(
+                max(0, reel.commentCount + delta)
+            )
+        }
     }
 
     // 실제 새로고침 함수
@@ -728,6 +782,7 @@ final class HomeViewModel: ObservableObject {
         HomeReelViewData(
             id: reel.id,
             authorName: reel.author.nickname,
+            authorProfileImageURL: reel.author.profileImageURL,
             caption: reel.caption,
             address: reel.address,
             thumbnailURL: reel.thumbnailURL,

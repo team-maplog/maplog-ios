@@ -10,6 +10,7 @@ import Foundation
 struct HomeReelViewData: Identifiable, Equatable {
     let id: Int64
     let authorName: String
+    let authorProfileImageURL: URL?
     let caption: String
     let address: String
 
@@ -33,6 +34,7 @@ struct HomeReelViewData: Identifiable, Equatable {
         HomeReelViewData(
             id: id,
             authorName: authorName,
+            authorProfileImageURL: authorProfileImageURL,
             caption: caption,
             address: address,
             thumbnailURL: thumbnailURL,
@@ -53,6 +55,28 @@ struct HomeReelViewData: Identifiable, Equatable {
         HomeReelViewData(
             id: id,
             authorName: authorName,
+            authorProfileImageURL: authorProfileImageURL,
+            caption: caption,
+            address: address,
+            thumbnailURL: thumbnailURL,
+            playbackURL: playbackURL,
+            publishedAt: publishedAt,
+            viewCount: viewCount,
+            likeCount: likeCount,
+            commentCount: commentCount,
+            isLikedByViewer: isLikedByViewer,
+            isSavedByViewer: isSavedByViewer,
+            clips: clips
+        )
+    }
+
+    func replacingCommentCount(
+        _ commentCount: Int64
+    ) -> HomeReelViewData {
+        HomeReelViewData(
+            id: id,
+            authorName: authorName,
+            authorProfileImageURL: authorProfileImageURL,
             caption: caption,
             address: address,
             thumbnailURL: thumbnailURL,

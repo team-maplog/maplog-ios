@@ -1,0 +1,205 @@
+import XCTest
+@testable import Maplog
+
+final class LogCommentRepositoryTests: XCTestCase {
+    func testFetchCommentsMapsTopLevelParentIDToNil() async throws {
+        let response = makeCommentResponse(parentCommentID: 0)
+        let apiService = LogCommentAPIServiceStub(
+            comments: [response],
+            createResponse: response,
+            updateResponse: response,
+            likeResponse: LogCommentLikeStateResponseDTO(
+                commentID: response.commentID,
+                liked: true
+            )
+        )
+        let repository = DefaultLogCommentRepository(apiService: apiService)
+
+        let comments = try await repository.fetchComments(logID: 100)
+
+        XCTAssertEqual(apiService.fetchRequestedLogID, 100)
+        XCTAssertEqual(comments.count, 1)
+        XCTAssertNil(comments[0].parentCommentID)
+        XCTAssertEqual(comments[0].author.nickname, "maploger")
+        XCTAssertEqual(comments[0].likeCount, 3)
+    }
+
+    func testCreateCommentForwardsDraftAndMapsResponse() async throws {
+        let response = makeCommentResponse(parentCommentID: 11)
+        let apiService = LogCommentAPIServiceStub(
+            comments: [],
+            createResponse: response,
+            updateResponse: response,
+            likeResponse: LogCommentLikeStateResponseDTO(
+                commentID: response.commentID,
+                liked: false
+            )
+        )
+        let repository = DefaultLogCommentRepository(apiService: apiService)
+
+        let comment = try await repository.createComment(
+            logID: 100,
+            draft: LogCommentDraft(
+                content: "좋은 장소네요",
+                parentCommentID: 11
+            )
+        )
+
+        XCTAssertEqual(apiService.createRequest?.logID, 100)
+        XCTAssertEqual(apiService.createRequest?.request.content, "좋은 장소네요")
+        XCTAssertEqual(apiService.createRequest?.request.parentCommentID, 11)
+        XCTAssertEqual(comment.parentCommentID, 11)
+    }
+
+    func testUpdateCommentRejectsResponseForDifferentComment() async {
+        let response = makeCommentResponse(commentID: 999)
+        let apiService = LogCommentAPIServiceStub(
+            comments: [],
+            createResponse: response,
+            updateResponse: response,
+            likeResponse: LogCommentLikeStateResponseDTO(
+                commentID: 999,
+                liked: true
+            )
+        )
+        let repository = DefaultLogCommentRepository(apiService: apiService)
+
+        do {
+            _ = try await repository.updateComment(
+                commentID: 100,
+                content: "수정한 댓글"
+            )
+            XCTFail("다른 commentId 응답을 성공으로 처리하면 안 됩니다.")
+        } catch let error as APIError {
+            guard case .invalidResponse = error else {
+                return XCTFail("예상하지 못한 APIError: \(error)")
+            }
+        } catch {
+            XCTFail("예상하지 못한 오류: \(error)")
+        }
+    }
+
+    func testSetLikeForwardsRequestedStateAndMapsResponse() async throws {
+        let response = makeCommentResponse()
+        let apiService = LogCommentAPIServiceStub(
+            comments: [],
+            createResponse: response,
+            updateResponse: response,
+            likeResponse: LogCommentLikeStateResponseDTO(
+                commentID: 31,
+                liked: true
+            )
+        )
+        let repository = DefaultLogCommentRepository(apiService: apiService)
+
+        let result = try await repository.setLike(
+            commentID: 31,
+            isLiked: true
+        )
+
+        XCTAssertEqual(apiService.likeRequest?.commentID, 31)
+        XCTAssertEqual(apiService.likeRequest?.isLiked, true)
+        XCTAssertEqual(
+            result,
+            LogCommentLikeState(commentID: 31, isLiked: true)
+        )
+    }
+
+    private func makeCommentResponse(
+        commentID: Int64 = 31,
+        parentCommentID: Int64? = nil
+    ) -> LogCommentResponseDTO {
+        LogCommentResponseDTO(
+            commentID: commentID,
+            author: LogCommentAuthorDTO(
+                userID: UUID(uuidString: "3FA85F64-5717-4562-B3FC-2C963F66AFA6")!,
+                nickname: "maploger",
+                profileImageURL: nil
+            ),
+            parentCommentID: parentCommentID,
+            content: "좋은 장소네요",
+            deleted: false,
+            createdAt: "2026-08-25T16:39:17.005Z",
+            updatedAt: "2026-08-25T16:39:17.005Z",
+            likeCount: 3,
+            likedByViewer: false
+        )
+    }
+}
+
+private final class LogCommentAPIServiceStub: LogCommentAPIService {
+    struct CreateRequest {
+        let logID: Int64
+        let request: CreateLogCommentRequestDTO
+    }
+
+    struct UpdateRequest {
+        let commentID: Int64
+        let request: UpdateLogCommentRequestDTO
+    }
+
+    struct LikeRequest {
+        let commentID: Int64
+        let isLiked: Bool
+    }
+
+    private let comments: [LogCommentResponseDTO]
+    private let createResponse: LogCommentResponseDTO
+    private let updateResponse: LogCommentResponseDTO
+    private let likeResponse: LogCommentLikeStateResponseDTO
+
+    private(set) var fetchRequestedLogID: Int64?
+    private(set) var createRequest: CreateRequest?
+    private(set) var updateRequest: UpdateRequest?
+    private(set) var deletedCommentID: Int64?
+    private(set) var likeRequest: LikeRequest?
+
+    init(
+        comments: [LogCommentResponseDTO],
+        createResponse: LogCommentResponseDTO,
+        updateResponse: LogCommentResponseDTO,
+        likeResponse: LogCommentLikeStateResponseDTO
+    ) {
+        self.comments = comments
+        self.createResponse = createResponse
+        self.updateResponse = updateResponse
+        self.likeResponse = likeResponse
+    }
+
+    func fetchComments(
+        logID: Int64
+    ) async throws -> [LogCommentResponseDTO] {
+        fetchRequestedLogID = logID
+        return comments
+    }
+
+    func createComment(
+        logID: Int64,
+        request: CreateLogCommentRequestDTO
+    ) async throws -> LogCommentResponseDTO {
+        createRequest = CreateRequest(logID: logID, request: request)
+        return createResponse
+    }
+
+    func updateComment(
+        commentID: Int64,
+        request: UpdateLogCommentRequestDTO
+    ) async throws -> LogCommentResponseDTO {
+        updateRequest = UpdateRequest(commentID: commentID, request: request)
+        return updateResponse
+    }
+
+    func deleteComment(
+        commentID: Int64
+    ) async throws {
+        deletedCommentID = commentID
+    }
+
+    func setLike(
+        commentID: Int64,
+        isLiked: Bool
+    ) async throws -> LogCommentLikeStateResponseDTO {
+        likeRequest = LikeRequest(commentID: commentID, isLiked: isLiked)
+        return likeResponse
+    }
+}

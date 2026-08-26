@@ -98,6 +98,7 @@ struct RootView: View {
     private let logPublishingRepository: any LogPublishingRepository
     private let logReelRepository: any LogReelRepository
     private let logInteractionRepository: any LogInteractionRepository
+    private let logCommentRepository: any LogCommentRepository
     private let logMediaRepository: any LogMediaRepository
     private let homeReelPlaybackService: any VideoPlaybackService
     private let logRouteRepository: any LogRouteRepository
@@ -119,6 +120,7 @@ struct RootView: View {
         logPublishingRepository: any LogPublishingRepository,
         logReelRepository: any LogReelRepository,
         logInteractionRepository: any LogInteractionRepository,
+        logCommentRepository: any LogCommentRepository,
         logMediaRepository: any LogMediaRepository,
         homeReelPlaybackService: any VideoPlaybackService,
         logRouteRepository: any LogRouteRepository,
@@ -139,6 +141,7 @@ struct RootView: View {
         self.logPublishingRepository = logPublishingRepository
         self.logReelRepository = logReelRepository
         self.logInteractionRepository = logInteractionRepository
+        self.logCommentRepository = logCommentRepository
         self.logMediaRepository = logMediaRepository
         self.homeReelPlaybackService = homeReelPlaybackService
         self.logRouteRepository = logRouteRepository
@@ -191,6 +194,7 @@ struct RootView: View {
                     logPublishingRepository: logPublishingRepository,
                     logReelRepository: logReelRepository,
                     logInteractionRepository: logInteractionRepository,
+                    logCommentRepository: logCommentRepository,
                     logMediaRepository: logMediaRepository,
                     homeReelPlaybackService: homeReelPlaybackService,
                     logRouteRepository: logRouteRepository,
