@@ -25,6 +25,25 @@ final class DefaultLogReelRepository: LogReelRepository {
             size: size
         )
 
+        return try makePage(from: pageDTO)
+    }
+
+    func fetchSavedLogs(
+        cursor: String?,
+        size: Int
+    ) async throws -> LogReelPage {
+        let pageDTO = try await apiService.fetchSavedLogs(
+            cursor: cursor,
+            size: size
+        )
+
+        return try makePage(from: pageDTO)
+    }
+
+    private func makePage(
+        from pageDTO: LogReelPageDTO
+    ) throws -> LogReelPage {
+
         let reels = try pageDTO.content.map(
             LogResponseMapper.makeLogReel
         )
@@ -35,5 +54,4 @@ final class DefaultLogReelRepository: LogReelRepository {
             nextCursor: pageDTO.nextCursor
         )
     }
-
 }

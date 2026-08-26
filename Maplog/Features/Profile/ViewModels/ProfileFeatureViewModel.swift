@@ -7,6 +7,13 @@ enum ProfileScreenState: Equatable {
     case failed(ErrorPresentation)
 }
 
+enum ProfileLogListState: Equatable {
+    case idle
+    case initialLoading
+    case content
+    case failed(ErrorPresentation)
+}
+
 struct ProfileHeaderViewData: Equatable {
     let id: UUID
     let nickname: String
@@ -29,21 +36,30 @@ final class ProfileTabViewModel: ObservableObject {
     @Published private(set) var state: ProfileScreenState = .idle
     @Published private(set) var profile: ProfileHeaderViewData?
     @Published private(set) var logs: [ProfileLogCardViewData] = []
+    @Published private(set) var savedLogsState: ProfileLogListState = .idle
+    @Published private(set) var savedLogs: [ProfileLogCardViewData] = []
     @Published private(set) var avatarImageData: Data?
     @Published private(set) var thumbnailDataByLogID: [Int64: Data] = [:]
     @Published private(set) var thumbnailLoadingIDs: Set<Int64> = []
     @Published private(set) var isLoadingNextPage = false
     @Published private(set) var nextPageError: ErrorPresentation?
     @Published private(set) var hasNextPage = false
+    @Published private(set) var isLoadingNextSavedLogsPage = false
+    @Published private(set) var nextSavedLogsPageError: ErrorPresentation?
+    @Published private(set) var hasNextSavedLogsPage = false
 
     private let profileRepository: any ProfileRepository
+    private let logReelRepository: any LogReelRepository
     private let pageSize = 20
     private var nextCursor: String?
+    private var nextSavedLogsCursor: String?
 
     init(
-        profileRepository: any ProfileRepository
+        profileRepository: any ProfileRepository,
+        logReelRepository: any LogReelRepository
     ) {
         self.profileRepository = profileRepository
+        self.logReelRepository = logReelRepository
     }
 
     func loadIfNeeded() async {
@@ -190,6 +206,127 @@ final class ProfileTabViewModel: ObservableObject {
         await loadNextPage()
     }
 
+    func loadSavedLogsIfNeeded() async {
+        guard savedLogsState == .idle else {
+            return
+        }
+
+        await reloadSavedLogs()
+    }
+
+    func reloadSavedLogs() async {
+        guard savedLogsState != .initialLoading else {
+            return
+        }
+
+        savedLogsState = .initialLoading
+        savedLogs = []
+        nextSavedLogsCursor = nil
+        hasNextSavedLogsPage = false
+        isLoadingNextSavedLogsPage = false
+        nextSavedLogsPageError = nil
+
+        do {
+            let page = try await logReelRepository.fetchSavedLogs(
+                cursor: nil,
+                size: pageSize
+            )
+
+            guard !Task.isCancelled else {
+                return
+            }
+
+            savedLogs = page.reels.map(makeLogCardViewData)
+            nextSavedLogsCursor = page.nextCursor
+            hasNextSavedLogsPage = page.hasNext
+            savedLogsState = .content
+
+            loadThumbnails(for: page.reels)
+        } catch is CancellationError {
+            return
+        } catch {
+            guard !Task.isCancelled else {
+                return
+            }
+
+            savedLogsState = .failed(
+                ProfileErrorPolicy.presentation(for: error)
+            )
+        }
+    }
+
+    func retryInitialSavedLogsLoad() async {
+        guard case .failed = savedLogsState else {
+            return
+        }
+
+        savedLogsState = .idle
+        await reloadSavedLogs()
+    }
+
+    func loadNextSavedLogsPage() async {
+        guard savedLogsState == .content,
+              hasNextSavedLogsPage,
+              !isLoadingNextSavedLogsPage,
+              let nextSavedLogsCursor
+        else {
+            return
+        }
+
+        isLoadingNextSavedLogsPage = true
+        nextSavedLogsPageError = nil
+
+        defer {
+            isLoadingNextSavedLogsPage = false
+        }
+
+        do {
+            let page = try await logReelRepository.fetchSavedLogs(
+                cursor: nextSavedLogsCursor,
+                size: pageSize
+            )
+
+            guard !Task.isCancelled else {
+                return
+            }
+
+            savedLogs.append(
+                contentsOf: page.reels.map(makeLogCardViewData)
+            )
+            self.nextSavedLogsCursor = page.nextCursor
+            hasNextSavedLogsPage = page.hasNext
+
+            loadThumbnails(for: page.reels)
+        } catch is CancellationError {
+            return
+        } catch {
+            guard !Task.isCancelled else {
+                return
+            }
+
+            if ProfileErrorPolicy.isCursorInvalid(error) {
+                await reloadSavedLogs()
+                return
+            }
+
+            nextSavedLogsPageError = ProfileErrorPolicy.presentation(for: error)
+        }
+    }
+
+    func retryNextSavedLogsPage() async {
+        guard nextSavedLogsPageError != nil else {
+            return
+        }
+
+        await loadNextSavedLogsPage()
+    }
+
+    func removeSavedLog(
+        withID logID: Int64
+    ) {
+        savedLogs.removeAll { $0.id == logID }
+    }
+
     func thumbnailData(
         for logID: Int64
     ) -> Data? {
@@ -241,6 +378,24 @@ final class ProfileTabViewModel: ObservableObject {
         )
     }
 
+    private func makeLogCardViewData(
+        from log: LogReel
+    ) -> ProfileLogCardViewData {
+        let videoDurationMillis = log.clips.map(\.endTimeMillis).max() ?? 0
+
+        return ProfileLogCardViewData(
+            id: log.id,
+            addressText: displayAddress(log.address),
+            durationText: durationText(
+                milliseconds: videoDurationMillis
+            ),
+            viewCountText: countText(log.viewCount),
+            createdAtText: createdAtText(
+                from: log.publishedAt
+            )
+        )
+    }
+
     private func loadImages(
         for profile: MyProfile,
         logs: [ProfileLog]
@@ -284,40 +439,68 @@ final class ProfileTabViewModel: ObservableObject {
         for logs: [ProfileLog]
     ) {
         for log in logs {
-            guard let thumbnailURL = log.thumbnailURL,
-                  thumbnailDataByLogID[log.id] == nil,
-                  !thumbnailLoadingIDs.contains(log.id)
-            else {
-                continue
+            loadThumbnail(
+                for: log.id,
+                from: log.thumbnailURL
+            )
+        }
+    }
+
+    private func loadThumbnails(
+        for logs: [LogReel]
+    ) {
+        for log in logs {
+            loadThumbnail(
+                for: log.id,
+                from: log.thumbnailURL
+            )
+        }
+    }
+
+    private func loadThumbnail(
+        for logID: Int64,
+        from thumbnailURL: URL?
+    ) {
+        guard let thumbnailURL,
+              thumbnailDataByLogID[logID] == nil,
+              !thumbnailLoadingIDs.contains(logID)
+        else {
+            return
+        }
+
+        thumbnailLoadingIDs.insert(logID)
+
+        Task { [weak self] in
+            guard let self else {
+                return
             }
 
-            thumbnailLoadingIDs.insert(log.id)
+            defer {
+                self.thumbnailLoadingIDs.remove(logID)
+            }
 
-            Task { [weak self] in
-                guard let self else {
+            do {
+                let data = try await self.profileRepository
+                    .fetchImageData(from: thumbnailURL)
+
+                guard !Task.isCancelled,
+                      self.containsVisibleLog(withID: logID)
+                else {
                     return
                 }
 
-                defer {
-                    self.thumbnailLoadingIDs.remove(log.id)
-                }
-
-                do {
-                    let data = try await self.profileRepository
-                        .fetchImageData(from: thumbnailURL)
-
-                    guard !Task.isCancelled,
-                          self.logs.contains(where: { $0.id == log.id })
-                    else {
-                        return
-                    }
-
-                    self.thumbnailDataByLogID[log.id] = data
-                } catch {
-                    return
-                }
+                self.thumbnailDataByLogID[logID] = data
+            } catch {
+                return
             }
         }
+    }
+
+    private func containsVisibleLog(
+        withID logID: Int64
+    ) -> Bool {
+        logs.contains(where: { $0.id == logID })
+            || savedLogs.contains(where: { $0.id == logID })
     }
 
     private func displayAddress(

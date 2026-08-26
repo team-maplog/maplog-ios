@@ -1,6 +1,20 @@
 import SwiftUI
 import UIKit
 
+private enum ProfileLogTab: CaseIterable {
+    case myLogs
+    case savedLogs
+
+    var title: String {
+        switch self {
+        case .myLogs:
+            return "내 맵로그"
+        case .savedLogs:
+            return "저장됨"
+        }
+    }
+}
+
 struct ProfileTabView: View {
     @Environment(\.maplogLogout) private var performLogout
     @Environment(\.maplogSelectTab) private var selectTab
@@ -10,6 +24,7 @@ struct ProfileTabView: View {
     let logMediaRepository: any LogMediaRepository
     let playbackService: any VideoPlaybackService
     @ObservedObject var viewModel: ProfileTabViewModel
+    @State private var selectedLogTab: ProfileLogTab = .myLogs
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -25,8 +40,15 @@ struct ProfileTabView: View {
         .task {
             await viewModel.loadIfNeeded()
         }
+        .task(id: selectedLogTab) {
+            guard selectedLogTab == .savedLogs else {
+                return
+            }
+
+            await viewModel.loadSavedLogsIfNeeded()
+        }
         .refreshable {
-            await viewModel.reload()
+            await refreshSelectedLogTab()
         }
     }
 
@@ -81,21 +103,13 @@ struct ProfileTabView: View {
                     onProfileSaved: reloadProfile
                 )
 
-                ProfileLogSection(
-                    logs: viewModel.logs,
-                    thumbnailData: viewModel.thumbnailData(for:),
-                    isLoadingThumbnail: viewModel.isLoadingThumbnail(for:),
-                    logDetailRepository: logDetailRepository,
-                    logMediaRepository: logMediaRepository,
-                    playbackService: playbackService,
-                    hasNextPage: viewModel.hasNextPage,
-                    isLoadingNextPage: viewModel.isLoadingNextPage,
-                    nextPageError: viewModel.nextPageError,
-                    onLoadNextPage: loadNextPage,
-                    onRetryNextPage: retryNextPage,
-                    onSelectCapture: selectCaptureTab,
-                    onLogRemoved: reloadProfile
+                ProfileLogTabPicker(
+                    selection: $selectedLogTab,
+                    myLogsCount: viewModel.logs.count,
+                    savedLogsCount: viewModel.savedLogs.count
                 )
+
+                selectedLogContent
             }
 
         case .failed(let presentation):
@@ -129,8 +143,226 @@ struct ProfileTabView: View {
         await viewModel.reload()
     }
 
+    private func refreshSelectedLogTab() async {
+        switch selectedLogTab {
+        case .myLogs:
+            await viewModel.reload()
+        case .savedLogs:
+            await viewModel.reloadSavedLogs()
+        }
+    }
+
     private func selectCaptureTab() {
         selectTab(.capture)
+    }
+
+    @ViewBuilder
+    private var selectedLogContent: some View {
+        switch selectedLogTab {
+        case .myLogs:
+            ProfileLogSection(
+                logs: viewModel.logs,
+                thumbnailData: viewModel.thumbnailData(for:),
+                isLoadingThumbnail: viewModel.isLoadingThumbnail(for:),
+                logDetailRepository: logDetailRepository,
+                logMediaRepository: logMediaRepository,
+                playbackService: playbackService,
+                hasNextPage: viewModel.hasNextPage,
+                isLoadingNextPage: viewModel.isLoadingNextPage,
+                nextPageError: viewModel.nextPageError,
+                onLoadNextPage: loadNextPage,
+                onRetryNextPage: retryNextPage,
+                allowsManagement: true,
+                emptyConfiguration: ProfileLogEmptyConfiguration(
+                    iconName: "map.circle.fill",
+                    title: "아직 공개한 맵로그가 없어요",
+                    message: "촬영한 여행 기록을 완성하면 여기에 모여요.",
+                    actionTitle: "새 맵로그 촬영하기"
+                ),
+                onSelectCapture: selectCaptureTab,
+                onLogUnavailable: { _ in
+                    await viewModel.reload()
+                }
+            )
+
+        case .savedLogs:
+            switch viewModel.savedLogsState {
+            case .idle, .initialLoading:
+                ProfileSavedLogsLoadingState()
+
+            case .content:
+                ProfileLogSection(
+                    logs: viewModel.savedLogs,
+                    thumbnailData: viewModel.thumbnailData(for:),
+                    isLoadingThumbnail: viewModel.isLoadingThumbnail(for:),
+                    logDetailRepository: logDetailRepository,
+                    logMediaRepository: logMediaRepository,
+                    playbackService: playbackService,
+                    hasNextPage: viewModel.hasNextSavedLogsPage,
+                    isLoadingNextPage: viewModel.isLoadingNextSavedLogsPage,
+                    nextPageError: viewModel.nextSavedLogsPageError,
+                    onLoadNextPage: loadNextSavedLogsPage,
+                    onRetryNextPage: retryNextSavedLogsPage,
+                    allowsManagement: false,
+                    emptyConfiguration: ProfileLogEmptyConfiguration(
+                        iconName: "bookmark",
+                        title: "저장한 맵로그가 없어요",
+                        message: "마음에 드는 여행 영상을 저장하면 여기에 모여요.",
+                        actionTitle: nil
+                    ),
+                    onSelectCapture: {},
+                    onLogUnavailable: { logID in
+                        viewModel.removeSavedLog(withID: logID)
+                    }
+                )
+
+            case .failed(let presentation):
+                ProfileSavedLogsFailureState(
+                    presentation: presentation,
+                    onRetry: retryInitialSavedLogsLoad,
+                    onSignIn: performLogout
+                )
+            }
+        }
+    }
+
+    private func loadNextSavedLogsPage() {
+        Task {
+            await viewModel.loadNextSavedLogsPage()
+        }
+    }
+
+    private func retryNextSavedLogsPage() {
+        Task {
+            await viewModel.retryNextSavedLogsPage()
+        }
+    }
+
+    private func retryInitialSavedLogsLoad() {
+        Task {
+            await viewModel.retryInitialSavedLogsLoad()
+        }
+    }
+}
+
+private struct ProfileLogTabPicker: View {
+    @Binding var selection: ProfileLogTab
+    let myLogsCount: Int
+    let savedLogsCount: Int
+
+    var body: some View {
+        HStack(spacing: 0) {
+            tabButton(
+                for: .myLogs,
+                count: myLogsCount
+            )
+            tabButton(
+                for: .savedLogs,
+                count: savedLogsCount
+            )
+        }
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(Color.maplogLine)
+                .frame(height: 1)
+        }
+    }
+
+    private func tabButton(
+        for tab: ProfileLogTab,
+        count: Int
+    ) -> some View {
+        Button {
+            selection = tab
+        } label: {
+            VStack(spacing: 8) {
+                HStack(spacing: 5) {
+                    Text(tab.title)
+                        .font(.subheadline.weight(
+                            selection == tab ? .bold : .medium
+                        ))
+
+                    Text("\(count)")
+                        .font(.caption.weight(.semibold))
+                }
+                .foregroundStyle(
+                    selection == tab
+                        ? Color.maplogInk
+                        : Color.maplogMuted
+                )
+
+                Rectangle()
+                    .fill(
+                        selection == tab
+                            ? Color.maplogLime
+                            : Color.clear
+                    )
+                    .frame(height: 3)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(minHeight: MaplogSize.minimumTapTarget)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(selection == tab ? .isSelected : [])
+        .accessibilityLabel("\(tab.title) \(count)개")
+    }
+}
+
+private struct ProfileSavedLogsLoadingState: View {
+    var body: some View {
+        VStack(spacing: 12) {
+            ProgressView()
+                .tint(Color.maplogOlive)
+
+            Text("저장한 맵로그를 불러오는 중이에요")
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(Color.maplogMuted)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 64)
+    }
+}
+
+private struct ProfileSavedLogsFailureState: View {
+    let presentation: ErrorPresentation
+    let onRetry: () -> Void
+    let onSignIn: () -> Void
+
+    var body: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "bookmark.slash")
+                .font(.system(size: 30, weight: .semibold))
+                .foregroundStyle(Color.maplogMuted)
+
+            Text(presentation.message)
+                .font(.subheadline)
+                .foregroundStyle(Color.maplogMuted)
+                .multilineTextAlignment(.center)
+
+            switch presentation.recoveryAction {
+            case .retry:
+                Button("다시 시도", action: onRetry)
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(Color.maplogInk)
+                    .padding(.horizontal, 18)
+                    .frame(height: 40)
+                    .background(Color.maplogLime, in: Capsule())
+
+            case .signIn:
+                Button("로그인으로 이동", action: onSignIn)
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(Color.maplogInk)
+                    .padding(.horizontal, 18)
+                    .frame(height: 40)
+                    .background(Color.maplogLime, in: Capsule())
+
+            case .none:
+                EmptyView()
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 48)
     }
 }
 

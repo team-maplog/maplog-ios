@@ -20,9 +20,35 @@ final class DefaultLogReelAPIService: LogReelAPIService {
         cursor: String?,
         size: Int
     ) async throws -> LogReelPageDTO {
+        try await fetchLogPage(
+            pathComponent: "reels",
+            cursor: cursor,
+            size: size,
+            listName: "릴스"
+        )
+    }
+
+    func fetchSavedLogs(
+        cursor: String?,
+        size: Int
+    ) async throws -> LogReelPageDTO {
+        try await fetchLogPage(
+            pathComponent: "saves",
+            cursor: cursor,
+            size: size,
+            listName: "저장한 로그"
+        )
+    }
+
+    private func fetchLogPage(
+        pathComponent: String,
+        cursor: String?,
+        size: Int,
+        listName: String
+    ) async throws -> LogReelPageDTO {
         guard (1...100).contains(size) else {
             throw APIError.invalidRequest(
-                reason: "릴스 목록 크기는 1부터 100 사이여야 합니다."
+                reason: "\(listName) 목록 크기는 1부터 100 사이여야 합니다."
             )
         }
 
@@ -30,7 +56,7 @@ final class DefaultLogReelAPIService: LogReelAPIService {
             .appendingPathComponent("api")
             .appendingPathComponent("v1")
             .appendingPathComponent("logs")
-            .appendingPathComponent("reels")
+            .appendingPathComponent(pathComponent)
 
         var queryItems = [
             URLQueryItem(
