@@ -145,8 +145,9 @@ struct OnboardingView: View {
                         }
 
                         HStack(spacing: MaplogSpacing.xSmall) {
-                            NavigationLink(destination: SignupView(
-                                authSessionStore: authSessionStore
+                            NavigationLink(destination: SignUpView(
+                                authRepository: authRepository,
+                                authSession: authSessionStore
                             )) {
                                 Text("회원가입")
                             }
