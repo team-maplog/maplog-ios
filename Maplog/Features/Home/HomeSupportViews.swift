@@ -3,6 +3,17 @@ import SwiftUI
 struct LocationPermissionView: View {
     let onAllow: () -> Void
     let onSkip: () -> Void
+    let isRequesting: Bool
+
+    init(
+        onAllow: @escaping () -> Void,
+        onSkip: @escaping () -> Void,
+        isRequesting: Bool = false
+    ) {
+        self.onAllow = onAllow
+        self.onSkip = onSkip
+        self.isRequesting = isRequesting
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -18,7 +29,8 @@ struct LocationPermissionView: View {
             LocationPermissionActions(
                 primaryTitle: "위치 권한 허용",
                 onAllow: onAllow,
-                onSkip: onSkip
+                onSkip: onSkip,
+                isRequesting: isRequesting
             )
             .padding(.bottom, 26)
         }
@@ -81,7 +93,7 @@ private struct LocationPermissionArtwork: View {
             Circle()
                 .fill(Color.maplogLime.opacity(0.18))
                 .frame(width: size * 0.72, height: size * 0.72)
-            Image(systemName: "mappin.circle.fill")
+            Image(systemName: "location.fill")
                 .font(.system(size: iconSize, weight: .bold))
                 .foregroundStyle(Color.maplogOlive)
         }
@@ -92,11 +104,11 @@ private struct LocationPermissionArtwork: View {
 private struct LocationPermissionCopy: View {
     var body: some View {
         VStack(spacing: MaplogSpacing.small) {
-            Text("내 주변 여행 로그를 찾을까요?")
+            Text("지도에서 내 위치를 표시할까요?")
                 .font(.system(size: 22, weight: .medium))
                 .foregroundStyle(Color.maplogInk)
                 .multilineTextAlignment(.center)
-            Text("현재 위치를 기준으로 가까운 행사와 Maplog 루트를 추천해드려요.")
+            Text("지도 탭에서 내 위치를 표시하고, 현재 위치로 지도를 이동할 때만 사용해요.")
                 .font(MaplogFont.callout)
                 .foregroundStyle(Color.maplogMuted)
                 .multilineTextAlignment(.center)
@@ -110,20 +122,41 @@ private struct LocationPermissionActions: View {
     let primaryTitle: String
     let onAllow: () -> Void
     let onSkip: () -> Void
+    let isRequesting: Bool
+
+    init(
+        primaryTitle: String,
+        onAllow: @escaping () -> Void,
+        onSkip: @escaping () -> Void,
+        isRequesting: Bool = false
+    ) {
+        self.primaryTitle = primaryTitle
+        self.onAllow = onAllow
+        self.onSkip = onSkip
+        self.isRequesting = isRequesting
+    }
 
     var body: some View {
         VStack(spacing: 18) {
             Button(action: onAllow) {
-                Text(primaryTitle)
-                    .font(.system(size: 18, weight: .medium))
-                    .foregroundStyle(Color.maplogInk)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 54)
-                    .background(Color.maplogLime)
-                    .clipShape(Capsule())
-                    .shadow(color: Color.maplogLime.opacity(0.22), radius: 14, x: 0, y: 8)
+                Group {
+                    if isRequesting {
+                        ProgressView()
+                            .tint(Color.maplogInk)
+                    } else {
+                        Text(primaryTitle)
+                            .font(.system(size: 18, weight: .medium))
+                    }
+                }
+                .foregroundStyle(Color.maplogInk)
+                .frame(maxWidth: .infinity)
+                .frame(height: 54)
+                .background(Color.maplogLime)
+                .clipShape(Capsule())
+                .shadow(color: Color.maplogLime.opacity(0.22), radius: 14, x: 0, y: 8)
             }
             .buttonStyle(.plain)
+            .disabled(isRequesting)
 
             Button("나중에 하기", action: onSkip)
                 .font(MaplogFont.callout)

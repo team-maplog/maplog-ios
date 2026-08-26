@@ -106,6 +106,8 @@ struct RootView: View {
     private let profileRepository: any ProfileRepository
     private let mapRepository: any MapRepository
     private let mapCurrentLocationService: any MapCurrentLocationService
+    private let locationPermissionService: any LocationPermissionService
+    @State private var isRequestingLocationPermission = false
 
     init(
         authRepository: any AuthRepository,
@@ -128,6 +130,7 @@ struct RootView: View {
         profileRepository: any ProfileRepository,
         mapRepository: any MapRepository,
         mapCurrentLocationService: any MapCurrentLocationService,
+        locationPermissionService: any LocationPermissionService,
     ) {
         self.authRepository = authRepository
         self.tourismRepository = tourismRepository
@@ -149,6 +152,7 @@ struct RootView: View {
         self.profileRepository = profileRepository
         self.mapRepository = mapRepository
         self.mapCurrentLocationService = mapCurrentLocationService
+        self.locationPermissionService = locationPermissionService
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("-MaplogSkipOnboarding") {
             _phase = State(initialValue: .app)
@@ -168,18 +172,9 @@ struct RootView: View {
                 }
             case .location:
                 LocationPermissionView(
-                    onAllow: {
-                        sessionStore.allowLocationPermission()
-                        withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) {
-                            phase = .app
-                        }
-                    },
-                    onSkip: {
-                        sessionStore.skipLocationPermission()
-                        withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) {
-                            phase = .app
-                        }
-                    }
+                    onAllow: requestLocationPermission,
+                    onSkip: skipLocationPermission,
+                    isRequesting: isRequestingLocationPermission
                 )
             case .app:
                 MainTabView( // RootView는 protocol만 받아서 MainTabView 생성 부분에 전달, DefaultTourismRepository를 모름. 오직 TourismRepository 역할만 앎
@@ -252,6 +247,46 @@ struct RootView: View {
                     phase = .login
                 }
             }
+        }
+    }
+
+    private func requestLocationPermission() {
+        guard !isRequestingLocationPermission else {
+            return
+        }
+
+        isRequestingLocationPermission = true
+
+        Task {
+            let result = await locationPermissionService
+                .requestWhenInUseAuthorization()
+
+            isRequestingLocationPermission = false
+
+            guard !Task.isCancelled else {
+                return
+            }
+
+            switch result {
+            case .authorized:
+                sessionStore.allowLocationPermission()
+
+            case .denied, .servicesDisabled, .unavailable:
+                sessionStore.skipLocationPermission()
+            }
+
+            moveToApp()
+        }
+    }
+
+    private func skipLocationPermission() {
+        sessionStore.skipLocationPermission()
+        moveToApp()
+    }
+
+    private func moveToApp() {
+        withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) {
+            phase = .app
         }
     }
 

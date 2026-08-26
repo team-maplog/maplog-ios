@@ -24,6 +24,7 @@ struct MaplogApp: App { // 앱의 조립 담당자
     private let profileRepository: any ProfileRepository
     private let mapRepository: any MapRepository
     private let mapCurrentLocationService: any MapCurrentLocationService
+    private let locationPermissionService: any LocationPermissionService
 
 
     init() {
@@ -104,6 +105,7 @@ struct MaplogApp: App { // 앱의 조립 담당자
         self.profileRepository = profileRepository
         self.mapRepository = mapRepository
         self.mapCurrentLocationService = CoreLocationMapCurrentLocationService()
+        self.locationPermissionService = CoreLocationPermissionService()
     }
 
     var body: some Scene {
@@ -128,7 +130,8 @@ struct MaplogApp: App { // 앱의 조립 담당자
                 logDetailRepository: logDetailRepository,
                 profileRepository: profileRepository,
                 mapRepository: mapRepository,
-                mapCurrentLocationService: mapCurrentLocationService
+                mapCurrentLocationService: mapCurrentLocationService,
+                locationPermissionService: locationPermissionService
 
             )
             .environmentObject(authSessionStore)
