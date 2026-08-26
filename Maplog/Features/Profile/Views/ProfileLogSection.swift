@@ -1,6 +1,13 @@
 import SwiftUI
 import UIKit
 
+struct ProfileLogEmptyConfiguration {
+    let iconName: String
+    let title: String
+    let message: String
+    let actionTitle: String?
+}
+
 struct ProfileLogSection: View {
     let logs: [ProfileLogCardViewData]
     let thumbnailData: (Int64) -> Data?
@@ -13,8 +20,10 @@ struct ProfileLogSection: View {
     let nextPageError: ErrorPresentation?
     let onLoadNextPage: () -> Void
     let onRetryNextPage: () -> Void
+    let allowsManagement: Bool
+    let emptyConfiguration: ProfileLogEmptyConfiguration
     let onSelectCapture: () -> Void
-    let onLogRemoved: () async -> Void
+    let onLogUnavailable: (Int64) async -> Void
 
     @State private var selectedLogID: Int64?
     @State private var showsLogDetail = false
@@ -26,20 +35,9 @@ struct ProfileLogSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("내 맵로그")
-                    .font(.title3.weight(.bold))
-                    .foregroundStyle(Color.maplogInk)
-
-                Text("\(logs.count)")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Color.maplogOlive)
-
-                Spacer()
-            }
-
             if logs.isEmpty {
                 ProfileEmptyLogState(
+                    configuration: emptyConfiguration,
                     onSelectCapture: onSelectCapture
                 )
             } else {
@@ -71,11 +69,13 @@ struct ProfileLogSection: View {
             if let selectedLogID {
                 LogDetailFeatureView(
                     logID: selectedLogID,
-                    allowsManagement: true,
+                    allowsManagement: allowsManagement,
                     logDetailRepository: logDetailRepository,
                     logMediaRepository: logMediaRepository,
                     playbackService: playbackService,
-                    onLogRemoved: onLogRemoved
+                    onLogRemoved: {
+                        await onLogUnavailable(selectedLogID)
+                    }
                 )
             } else {
                 EmptyView()
@@ -184,36 +184,39 @@ private struct ProfileLogCard: View {
 }
 
 private struct ProfileEmptyLogState: View {
+    let configuration: ProfileLogEmptyConfiguration
     let onSelectCapture: () -> Void
 
     var body: some View {
         VStack(spacing: 12) {
-            Image(systemName: "map.circle.fill")
+            Image(systemName: configuration.iconName)
                 .font(.system(size: 34, weight: .semibold))
                 .foregroundStyle(Color.maplogOlive)
 
-            Text("아직 공개한 맵로그가 없어요")
+            Text(configuration.title)
                 .font(.headline)
                 .foregroundStyle(Color.maplogInk)
 
-            Text("촬영한 여행 기록을 완성하면 여기에 모여요.")
+            Text(configuration.message)
                 .font(.subheadline)
                 .foregroundStyle(Color.maplogMuted)
                 .multilineTextAlignment(.center)
 
-            Button(action: onSelectCapture) {
-                Label("새 맵로그 촬영하기", systemImage: "camera.fill")
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(Color.maplogInk)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 48)
-                    .background(
-                        Color.maplogLime,
-                        in: Capsule()
-                    )
+            if let actionTitle = configuration.actionTitle {
+                Button(action: onSelectCapture) {
+                    Label(actionTitle, systemImage: "camera.fill")
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(Color.maplogInk)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 48)
+                        .background(
+                            Color.maplogLime,
+                            in: Capsule()
+                        )
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 4)
             }
-            .buttonStyle(.plain)
-            .padding(.top, 4)
         }
         .padding(22)
         .frame(maxWidth: .infinity)

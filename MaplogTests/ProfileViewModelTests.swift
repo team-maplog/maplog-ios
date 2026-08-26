@@ -32,7 +32,10 @@ final class ProfileViewModelTests: XCTestCase {
                 )
             ]
         )
-        let viewModel = ProfileTabViewModel(profileRepository: repository)
+        let viewModel = ProfileTabViewModel(
+            profileRepository: repository,
+            logReelRepository: LogReelRepositoryStub()
+        )
 
         await viewModel.loadIfNeeded()
 
@@ -49,6 +52,55 @@ final class ProfileViewModelTests: XCTestCase {
         XCTAssertEqual(repository.requestedCursors, [nil, "next-page"])
     }
 
+    func testLoadSavedLogsThenLoadNextPageAppendsLogs() async {
+        let profileRepository = ProfileRepositoryStub(
+            profile: MyProfile(
+                id: UUID(),
+                nickname: "채림",
+                profileImageURL: nil,
+                bio: "",
+                followerCount: 0,
+                followingCount: 0,
+                logCount: 0
+            ),
+            pages: []
+        )
+        let savedLogsRepository = LogReelRepositoryStub(
+            savedPages: [
+                LogReelPage(
+                    reels: [makeSavedLog(id: 41, address: "서울 연남동")],
+                    hasNext: true,
+                    nextCursor: "saved-next-page"
+                ),
+                LogReelPage(
+                    reels: [makeSavedLog(id: 42, address: "서울 성수동")],
+                    hasNext: false,
+                    nextCursor: nil
+                )
+            ]
+        )
+        let viewModel = ProfileTabViewModel(
+            profileRepository: profileRepository,
+            logReelRepository: savedLogsRepository
+        )
+
+        await viewModel.loadSavedLogsIfNeeded()
+
+        XCTAssertEqual(viewModel.savedLogsState, .content)
+        XCTAssertEqual(viewModel.savedLogs.map(\.id), [41])
+        XCTAssertTrue(viewModel.hasNextSavedLogsPage)
+        XCTAssertEqual(savedLogsRepository.requestedSavedCursors, [nil])
+
+        await viewModel.loadNextSavedLogsPage()
+
+        XCTAssertEqual(viewModel.savedLogs.map(\.id), [41, 42])
+        XCTAssertFalse(viewModel.hasNextSavedLogsPage)
+        XCTAssertEqual(
+            savedLogsRepository.requestedSavedCursors,
+            [nil, "saved-next-page"]
+        )
+    }
+
     private func makeLog(
         id: Int64,
         address: String
@@ -60,6 +112,31 @@ final class ProfileViewModelTests: XCTestCase {
             videoDurationMillis: 65_000,
             viewCount: 42,
             createdAt: Date(timeIntervalSince1970: 0)
+        )
+    }
+
+    private func makeSavedLog(
+        id: Int64,
+        address: String
+    ) -> LogReel {
+        LogReel(
+            id: id,
+            author: LogReelAuthor(
+                id: UUID(),
+                nickname: "여행자",
+                profileImageURL: nil
+            ),
+            caption: "저장한 여행 기록",
+            address: address,
+            thumbnailURL: nil,
+            playbackURL: nil,
+            publishedAt: Date(timeIntervalSince1970: 0),
+            viewCount: 42,
+            clips: [],
+            likeCount: 0,
+            commentCount: 0,
+            isLikedByViewer: false,
+            isSavedByViewer: true
         )
     }
 }
@@ -110,5 +187,42 @@ private final class ProfileRepositoryStub: ProfileRepository {
         from url: URL
     ) async throws -> Data {
         Data()
+    }
+}
+
+private final class LogReelRepositoryStub: LogReelRepository {
+    private var savedPages: [LogReelPage]
+    private(set) var requestedSavedCursors: [String?] = []
+
+    init(savedPages: [LogReelPage] = []) {
+        self.savedPages = savedPages
+    }
+
+    func fetchReels(
+        cursor: String?,
+        size: Int
+    ) async throws -> LogReelPage {
+        LogReelPage(
+            reels: [],
+            hasNext: false,
+            nextCursor: nil
+        )
+    }
+
+    func fetchSavedLogs(
+        cursor: String?,
+        size: Int
+    ) async throws -> LogReelPage {
+        requestedSavedCursors.append(cursor)
+
+        guard !savedPages.isEmpty else {
+            return LogReelPage(
+                reels: [],
+                hasNext: false,
+                nextCursor: nil
+            )
+        }
+
+        return savedPages.removeFirst()
     }
 }

@@ -115,7 +115,10 @@ struct MainTabView: View {
         )
 
         _profileViewModel = StateObject(
-            wrappedValue: ProfileTabViewModel(profileRepository: profileRepository)
+            wrappedValue: ProfileTabViewModel(
+                profileRepository: profileRepository,
+                logReelRepository: logReelRepository
+            )
         )
     }
 

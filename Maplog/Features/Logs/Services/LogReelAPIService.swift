@@ -12,4 +12,9 @@ protocol LogReelAPIService {
         cursor: String?,
         size: Int
     ) async throws -> LogReelPageDTO
+
+    func fetchSavedLogs(
+        cursor: String?,
+        size: Int
+    ) async throws -> LogReelPageDTO
 }
