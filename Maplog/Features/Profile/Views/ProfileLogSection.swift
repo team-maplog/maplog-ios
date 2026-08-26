@@ -14,6 +14,8 @@ struct ProfileLogSection: View {
     let isLoadingThumbnail: (Int64) -> Bool
     let logDetailRepository: any LogDetailRepository
     let logMediaRepository: any LogMediaRepository
+    let followRepository: any FollowRepository
+    let profileRepository: any ProfileRepository
     let playbackService: any VideoPlaybackService
     let hasNextPage: Bool
     let isLoadingNextPage: Bool
@@ -72,6 +74,8 @@ struct ProfileLogSection: View {
                     allowsManagement: allowsManagement,
                     logDetailRepository: logDetailRepository,
                     logMediaRepository: logMediaRepository,
+                    followRepository: followRepository,
+                    profileRepository: profileRepository,
                     playbackService: playbackService,
                     onLogRemoved: {
                         await onLogUnavailable(selectedLogID)

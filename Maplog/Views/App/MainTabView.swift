@@ -45,6 +45,7 @@ struct MainTabView: View {
     private let logRouteRepository: any LogRouteRepository
     private let logDetailRepository: any LogDetailRepository
     private let profileRepository: any ProfileRepository
+    private let followRepository: any FollowRepository
     private let mapRepository: any MapRepository
     private let homeSearchRepository: any HomeSearchRepository
     private let mapCurrentLocationService: any MapCurrentLocationService
@@ -69,6 +70,7 @@ struct MainTabView: View {
         logRouteRepository: any LogRouteRepository,
         logDetailRepository: any LogDetailRepository,
         profileRepository: any ProfileRepository,
+        followRepository: any FollowRepository,
         mapRepository: any MapRepository,
         homeSearchRepository: any HomeSearchRepository,
         mapCurrentLocationService: any MapCurrentLocationService,
@@ -91,6 +93,7 @@ struct MainTabView: View {
         self.logRouteRepository = logRouteRepository
         self.logDetailRepository = logDetailRepository
         self.profileRepository = profileRepository
+        self.followRepository = followRepository
         self.mapRepository = mapRepository
         self.homeSearchRepository = homeSearchRepository
         self.mapCurrentLocationService = mapCurrentLocationService
@@ -189,6 +192,7 @@ struct MainTabView: View {
                             mapPanelViewModel: homeMapPanelViewModel,
                             logCommentRepository: logCommentRepository,
                             profileRepository: profileRepository,
+                            followRepository: followRepository,
                             homeSearchRepository: homeSearchRepository,
                             logMediaRepository: logMediaRepository,
                             topSafeAreaInset: rootProxy.safeAreaInsets.top,
@@ -225,6 +229,8 @@ struct MainTabView: View {
                                     allowsManagement: false,
                                     logDetailRepository: logDetailRepository,
                                     logMediaRepository: logMediaRepository,
+                                    followRepository: followRepository,
+                                    profileRepository: profileRepository,
                                     playbackService: videoPlaybackService,
                                     onLogRemoved: {}
                                 )
@@ -261,6 +267,8 @@ struct MainTabView: View {
                         tourismRepository: tourismRepository,
                         logDetailRepository: logDetailRepository,
                         logMediaRepository: logMediaRepository,
+                        followRepository: followRepository,
+                        profileRepository: profileRepository,
                         playbackService: videoPlaybackService,
                         currentLocationService: mapCurrentLocationService
                     )
@@ -269,6 +277,7 @@ struct MainTabView: View {
                 NavigationStack {
                     ProfileTabView(
                         profileRepository: profileRepository,
+                        followRepository: followRepository,
                         logDetailRepository: logDetailRepository,
                         logMediaRepository: logMediaRepository,
                         playbackService: videoPlaybackService,

@@ -6,6 +6,8 @@ struct LogDetailFeatureView: View {
 
     private let allowsManagement: Bool
     private let onLogRemoved: () async -> Void
+    private let followRepository: any FollowRepository
+    private let profileRepository: any ProfileRepository
 
     @StateObject private var viewModel: LogDetailViewModel
     @State private var showsCaptionEditor = false
@@ -23,11 +25,15 @@ struct LogDetailFeatureView: View {
         allowsManagement: Bool,
         logDetailRepository: any LogDetailRepository,
         logMediaRepository: any LogMediaRepository,
+        followRepository: any FollowRepository,
+        profileRepository: any ProfileRepository,
         playbackService: any VideoPlaybackService,
         onLogRemoved: @escaping () async -> Void
     ) {
         self.allowsManagement = allowsManagement
         self.onLogRemoved = onLogRemoved
+        self.followRepository = followRepository
+        self.profileRepository = profileRepository
 
         _viewModel = StateObject(
             wrappedValue: LogDetailViewModel(
@@ -71,7 +77,11 @@ struct LogDetailFeatureView: View {
         .animation(.easeOut(duration: 0.2), value: showsDeletionConfirmation)
         .toolbar {
             ToolbarItem(placement: .principal) {
-                LogDetailNavigationAuthor(detail: viewModel.detail)
+                LogDetailNavigationAuthor(
+                    detail: viewModel.detail,
+                    followRepository: followRepository,
+                    profileRepository: profileRepository
+                )
             }
 
             if allowsManagement,
@@ -270,8 +280,35 @@ struct LogDetailFeatureView: View {
 
 private struct LogDetailNavigationAuthor: View {
     let detail: LogDetail?
+    let followRepository: any FollowRepository
+    let profileRepository: any ProfileRepository
 
     var body: some View {
+        Group {
+            if let author = detail?.author {
+                NavigationLink {
+                    PublicProfileFeatureView(
+                        user: FollowUser(
+                            id: author.id,
+                            nickname: author.nickname,
+                            profileImageURL: author.profileImageURL
+                        ),
+                        followRepository: followRepository,
+                        profileRepository: profileRepository
+                    )
+                } label: {
+                    authorLabel
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("작성자 프로필을 엽니다")
+            } else {
+                authorLabel
+            }
+        }
+        .accessibilityLabel("\(nickname)의 맵로그")
+    }
+
+    private var authorLabel: some View {
         HStack(spacing: MaplogSpacing.xSmall) {
             Text(initial)
                 .font(MaplogFont.badge)
@@ -284,7 +321,6 @@ private struct LogDetailNavigationAuthor: View {
                 .foregroundStyle(Color.maplogInk)
                 .lineLimit(1)
         }
-        .accessibilityLabel("\(nickname)의 맵로그")
     }
 
     private var nickname: String {

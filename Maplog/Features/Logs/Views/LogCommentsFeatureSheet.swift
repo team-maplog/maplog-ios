@@ -10,13 +10,19 @@ struct LogCommentsFeatureSheet: View {
     @State private var draft = ""
     @State private var composerMode: ComposerMode = .new
     @State private var commentPendingDeletion: LogComment?
+    @State private var selectedAuthor: FollowUser?
+    private let followRepository: any FollowRepository
+    private let profileRepository: any ProfileRepository
 
     init(
         logID: Int64,
         commentRepository: any LogCommentRepository,
         profileRepository: any ProfileRepository,
+        followRepository: any FollowRepository,
         onCommentCountChange: @escaping (Int64) -> Void
     ) {
+        self.followRepository = followRepository
+        self.profileRepository = profileRepository
         _viewModel = StateObject(
             wrappedValue: LogCommentsViewModel(
                 logID: logID,
@@ -92,58 +98,68 @@ struct LogCommentsFeatureSheet: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            commentsContent
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            composer
-        }
-        .background(Color.maplogSurface)
-        .task {
-            await viewModel.loadInitialComments()
-        }
-        .alert(
-            "작업을 완료하지 못했어요",
-            isPresented: actionErrorPresented
-        ) {
-            switch viewModel.actionError?.recoveryAction {
-            case .retry:
-                Button("다시 시도") {
-                    Task {
-                        await viewModel.retryLastAction()
+        NavigationStack {
+            VStack(spacing: 0) {
+                header
+                commentsContent
+            }
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                composer
+            }
+            .background(Color.maplogSurface)
+            .toolbar(.hidden, for: .navigationBar)
+            .task {
+                await viewModel.loadInitialComments()
+            }
+            .alert(
+                "작업을 완료하지 못했어요",
+                isPresented: actionErrorPresented
+            ) {
+                switch viewModel.actionError?.recoveryAction {
+                case .retry:
+                    Button("다시 시도") {
+                        Task {
+                            await viewModel.retryLastAction()
+                        }
+                    }
+
+                case .signIn:
+                    Button("다시 로그인", action: performLogout)
+
+                case .some(.none), nil:
+                    EmptyView()
+                }
+
+                Button("확인", role: .cancel) {
+                    viewModel.dismissActionError()
+                }
+            } message: {
+                Text(viewModel.actionError?.message ?? "")
+            }
+            .confirmationDialog(
+                "댓글을 삭제할까요?",
+                isPresented: deleteConfirmationPresented,
+                titleVisibility: .visible
+            ) {
+                if let comment = commentPendingDeletion {
+                    Button("삭제", role: .destructive) {
+                        Task {
+                            await viewModel.deleteComment(commentID: comment.id)
+                        }
                     }
                 }
 
-            case .signIn:
-                Button("다시 로그인", action: performLogout)
-
-            case .some(.none), nil:
-                EmptyView()
+                Button("취소", role: .cancel) {}
+            } message: {
+                Text("삭제한 댓글은 되돌릴 수 없어요.")
             }
-
-            Button("확인", role: .cancel) {
-                viewModel.dismissActionError()
+            .navigationDestination(item: $selectedAuthor) { author in
+                PublicProfileFeatureView(
+                    user: author,
+                    followRepository: followRepository,
+                    profileRepository: profileRepository
+                )
             }
-        } message: {
-            Text(viewModel.actionError?.message ?? "")
-        }
-        .confirmationDialog(
-            "댓글을 삭제할까요?",
-            isPresented: deleteConfirmationPresented,
-            titleVisibility: .visible
-        ) {
-            if let comment = commentPendingDeletion {
-                Button("삭제", role: .destructive) {
-                    Task {
-                        await viewModel.deleteComment(commentID: comment.id)
-                    }
-                }
-            }
-
-            Button("취소", role: .cancel) {}
-        } message: {
-            Text("삭제한 댓글은 되돌릴 수 없어요.")
         }
     }
 
@@ -246,11 +262,21 @@ struct LogCommentsFeatureSheet: View {
         isReply: Bool = false
     ) -> some View {
         HStack(alignment: .top, spacing: MaplogSpacing.small) {
-            CommentAvatar(
-                imageData: viewModel.profileImageData(for: comment.author),
-                nickname: comment.author.nickname,
-                size: isReply ? 30 : 38
-            )
+            Button {
+                selectedAuthor = FollowUser(
+                    id: comment.author.id,
+                    nickname: comment.author.nickname,
+                    profileImageURL: comment.author.profileImageURL
+                )
+            } label: {
+                CommentAvatar(
+                    imageData: viewModel.profileImageData(for: comment.author),
+                    nickname: comment.author.nickname,
+                    size: isReply ? 30 : 38
+                )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("\(comment.author.nickname) 프로필 보기")
 
             VStack(alignment: .leading, spacing: MaplogSpacing.xxSmall) {
                 HStack(alignment: .firstTextBaseline, spacing: MaplogSpacing.xxSmall) {

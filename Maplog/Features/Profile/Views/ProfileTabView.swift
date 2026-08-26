@@ -20,6 +20,7 @@ struct ProfileTabView: View {
     @Environment(\.maplogSelectTab) private var selectTab
 
     let profileRepository: any ProfileRepository
+    let followRepository: any FollowRepository
     let logDetailRepository: any LogDetailRepository
     let logMediaRepository: any LogMediaRepository
     let playbackService: any VideoPlaybackService
@@ -93,7 +94,9 @@ struct ProfileTabView: View {
             if let profile = viewModel.profile {
                 ProfileHeader(
                     profile: profile,
-                    avatarImageData: viewModel.avatarImageData
+                    avatarImageData: viewModel.avatarImageData,
+                    followRepository: followRepository,
+                    profileRepository: profileRepository
                 )
 
                 ProfileActionButtons(
@@ -166,6 +169,8 @@ struct ProfileTabView: View {
                 isLoadingThumbnail: viewModel.isLoadingThumbnail(for:),
                 logDetailRepository: logDetailRepository,
                 logMediaRepository: logMediaRepository,
+                followRepository: followRepository,
+                profileRepository: profileRepository,
                 playbackService: playbackService,
                 hasNextPage: viewModel.hasNextPage,
                 isLoadingNextPage: viewModel.isLoadingNextPage,
@@ -197,6 +202,8 @@ struct ProfileTabView: View {
                     isLoadingThumbnail: viewModel.isLoadingThumbnail(for:),
                     logDetailRepository: logDetailRepository,
                     logMediaRepository: logMediaRepository,
+                    followRepository: followRepository,
+                    profileRepository: profileRepository,
                     playbackService: playbackService,
                     hasNextPage: viewModel.hasNextSavedLogsPage,
                     isLoadingNextPage: viewModel.isLoadingNextSavedLogsPage,
@@ -398,6 +405,8 @@ private struct ProfileActionButtons: View {
 private struct ProfileHeader: View {
     let profile: ProfileHeaderViewData
     let avatarImageData: Data?
+    let followRepository: any FollowRepository
+    let profileRepository: any ProfileRepository
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -424,12 +433,12 @@ private struct ProfileHeader: View {
             }
 
             HStack(spacing: 0) {
-                ProfileMetric(
-                    title: "팔로워",
+                followMetric(
+                    kind: .followers,
                     value: profile.followerCountText
                 )
-                ProfileMetric(
-                    title: "팔로잉",
+                followMetric(
+                    kind: .following,
                     value: profile.followingCountText
                 )
                 ProfileMetric(
@@ -459,6 +468,28 @@ private struct ProfileHeader: View {
             radius: 14,
             y: 6
         )
+    }
+
+    private func followMetric(
+        kind: FollowListKind,
+        value: String
+    ) -> some View {
+        NavigationLink {
+            FollowUserListFeatureView(
+                kind: kind,
+                followRepository: followRepository,
+                profileRepository: profileRepository
+            )
+        } label: {
+            ProfileMetric(
+                title: kind.title,
+                value: value
+            )
+            .frame(minHeight: MaplogSize.minimumTapTarget)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(kind.title) \(value)명 목록 보기")
     }
 }
 
