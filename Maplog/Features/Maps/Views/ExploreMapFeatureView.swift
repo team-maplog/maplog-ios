@@ -16,6 +16,8 @@ struct ExploreMapFeatureView: View {
     private let tourismRepository: any TourismRepository
     private let logDetailRepository: any LogDetailRepository
     private let logMediaRepository: any LogMediaRepository
+    private let followRepository: any FollowRepository
+    private let profileRepository: any ProfileRepository
     private let playbackService: any VideoPlaybackService
     private let currentLocationService: any MapCurrentLocationService
 
@@ -28,12 +30,16 @@ struct ExploreMapFeatureView: View {
         tourismRepository: any TourismRepository,
         logDetailRepository: any LogDetailRepository,
         logMediaRepository: any LogMediaRepository,
+        followRepository: any FollowRepository,
+        profileRepository: any ProfileRepository,
         playbackService: any VideoPlaybackService,
         currentLocationService: any MapCurrentLocationService
     ) {
         self.tourismRepository = tourismRepository
         self.logDetailRepository = logDetailRepository
         self.logMediaRepository = logMediaRepository
+        self.followRepository = followRepository
+        self.profileRepository = profileRepository
         self.playbackService = playbackService
         self.currentLocationService = currentLocationService
 
@@ -137,6 +143,8 @@ struct ExploreMapFeatureView: View {
                     allowsManagement: false,
                     logDetailRepository: logDetailRepository,
                     logMediaRepository: logMediaRepository,
+                    followRepository: followRepository,
+                    profileRepository: profileRepository,
                     playbackService: playbackService,
                     onLogRemoved: { }
                 )

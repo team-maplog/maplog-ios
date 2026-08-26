@@ -22,6 +22,7 @@ struct MaplogApp: App { // 앱의 조립 담당자
     private let logRouteRepository: any LogRouteRepository
     private let logDetailRepository: any LogDetailRepository
     private let profileRepository: any ProfileRepository
+    private let followRepository: any FollowRepository
     private let mapRepository: any MapRepository
     private let homeSearchRepository: any HomeSearchRepository
     private let mapCurrentLocationService: any MapCurrentLocationService
@@ -73,6 +74,12 @@ struct MaplogApp: App { // 앱의 조립 담당자
         let logDetailRepository = DefaultLogDetailRepository(apiService: logDetailAPIService)
         let profileAPIService = DefaultProfileAPIService(authenticatedAPIClient: authenticatedAPIClient)
         let profileRepository = DefaultProfileRepository(apiService: profileAPIService)
+        let followAPIService = DefaultFollowAPIService(
+            authenticatedAPIClient: authenticatedAPIClient
+        )
+        let followRepository = DefaultFollowRepository(
+            apiService: followAPIService
+        )
         let mapAPIService = DefaultMapAPIService(authenticatedAPIClient: authenticatedAPIClient)
         let mapRepository = DefaultMapRepository(apiService: mapAPIService)
         let homeSearchAPIService = DefaultHomeSearchAPIService(
@@ -110,6 +117,7 @@ struct MaplogApp: App { // 앱의 조립 담당자
         self.logRouteRepository = logRouteRepository
         self.logDetailRepository = logDetailRepository
         self.profileRepository = profileRepository
+        self.followRepository = followRepository
         self.mapRepository = mapRepository
         self.homeSearchRepository = homeSearchRepository
         self.mapCurrentLocationService = CoreLocationMapCurrentLocationService()
@@ -137,6 +145,7 @@ struct MaplogApp: App { // 앱의 조립 담당자
                 logRouteRepository: logRouteRepository,
                 logDetailRepository: logDetailRepository,
                 profileRepository: profileRepository,
+                followRepository: followRepository,
                 mapRepository: mapRepository,
                 homeSearchRepository: homeSearchRepository,
                 mapCurrentLocationService: mapCurrentLocationService,

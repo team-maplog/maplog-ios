@@ -104,6 +104,7 @@ struct RootView: View {
     private let logRouteRepository: any LogRouteRepository
     private let logDetailRepository: any LogDetailRepository
     private let profileRepository: any ProfileRepository
+    private let followRepository: any FollowRepository
     private let mapRepository: any MapRepository
     private let homeSearchRepository: any HomeSearchRepository
     private let mapCurrentLocationService: any MapCurrentLocationService
@@ -129,6 +130,7 @@ struct RootView: View {
         logRouteRepository: any LogRouteRepository,
         logDetailRepository: any LogDetailRepository,
         profileRepository: any ProfileRepository,
+        followRepository: any FollowRepository,
         mapRepository: any MapRepository,
         homeSearchRepository: any HomeSearchRepository,
         mapCurrentLocationService: any MapCurrentLocationService,
@@ -152,6 +154,7 @@ struct RootView: View {
         self.logRouteRepository = logRouteRepository
         self.logDetailRepository = logDetailRepository
         self.profileRepository = profileRepository
+        self.followRepository = followRepository
         self.mapRepository = mapRepository
         self.homeSearchRepository = homeSearchRepository
         self.mapCurrentLocationService = mapCurrentLocationService
@@ -198,6 +201,7 @@ struct RootView: View {
                     logRouteRepository: logRouteRepository,
                     logDetailRepository: logDetailRepository,
                     profileRepository: profileRepository,
+                    followRepository: followRepository,
                     mapRepository: mapRepository,
                     homeSearchRepository: homeSearchRepository,
                     mapCurrentLocationService: mapCurrentLocationService,

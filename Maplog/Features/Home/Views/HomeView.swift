@@ -12,6 +12,7 @@ struct HomeView: View {
     @ObservedObject var mapPanelViewModel: HomeMapPanelViewModel
     let logCommentRepository: any LogCommentRepository
     let profileRepository: any ProfileRepository
+    let followRepository: any FollowRepository
     let homeSearchRepository: any HomeSearchRepository
     let logMediaRepository: any LogMediaRepository
     let topSafeAreaInset: CGFloat // 전체 화면 높이는 고정하고 홈 콘텐츠만 상태바 아래에서 시작하기 위한 값
@@ -314,6 +315,7 @@ struct HomeView: View {
                 logID: reel.id,
                 commentRepository: logCommentRepository,
                 profileRepository: profileRepository,
+                followRepository: followRepository,
                 onCommentCountChange: { delta in
                     viewModel.adjustCommentCount(
                         for: reel.id,
