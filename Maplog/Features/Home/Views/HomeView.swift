@@ -14,6 +14,7 @@ struct HomeView: View {
     let profileRepository: any ProfileRepository
     let followRepository: any FollowRepository
     let homeSearchRepository: any HomeSearchRepository
+    let logReelRepository: any LogReelRepository
     let logMediaRepository: any LogMediaRepository
     let topSafeAreaInset: CGFloat // 전체 화면 높이는 고정하고 홈 콘텐츠만 상태바 아래에서 시작하기 위한 값
     let onShowAllTourisms: () -> Void
@@ -746,6 +747,7 @@ struct HomeView: View {
                 HomeSearchFeatureView(
                     searchRepository: homeSearchRepository,
                     logMediaRepository: logMediaRepository,
+                    logReelRepository: logReelRepository,
                     onShowLogDetail: onShowLogDetail,
                     onShowTourismDetail: onShowTourismDetail
                 )

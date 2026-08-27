@@ -8,6 +8,14 @@ enum HomeSearchState: Equatable {
     case failed(ErrorPresentation)
 }
 
+enum HomeSearchExploreState: Equatable {
+    case idle
+    case loading
+    case content
+    case empty
+    case failed(ErrorPresentation)
+}
+
 @MainActor
 final class HomeSearchViewModel: ObservableObject {
     @Published var query = ""
@@ -19,10 +27,19 @@ final class HomeSearchViewModel: ObservableObject {
     @Published private(set) var nextPageError: ErrorPresentation?
     @Published private(set) var thumbnailDataByItemID: [String: Data] = [:]
     @Published private(set) var loadingThumbnailItemIDs = Set<String>()
+    @Published private(set) var isPrefetchingSearchThumbnails = false
+
+    @Published private(set) var exploreState: HomeSearchExploreState = .idle
+    @Published private(set) var recentLogs: [LogReel] = []
+    @Published private(set) var recentThumbnailDataByLogID: [Int64: Data] = [:]
+    @Published private(set) var loadingRecentThumbnailLogIDs = Set<Int64>()
+    @Published private(set) var isPrefetchingRecentThumbnails = false
 
     private let searchRepository: any HomeSearchRepository
     private let logMediaRepository: any LogMediaRepository
+    private let logReelRepository: any LogReelRepository
     private let pageSize = 20
+    private let recentLogPageSize = 24
 
     private var nextCursor: String?
     private var hasNext = false
@@ -31,10 +48,12 @@ final class HomeSearchViewModel: ObservableObject {
 
     init(
         searchRepository: any HomeSearchRepository,
-        logMediaRepository: any LogMediaRepository
+        logMediaRepository: any LogMediaRepository,
+        logReelRepository: any LogReelRepository
     ) {
         self.searchRepository = searchRepository
         self.logMediaRepository = logMediaRepository
+        self.logReelRepository = logReelRepository
     }
 
     var trimmedQuery: String {
@@ -55,6 +74,15 @@ final class HomeSearchViewModel: ObservableObject {
 
     var canSubmit: Bool {
         !trimmedQuery.isEmpty && inputValidationMessage == nil
+    }
+
+    /// 이미지 요청까지 성공한 결과만 View에 전달해 빈 카드가 생기지 않게 합니다.
+    var visibleItems: [HomeSearchItem] {
+        items.filter { thumbnailDataByItemID[$0.id] != nil }
+    }
+
+    var visibleRecentLogs: [LogReel] {
+        recentLogs.filter { recentThumbnailDataByLogID[$0.id] != nil }
     }
 
     func updateQuery(_ value: String) {
@@ -99,10 +127,45 @@ final class HomeSearchViewModel: ObservableObject {
         await loadInitialSearch()
     }
 
+    func loadRecentLogsIfNeeded() async {
+        guard exploreState == .idle else {
+            return
+        }
+
+        exploreState = .loading
+
+        do {
+            let page = try await logReelRepository.fetchReels(
+                cursor: nil,
+                size: recentLogPageSize
+            )
+
+            guard !Task.isCancelled else {
+                return
+            }
+
+            recentLogs = page.reels
+            exploreState = page.reels.isEmpty ? .empty : .content
+        } catch is CancellationError {
+            exploreState = .idle
+        } catch {
+            exploreState = .failed(
+                HomeSearchErrorPolicy.explorePresentation(for: error)
+            )
+        }
+    }
+
+    func retryRecentLogs() async {
+        exploreState = .idle
+        await loadRecentLogsIfNeeded()
+    }
+
     func loadNextPageIfNeeded(
         for item: HomeSearchItem
     ) async {
-        guard item.id == items.last?.id else {
+        // 마지막 결과에 썸네일이 없을 수 있으므로, 실제로 보이는 마지막 카드가
+        // 나타날 때 다음 페이지를 요청합니다.
+        guard item.id == (visibleItems.last?.id ?? items.last?.id) else {
             return
         }
 
@@ -123,6 +186,26 @@ final class HomeSearchViewModel: ObservableObject {
 
     func isLoadingThumbnail(for item: HomeSearchItem) -> Bool {
         loadingThumbnailItemIDs.contains(item.id)
+    }
+
+    func loadThumbnails(for items: [HomeSearchItem]) async {
+        guard !items.isEmpty else {
+            return
+        }
+
+        isPrefetchingSearchThumbnails = true
+
+        defer {
+            isPrefetchingSearchThumbnails = false
+        }
+
+        for item in items {
+            guard !Task.isCancelled else {
+                return
+            }
+
+            await loadThumbnail(for: item)
+        }
     }
 
     func loadThumbnail(for item: HomeSearchItem) async {
@@ -149,7 +232,62 @@ final class HomeSearchViewModel: ObservableObject {
 
             thumbnailDataByItemID[item.id] = data
         } catch {
-            // 카드 이미지 하나의 실패는 검색 결과 전체 실패가 아니므로 placeholder를 유지합니다.
+            // 카드 이미지 하나의 실패는 검색 결과 전체 실패가 아니며,
+            // 이미지 없는 카드는 visibleItems에서 자동으로 제외됩니다.
+            return
+        }
+    }
+
+    func recentThumbnailData(for log: LogReel) -> Data? {
+        recentThumbnailDataByLogID[log.id]
+    }
+
+    func loadRecentThumbnails() async {
+        guard !recentLogs.isEmpty else {
+            return
+        }
+
+        isPrefetchingRecentThumbnails = true
+
+        defer {
+            isPrefetchingRecentThumbnails = false
+        }
+
+        for log in recentLogs {
+            guard !Task.isCancelled else {
+                return
+            }
+
+            await loadRecentThumbnail(for: log)
+        }
+    }
+
+    private func loadRecentThumbnail(for log: LogReel) async {
+        guard log.thumbnailURL != nil,
+              recentThumbnailDataByLogID[log.id] == nil,
+              !loadingRecentThumbnailLogIDs.contains(log.id)
+        else {
+            return
+        }
+
+        loadingRecentThumbnailLogIDs.insert(log.id)
+
+        defer {
+            loadingRecentThumbnailLogIDs.remove(log.id)
+        }
+
+        do {
+            let data = try await logMediaRepository.fetchThumbnailData(
+                logID: log.id
+            )
+
+            guard !Task.isCancelled else {
+                return
+            }
+
+            recentThumbnailDataByLogID[log.id] = data
+        } catch {
+            // 최근 로그도 이미지를 정상적으로 받은 카드만 보여 줍니다.
             return
         }
     }
@@ -169,6 +307,7 @@ final class HomeSearchViewModel: ObservableObject {
         scopeCounts = [:]
         thumbnailDataByItemID = [:]
         loadingThumbnailItemIDs = []
+        isPrefetchingSearchThumbnails = false
         state = .initialLoading
 
         do {
@@ -255,6 +394,7 @@ final class HomeSearchViewModel: ObservableObject {
             items.append(contentsOf: page.items)
             self.nextCursor = page.nextCursor
             hasNext = page.hasNext
+            isPrefetchingSearchThumbnails = !page.items.isEmpty
         } catch is CancellationError {
             return
         } catch {
@@ -282,6 +422,7 @@ final class HomeSearchViewModel: ObservableObject {
         items = page.items
         nextCursor = page.nextCursor
         hasNext = page.hasNext
+        isPrefetchingSearchThumbnails = !page.items.isEmpty
 
         if let totalCount = page.totalCount {
             scopeCounts[selectedScope] = totalCount
@@ -339,6 +480,7 @@ final class HomeSearchViewModel: ObservableObject {
         isLoadingNextPage = false
         thumbnailDataByItemID = [:]
         loadingThumbnailItemIDs = []
+        isPrefetchingSearchThumbnails = false
         state = .idle
     }
 

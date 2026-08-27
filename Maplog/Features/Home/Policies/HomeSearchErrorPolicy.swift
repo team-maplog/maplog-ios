@@ -40,6 +40,36 @@ enum HomeSearchErrorPolicy {
         initialPresentation(for: error)
     }
 
+    static func explorePresentation(
+        for error: Error
+    ) -> ErrorPresentation {
+        guard let apiError = error as? APIError else {
+            return exploreDefaultPresentation
+        }
+
+        switch apiError {
+        case .missingAccessToken:
+            return authenticationPresentation
+
+        case let .server(statusCode, response):
+            switch BackendErrorCode(serverCode: response.code) {
+            case .expiredAccessToken, .invalidAuthentication:
+                return authenticationPresentation
+
+            default:
+                return (500...599).contains(statusCode)
+                    ? exploreRetryPresentation
+                    : exploreDefaultPresentation
+            }
+
+        case .network:
+            return exploreRetryPresentation
+
+        default:
+            return exploreDefaultPresentation
+        }
+    }
+
     static func isCursorInvalid(
         _ error: Error
     ) -> Bool {
@@ -67,6 +97,16 @@ enum HomeSearchErrorPolicy {
 
     private static let defaultPresentation = ErrorPresentation(
         message: "검색 결과를 불러오지 못했어요.",
+        recoveryAction: .none
+    )
+
+    private static let exploreRetryPresentation = ErrorPresentation(
+        message: "최근 맵로그를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.",
+        recoveryAction: .retry
+    )
+
+    private static let exploreDefaultPresentation = ErrorPresentation(
+        message: "최근 맵로그를 불러오지 못했어요.",
         recoveryAction: .none
     )
 }
