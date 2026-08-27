@@ -439,12 +439,14 @@ final class HomeViewModel: ObservableObject {
         )
     }
 
-    func toggleSaved(for reelID: Int64) async {
+    /// 서버가 확정한 저장 상태를 반환한다.
+    /// `nil`은 이미 요청 중이거나, 요청이 취소·실패한 경우다.
+    func toggleSaved(for reelID: Int64) async -> Bool? {
         guard let reel = reel(withID: reelID) else {
-            return
+            return nil
         }
 
-        await setSaved(
+        return await setSaved(
             for: reel,
             isSaved: !reel.isSavedByViewer
         )
@@ -466,7 +468,7 @@ final class HomeViewModel: ObservableObject {
             guard let reel = reel(withID: logID) else {
                 return
             }
-            await setSaved(for: reel, isSaved: isSaved)
+            _ = await setSaved(for: reel, isSaved: isSaved)
         }
     }
 
@@ -703,9 +705,9 @@ final class HomeViewModel: ObservableObject {
     private func setSaved(
         for reel: HomeReelViewData,
         isSaved: Bool
-    ) async {
+    ) async -> Bool? {
         guard !saveUpdatingReelIDs.contains(reel.id) else {
-            return
+            return nil
         }
 
         saveUpdatingReelIDs.insert(reel.id)
@@ -722,7 +724,7 @@ final class HomeViewModel: ObservableObject {
             )
 
             guard !Task.isCancelled else {
-                return
+                return nil
             }
 
             replaceReel(withID: reel.id) { current in
@@ -731,13 +733,14 @@ final class HomeViewModel: ObservableObject {
                 )
             }
             failedInteraction = nil
+            return result.isSaved
 
         } catch is CancellationError {
-            return
+            return nil
 
         } catch {
             guard !Task.isCancelled else {
-                return
+                return nil
             }
 
             failedInteraction = .save(
@@ -748,6 +751,7 @@ final class HomeViewModel: ObservableObject {
                 for: error,
                 actionName: isSaved ? "저장" : "저장 취소"
             )
+            return nil
         }
     }
 

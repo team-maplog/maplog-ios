@@ -75,16 +75,24 @@ final class ProfileTabViewModel: ObservableObject {
             return
         }
 
-        state = .initialLoading
-        profile = nil
-        logs = []
-        avatarImageData = nil
-        thumbnailDataByLogID = [:]
-        thumbnailLoadingIDs = []
-        nextPageError = nil
-        nextCursor = nil
-        hasNextPage = false
-        isLoadingNextPage = false
+        let preservesVisibleContent = state == .content
+
+        if preservesVisibleContent {
+            // pull-to-refresh에서는 기존 프로필을 지우지 않는다.
+            // SwiftUI의 refreshable 인디케이터가 진행 상태를 따로 보여 준다.
+            nextPageError = nil
+        } else {
+            state = .initialLoading
+            profile = nil
+            logs = []
+            avatarImageData = nil
+            thumbnailDataByLogID = [:]
+            thumbnailLoadingIDs = []
+            nextPageError = nil
+            nextCursor = nil
+            hasNextPage = false
+            isLoadingNextPage = false
+        }
 
         do {
             async let fetchedProfile = profileRepository.fetchMyProfile()
@@ -99,6 +107,9 @@ final class ProfileTabViewModel: ObservableObject {
             )
 
             guard !Task.isCancelled else {
+                restoreProfileStateAfterCancellation(
+                    preservesVisibleContent: preservesVisibleContent
+                )
                 return
             }
 
@@ -120,17 +131,25 @@ final class ProfileTabViewModel: ObservableObject {
                 logs: page.logs
             )
         } catch is CancellationError {
+            restoreProfileStateAfterCancellation(
+                preservesVisibleContent: preservesVisibleContent
+            )
             return
         } catch {
             guard !Task.isCancelled else {
+                restoreProfileStateAfterCancellation(
+                    preservesVisibleContent: preservesVisibleContent
+                )
                 return
             }
 
-            state = .failed(
-                ProfileErrorPolicy.presentation(
-                    for: error
+            if !preservesVisibleContent {
+                state = .failed(
+                    ProfileErrorPolicy.presentation(
+                        for: error
+                    )
                 )
-            )
+            }
         }
     }
 
@@ -219,12 +238,19 @@ final class ProfileTabViewModel: ObservableObject {
             return
         }
 
-        savedLogsState = .initialLoading
-        savedLogs = []
-        nextSavedLogsCursor = nil
-        hasNextSavedLogsPage = false
-        isLoadingNextSavedLogsPage = false
-        nextSavedLogsPageError = nil
+        let preservesVisibleContent = savedLogsState == .content
+
+        if preservesVisibleContent {
+            // 저장 탭도 새로고침 중에는 기존 목록을 유지한다.
+            nextSavedLogsPageError = nil
+        } else {
+            savedLogsState = .initialLoading
+            savedLogs = []
+            nextSavedLogsCursor = nil
+            hasNextSavedLogsPage = false
+            isLoadingNextSavedLogsPage = false
+            nextSavedLogsPageError = nil
+        }
 
         do {
             let page = try await logReelRepository.fetchSavedLogs(
@@ -233,6 +259,9 @@ final class ProfileTabViewModel: ObservableObject {
             )
 
             guard !Task.isCancelled else {
+                restoreSavedLogsStateAfterCancellation(
+                    preservesVisibleContent: preservesVisibleContent
+                )
                 return
             }
 
@@ -243,15 +272,23 @@ final class ProfileTabViewModel: ObservableObject {
 
             loadThumbnails(for: page.reels)
         } catch is CancellationError {
+            restoreSavedLogsStateAfterCancellation(
+                preservesVisibleContent: preservesVisibleContent
+            )
             return
         } catch {
             guard !Task.isCancelled else {
+                restoreSavedLogsStateAfterCancellation(
+                    preservesVisibleContent: preservesVisibleContent
+                )
                 return
             }
 
-            savedLogsState = .failed(
-                ProfileErrorPolicy.presentation(for: error)
-            )
+            if !preservesVisibleContent {
+                savedLogsState = .failed(
+                    ProfileErrorPolicy.presentation(for: error)
+                )
+            }
         }
     }
 
@@ -337,6 +374,27 @@ final class ProfileTabViewModel: ObservableObject {
         for logID: Int64
     ) -> Bool {
         thumbnailLoadingIDs.contains(logID)
+    }
+
+    private func restoreProfileStateAfterCancellation(
+        preservesVisibleContent: Bool
+    ) {
+        guard !preservesVisibleContent else {
+            return
+        }
+
+        // .task가 취소돼도 initialLoading에 남으면 다음 진입·새로고침이 막힌다.
+        state = .idle
+    }
+
+    private func restoreSavedLogsStateAfterCancellation(
+        preservesVisibleContent: Bool
+    ) {
+        guard !preservesVisibleContent else {
+            return
+        }
+
+        savedLogsState = .idle
     }
 
     private func makeProfileViewData(

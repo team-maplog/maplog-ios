@@ -39,6 +39,7 @@ struct HomeView: View {
     @State private var videoPreviewRequest: HomeMapRoutePlaybackRequest?
     @State private var commentsReel: HomeReelViewData?
     @State private var shareReel: HomeReelViewData?
+    @State private var saveToastText: String?
 
     private var reelInteractionErrorPresented: Binding<Bool> {
         Binding(
@@ -266,6 +267,21 @@ struct HomeView: View {
         }
         .overlay {
             mapVideoPreviewOverlay
+        }
+        .overlay(alignment: .bottom) {
+            if let saveToastText {
+                MaplogToast(message: saveToastText)
+                    .padding(
+                        .bottom,
+                        isHomeReelActive
+                            ? MaplogSpacing.reelTabBarClearance
+                            : MaplogSpacing.xxxLarge
+                    )
+                    .transition(
+                        .move(edge: .bottom).combined(with: .opacity)
+                    )
+                    .accessibilityAddTraits(.isStaticText)
+            }
         }
         .task { // body 안에서 직접 API를 호출하지 않고, View가 화면에 등장하는 생명주기에 맞는 .task에서 호출
             async let tourism: Void = viewModel.loadInitialTourisms()
@@ -560,7 +576,13 @@ struct HomeView: View {
                 },
                 onToggleSave: {
                     Task {
-                        await viewModel.toggleSaved(for: reel.id)
+                        guard let isSaved = await viewModel.toggleSaved(
+                            for: reel.id
+                        ) else {
+                            return
+                        }
+
+                        showSaveToast(isSaved: isSaved)
                     }
                 },
                 onShowComments: {
@@ -603,7 +625,13 @@ struct HomeView: View {
                 },
                 onToggleSave: {
                     Task {
-                        await viewModel.toggleSaved(for: reel.id)
+                        guard let isSaved = await viewModel.toggleSaved(
+                            for: reel.id
+                        ) else {
+                            return
+                        }
+
+                        showSaveToast(isSaved: isSaved)
                     }
                 },
                 onShowComments: {
@@ -767,6 +795,31 @@ struct HomeView: View {
             showsCurrentLocationSearch = true
         } else {
             showsLocationPermissionPrompt = true
+        }
+    }
+
+    /// 토스트는 서버 저장 성공 이후에만 표시한다.
+    private func showSaveToast(isSaved: Bool) {
+        let message = isSaved
+            ? "저장했어요"
+            : "저장을 해제했어요"
+
+        withAnimation(.spring(response: 0.30, dampingFraction: 0.86)) {
+            saveToastText = message
+        }
+
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(1.45))
+
+            guard !Task.isCancelled,
+                  saveToastText == message
+            else {
+                return
+            }
+
+            withAnimation(.easeOut(duration: 0.20)) {
+                saveToastText = nil
+            }
         }
     }
 
