@@ -168,7 +168,8 @@ struct ClipPickerView: View {
                             VideoCompositionConfigurationPicker(
                                 configuration: viewModel.compositionConfiguration,
                                 selectedClipCount: viewModel.selectedCount,
-                                onLayoutSelect: viewModel.selectCompositionLayout
+                                onLayoutSelect: viewModel.selectCompositionLayout,
+                                onSplitDirectionSelect: viewModel.selectSplitDirection
                             )
                         }
 

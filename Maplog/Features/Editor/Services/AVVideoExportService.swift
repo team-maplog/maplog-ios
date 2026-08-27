@@ -176,7 +176,9 @@ actor AVVideoExportService: VideoExportService {
             isMuted: request.isMuted
         )
         let renderSize = configuration.renderSize
-        let frames = configuration.layout.normalizedFrames.map { normalizedFrame in
+        let frames = configuration.layout.normalizedFrames(
+            for: configuration.splitDirection
+        ).map { normalizedFrame in
             CGRect(
                 x: normalizedFrame.minX * renderSize.width,
                 y: normalizedFrame.minY * renderSize.height,

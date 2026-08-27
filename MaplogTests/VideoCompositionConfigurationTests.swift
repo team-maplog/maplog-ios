@@ -3,8 +3,30 @@ import XCTest
 @testable import Maplog
 
 final class VideoCompositionConfigurationTests: XCTestCase {
-    func testThreeSplitUsesThreeVerticalSlots() {
-        let frames = VideoCompositionLayout.splitThree.normalizedFrames
+    func testThreeSplitInVerticalDirectionUsesThreeStackedSlots() {
+        let frames = VideoCompositionLayout.splitThree.normalizedFrames(
+            for: .vertical
+        )
+
+        XCTAssertEqual(frames.count, 3)
+        XCTAssertEqual(
+            frames[0],
+            CGRect(x: 0, y: 0, width: 1, height: 1.0 / 3.0)
+        )
+        XCTAssertEqual(
+            frames[1],
+            CGRect(x: 0, y: 1.0 / 3.0, width: 1, height: 1.0 / 3.0)
+        )
+        XCTAssertEqual(
+            frames[2],
+            CGRect(x: 0, y: 2.0 / 3.0, width: 1, height: 1.0 / 3.0)
+        )
+    }
+
+    func testThreeSplitInHorizontalDirectionUsesThreeSideBySideSlots() {
+        let frames = VideoCompositionLayout.splitThree.normalizedFrames(
+            for: .horizontal
+        )
 
         XCTAssertEqual(frames.count, 3)
         XCTAssertEqual(
@@ -21,12 +43,14 @@ final class VideoCompositionConfigurationTests: XCTestCase {
         )
     }
 
-    func testTwoSplitUsesTwoVerticalSlots() {
-        let frames = VideoCompositionLayout.splitTwo.normalizedFrames
+    func testTwoSplitInVerticalDirectionUsesTwoStackedSlots() {
+        let frames = VideoCompositionLayout.splitTwo.normalizedFrames(
+            for: .vertical
+        )
 
         XCTAssertEqual(frames.count, 2)
-        XCTAssertEqual(frames[0], CGRect(x: 0, y: 0, width: 0.5, height: 1))
-        XCTAssertEqual(frames[1], CGRect(x: 0.5, y: 0, width: 0.5, height: 1))
+        XCTAssertEqual(frames[0], CGRect(x: 0, y: 0, width: 1, height: 0.5))
+        XCTAssertEqual(frames[1], CGRect(x: 0, y: 0.5, width: 1, height: 0.5))
     }
 
     func testCompositionAlwaysRendersAsAPortraitReel() {

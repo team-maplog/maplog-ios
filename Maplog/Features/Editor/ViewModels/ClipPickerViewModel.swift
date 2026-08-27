@@ -181,6 +181,10 @@ final class ClipPickerViewModel: ObservableObject {
         }
     }
 
+    func selectSplitDirection(_ direction: VideoSplitDirection) {
+        compositionConfiguration.splitDirection = direction
+    }
+
     var hasValidCompositionSelection: Bool {
         switch compositionConfiguration.layout {
         case .single:
