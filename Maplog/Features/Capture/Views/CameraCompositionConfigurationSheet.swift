@@ -62,6 +62,7 @@ struct CameraCompositionConfigurationSheet: View {
 
 struct CameraCompositionGuideOverlay: View {
     let configuration: VideoCompositionConfiguration
+    let activeSlotIndex: Int
 
     var body: some View {
         GeometryReader { proxy in
@@ -69,11 +70,16 @@ struct CameraCompositionGuideOverlay: View {
             let frames = configuration.layout.normalizedFrames(
                 for: configuration.sceneOrientation
             )
+            let visibleSlotIndex = min(
+                activeSlotIndex,
+                max(0, frames.count - 1)
+            )
 
             ZStack {
                 letterboxMask(sceneFrame: sceneFrame, canvasSize: proxy.size)
 
                 ForEach(Array(frames.enumerated()), id: \.offset) { index, frame in
+                    let isActive = index == visibleSlotIndex
                     let slotFrame = CGRect(
                         x: sceneFrame.minX + sceneFrame.width * frame.minX,
                         y: sceneFrame.minY + sceneFrame.height * frame.minY,
@@ -82,18 +88,33 @@ struct CameraCompositionGuideOverlay: View {
                     )
 
                     RoundedRectangle(cornerRadius: 4, style: .continuous)
-                        .fill(Color.black.opacity(0.08))
+                        .fill(isActive ? Color.clear : Color.black.opacity(0.74))
                         .overlay {
                             RoundedRectangle(cornerRadius: 4, style: .continuous)
-                                .stroke(Color.white.opacity(0.92), lineWidth: 2)
+                                .stroke(
+                                    isActive
+                                    ? Color.maplogLime
+                                    : Color.white.opacity(0.28),
+                                    lineWidth: isActive ? 3 : 1
+                                )
                         }
                         .overlay(alignment: .topLeading) {
-                            Text("\(index + 1)")
-                                .font(.caption.weight(.bold))
-                                .foregroundStyle(.white)
-                                .frame(width: 24, height: 24)
-                                .background(.black.opacity(0.5), in: Circle())
-                                .padding(MaplogSpacing.xSmall)
+                            if isActive {
+                                Text("지금 촬영")
+                                    .font(.caption.weight(.bold))
+                                    .foregroundStyle(Color.maplogInk)
+                                    .padding(.horizontal, MaplogSpacing.small)
+                                    .padding(.vertical, MaplogSpacing.xxSmall)
+                                    .background(Color.maplogLime, in: Capsule())
+                                    .padding(MaplogSpacing.xSmall)
+                            } else {
+                                Text("\(index + 1)")
+                                    .font(.caption.weight(.bold))
+                                    .foregroundStyle(.white.opacity(0.7))
+                                    .frame(width: 24, height: 24)
+                                    .background(.black.opacity(0.5), in: Circle())
+                                    .padding(MaplogSpacing.xSmall)
+                            }
                         }
                         .frame(width: slotFrame.width - 4, height: slotFrame.height - 4)
                         .position(x: slotFrame.midX, y: slotFrame.midY)
@@ -102,6 +123,7 @@ struct CameraCompositionGuideOverlay: View {
         }
         .allowsHitTesting(false)
         .accessibilityHidden(true)
+        .animation(.easeInOut(duration: 0.2), value: activeSlotIndex)
     }
 
     @ViewBuilder
@@ -111,13 +133,13 @@ struct CameraCompositionGuideOverlay: View {
     ) -> some View {
         if configuration.sceneOrientation == .horizontal {
             VStack(spacing: 0) {
-                Color.black.opacity(0.72)
+                Color.black.opacity(0.88)
                     .frame(height: sceneFrame.minY)
 
                 Color.clear
                     .frame(height: sceneFrame.height)
 
-                Color.black.opacity(0.72)
+                Color.black.opacity(0.88)
                     .frame(height: max(0, canvasSize.height - sceneFrame.maxY))
             }
             .frame(width: canvasSize.width, height: canvasSize.height)

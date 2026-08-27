@@ -22,7 +22,8 @@ struct CameraCaptureView: View {
 
                 if viewModel.settings.compositionConfiguration.layout != .single {
                     CameraCompositionGuideOverlay(
-                        configuration: viewModel.settings.compositionConfiguration
+                        configuration: viewModel.settings.compositionConfiguration,
+                        activeSlotIndex: viewModel.activeCompositionSlotIndex
                     )
                     .ignoresSafeArea()
                 }
