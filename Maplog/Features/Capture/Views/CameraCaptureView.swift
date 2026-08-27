@@ -113,9 +113,10 @@ struct CameraCaptureView: View {
 
             ZStack(alignment: .bottomLeading) {
                 VStack(spacing: MaplogSpacing.medium) {
-                    if viewModel.settings.compositionConfiguration.layout != .single {
+                    if viewModel.settings.compositionConfiguration.layout != .single
+                        || viewModel.settings.compositionConfiguration.sceneOrientation == .horizontal {
                         Text(
-                            "\(viewModel.settings.compositionConfiguration.layout.title) · \(viewModel.settings.compositionConfiguration.splitDirection.title)"
+                            "\(viewModel.settings.compositionConfiguration.layout.title) · \(viewModel.settings.compositionConfiguration.sceneOrientation.title)"
                         )
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.white)

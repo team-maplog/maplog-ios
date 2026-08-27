@@ -58,18 +58,17 @@ enum VideoCompositionLayout: String, CaseIterable, Equatable, Sendable, Identifi
 
     /// 0~1 범위의 슬롯 좌표입니다.
     ///
-    /// Maplog 결과물은 항상 세로 릴스 캔버스로 저장합니다. 여기서 `direction`은
-    /// 결과 영상의 가로·세로 비율이 아니라 분할선의 방향입니다. 실제 픽셀 크기는
-    /// export 시 canvas 크기를 곱해 만듭니다.
+    /// 이 좌표는 장면 영역 안에서만 쓰입니다. 실제 결과물은 항상 세로 릴스
+    /// 캔버스에 저장하고, 가로 장면은 그 안에 16:9로 가운데 배치합니다.
     func normalizedFrames(
-        for direction: VideoSplitDirection
+        for orientation: VideoSceneOrientation
     ) -> [CGRect] {
         switch self {
         case .single:
             return [CGRect(x: 0, y: 0, width: 1, height: 1)]
 
         case .splitTwo:
-            switch direction {
+            switch orientation {
             case .vertical:
                 return [
                     CGRect(x: 0, y: 0, width: 1, height: 0.5),
@@ -83,7 +82,7 @@ enum VideoCompositionLayout: String, CaseIterable, Equatable, Sendable, Identifi
             }
 
         case .splitThree:
-            switch direction {
+            switch orientation {
             case .vertical:
                 return [
                     CGRect(x: 0, y: 0, width: 1, height: 1.0 / 3.0),
@@ -101,11 +100,11 @@ enum VideoCompositionLayout: String, CaseIterable, Equatable, Sendable, Identifi
     }
 }
 
-/// 분할 장면의 진행 방향입니다.
+/// 완성 릴스 안에 놓을 장면의 비율입니다.
 ///
-/// `vertical`은 첨부한 아이콘처럼 세로 화면을 위·아래로 쌓는 방식,
-/// `horizontal`은 그 아이콘을 눕힌 것처럼 좌·우로 나누는 방식입니다.
-enum VideoSplitDirection: String, CaseIterable, Equatable, Sendable, Identifiable {
+/// 세로 장면은 9:16 캔버스를 전부 쓰고, 가로 장면은 세로 릴스의 중앙에
+/// 16:9로 배치됩니다. 따라서 가로 장면의 위·아래 여백은 검정으로 남습니다.
+enum VideoSceneOrientation: String, CaseIterable, Equatable, Sendable, Identifiable {
     case vertical
     case horizontal
 
@@ -123,23 +122,32 @@ enum VideoSplitDirection: String, CaseIterable, Equatable, Sendable, Identifiabl
     var detail: String {
         switch self {
         case .vertical:
-            return "위아래"
+            return "9:16"
         case .horizontal:
-            return "좌우"
+            return "16:9"
+        }
+    }
+
+    var aspectRatio: CGFloat {
+        switch self {
+        case .vertical:
+            return 9.0 / 16.0
+        case .horizontal:
+            return 16.0 / 9.0
         }
     }
 }
 
 struct VideoCompositionConfiguration: Equatable, Sendable {
     var layout: VideoCompositionLayout
-    var splitDirection: VideoSplitDirection
+    var sceneOrientation: VideoSceneOrientation
 
     init(
         layout: VideoCompositionLayout = .single,
-        splitDirection: VideoSplitDirection = .vertical
+        sceneOrientation: VideoSceneOrientation = .vertical
     ) {
         self.layout = layout
-        self.splitDirection = splitDirection
+        self.sceneOrientation = sceneOrientation
     }
 
     var renderSize: CGSize {
@@ -148,6 +156,29 @@ struct VideoCompositionConfiguration: Equatable, Sendable {
 
     var aspectRatio: CGFloat {
         renderSize.width / renderSize.height
+    }
+
+    /// 가로 장면은 세로 결과물 안에서 가로 폭을 꽉 채우고 중앙에 놓습니다.
+    /// 이 프레임 밖은 export의 검은 배경으로 그대로 남습니다.
+    func sceneFrame(in canvasSize: CGSize) -> CGRect {
+        let sceneAspectRatio = sceneOrientation.aspectRatio
+        let canvasAspectRatio = canvasSize.width / canvasSize.height
+
+        if sceneAspectRatio <= canvasAspectRatio {
+            return CGRect(origin: .zero, size: canvasSize)
+        }
+
+        let sceneHeight = canvasSize.width / sceneAspectRatio
+        return CGRect(
+            x: 0,
+            y: (canvasSize.height - sceneHeight) / 2,
+            width: canvasSize.width,
+            height: sceneHeight
+        )
+    }
+
+    var sceneFrame: CGRect {
+        sceneFrame(in: renderSize)
     }
 
     var requiredClipCount: Int {

@@ -39,8 +39,8 @@ struct CameraCompositionConfigurationSheet: View {
                     onLayoutSelect: { layout in
                         draftConfiguration.layout = layout
                     },
-                    onSplitDirectionSelect: { direction in
-                        draftConfiguration.splitDirection = direction
+                    onSceneOrientationSelect: { orientation in
+                        draftConfiguration.sceneOrientation = orientation
                     }
                 )
 
@@ -65,20 +65,21 @@ struct CameraCompositionGuideOverlay: View {
 
     var body: some View {
         GeometryReader { proxy in
+            let sceneFrame = configuration.sceneFrame(in: proxy.size)
             let frames = configuration.layout.normalizedFrames(
-                for: configuration.splitDirection
+                for: configuration.sceneOrientation
             )
 
             ForEach(Array(frames.enumerated()), id: \.offset) { _, frame in
                 RoundedRectangle(cornerRadius: 2, style: .continuous)
                     .stroke(Color.white.opacity(0.9), lineWidth: 1)
                     .frame(
-                        width: proxy.size.width * frame.width - 4,
-                        height: proxy.size.height * frame.height - 4
+                        width: sceneFrame.width * frame.width - 4,
+                        height: sceneFrame.height * frame.height - 4
                     )
                     .position(
-                        x: proxy.size.width * frame.midX,
-                        y: proxy.size.height * frame.midY
+                        x: sceneFrame.minX + sceneFrame.width * frame.midX,
+                        y: sceneFrame.minY + sceneFrame.height * frame.midY
                     )
             }
         }

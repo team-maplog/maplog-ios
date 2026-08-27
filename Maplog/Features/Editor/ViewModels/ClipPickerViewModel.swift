@@ -181,8 +181,8 @@ final class ClipPickerViewModel: ObservableObject {
         }
     }
 
-    func selectSplitDirection(_ direction: VideoSplitDirection) {
-        compositionConfiguration.splitDirection = direction
+    func selectSceneOrientation(_ orientation: VideoSceneOrientation) {
+        compositionConfiguration.sceneOrientation = orientation
     }
 
     var hasValidCompositionSelection: Bool {

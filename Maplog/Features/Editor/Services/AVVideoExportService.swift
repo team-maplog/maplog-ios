@@ -87,7 +87,7 @@ actor AVVideoExportService: VideoExportService {
         var insertionTime = CMTime.zero
         var instructions: [AVMutableVideoCompositionInstruction] = []
         let renderSize = request.compositionConfiguration.renderSize
-        let targetFrame = CGRect(origin: .zero, size: renderSize)
+        let targetFrame = request.compositionConfiguration.sceneFrame
 
         for clip in request.clips where clip.mediaType == .video {
             let source = try await makeSourceVideo(for: clip)
@@ -176,14 +176,15 @@ actor AVVideoExportService: VideoExportService {
             isMuted: request.isMuted
         )
         let renderSize = configuration.renderSize
+        let sceneFrame = configuration.sceneFrame
         let frames = configuration.layout.normalizedFrames(
-            for: configuration.splitDirection
+            for: configuration.sceneOrientation
         ).map { normalizedFrame in
             CGRect(
-                x: normalizedFrame.minX * renderSize.width,
-                y: normalizedFrame.minY * renderSize.height,
-                width: normalizedFrame.width * renderSize.width,
-                height: normalizedFrame.height * renderSize.height
+                x: sceneFrame.minX + normalizedFrame.minX * sceneFrame.width,
+                y: sceneFrame.minY + normalizedFrame.minY * sceneFrame.height,
+                width: normalizedFrame.width * sceneFrame.width,
+                height: normalizedFrame.height * sceneFrame.height
             )
         }
 

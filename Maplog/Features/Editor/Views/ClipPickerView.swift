@@ -169,7 +169,7 @@ struct ClipPickerView: View {
                                 configuration: viewModel.compositionConfiguration,
                                 selectedClipCount: viewModel.selectedCount,
                                 onLayoutSelect: viewModel.selectCompositionLayout,
-                                onSplitDirectionSelect: viewModel.selectSplitDirection
+                                onSceneOrientationSelect: viewModel.selectSceneOrientation
                             )
                         }
 

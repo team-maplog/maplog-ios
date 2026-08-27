@@ -10,29 +10,27 @@ struct VideoCompositionConfigurationPicker: View {
     let configuration: VideoCompositionConfiguration
     let selectedClipCount: Int
     let onLayoutSelect: (VideoCompositionLayout) -> Void
-    let onSplitDirectionSelect: (VideoSplitDirection) -> Void
+    let onSceneOrientationSelect: (VideoSceneOrientation) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: MaplogSpacing.medium) {
             VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
+                Text("장면 비율")
+                    .font(MaplogFont.calloutStrong)
+
+                HStack(spacing: MaplogSpacing.xSmall) {
+                    ForEach(VideoSceneOrientation.allCases) { orientation in
+                        sceneOrientationButton(orientation)
+                    }
+                }
+
                 Text("장면 구성")
                     .font(MaplogFont.calloutStrong)
+                    .padding(.top, MaplogSpacing.small)
 
                 HStack(spacing: MaplogSpacing.xSmall) {
                     ForEach(VideoCompositionLayout.allCases) { layout in
                         layoutButton(layout)
-                    }
-                }
-
-                if configuration.layout != .single {
-                    Text("분할 방향")
-                        .font(MaplogFont.calloutStrong)
-                        .padding(.top, MaplogSpacing.xSmall)
-
-                    HStack(spacing: MaplogSpacing.xSmall) {
-                        ForEach(VideoSplitDirection.allCases) { direction in
-                            splitDirectionButton(direction)
-                        }
                     }
                 }
 
@@ -54,7 +52,7 @@ struct VideoCompositionConfigurationPicker: View {
             VStack(spacing: 6) {
                 VideoCompositionLayoutPreview(
                     layout: layout,
-                    splitDirection: configuration.splitDirection,
+                    sceneOrientation: configuration.sceneOrientation,
                     tint: isSelected ? Color.maplogLime : Color.maplogLine
                 )
                 .frame(width: 40, height: 40)
@@ -98,23 +96,23 @@ struct VideoCompositionConfigurationPicker: View {
         )
     }
 
-    private func splitDirectionButton(
-        _ direction: VideoSplitDirection
+    private func sceneOrientationButton(
+        _ orientation: VideoSceneOrientation
     ) -> some View {
-        let isSelected = configuration.splitDirection == direction
+        let isSelected = configuration.sceneOrientation == orientation
 
         return Button {
-            onSplitDirectionSelect(direction)
+            onSceneOrientationSelect(orientation)
         } label: {
             HStack(spacing: MaplogSpacing.xSmall) {
-                VideoSplitDirectionIcon(
+                VideoSceneOrientationIcon(
                     layout: configuration.layout,
-                    splitDirection: direction,
+                    sceneOrientation: orientation,
                     tint: isSelected ? Color.maplogLime : Color.maplogLine
                 )
                 .frame(width: 28, height: 28)
 
-                Text("\(direction.title) · \(direction.detail)")
+                Text("\(orientation.title) · \(orientation.detail)")
                     .font(MaplogFont.caption.weight(.semibold))
             }
             .frame(maxWidth: .infinity)
@@ -128,19 +126,24 @@ struct VideoCompositionConfigurationPicker: View {
             )
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(direction.title) 방향으로 분할")
+        .accessibilityLabel("\(orientation.title) 장면 비율")
         .accessibilityValue(isSelected ? "선택됨" : "선택되지 않음")
     }
 
     private var selectionGuidance: String {
         let requiredCount = configuration.requiredClipCount
 
-        guard configuration.layout != .single else {
-            return "세로 릴스 화면으로 저장돼요. 가로 원본은 화면 너비에 맞춰 보여요."
-        }
+        let sceneDescription = configuration.sceneOrientation == .horizontal
+            ? "가로 장면은 세로 릴스 중앙에 배치되고 위아래는 검정으로 저장돼요."
+            : "세로 장면은 릴스 화면을 꽉 채워 저장돼요."
+
+        guard configuration.layout != .single else { return sceneDescription }
 
         if selectedClipCount == requiredCount {
-            return "(requiredCount)개 장면을 \(configuration.splitDirection.detail)로 나눠 동시에 재생해요."
+            let splitDescription = configuration.sceneOrientation == .horizontal
+                ? "좌우로"
+                : "위아래로"
+            return "\(requiredCount)개 장면을 \(splitDescription) 나눠 동시에 재생해요."
         }
 
         return "(configuration.layout.title)은 클립 (requiredCount)개를 선택해 주세요."
@@ -149,7 +152,7 @@ struct VideoCompositionConfigurationPicker: View {
 
 struct VideoCompositionLayoutPreview: View {
     let layout: VideoCompositionLayout
-    let splitDirection: VideoSplitDirection
+    let sceneOrientation: VideoSceneOrientation
     let tint: Color
 
     var body: some View {
@@ -162,7 +165,7 @@ struct VideoCompositionLayoutPreview: View {
 
                 ForEach(
                     Array(
-                        layout.normalizedFrames(for: splitDirection).enumerated()
+                        layout.normalizedFrames(for: sceneOrientation).enumerated()
                     ),
                     id: \.offset
                 ) { _, frame in
@@ -179,16 +182,15 @@ struct VideoCompositionLayoutPreview: View {
                 }
             }
         }
-        .aspectRatio(9.0 / 16.0, contentMode: .fit)
+        .aspectRatio(sceneOrientation.aspectRatio, contentMode: .fit)
     }
 }
 
-/// 분할선 방향을 작은 아이콘으로 보여 줍니다.
-/// 세로 방향은 첨부한 모양처럼 세로 캡슐 안에 가로선이 생기고,
-/// 가로 방향은 그 캡슐을 눕힌 모습으로 나타납니다.
-private struct VideoSplitDirectionIcon: View {
+/// 장면 비율과 분할선을 작은 아이콘으로 보여 줍니다.
+/// 세로는 세로 캡슐 안에 가로선, 가로는 넓은 화면 안에 세로선이 생깁니다.
+private struct VideoSceneOrientationIcon: View {
     let layout: VideoCompositionLayout
-    let splitDirection: VideoSplitDirection
+    let sceneOrientation: VideoSceneOrientation
     let tint: Color
 
     var body: some View {
@@ -202,7 +204,7 @@ private struct VideoSplitDirectionIcon: View {
 
                 ForEach(
                     Array(
-                        layout.normalizedFrames(for: splitDirection).enumerated()
+                        layout.normalizedFrames(for: sceneOrientation).enumerated()
                     ),
                     id: \.offset
                 ) { _, frame in
@@ -227,9 +229,7 @@ private struct VideoSplitDirectionIcon: View {
     }
 
     private func iconSize(in availableSize: CGSize) -> CGSize {
-        let aspectRatio: CGFloat = splitDirection == .vertical
-            ? 9.0 / 16.0
-            : 16.0 / 9.0
+        let aspectRatio = sceneOrientation.aspectRatio
 
         if availableSize.width / availableSize.height > aspectRatio {
             return CGSize(

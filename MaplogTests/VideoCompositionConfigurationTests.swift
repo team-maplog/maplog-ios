@@ -3,7 +3,7 @@ import XCTest
 @testable import Maplog
 
 final class VideoCompositionConfigurationTests: XCTestCase {
-    func testThreeSplitInVerticalDirectionUsesThreeStackedSlots() {
+    func testThreeSplitInVerticalSceneUsesThreeStackedSlots() {
         let frames = VideoCompositionLayout.splitThree.normalizedFrames(
             for: .vertical
         )
@@ -23,7 +23,7 @@ final class VideoCompositionConfigurationTests: XCTestCase {
         )
     }
 
-    func testThreeSplitInHorizontalDirectionUsesThreeSideBySideSlots() {
+    func testThreeSplitInHorizontalSceneUsesThreeSideBySideSlots() {
         let frames = VideoCompositionLayout.splitThree.normalizedFrames(
             for: .horizontal
         )
@@ -43,7 +43,7 @@ final class VideoCompositionConfigurationTests: XCTestCase {
         )
     }
 
-    func testTwoSplitInVerticalDirectionUsesTwoStackedSlots() {
+    func testTwoSplitInVerticalSceneUsesTwoStackedSlots() {
         let frames = VideoCompositionLayout.splitTwo.normalizedFrames(
             for: .vertical
         )
@@ -61,6 +61,18 @@ final class VideoCompositionConfigurationTests: XCTestCase {
             CGSize(width: 1_080, height: 1_920)
         )
         XCTAssertEqual(configuration.aspectRatio, 9.0 / 16.0)
+    }
+
+    func testHorizontalSceneIsCenteredInsidePortraitReel() {
+        let configuration = VideoCompositionConfiguration(
+            layout: .splitThree,
+            sceneOrientation: .horizontal
+        )
+
+        XCTAssertEqual(
+            configuration.sceneFrame,
+            CGRect(x: 0, y: 656.25, width: 1_080, height: 607.5)
+        )
     }
 
     func testSplitLayoutRequiresItsMatchingClipCount() {
