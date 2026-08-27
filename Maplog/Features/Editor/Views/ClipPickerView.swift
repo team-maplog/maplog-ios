@@ -31,8 +31,10 @@ struct ClipPickerView: View {
     
     private let gridColumns = Array(
         repeating: GridItem(
-            .flexible(),
-            spacing: MaplogSpacing.xSmall),
+            .flexible(minimum: 0),
+            spacing: MaplogSpacing.xSmall,
+            alignment: .top
+        ),
         count: 3
     )
     
@@ -189,6 +191,7 @@ struct ClipPickerView: View {
                                         item: item,
                                         selectionOrder: selectionOrder
                                     )
+                                    .frame(maxWidth: .infinity, alignment: .top)
                                 }
                                 .buttonStyle(.plain)
                                 .accessibilityLabel(

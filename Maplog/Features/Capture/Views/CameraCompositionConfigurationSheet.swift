@@ -70,20 +70,57 @@ struct CameraCompositionGuideOverlay: View {
                 for: configuration.sceneOrientation
             )
 
-            ForEach(Array(frames.enumerated()), id: \.offset) { _, frame in
-                RoundedRectangle(cornerRadius: 2, style: .continuous)
-                    .stroke(Color.white.opacity(0.9), lineWidth: 1)
-                    .frame(
-                        width: sceneFrame.width * frame.width - 4,
-                        height: sceneFrame.height * frame.height - 4
+            ZStack {
+                letterboxMask(sceneFrame: sceneFrame, canvasSize: proxy.size)
+
+                ForEach(Array(frames.enumerated()), id: \.offset) { index, frame in
+                    let slotFrame = CGRect(
+                        x: sceneFrame.minX + sceneFrame.width * frame.minX,
+                        y: sceneFrame.minY + sceneFrame.height * frame.minY,
+                        width: sceneFrame.width * frame.width,
+                        height: sceneFrame.height * frame.height
                     )
-                    .position(
-                        x: sceneFrame.minX + sceneFrame.width * frame.midX,
-                        y: sceneFrame.minY + sceneFrame.height * frame.midY
-                    )
+
+                    RoundedRectangle(cornerRadius: 4, style: .continuous)
+                        .fill(Color.black.opacity(0.08))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 4, style: .continuous)
+                                .stroke(Color.white.opacity(0.92), lineWidth: 2)
+                        }
+                        .overlay(alignment: .topLeading) {
+                            Text("\(index + 1)")
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(.white)
+                                .frame(width: 24, height: 24)
+                                .background(.black.opacity(0.5), in: Circle())
+                                .padding(MaplogSpacing.xSmall)
+                        }
+                        .frame(width: slotFrame.width - 4, height: slotFrame.height - 4)
+                        .position(x: slotFrame.midX, y: slotFrame.midY)
+                }
             }
         }
         .allowsHitTesting(false)
         .accessibilityHidden(true)
+    }
+
+    @ViewBuilder
+    private func letterboxMask(
+        sceneFrame: CGRect,
+        canvasSize: CGSize
+    ) -> some View {
+        if configuration.sceneOrientation == .horizontal {
+            VStack(spacing: 0) {
+                Color.black.opacity(0.72)
+                    .frame(height: sceneFrame.minY)
+
+                Color.clear
+                    .frame(height: sceneFrame.height)
+
+                Color.black.opacity(0.72)
+                    .frame(height: max(0, canvasSize.height - sceneFrame.maxY))
+            }
+            .frame(width: canvasSize.width, height: canvasSize.height)
+        }
     }
 }
