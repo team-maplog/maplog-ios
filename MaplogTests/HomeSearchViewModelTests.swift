@@ -21,7 +21,8 @@ final class HomeSearchViewModelTests: XCTestCase {
         )
         let viewModel = HomeSearchViewModel(
             searchRepository: repository,
-            logMediaRepository: LogMediaRepositoryStub()
+            logMediaRepository: LogMediaRepositoryStub(),
+            logReelRepository: LogReelRepositoryStub()
         )
 
         viewModel.updateQuery("성수")
@@ -54,7 +55,8 @@ final class HomeSearchViewModelTests: XCTestCase {
         )
         let viewModel = HomeSearchViewModel(
             searchRepository: repository,
-            logMediaRepository: LogMediaRepositoryStub()
+            logMediaRepository: LogMediaRepositoryStub(),
+            logReelRepository: LogReelRepositoryStub()
         )
 
         viewModel.updateQuery("성수")
@@ -74,7 +76,8 @@ final class HomeSearchViewModelTests: XCTestCase {
         let repository = HomeSearchRepositoryStub()
         let viewModel = HomeSearchViewModel(
             searchRepository: repository,
-            logMediaRepository: LogMediaRepositoryStub()
+            logMediaRepository: LogMediaRepositoryStub(),
+            logReelRepository: LogReelRepositoryStub()
         )
 
         viewModel.updateQuery("   ")
@@ -88,6 +91,38 @@ final class HomeSearchViewModelTests: XCTestCase {
             viewModel.inputValidationMessage,
             "검색어는 50자 이하로 입력해 주세요."
         )
+    }
+
+    func testInitialExploreLoadsRecentLogs() async {
+        let recentLog = LogReel(
+            id: 7,
+            author: LogReelAuthor(
+                id: UUID(),
+                nickname: "maplogger",
+                profileImageURL: nil
+            ),
+            caption: "성수 산책",
+            address: "서울 성동구 성수동",
+            thumbnailURL: URL(string: "https://example.com/thumbnail.jpg"),
+            playbackURL: nil,
+            publishedAt: Date(),
+            viewCount: 0,
+            clips: [],
+            likeCount: 0,
+            commentCount: 0,
+            isLikedByViewer: false,
+            isSavedByViewer: false
+        )
+        let viewModel = HomeSearchViewModel(
+            searchRepository: HomeSearchRepositoryStub(),
+            logMediaRepository: LogMediaRepositoryStub(),
+            logReelRepository: LogReelRepositoryStub(reels: [recentLog])
+        )
+
+        await viewModel.loadRecentLogsIfNeeded()
+
+        XCTAssertEqual(viewModel.exploreState, .content)
+        XCTAssertEqual(viewModel.recentLogs, [recentLog])
     }
 
     private func makePage(
@@ -192,5 +227,35 @@ private final class LogMediaRepositoryStub: LogMediaRepository {
 
     func fetchRoutePointThumbnailData(from url: URL) async throws -> Data {
         Data()
+    }
+}
+
+private final class LogReelRepositoryStub: LogReelRepository {
+    private let reels: [LogReel]
+
+    init(reels: [LogReel] = []) {
+        self.reels = reels
+    }
+
+    func fetchReels(
+        cursor: String?,
+        size: Int
+    ) async throws -> LogReelPage {
+        LogReelPage(
+            reels: reels,
+            hasNext: false,
+            nextCursor: nil
+        )
+    }
+
+    func fetchSavedLogs(
+        cursor: String?,
+        size: Int
+    ) async throws -> LogReelPage {
+        LogReelPage(
+            reels: [],
+            hasNext: false,
+            nextCursor: nil
+        )
     }
 }

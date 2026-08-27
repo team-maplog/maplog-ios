@@ -15,13 +15,15 @@ struct HomeSearchFeatureView: View {
     init(
         searchRepository: any HomeSearchRepository,
         logMediaRepository: any LogMediaRepository,
+        logReelRepository: any LogReelRepository,
         onShowLogDetail: @escaping (Int64) -> Void,
         onShowTourismDetail: @escaping (Int64) -> Void
     ) {
         _viewModel = StateObject(
             wrappedValue: HomeSearchViewModel(
                 searchRepository: searchRepository,
-                logMediaRepository: logMediaRepository
+                logMediaRepository: logMediaRepository,
+                logReelRepository: logReelRepository
             )
         )
         self.onShowLogDetail = onShowLogDetail
@@ -41,8 +43,10 @@ struct HomeSearchFeatureView: View {
                 searchHeader
                     .padding(.top, 12)
 
-                scopeChips
-                    .padding(.top, 22)
+                if !viewModel.trimmedQuery.isEmpty || viewModel.state != .idle {
+                    scopeChips
+                        .padding(.top, 22)
+                }
 
                 if let validationMessage = viewModel.inputValidationMessage {
                     Text(validationMessage)
@@ -65,6 +69,9 @@ struct HomeSearchFeatureView: View {
                 isSearchFieldFocused = false
             }
         )
+        .task {
+            await viewModel.loadRecentLogsIfNeeded()
+        }
     }
 
     private var searchHeader: some View {
@@ -187,7 +194,7 @@ struct HomeSearchFeatureView: View {
     private var searchContent: some View {
         switch viewModel.state {
         case .idle:
-            HomeSearchPrompt()
+            exploreContent
 
         case .initialLoading:
             ProgressView("검색 결과를 불러오는 중이에요")
@@ -216,6 +223,14 @@ struct HomeSearchFeatureView: View {
 
                 resultGrid
 
+                if viewModel.visibleItems.isEmpty {
+                    if viewModel.isPrefetchingSearchThumbnails {
+                        HomeSearchImageLoadingState()
+                    } else {
+                        HomeSearchNoImageState()
+                    }
+                }
+
                 if viewModel.isLoadingNextPage {
                     ProgressView()
                         .frame(maxWidth: .infinity)
@@ -240,30 +255,113 @@ struct HomeSearchFeatureView: View {
     private var resultGrid: some View {
         LazyVGrid(
             columns: Array(
-                repeating: GridItem(.flexible(), spacing: 9),
+                repeating: GridItem(.flexible(), spacing: 4),
                 count: 3
             ),
-            spacing: 9
+            spacing: 4
         ) {
-            ForEach(viewModel.items) { item in
+            ForEach(viewModel.visibleItems) { item in
                 Button {
                     open(item)
                 } label: {
-                    HomeSearchGridCard(
+                    HomeSearchThumbnailCard(
                         item: item,
-                        thumbnailData: viewModel.thumbnailData(for: item),
-                        isLoadingImage: viewModel.isLoadingThumbnail(for: item)
+                        thumbnailData: viewModel.thumbnailData(for: item)
                     )
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(accessibilityLabel(for: item))
                 .accessibilityHint("상세 화면으로 이동")
                 .task {
-                    await viewModel.loadThumbnail(for: item)
                     await viewModel.loadNextPageIfNeeded(for: item)
                 }
             }
         }
+        .task(id: viewModel.items.map(\.id)) {
+            await viewModel.loadThumbnails(for: viewModel.items)
+        }
+        .animation(
+            .easeOut(duration: 0.18),
+            value: viewModel.visibleItems.map(\.id)
+        )
+    }
+
+    @ViewBuilder
+    private var exploreContent: some View {
+        switch viewModel.exploreState {
+        case .idle, .loading:
+            ProgressView("최근 맵로그를 불러오는 중이에요")
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 96)
+
+        case .empty:
+            ContentUnavailableView(
+                "아직 공개된 맵로그가 없어요",
+                systemImage: "play.rectangle"
+            )
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 96)
+
+        case .failed(let presentation):
+            HomeSearchFailedState(
+                presentation: presentation,
+                onRetry: {
+                    Task {
+                        await viewModel.retryRecentLogs()
+                    }
+                },
+                onSignIn: performLogout
+            )
+
+        case .content:
+            VStack(alignment: .leading, spacing: 16) {
+                Text("최근 올라온 맵로그")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(Color.maplogInk)
+
+                recentLogGrid
+
+                if viewModel.visibleRecentLogs.isEmpty {
+                    if viewModel.isPrefetchingRecentThumbnails {
+                        HomeSearchImageLoadingState()
+                    } else {
+                        HomeSearchNoImageState()
+                    }
+                }
+            }
+        }
+    }
+
+    private var recentLogGrid: some View {
+        LazyVGrid(
+            columns: Array(
+                repeating: GridItem(.flexible(), spacing: 4),
+                count: 3
+            ),
+            spacing: 4
+        ) {
+            ForEach(viewModel.visibleRecentLogs) { log in
+                Button {
+                    isSearchFieldFocused = false
+                    onShowLogDetail(log.id)
+                } label: {
+                    HomeSearchThumbnailCard(
+                        itemKind: .log,
+                        thumbnailData: viewModel.recentThumbnailData(for: log)
+                    )
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("최근 맵로그 \(log.caption)")
+                .accessibilityHint("로그 상세 화면으로 이동")
+            }
+        }
+        .task(id: viewModel.recentLogs.map(\.id)) {
+            await viewModel.loadRecentThumbnails()
+        }
+        .animation(
+            .easeOut(duration: 0.18),
+            value: viewModel.visibleRecentLogs.map(\.id)
+        )
     }
 
     private func scopeTitle(_ scope: HomeSearchScope) -> String {
@@ -295,88 +393,102 @@ struct HomeSearchFeatureView: View {
     }
 }
 
-private struct HomeSearchGridCard: View {
-    let item: HomeSearchItem
+private struct HomeSearchThumbnailCard: View {
+    let itemKind: HomeSearchItem.Kind
     let thumbnailData: Data?
-    let isLoadingImage: Bool
+
+    init(
+        item: HomeSearchItem,
+        thumbnailData: Data?
+    ) {
+        self.itemKind = item.kind
+        self.thumbnailData = thumbnailData
+    }
+
+    init(
+        itemKind: HomeSearchItem.Kind,
+        thumbnailData: Data?
+    ) {
+        self.itemKind = itemKind
+        self.thumbnailData = thumbnailData
+    }
 
     var body: some View {
-        ZStack(alignment: .bottomLeading) {
-            imageContent
+        GeometryReader { proxy in
+            ZStack(alignment: .bottomLeading) {
+                if let thumbnailData,
+                   let image = UIImage(data: thumbnailData) {
+                    Image(uiImage: image)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(
+                            width: proxy.size.width,
+                            height: proxy.size.height
+                        )
+                        .clipped()
+                }
 
-            switch item.kind {
-            case .log:
-                Image(systemName: "play.fill")
-                    .font(.system(size: 11, weight: .bold))
-                    .foregroundStyle(.white)
-                    .padding(8)
-                    .background(.black.opacity(0.58), in: Circle())
-                    .padding(8)
-
-            case .tourism:
-                Image(systemName: "mappin.circle.fill")
-                    .font(.system(size: 25, weight: .semibold))
-                    .foregroundStyle(Color.maplogPrimary)
-                    .background(Circle().fill(.white).padding(2))
-                    .padding(8)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                marker
             }
-        }
-        .aspectRatio(0.74, contentMode: .fit)
-        .clipShape(
-            RoundedRectangle(
-                cornerRadius: MaplogRadius.medium,
-                style: .continuous
+            .frame(
+                width: proxy.size.width,
+                height: proxy.size.height
             )
-        )
+            .background(Color.clear)
+            .clipShape(
+                RoundedRectangle(
+                    cornerRadius: MaplogRadius.medium,
+                    style: .continuous
+                )
+            )
+        }
+        // 카드 폭을 기준으로 세로 길이를 고정해 어떤 원본 이미지도 같은 그리드 칸을 사용합니다.
+        .aspectRatio(0.72, contentMode: .fit)
+        .contentShape(RoundedRectangle(cornerRadius: MaplogRadius.medium))
     }
 
     @ViewBuilder
-    private var imageContent: some View {
-        if let thumbnailData,
-           let image = UIImage(data: thumbnailData) {
-            Image(uiImage: image)
-                .resizable()
-                .scaledToFill()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .clipped()
-        } else if isLoadingImage {
-            Color.maplogSurfaceRaised
-                .overlay {
-                    ProgressView()
-                        .tint(Color.maplogMuted)
-                }
-        } else {
-            LinearGradient(
-                colors: [
-                    Color.maplogSurfaceRaised,
-                    Color.maplogCanvas
-                ],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .overlay {
-                Image(
-                    systemName: item.kind == .log
-                        ? "play.rectangle.fill"
-                        : "photo"
+    private var marker: some View {
+        switch itemKind {
+        case .log:
+            Image(systemName: "play.fill")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(width: 28, height: 28)
+                .background(.black.opacity(0.58), in: Circle())
+                .padding(7)
+
+        case .tourism:
+            Image(systemName: "mappin.circle.fill")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(Color.maplogPrimary)
+                .background(Circle().fill(.white.opacity(0.94)).padding(1.5))
+                .padding(7)
+                .frame(
+                    maxWidth: .infinity,
+                    maxHeight: .infinity,
+                    alignment: .topLeading
                 )
-                .font(.system(size: 22, weight: .medium))
-                .foregroundStyle(Color.maplogMuted.opacity(0.72))
-            }
         }
     }
 }
 
-private struct HomeSearchPrompt: View {
+private struct HomeSearchImageLoadingState: View {
     var body: some View {
-        ContentUnavailableView(
-            "어디로 떠나볼까요?",
-            systemImage: "magnifyingglass",
-            description: Text("장소, 축제, 맵로그를 한 번에 찾아보세요.")
-        )
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 96)
+        ProgressView()
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 36)
+            .accessibilityLabel("이미지를 불러오는 중")
+    }
+}
+
+private struct HomeSearchNoImageState: View {
+    var body: some View {
+        Text("표시할 사진이 있는 결과가 없어요")
+            .font(.system(size: 14, weight: .medium))
+            .foregroundStyle(Color.maplogMuted)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 36)
     }
 }
 

@@ -194,6 +194,7 @@ struct MainTabView: View {
                             profileRepository: profileRepository,
                             followRepository: followRepository,
                             homeSearchRepository: homeSearchRepository,
+                            logReelRepository: logReelRepository,
                             logMediaRepository: logMediaRepository,
                             topSafeAreaInset: rootProxy.safeAreaInsets.top,
                             onShowAllTourisms: {
