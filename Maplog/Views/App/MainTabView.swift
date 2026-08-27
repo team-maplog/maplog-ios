@@ -49,6 +49,8 @@ struct MainTabView: View {
     private let mapRepository: any MapRepository
     private let homeSearchRepository: any HomeSearchRepository
     private let mapCurrentLocationService: any MapCurrentLocationService
+    private let photoLibraryVideoImportService: any PhotoLibraryVideoImporting
+    private let photoLibraryVideoSaveService: any PhotoLibraryVideoSaving
     @State private var homeNavigationPath: [HomeNavigationRoute] = []
 
 
@@ -74,6 +76,8 @@ struct MainTabView: View {
         mapRepository: any MapRepository,
         homeSearchRepository: any HomeSearchRepository,
         mapCurrentLocationService: any MapCurrentLocationService,
+        photoLibraryVideoImportService: any PhotoLibraryVideoImporting,
+        photoLibraryVideoSaveService: any PhotoLibraryVideoSaving,
         requestedTab: Binding<MaplogTab?> = .constant(nil),
         requestedCapturePlaceName: Binding<String?> = .constant(nil)
     ) {
@@ -97,6 +101,8 @@ struct MainTabView: View {
         self.mapRepository = mapRepository
         self.homeSearchRepository = homeSearchRepository
         self.mapCurrentLocationService = mapCurrentLocationService
+        self.photoLibraryVideoImportService = photoLibraryVideoImportService
+        self.photoLibraryVideoSaveService = photoLibraryVideoSaveService
 
         _requestedTab = requestedTab
         _requestedCapturePlaceName = requestedCapturePlaceName
@@ -253,7 +259,9 @@ struct MainTabView: View {
                         videoExportService: videoExportService,
                         captureLocationService: captureLocationService,
                         logLocationRepository: logLocationRepository,
-                        logPublishingRepository: logPublishingRepository
+                        logPublishingRepository: logPublishingRepository,
+                        photoLibraryVideoImportService: photoLibraryVideoImportService,
+                        photoLibraryVideoSaveService: photoLibraryVideoSaveService
                     ) {
                         withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
                             selectedTab = previousTab

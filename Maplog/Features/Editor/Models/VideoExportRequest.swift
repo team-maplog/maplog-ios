@@ -11,4 +11,5 @@ struct VideoExportRequest: Sendable {
     let clips: [CaptureDraftClip]
     let textOverlays: [ClipTextOverlay]
     let isMuted: Bool
+    let compositionConfiguration: VideoCompositionConfiguration
 }

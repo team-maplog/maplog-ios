@@ -21,6 +21,7 @@ struct ClipPickerSelectionFeatureView: View {
     init(
         mediaDraftRepository: any MediaDraftRepository,
         videoThumbnailService: any VideoThumbnailService,
+        photoLibraryVideoImportService: any PhotoLibraryVideoImporting,
         initialSelectedClipIDs: [UUID],
         onComplete: @escaping ([CaptureDraftClip]) -> Void
     ) {
@@ -30,6 +31,7 @@ struct ClipPickerSelectionFeatureView: View {
             wrappedValue: ClipPickerViewModel(
                 mediaDraftRepository: mediaDraftRepository,
                 videoThumbnailService: videoThumbnailService,
+                photoLibraryVideoImportService: photoLibraryVideoImportService,
                 initialSelectedClipIDs: initialSelectedClipIDs
             )
         )
@@ -39,6 +41,7 @@ struct ClipPickerSelectionFeatureView: View {
         ClipPickerView(
             viewModel: viewModel,
             allowsPermanentDeletion: false,
+            allowsCompositionSelection: false,
             confirmationTitle: { count in
                 "\(count)개 클립 적용하기"
             },

@@ -30,7 +30,44 @@ struct ClipEditorTimelineSegment: Equatable, Sendable {
 struct ClipEditorTimeline: Equatable, Sendable {
     let segments: [ClipEditorTimelineSegment]
 
-    init(clips: [CaptureDraftClip]) {
+    init(
+        clips: [CaptureDraftClip],
+        compositionConfiguration: VideoCompositionConfiguration = .init()
+    ) {
+        if compositionConfiguration.layout != .single {
+            let visibleClips = Array(
+                clips.prefix(compositionConfiguration.requiredClipCount)
+            )
+            let durations = visibleClips.compactMap { clip -> TimeInterval? in
+                guard
+                    clip.mediaType == .video,
+                    let duration = clip.duration,
+                    duration > 0
+                else {
+                    return nil
+                }
+
+                return duration
+            }
+
+            guard
+                durations.count == compositionConfiguration.requiredClipCount,
+                let sharedDuration = durations.min()
+            else {
+                self.segments = []
+                return
+            }
+
+            self.segments = visibleClips.map { clip in
+                ClipEditorTimelineSegment(
+                    clipID: clip.id,
+                    startTime: 0,
+                    endTime: sharedDuration
+                )
+            }
+            return
+        }
+
         var nextStartTime: TimeInterval = 0
         var madeSegments: [ClipEditorTimelineSegment] = []
 

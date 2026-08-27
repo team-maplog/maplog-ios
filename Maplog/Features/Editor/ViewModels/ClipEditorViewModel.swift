@@ -57,6 +57,14 @@ final class ClipEditorViewModel: ObservableObject {
         editorTimeline.totalDuration
     }
 
+    var compositionConfiguration: VideoCompositionConfiguration {
+        input.compositionConfiguration
+    }
+
+    var previewAspectRatio: CGFloat {
+        compositionConfiguration.aspectRatio
+    }
+
     var currentPlaybackTime: TimeInterval {
         playbackProgress * totalDuration
     }
@@ -340,7 +348,8 @@ final class ClipEditorViewModel: ObservableObject {
             let request = VideoExportRequest(
                 clips: orderedClips,
                 textOverlays: textOverlays,
-                isMuted: isPreviewMuted
+                isMuted: isPreviewMuted,
+                compositionConfiguration: compositionConfiguration
             )
 
             let result = try await videoExportService.export(
@@ -809,7 +818,8 @@ final class ClipEditorViewModel: ObservableObject {
 
         return LogComposeInput(
             video: result,
-            clips: orderedClips
+            clips: orderedClips,
+            compositionConfiguration: compositionConfiguration
         )
     }
 

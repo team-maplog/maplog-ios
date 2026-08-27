@@ -27,6 +27,8 @@ struct MaplogApp: App { // 앱의 조립 담당자
     private let homeSearchRepository: any HomeSearchRepository
     private let mapCurrentLocationService: any MapCurrentLocationService
     private let locationPermissionService: any LocationPermissionService
+    private let photoLibraryVideoImportService: any PhotoLibraryVideoImporting
+    private let photoLibraryVideoSaveService: any PhotoLibraryVideoSaving
 
 
     init() {
@@ -122,6 +124,8 @@ struct MaplogApp: App { // 앱의 조립 담당자
         self.homeSearchRepository = homeSearchRepository
         self.mapCurrentLocationService = CoreLocationMapCurrentLocationService()
         self.locationPermissionService = CoreLocationPermissionService()
+        self.photoLibraryVideoImportService = PhotoLibraryVideoImportService()
+        self.photoLibraryVideoSaveService = PhotoLibraryVideoSaveService()
     }
 
     var body: some Scene {
@@ -149,7 +153,9 @@ struct MaplogApp: App { // 앱의 조립 담당자
                 mapRepository: mapRepository,
                 homeSearchRepository: homeSearchRepository,
                 mapCurrentLocationService: mapCurrentLocationService,
-                locationPermissionService: locationPermissionService
+                locationPermissionService: locationPermissionService,
+                photoLibraryVideoImportService: photoLibraryVideoImportService,
+                photoLibraryVideoSaveService: photoLibraryVideoSaveService
 
             )
             .environmentObject(authSessionStore)

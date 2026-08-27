@@ -34,6 +34,7 @@ struct ClipEditorPreviewView: View {
     let onTextOverlayTextEditingStarted: (UUID) -> Void
     let onTemplateSwipe: (Int) -> Void
     let showsAlignmentGrid: Bool
+    let aspectRatio: CGFloat
 
     var body: some View {
         VStack(spacing: MaplogSpacing.xxSmall) {
@@ -106,10 +107,7 @@ struct ClipEditorPreviewView: View {
                         }
                 }
             }
-            .aspectRatio(
-                VideoRenderCanvas.standardPortraitAspectRatio,
-                contentMode: .fit
-            )
+            .aspectRatio(aspectRatio, contentMode: .fit)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .clipShape(
                 RoundedRectangle(

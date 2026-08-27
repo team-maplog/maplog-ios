@@ -8,6 +8,8 @@
 // 저장된 영상 정보를 화면에 표시 가능한 정보로 번역하는 중간 관리자라고 생각
 
 import Foundation
+import PhotosUI
+import SwiftUI
 
 @MainActor
 final class ClipPickerViewModel: ObservableObject {
@@ -15,7 +17,9 @@ final class ClipPickerViewModel: ObservableObject {
     @Published private(set) var items: [ClipPickerItemViewData] = []
     @Published private(set) var selectedClipIDs: [UUID] = []
     @Published private(set) var isDeleting = false
+    @Published private(set) var isImporting = false
     @Published private(set) var actionError: ErrorPresentation?
+    @Published private(set) var compositionConfiguration: VideoCompositionConfiguration
     
     var selectedCount: Int {
         selectedClipIDs.count
@@ -23,6 +27,7 @@ final class ClipPickerViewModel: ObservableObject {
     
     private let mediaDraftRepository: any MediaDraftRepository
     private let videoThumbnailService: any VideoThumbnailService
+    private let photoLibraryVideoImportService: any PhotoLibraryVideoImporting
     private var draftsByID: [UUID: CaptureDraftClip] = [:]
 //    클립 id
 //    → 실제 영상 파일 URL·촬영 날짜·길이를 가진 CaptureDraftClip
@@ -41,11 +46,15 @@ final class ClipPickerViewModel: ObservableObject {
     init(
         mediaDraftRepository: any MediaDraftRepository,
         videoThumbnailService: any VideoThumbnailService,
-        initialSelectedClipIDs: [UUID] = []
+        photoLibraryVideoImportService: any PhotoLibraryVideoImporting,
+        initialSelectedClipIDs: [UUID] = [],
+        initialCompositionConfiguration: VideoCompositionConfiguration = .init()
     ) {
         self.mediaDraftRepository = mediaDraftRepository
         self.videoThumbnailService = videoThumbnailService
+        self.photoLibraryVideoImportService = photoLibraryVideoImportService
         self.initialSelectedClipIDs = initialSelectedClipIDs
+        self.compositionConfiguration = initialCompositionConfiguration
     }
     
     
@@ -152,8 +161,70 @@ final class ClipPickerViewModel: ObservableObject {
 //        A 재탭 → [B]     → B가 1로 변경
         if let index = selectedClipIDs.firstIndex(of: id) { // firstIndex: 내가 찾는 값이 배열의 몇 번째 칸에 있는지
             selectedClipIDs.remove(at: index)
+        } else if let maximumClipCount = compositionConfiguration.layout.maximumClipCount,
+                  selectedClipIDs.count >= maximumClipCount {
+            actionError = ErrorPresentation(
+                message: "(compositionConfiguration.layout.title)은 클립 \(maximumClipCount)개로 만들 수 있어요.",
+                recoveryAction: .none
+            )
         } else {
             selectedClipIDs.append(id)
+        }
+    }
+
+    func selectCompositionLayout(_ layout: VideoCompositionLayout) {
+        compositionConfiguration.layout = layout
+
+        if let maximumClipCount = layout.maximumClipCount,
+           selectedClipIDs.count > maximumClipCount {
+            selectedClipIDs = Array(selectedClipIDs.prefix(maximumClipCount))
+        }
+    }
+
+    func selectCanvasOrientation(_ orientation: VideoCanvasOrientation) {
+        compositionConfiguration.canvasOrientation = orientation
+    }
+
+    var hasValidCompositionSelection: Bool {
+        switch compositionConfiguration.layout {
+        case .single:
+            return !selectedClipIDs.isEmpty
+        case .splitTwo, .splitThree:
+            return selectedClipIDs.count == compositionConfiguration.requiredClipCount
+        }
+    }
+
+    func importVideos(
+        from items: [PhotosPickerItem]
+    ) async {
+        guard !items.isEmpty, !isImporting else {
+            return
+        }
+
+        isImporting = true
+        actionError = nil
+
+        defer {
+            isImporting = false
+        }
+
+        do {
+            let inputs = try await photoLibraryVideoImportService.makeDraftInputs(
+                from: items
+            )
+
+            for input in inputs {
+                _ = try await mediaDraftRepository.saveDraft(from: input)
+            }
+
+            await load()
+        } catch is CancellationError {
+            return
+        } catch {
+            actionError = ErrorPresentation(
+                message: "갤러리 영상을 가져오지 못했어요. 다시 시도해 주세요.",
+                recoveryAction: .retry
+            )
         }
     }
     

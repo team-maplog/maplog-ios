@@ -2,24 +2,18 @@
 //  AVVideoExportService.swift
 //  Maplog
 //
-//  Created by 한채림 on 8/3/26.
-// 여러 원본 영상 → 순서대로 하나의 타임라인에 배치 → 새 .mov 파일로 저장
-
-//ClipEditorViewModel
-//  └─ 선택 순서대로 fileURL 목록 생성
-//       └─ AVVideoExportService
-//            ├─ 빈 타임라인 생성
-//            ├─ A 영상 삽입
-//            ├─ B 영상 삽입
-//            ├─ C 영상 삽입
-//            └─ 하나의 새 .mov로 export
-//                 └─ VideoExportResult 반환
 
 import AVFoundation
+import CoreGraphics
 import Foundation
 
+/// 앱 내부 초안을 하나의 결과 영상으로 렌더링합니다.
+///
+/// 일반 모드는 타임라인에 순서대로 넣고, 분할 모드는 서로 다른 composition track에
+/// 같은 시간(0초)부터 넣습니다. 따라서 2·3분할은 여러 카메라를 동시에 녹화한 것이
+/// 아니라 사용자가 순서대로 고른 클립을 한 캔버스에 함께 배치한 결과입니다.
 actor AVVideoExportService: VideoExportService {
-    private let fileManager: FileManager // 파일 관리자 주입, 영상 결과 파일 저장, 실패한 결과 파일 삭제
+    private let fileManager: FileManager
     private let textOverlayRenderer: any VideoTextOverlayRendering
 
     init(
@@ -30,9 +24,6 @@ actor AVVideoExportService: VideoExportService {
         self.textOverlayRenderer = textOverlayRenderer
     }
 
-//    → video track, audio track을 각각 삽입
-//    → video track의 preferredTransform 적용
-//    → 결과 영상의 세로 renderSize 지정
     func export(
         request: VideoExportRequest
     ) async throws -> VideoExportResult {
@@ -40,6 +31,45 @@ actor AVVideoExportService: VideoExportService {
             throw VideoExportServiceError.noSourceVideos
         }
 
+        let plan = try await makeExportPlan(for: request)
+        let outputURL = try makeOutputURL()
+
+        guard let exportSession = AVAssetExportSession(
+            asset: plan.composition,
+            presetName: AVAssetExportPresetHighestQuality
+        ) else {
+            throw VideoExportServiceError.unableToCreateExportSession
+        }
+
+        exportSession.videoComposition = plan.videoComposition
+
+        do {
+            try await exportSession.export(to: outputURL, as: .mov)
+
+            return VideoExportResult(
+                fileURL: outputURL,
+                duration: plan.duration.seconds
+            )
+        } catch {
+            try? fileManager.removeItem(at: outputURL)
+            throw error
+        }
+    }
+
+    private func makeExportPlan(
+        for request: VideoExportRequest
+    ) async throws -> VideoExportPlan {
+        switch request.compositionConfiguration.layout {
+        case .single:
+            return try await makeSequentialPlan(for: request)
+        case .splitTwo, .splitThree:
+            return try await makeSplitPlan(for: request)
+        }
+    }
+
+    private func makeSequentialPlan(
+        for request: VideoExportRequest
+    ) async throws -> VideoExportPlan {
         let composition = AVMutableComposition()
 
         guard let compositionVideoTrack = composition.addMutableTrack(
@@ -49,201 +79,387 @@ actor AVVideoExportService: VideoExportService {
             throw VideoExportServiceError.unableToCreateCompositionTrack
         }
 
-        let compositionAudioTrack: AVMutableCompositionTrack?
+        let compositionAudioTrack = try makeAudioTrack(
+            in: composition,
+            isMuted: request.isMuted
+        )
 
-        if request.isMuted {
-            compositionAudioTrack = nil
-        } else {
-            guard let audioTrack = composition.addMutableTrack(
-                withMediaType: .audio,
+        var insertionTime = CMTime.zero
+        var instructions: [AVMutableVideoCompositionInstruction] = []
+        let renderSize = request.compositionConfiguration.renderSize
+        let targetFrame = CGRect(origin: .zero, size: renderSize)
+
+        for clip in request.clips where clip.mediaType == .video {
+            let source = try await makeSourceVideo(for: clip)
+            let sourceRange = CMTimeRange(
+                start: .zero,
+                duration: source.duration
+            )
+
+            try compositionVideoTrack.insertTimeRange(
+                sourceRange,
+                of: source.videoTrack,
+                at: insertionTime
+            )
+
+            try await insertAudioIfPossible(
+                from: source.asset,
+                sourceRange: sourceRange,
+                into: compositionAudioTrack,
+                at: insertionTime
+            )
+
+            let layerInstruction = try await makeLayerInstruction(
+                for: compositionVideoTrack,
+                sourceVideoTrack: source.videoTrack,
+                destinationFrame: targetFrame,
+                at: insertionTime
+            )
+
+            let instruction = AVMutableVideoCompositionInstruction()
+            instruction.timeRange = CMTimeRange(
+                start: insertionTime,
+                duration: source.duration
+            )
+            instruction.layerInstructions = [layerInstruction]
+            instructions.append(instruction)
+
+            insertionTime = CMTimeAdd(insertionTime, source.duration)
+        }
+
+        guard insertionTime > .zero else {
+            throw VideoExportServiceError.sourceVideoUnavailable
+        }
+
+        let timeline = ClipEditorTimeline(clips: request.clips)
+        let videoComposition = makeVideoComposition(
+            renderSize: renderSize,
+            instructions: instructions,
+            textOverlays: request.textOverlays,
+            timeline: timeline
+        )
+
+        return VideoExportPlan(
+            composition: composition,
+            videoComposition: videoComposition,
+            duration: insertionTime
+        )
+    }
+
+    private func makeSplitPlan(
+        for request: VideoExportRequest
+    ) async throws -> VideoExportPlan {
+        let configuration = request.compositionConfiguration
+        let visibleClips = Array(
+            request.clips.prefix(configuration.requiredClipCount)
+        )
+
+        guard visibleClips.count == configuration.requiredClipCount else {
+            throw VideoExportServiceError.noSourceVideos
+        }
+
+        var sources: [SourceVideo] = []
+        for clip in visibleClips {
+            sources.append(try await makeSourceVideo(for: clip))
+        }
+
+        guard let sharedDuration = sources.map(\.duration).min(),
+              sharedDuration > .zero
+        else {
+            throw VideoExportServiceError.sourceVideoUnavailable
+        }
+
+        let composition = AVMutableComposition()
+        let compositionAudioTrack = try makeAudioTrack(
+            in: composition,
+            isMuted: request.isMuted
+        )
+        let renderSize = configuration.renderSize
+        let frames = configuration.layout.normalizedFrames(
+            for: configuration.canvasOrientation
+        ).map { normalizedFrame in
+            CGRect(
+                x: normalizedFrame.minX * renderSize.width,
+                y: normalizedFrame.minY * renderSize.height,
+                width: normalizedFrame.width * renderSize.width,
+                height: normalizedFrame.height * renderSize.height
+            )
+        }
+
+        var layerInstructions: [AVMutableVideoCompositionLayerInstruction] = []
+        let sharedRange = CMTimeRange(start: .zero, duration: sharedDuration)
+
+        for (index, source) in sources.enumerated() {
+            guard let compositionVideoTrack = composition.addMutableTrack(
+                withMediaType: .video,
                 preferredTrackID: kCMPersistentTrackID_Invalid
             ) else {
                 throw VideoExportServiceError.unableToCreateCompositionTrack
             }
 
-            compositionAudioTrack = audioTrack
-        }
-
-        var insertionTime = CMTime.zero
-        var instructions: [AVMutableVideoCompositionInstruction] = []
-        var renderSize: CGSize?
-
-        for clip in request.clips {
-            let asset = AVURLAsset(url: clip.fileURL)
-
-            guard let videoTrack = try await asset
-                .loadTracks(withMediaType: .video)
-                .first
-            else {
-                throw VideoExportServiceError.sourceVideoUnavailable
-            }
-
-            let duration = try await asset.load(.duration)
-
-            guard duration.seconds.isFinite,
-                  duration.seconds > 0
-            else {
-                throw VideoExportServiceError.sourceVideoUnavailable
-            }
-
-            let sourceTimeRange = CMTimeRange(
-                start: .zero,
-                duration: duration
-            )
-
             try compositionVideoTrack.insertTimeRange(
-                sourceTimeRange,
-                of: videoTrack,
-                at: insertionTime
+                sharedRange,
+                of: source.videoTrack,
+                at: .zero
             )
 
-            if let compositionAudioTrack {
-                let audioTracks = try await asset.loadTracks(
-                    withMediaType: .audio
+            if index == 0 {
+                try await insertAudioIfPossible(
+                    from: source.asset,
+                    sourceRange: sharedRange,
+                    into: compositionAudioTrack,
+                    at: .zero
                 )
-
-                if let audioTrack = audioTracks.first {
-                    try compositionAudioTrack.insertTimeRange(
-                        sourceTimeRange,
-                        of: audioTrack,
-                        at: insertionTime
-                    )
-                }
             }
 
-            let preferredTransform = try await videoTrack.load(
-                .preferredTransform
+            let layerInstruction = try await makeLayerInstruction(
+                for: compositionVideoTrack,
+                sourceVideoTrack: source.videoTrack,
+                destinationFrame: frames[index],
+                at: .zero
             )
-
-            let naturalSize = try await videoTrack.load(.naturalSize)
-
-            let transformedSize = naturalSize.applying(
-                preferredTransform
-            )
-
-            let orientedSize = CGSize(
-                width: abs(transformedSize.width),
-                height: abs(transformedSize.height)
-            )
-
-            guard orientedSize.width > 0,
-                  orientedSize.height > 0
-            else {
-                throw VideoExportServiceError.sourceVideoUnavailable
-            }
-
-            if renderSize == nil {
-                renderSize = orientedSize
-            }
-
-            let instruction = AVMutableVideoCompositionInstruction()
-
-            instruction.timeRange = CMTimeRange(
-                start: insertionTime,
-                duration: duration
-            )
-
-            let layerInstruction =
-                AVMutableVideoCompositionLayerInstruction(
-                    assetTrack: compositionVideoTrack
-                )
-
-            layerInstruction.setTransform(
-                preferredTransform,
-                at: insertionTime
-            )
-
-            instruction.layerInstructions = [layerInstruction]
-
-            instructions.append(instruction)
-
-            insertionTime = CMTimeAdd(
-                insertionTime,
-                duration
-            )
+            layerInstructions.append(layerInstruction)
         }
 
-        guard let renderSize else {
+        let instruction = AVMutableVideoCompositionInstruction()
+        instruction.timeRange = sharedRange
+        instruction.layerInstructions = layerInstructions
+
+        let timeline = ClipEditorTimeline(
+            clips: visibleClips,
+            compositionConfiguration: configuration
+        )
+        let videoComposition = makeVideoComposition(
+            renderSize: renderSize,
+            instructions: [instruction],
+            textOverlays: request.textOverlays,
+            timeline: timeline
+        )
+
+        return VideoExportPlan(
+            composition: composition,
+            videoComposition: videoComposition,
+            duration: sharedDuration
+        )
+    }
+
+    private func makeAudioTrack(
+        in composition: AVMutableComposition,
+        isMuted: Bool
+    ) throws -> AVMutableCompositionTrack? {
+        guard !isMuted else {
+            return nil
+        }
+
+        guard let audioTrack = composition.addMutableTrack(
+            withMediaType: .audio,
+            preferredTrackID: kCMPersistentTrackID_Invalid
+        ) else {
+            throw VideoExportServiceError.unableToCreateCompositionTrack
+        }
+
+        return audioTrack
+    }
+
+    private func makeSourceVideo(
+        for clip: CaptureDraftClip
+    ) async throws -> SourceVideo {
+        let asset = AVURLAsset(url: clip.fileURL)
+
+        guard let videoTrack = try await asset.loadTracks(
+            withMediaType: .video
+        ).first else {
             throw VideoExportServiceError.sourceVideoUnavailable
         }
 
-        let videoComposition = AVMutableVideoComposition()
+        let duration = try await asset.load(.duration)
 
-        videoComposition.renderSize = renderSize
-        videoComposition.frameDuration = CMTime(
-            value: 1,
-            timescale: 30
-        )
-        videoComposition.instructions = instructions
-
-        let timeline = ClipEditorTimeline(
-            clips: request.clips
-        )
-
-        videoComposition.animationTool =
-            textOverlayRenderer.makeAnimationTool(
-                overlays: request.textOverlays,
-                timeline: timeline,
-                renderSize: renderSize
-            )
-
-        let outputURL = try makeOutputURL()
-
-        guard let exportSession = AVAssetExportSession(
-            asset: composition,
-            presetName: AVAssetExportPresetHighestQuality
-        ) else {
-            throw VideoExportServiceError.unableToCreateExportSession
+        guard duration.seconds.isFinite, duration.seconds > 0 else {
+            throw VideoExportServiceError.sourceVideoUnavailable
         }
 
-        exportSession.videoComposition = videoComposition
-
-        do {
-            try await exportSession.export(
-                to: outputURL,
-                as: .mov
-            )
-
-            return VideoExportResult(
-                fileURL: outputURL,
-                duration: insertionTime.seconds
-            )
-        } catch {
-            try? fileManager.removeItem(at: outputURL)
-            throw error
-        }
+        return SourceVideo(
+            asset: asset,
+            videoTrack: videoTrack,
+            duration: duration
+        )
     }
 
-//    composition: A → B → C 순서로 이어진 영상 설계
-//    outputURL: 결과 파일을 저장할 주소
-//    .mov: 결과 포맷
-//    await: 영상 길이에 따라 시간이 걸리므로 완료를 기다림
+    private func insertAudioIfPossible(
+        from asset: AVURLAsset,
+        sourceRange: CMTimeRange,
+        into compositionAudioTrack: AVMutableCompositionTrack?,
+        at insertionTime: CMTime
+    ) async throws {
+        guard
+            let compositionAudioTrack,
+            let sourceAudioTrack = try await asset.loadTracks(
+                withMediaType: .audio
+            ).first
+        else {
+            return
+        }
 
-    private func makeOutputURL() throws -> URL { // 앱 전용 저장소인 Application Support 폴더를 가져옴 사진 앱 갤러리가 아니라 Maplog 앱 내부 저장소
+        try compositionAudioTrack.insertTimeRange(
+            sourceRange,
+            of: sourceAudioTrack,
+            at: insertionTime
+        )
+    }
+
+    private func makeLayerInstruction(
+        for compositionTrack: AVCompositionTrack,
+        sourceVideoTrack: AVAssetTrack,
+        destinationFrame: CGRect,
+        at time: CMTime
+    ) async throws -> AVMutableVideoCompositionLayerInstruction {
+        let placement = try await makeFilledPlacement(
+            for: sourceVideoTrack,
+            in: destinationFrame
+        )
+        let layerInstruction = AVMutableVideoCompositionLayerInstruction(
+            assetTrack: compositionTrack
+        )
+
+        layerInstruction.setCropRectangle(
+            placement.sourceCropRect,
+            at: time
+        )
+        layerInstruction.setTransform(placement.transform, at: time)
+
+        return layerInstruction
+    }
+
+    /// 원본 영상을 목적 슬롯에 aspectFill로 배치하고, 슬롯 밖을 덮지 않도록
+    /// 원본 좌표계의 crop rect도 함께 계산합니다.
+    private func makeFilledPlacement(
+        for sourceVideoTrack: AVAssetTrack,
+        in destinationFrame: CGRect
+    ) async throws -> FilledVideoPlacement {
+        let naturalSize = try await sourceVideoTrack.load(.naturalSize)
+        let preferredTransform = try await sourceVideoTrack.load(
+            .preferredTransform
+        )
+        let transformedBounds = CGRect(
+            origin: .zero,
+            size: naturalSize
+        ).applying(preferredTransform)
+        let orientedWidth = abs(transformedBounds.width)
+        let orientedHeight = abs(transformedBounds.height)
+
+        guard
+            orientedWidth > 0,
+            orientedHeight > 0,
+            destinationFrame.width > 0,
+            destinationFrame.height > 0
+        else {
+            throw VideoExportServiceError.sourceVideoUnavailable
+        }
+
+        let sourceAspectRatio = orientedWidth / orientedHeight
+        let destinationAspectRatio = destinationFrame.width / destinationFrame.height
+
+        let orientedCropSize: CGSize
+        if sourceAspectRatio > destinationAspectRatio {
+            orientedCropSize = CGSize(
+                width: orientedHeight * destinationAspectRatio,
+                height: orientedHeight
+            )
+        } else {
+            orientedCropSize = CGSize(
+                width: orientedWidth,
+                height: orientedWidth / destinationAspectRatio
+            )
+        }
+
+        let orientedCropRect = CGRect(
+            x: transformedBounds.midX - orientedCropSize.width / 2,
+            y: transformedBounds.midY - orientedCropSize.height / 2,
+            width: orientedCropSize.width,
+            height: orientedCropSize.height
+        )
+        let sourceCropRect = orientedCropRect
+            .applying(preferredTransform.inverted())
+            .standardized
+        let scale = destinationFrame.width / orientedCropSize.width
+        var transform = preferredTransform
+        transform = transform.concatenating(
+            CGAffineTransform(
+                translationX: -orientedCropRect.minX,
+                y: -orientedCropRect.minY
+            )
+        )
+        transform = transform.concatenating(
+            CGAffineTransform(scaleX: scale, y: scale)
+        )
+        transform = transform.concatenating(
+            CGAffineTransform(
+                translationX: destinationFrame.minX,
+                y: destinationFrame.minY
+            )
+        )
+
+        return FilledVideoPlacement(
+            sourceCropRect: sourceCropRect,
+            transform: transform
+        )
+    }
+
+    private func makeVideoComposition(
+        renderSize: CGSize,
+        instructions: [AVMutableVideoCompositionInstruction],
+        textOverlays: [ClipTextOverlay],
+        timeline: ClipEditorTimeline
+    ) -> AVMutableVideoComposition {
+        let videoComposition = AVMutableVideoComposition()
+        videoComposition.renderSize = renderSize
+        videoComposition.frameDuration = CMTime(value: 1, timescale: 30)
+        videoComposition.instructions = instructions
+        videoComposition.animationTool = textOverlayRenderer.makeAnimationTool(
+            overlays: textOverlays,
+            timeline: timeline,
+            renderSize: renderSize
+        )
+
+        return videoComposition
+    }
+
+    private func makeOutputURL() throws -> URL {
         let applicationSupportURL = try fileManager.url(
             for: .applicationSupportDirectory,
             in: .userDomainMask,
             appropriateFor: nil,
             create: true
-            )
+        )
+        let exportDirectory = applicationSupportURL.appendingPathComponent(
+            "EditedVideos",
+            isDirectory: true
+        )
 
-        let exportDirectory = applicationSupportURL
-                    .appendingPathComponent(
-                        "EditedVideos",
-                        isDirectory: true
-                    )
+        try fileManager.createDirectory(
+            at: exportDirectory,
+            withIntermediateDirectories: true
+        )
 
-                try fileManager.createDirectory(
-                    at: exportDirectory,
-                    withIntermediateDirectories: true
-                )
-
-                return exportDirectory
-                    .appendingPathComponent(UUID().uuidString)
-                    .appendingPathExtension("mov")
+        return exportDirectory
+            .appendingPathComponent(UUID().uuidString)
+            .appendingPathExtension("mov")
     }
 }
 
-//Application Support
-// └─ EditedVideos
-//     └─ UUID.mov
+private struct VideoExportPlan {
+    let composition: AVMutableComposition
+    let videoComposition: AVMutableVideoComposition
+    let duration: CMTime
+}
+
+private struct SourceVideo {
+    let asset: AVURLAsset
+    let videoTrack: AVAssetTrack
+    let duration: CMTime
+}
+
+private struct FilledVideoPlacement {
+    let sourceCropRect: CGRect
+    let transform: CGAffineTransform
+}

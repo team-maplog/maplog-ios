@@ -193,6 +193,12 @@ final class CameraCaptureViewModel: ObservableObject {
         settings.clipDuration = duration
     }
 
+    func updateCompositionConfiguration(
+        _ configuration: VideoCompositionConfiguration
+    ) {
+        settings.compositionConfiguration = configuration
+    }
+
     func shutterTapped() {
         switch state {
         case .ready:

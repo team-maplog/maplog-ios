@@ -16,25 +16,29 @@ struct LogComposeFeatureView: View {
     private let videoThumbnailService: any VideoThumbnailService
     private let logLocationRepository: any LogLocationRepository
     private let logPublishingRepository: any LogPublishingRepository
+    private let photoLibraryVideoSaveService: any PhotoLibraryVideoSaving
 
     init(
         input: LogComposeInput,
         videoPlaybackService: any VideoPlaybackService,
         videoThumbnailService: any VideoThumbnailService,
         logLocationRepository: any LogLocationRepository,
-        logPublishingRepository: any LogPublishingRepository
+        logPublishingRepository: any LogPublishingRepository,
+        photoLibraryVideoSaveService: any PhotoLibraryVideoSaving
     ) {
         self.videoPlaybackService = videoPlaybackService
         self.videoThumbnailService = videoThumbnailService
         self.logLocationRepository = logLocationRepository
         self.logPublishingRepository = logPublishingRepository
+        self.photoLibraryVideoSaveService = photoLibraryVideoSaveService
 
         _viewModel = StateObject(
             wrappedValue: LogComposeViewModel(
                 input: input,
                 videoPlaybackService: videoPlaybackService,
                 videoThumbnailService: videoThumbnailService,
-                logPublishingRepository: logPublishingRepository
+                logPublishingRepository: logPublishingRepository,
+                photoLibraryVideoSaveService: photoLibraryVideoSaveService
             )
         )
     }
@@ -53,9 +57,9 @@ struct LogComposeFeatureView: View {
                         for: clipID
                     )
                 },
-                onPublishTap: {
+                onComplete: { destinations in
                     Task {
-                        await viewModel.publish()
+                        await viewModel.complete(destinations: destinations)
                     }
                 }
             )

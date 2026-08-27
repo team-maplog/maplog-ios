@@ -7,6 +7,7 @@
 
 import AVFoundation
 import Foundation
+import UIKit
 
 final class AVCameraCaptureService: NSObject, CameraCaptureService {
     let previewSession = AVCaptureSession()
@@ -27,6 +28,7 @@ final class AVCameraCaptureService: NSObject, CameraCaptureService {
     init(fileManager: FileManager = .default) {
         self.fileManager = fileManager
         super.init()
+        UIDevice.current.beginGeneratingDeviceOrientationNotifications()
     }
     
     var currentPosition: CameraPosition {
@@ -247,7 +249,19 @@ final class AVCameraCaptureService: NSObject, CameraCaptureService {
                 }
                 
                 recordingStartDate = Date()
-                
+
+                if let videoConnection = movieOutput.connection(
+                    with: .video
+                ) {
+                    let rotationAngle = captureRotationAngle()
+
+                    if videoConnection.isVideoRotationAngleSupported(
+                        rotationAngle
+                    ) {
+                        videoConnection.videoRotationAngle = rotationAngle
+                    }
+                }
+
                 movieOutput.startRecording(
                     to: outputURL,
                     recordingDelegate: self
@@ -382,6 +396,23 @@ final class AVCameraCaptureService: NSObject, CameraCaptureService {
             return .restricted
         @unknown default:
             return .denied
+        }
+    }
+
+    /// 카메라 화면은 세로 UI를 유지하더라도, 기기를 옆으로 든 촬영은 회전 메타데이터를
+    /// 반영해 가로 원본으로 저장합니다. 이후 편집 화면에서 가로 캔버스를 선택할 수 있어요.
+    private func captureRotationAngle() -> CGFloat {
+        switch UIDevice.current.orientation {
+        case .landscapeLeft:
+            return 90
+        case .landscapeRight:
+            return 270
+        case .portraitUpsideDown:
+            return 180
+        case .portrait, .faceUp, .faceDown, .unknown:
+            return 0
+        @unknown default:
+            return 0
         }
     }
 }

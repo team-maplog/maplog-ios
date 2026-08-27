@@ -109,6 +109,8 @@ struct RootView: View {
     private let homeSearchRepository: any HomeSearchRepository
     private let mapCurrentLocationService: any MapCurrentLocationService
     private let locationPermissionService: any LocationPermissionService
+    private let photoLibraryVideoImportService: any PhotoLibraryVideoImporting
+    private let photoLibraryVideoSaveService: any PhotoLibraryVideoSaving
     @State private var isRequestingLocationPermission = false
 
     init(
@@ -135,6 +137,8 @@ struct RootView: View {
         homeSearchRepository: any HomeSearchRepository,
         mapCurrentLocationService: any MapCurrentLocationService,
         locationPermissionService: any LocationPermissionService,
+        photoLibraryVideoImportService: any PhotoLibraryVideoImporting,
+        photoLibraryVideoSaveService: any PhotoLibraryVideoSaving,
     ) {
         self.authRepository = authRepository
         self.tourismRepository = tourismRepository
@@ -159,6 +163,8 @@ struct RootView: View {
         self.homeSearchRepository = homeSearchRepository
         self.mapCurrentLocationService = mapCurrentLocationService
         self.locationPermissionService = locationPermissionService
+        self.photoLibraryVideoImportService = photoLibraryVideoImportService
+        self.photoLibraryVideoSaveService = photoLibraryVideoSaveService
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("-MaplogSkipOnboarding") {
             _phase = State(initialValue: .app)
@@ -205,6 +211,8 @@ struct RootView: View {
                     mapRepository: mapRepository,
                     homeSearchRepository: homeSearchRepository,
                     mapCurrentLocationService: mapCurrentLocationService,
+                    photoLibraryVideoImportService: photoLibraryVideoImportService,
+                    photoLibraryVideoSaveService: photoLibraryVideoSaveService,
                     requestedTab: $requestedTab,
                     requestedCapturePlaceName: $requestedCapturePlaceName
                 )

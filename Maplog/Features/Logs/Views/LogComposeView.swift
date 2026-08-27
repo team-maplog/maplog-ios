@@ -17,9 +17,10 @@ struct LogComposeView: View {
     let previewPlayer: AVPlayer
     let onCoverChangeTap: () -> Void
     let onClipLocationTap: (UUID) -> Void
-    let onPublishTap: () -> Void
+    let onComplete: (Set<LogPublicationDestination>) -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @State private var isPublicationDestinationPresented = false
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -50,21 +51,21 @@ struct LogComposeView: View {
         .safeAreaInset(edge: .bottom) {
             PrimaryActionButton(
                 viewModel.isPublishing
-                ? "로그 발행 중..."
-                : "로그 발행",
+                ? "처리 중..."
+                : "발행 옵션",
                 systemImage: viewModel.isPublishing
                 ? nil
                 : "paperplane.fill",
-                isEnabled: viewModel.canPublish
+                isEnabled: !viewModel.isPublishing
             ) {
-                onPublishTap()
+                isPublicationDestinationPresented = true
             }
             .padding(.horizontal, MaplogSpacing.page)
             .padding(.vertical, MaplogSpacing.small)
             .background(Color.maplogSurface)
         }
         .alert(
-            "로그를 발행하지 못했어요",
+            "작업을 완료하지 못했어요",
             isPresented: Binding(
                 get: { viewModel.publishError != nil },
                 set: { isPresented in
@@ -76,7 +77,7 @@ struct LogComposeView: View {
         ) {
             if viewModel.publishError?.recoveryAction == .retry {
                 Button("다시 시도") {
-                    onPublishTap()
+                    isPublicationDestinationPresented = true
                 }
             }
 
@@ -87,24 +88,37 @@ struct LogComposeView: View {
             Text(viewModel.publishError?.message ?? "")
         }
         .alert(
-            "로그를 발행했어요",
+            "완료했어요",
             isPresented: Binding(
-                get: { viewModel.publishedLog != nil },
+                get: { viewModel.publicationCompletion != nil },
                 set: { isPresented in
                     if !isPresented {
-                        viewModel.dismissPublishedLog()
+                        viewModel.dismissPublicationCompletion()
                     }
                 }
             )
         ) {
             Button("확인") {
-                viewModel.dismissPublishedLog()
-//                dismiss() 없는 게 더 부드러워서 일단은 제거, 문제 생기면 넣기
-                selectTab(.home)
-                
+                let shouldMoveHome = viewModel.publicationCompletion?.publishedLog != nil
+                viewModel.dismissPublicationCompletion()
+
+                if shouldMoveHome {
+                    selectTab(.home)
+                }
             }
         } message: {
-            Text("로그 발행이 완료됐어요.")
+            Text(viewModel.publicationCompletion?.message ?? "")
+        }
+        .sheet(isPresented: $isPublicationDestinationPresented) {
+            LogPublicationDestinationSheet(
+                videoFileURL: viewModel.video.fileURL,
+                canComplete: viewModel.canComplete,
+                isCompleting: viewModel.isPublishing,
+                onComplete: { destinations in
+                    isPublicationDestinationPresented = false
+                    onComplete(destinations)
+                }
+            )
         }
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
@@ -121,8 +135,8 @@ struct LogComposeView: View {
     private var previewSection: some View {
         ZStack {
             previewContent(
-                width: LogComposeLayout.previewWidth,
-                height: LogComposeLayout.previewHeight
+                width: previewWidth,
+                height: previewHeight
             )
 
             Button {
@@ -130,8 +144,8 @@ struct LogComposeView: View {
             } label: {
                 Color.clear
                     .frame(
-                        width: LogComposeLayout.previewWidth,
-                        height: LogComposeLayout.previewHeight
+                        width: previewWidth,
+                        height: previewHeight
                     )
                     .overlay {
                         Image(
@@ -166,8 +180,8 @@ struct LogComposeView: View {
             previewFooter
         }
         .frame(
-            width: LogComposeLayout.previewWidth,
-            height: LogComposeLayout.previewHeight
+            width: previewWidth,
+            height: previewHeight
         )
         .compositingGroup()
         .clipShape(
@@ -224,6 +238,14 @@ struct LogComposeView: View {
             }
             .padding(MaplogSpacing.small)
         }
+    }
+
+    private var previewWidth: CGFloat {
+        LogComposeLayout.previewWidth
+    }
+
+    private var previewHeight: CGFloat {
+        previewWidth / viewModel.compositionConfiguration.aspectRatio
     }
 
     @ViewBuilder
@@ -318,8 +340,5 @@ struct LogComposeView: View {
 
 private enum LogComposeLayout {
     static let previewWidth: CGFloat = 210
-    static let videoWidth: CGFloat = 9
-    static let videoHeight: CGFloat = 16
-    static let previewHeight: CGFloat = previewWidth * videoHeight / videoWidth
     static let playbackControlSize: CGFloat = 60
 }

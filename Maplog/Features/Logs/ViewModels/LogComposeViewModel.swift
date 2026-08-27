@@ -17,25 +17,31 @@ final class LogComposeViewModel: ObservableObject {
     @Published private(set) var thumbnailDataByClipID: [UUID: Data] = [:] // 썸네일 상태 함수
     @Published private(set) var isPublishing = false
     @Published private(set) var publishError: ErrorPresentation?
-    @Published private(set) var publishedLog: LogPublishResult?
+    @Published private(set) var publicationCompletion: LogPublicationCompletion?
 
     private let input: LogComposeInput // 편집 화면에서 넘겨받은 변하지 않는 재료
     private let videoPlaybackService: any VideoPlaybackService // 재생 약속을 지키는 객체를 받음
     private let videoThumbnailService: any VideoThumbnailService
     private let logPublishingRepository: any LogPublishingRepository
+    private let photoLibraryVideoSaveService: any PhotoLibraryVideoSaving
 
     init(
         input: LogComposeInput,
         videoPlaybackService: any VideoPlaybackService,
         videoThumbnailService: any VideoThumbnailService,
-        logPublishingRepository: any LogPublishingRepository
+        logPublishingRepository: any LogPublishingRepository,
+        photoLibraryVideoSaveService: any PhotoLibraryVideoSaving
 
     ) {
         self.input = input
         self.videoPlaybackService = videoPlaybackService
-        self.clipLocations = Self.makeClipLocationDrafts(from: input.clips)
+        self.clipLocations = Self.makeClipLocationDrafts(
+            from: input.clips,
+            compositionConfiguration: input.compositionConfiguration
+        )
         self.videoThumbnailService = videoThumbnailService
         self.logPublishingRepository = logPublishingRepository
+        self.photoLibraryVideoSaveService = photoLibraryVideoSaveService
 
     }
 
@@ -45,6 +51,10 @@ final class LogComposeViewModel: ObservableObject {
 
     var clips: [CaptureDraftClip] {
         input.clips
+    }
+
+    var compositionConfiguration: VideoCompositionConfiguration {
+        input.compositionConfiguration
     }
 
     var videoDurationText: String {
@@ -59,10 +69,18 @@ final class LogComposeViewModel: ObservableObject {
         "\(clipLocations.count)개"
     }
 
-    var canPublish: Bool {
-        !isPublishing &&
-        publishedLog == nil &&
-        makePublishDraft() != nil
+    func canComplete(
+        destinations: Set<LogPublicationDestination>
+    ) -> Bool {
+        guard !isPublishing, !destinations.isEmpty else {
+            return false
+        }
+
+        if destinations.contains(.maplog) {
+            return makePublishDraft() != nil
+        }
+
+        return true
     }
 
     func makePublishDraft() -> LogPublishDraft? {
@@ -103,11 +121,10 @@ final class LogComposeViewModel: ObservableObject {
             )
     }
 
-    func publish() async {
-        guard
-            !isPublishing,
-            let draft = makePublishDraft()
-        else {
+    func complete(
+        destinations: Set<LogPublicationDestination>
+    ) async {
+        guard canComplete(destinations: destinations) else {
             return
         }
 
@@ -120,15 +137,38 @@ final class LogComposeViewModel: ObservableObject {
         }
 
         do {
-            let result = try await logPublishingRepository.publish(
-                draft: draft
-            )
+            let publishedLog: LogPublishResult?
+            let savedToPhotoLibrary: Bool
 
-            guard !Task.isCancelled else {
-                return
+            if destinations.contains(.maplog) {
+                guard let draft = makePublishDraft() else {
+                    return
+                }
+
+                publishedLog = try await logPublishingRepository.publish(
+                    draft: draft
+                )
+            } else {
+                publishedLog = nil
             }
 
-            publishedLog = result
+            if destinations.contains(.photoLibrary) {
+                try await photoLibraryVideoSaveService.saveVideo(
+                    at: video.fileURL
+                )
+                savedToPhotoLibrary = true
+            } else {
+                savedToPhotoLibrary = false
+            }
+
+            guard !Task.isCancelled else {
+                        return
+                    }
+
+            publicationCompletion = LogPublicationCompletion(
+                publishedLog: publishedLog,
+                savedToPhotoLibrary: savedToPhotoLibrary
+            )
         } catch is CancellationError {
             return
         } catch {
@@ -136,9 +176,7 @@ final class LogComposeViewModel: ObservableObject {
                 return
             }
 
-            publishError = LogPublishErrorPolicy.presentation(
-                for: error
-            )
+            publishError = publicationErrorPresentation(for: error)
         }
     }
 
@@ -146,8 +184,8 @@ final class LogComposeViewModel: ObservableObject {
         publishError = nil
     }
 
-    func dismissPublishedLog() {
-        publishedLog = nil
+    func dismissPublicationCompletion() {
+        publicationCompletion = nil
     }
 
     func thumbnailData(for clipID: UUID) -> Data? {
@@ -191,9 +229,13 @@ final class LogComposeViewModel: ObservableObject {
     }
 
     private static func makeClipLocationDrafts(
-        from clips: [CaptureDraftClip]
+        from clips: [CaptureDraftClip],
+        compositionConfiguration: VideoCompositionConfiguration
     ) -> [LogComposeClipLocationDraft] {
-        let timeline = ClipEditorTimeline(clips: clips)
+        let timeline = ClipEditorTimeline(
+            clips: clips,
+            compositionConfiguration: compositionConfiguration
+        )
 
         return timeline.segments.compactMap { segment in
             guard let clip = clips.first(
@@ -343,5 +385,18 @@ final class LogComposeViewModel: ObservableObject {
         from seconds: TimeInterval
     ) -> Int {
         Int((seconds * 1_000).rounded())
+    }
+
+    private func publicationErrorPresentation(
+        for error: Error
+    ) -> ErrorPresentation {
+        if error is PhotoLibraryVideoSaveError {
+            return ErrorPresentation(
+                message: error.localizedDescription,
+                recoveryAction: .retry
+            )
+        }
+
+        return LogPublishErrorPolicy.presentation(for: error)
     }
 }

@@ -9,6 +9,7 @@ import SwiftUI
 
 struct CameraCaptureView: View {
     @ObservedObject var viewModel: CameraCaptureViewModel
+    @State private var isCompositionConfigurationPresented = false
     
     let onClose: () -> Void
     let onLatestClipTap: () -> Void
@@ -18,6 +19,13 @@ struct CameraCaptureView: View {
             if shouldShowPreview {
                 CameraPreviewView(session: viewModel.previewSession)
                     .ignoresSafeArea()
+
+                if viewModel.settings.compositionConfiguration.layout != .single {
+                    CameraCompositionGuideOverlay(
+                        configuration: viewModel.settings.compositionConfiguration
+                    )
+                    .ignoresSafeArea()
+                }
             } else {
                 Color.black
                     .ignoresSafeArea()
@@ -52,6 +60,12 @@ struct CameraCaptureView: View {
             }
         } message: {
             Text(viewModel.actionError?.message ?? "")
+        }
+        .sheet(isPresented: $isCompositionConfigurationPresented) {
+            CameraCompositionConfigurationSheet(
+                configuration: viewModel.settings.compositionConfiguration,
+                onConfigurationChange: viewModel.updateCompositionConfiguration
+            )
         }
     }
     
@@ -99,6 +113,17 @@ struct CameraCaptureView: View {
 
             ZStack(alignment: .bottomLeading) {
                 VStack(spacing: MaplogSpacing.medium) {
+                    if viewModel.settings.compositionConfiguration.layout != .single {
+                        Text(
+                            "\(viewModel.settings.compositionConfiguration.layout.title) · \(viewModel.settings.compositionConfiguration.canvasOrientation.title)"
+                        )
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, MaplogSpacing.small)
+                        .padding(.vertical, MaplogSpacing.xxSmall)
+                        .background(.black.opacity(0.36), in: Capsule())
+                    }
+
                     durationPicker
                     
                     shutterButton
@@ -246,6 +271,13 @@ struct CameraCaptureView: View {
                     
                     Spacer()
                     
+                    circleButton(
+                        icon: "square.grid.2x2",
+                        accessibilityLabel: "분할 영상 구성 선택"
+                    ) {
+                        isCompositionConfigurationPresented = true
+                    }
+
                     circleButton(
                         icon: viewModel.isTorchEnabled
                         ? "bolt.fill"
