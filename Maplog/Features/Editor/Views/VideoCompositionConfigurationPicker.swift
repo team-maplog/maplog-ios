@@ -10,27 +10,9 @@ struct VideoCompositionConfigurationPicker: View {
     let configuration: VideoCompositionConfiguration
     let selectedClipCount: Int
     let onLayoutSelect: (VideoCompositionLayout) -> Void
-    let onCanvasOrientationSelect: (VideoCanvasOrientation) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: MaplogSpacing.medium) {
-            VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
-                Text("완성 영상 비율")
-                    .font(MaplogFont.calloutStrong)
-
-                HStack(spacing: MaplogSpacing.xSmall) {
-                    ForEach(VideoCanvasOrientation.allCases) { orientation in
-                        configurationButton(
-                            isSelected: configuration.canvasOrientation == orientation,
-                            title: orientation.title,
-                            systemImage: orientation.systemImage
-                        ) {
-                            onCanvasOrientationSelect(orientation)
-                        }
-                    }
-                }
-            }
-
             VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
                 Text("장면 구성")
                     .font(MaplogFont.calloutStrong)
@@ -48,32 +30,6 @@ struct VideoCompositionConfigurationPicker: View {
         }
     }
 
-    private func configurationButton(
-        isSelected: Bool,
-        title: String,
-        systemImage: String,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            Label(title, systemImage: systemImage)
-                .font(MaplogFont.caption.weight(.semibold))
-                .frame(maxWidth: .infinity)
-                .frame(height: 36)
-                .foregroundStyle(
-                    isSelected
-                    ? Color.maplogInk
-                    : Color.maplogTextSecondary
-                )
-                .background(
-                    isSelected
-                    ? Color.maplogLime
-                    : Color.maplogSurfaceRaised,
-                    in: Capsule()
-                )
-        }
-        .buttonStyle(.plain)
-    }
-
     private func layoutButton(
         _ layout: VideoCompositionLayout
     ) -> some View {
@@ -85,7 +41,6 @@ struct VideoCompositionConfigurationPicker: View {
             VStack(spacing: 6) {
                 VideoCompositionLayoutPreview(
                     layout: layout,
-                    orientation: configuration.canvasOrientation,
                     tint: isSelected ? Color.maplogLime : Color.maplogLine
                 )
                 .frame(width: 40, height: 40)
@@ -133,7 +88,7 @@ struct VideoCompositionConfigurationPicker: View {
         let requiredCount = configuration.requiredClipCount
 
         guard configuration.layout != .single else {
-            return "선택한 순서대로 하나의 영상으로 이어 붙여요."
+            return "세로 릴스 화면으로 저장돼요. 가로 원본은 화면 너비에 맞춰 보여요."
         }
 
         if selectedClipCount == requiredCount {
@@ -146,7 +101,6 @@ struct VideoCompositionConfigurationPicker: View {
 
 struct VideoCompositionLayoutPreview: View {
     let layout: VideoCompositionLayout
-    let orientation: VideoCanvasOrientation
     let tint: Color
 
     var body: some View {
@@ -159,7 +113,7 @@ struct VideoCompositionLayoutPreview: View {
 
                 ForEach(
                     Array(
-                        layout.normalizedFrames(for: orientation).enumerated()
+                        layout.normalizedFrames.enumerated()
                     ),
                     id: \.offset
                 ) { _, frame in
@@ -176,6 +130,6 @@ struct VideoCompositionLayoutPreview: View {
                 }
             }
         }
-        .aspectRatio(orientation.aspectRatio, contentMode: .fit)
+        .aspectRatio(9.0 / 16.0, contentMode: .fit)
     }
 }

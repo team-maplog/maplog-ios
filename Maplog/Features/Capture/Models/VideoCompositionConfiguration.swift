@@ -6,48 +6,6 @@
 import CoreGraphics
 import Foundation
 
-/// 최종 영상이 놓일 캔버스의 방향입니다.
-///
-/// 촬영 기기를 어떻게 들었는지와 별개로, 편집 결과를 세로 릴스 또는
-/// 가로 영상 중 어느 형태로 내보낼지를 나타냅니다.
-enum VideoCanvasOrientation: String, CaseIterable, Equatable, Sendable, Identifiable {
-    case portrait
-    case landscape
-
-    var id: Self { self }
-
-    var title: String {
-        switch self {
-        case .portrait:
-            return "세로"
-        case .landscape:
-            return "가로"
-        }
-    }
-
-    var systemImage: String {
-        switch self {
-        case .portrait:
-            return "rectangle.portrait"
-        case .landscape:
-            return "rectangle"
-        }
-    }
-
-    var renderSize: CGSize {
-        switch self {
-        case .portrait:
-            return CGSize(width: 1_080, height: 1_920)
-        case .landscape:
-            return CGSize(width: 1_920, height: 1_080)
-        }
-    }
-
-    var aspectRatio: CGFloat {
-        renderSize.width / renderSize.height
-    }
-}
-
 /// 여러 클립을 시간 순서대로 잇거나, 하나의 화면에 나눠 배치하는 방식입니다.
 enum VideoCompositionLayout: String, CaseIterable, Equatable, Sendable, Identifiable {
     case single
@@ -98,38 +56,28 @@ enum VideoCompositionLayout: String, CaseIterable, Equatable, Sendable, Identifi
         }
     }
 
-    /// 0~1 범위의 슬롯 좌표입니다. 실제 픽셀 크기는 export 시 canvas 크기를 곱해 만듭니다.
-    func normalizedFrames(
-        for orientation: VideoCanvasOrientation
-    ) -> [CGRect] {
-        switch (self, orientation) {
-        case (.single, _):
+    /// 0~1 범위의 슬롯 좌표입니다.
+    ///
+    /// Maplog 결과물은 항상 세로 릴스 캔버스로 저장합니다. 가로로 촬영한 원본도
+    /// 이 세로 캔버스 안에서 처리하고, 분할 화면은 위·아래가 아니라 세로 칸으로
+    /// 나눕니다. 따라서 `3분할`은 세로 구분선 두 개가 있는 세 장면입니다.
+    /// 실제 픽셀 크기는 export 시 canvas 크기를 곱해 만듭니다.
+    var normalizedFrames: [CGRect] {
+        switch self {
+        case .single:
             return [CGRect(x: 0, y: 0, width: 1, height: 1)]
 
-        case (.splitTwo, .portrait):
-            return [
-                CGRect(x: 0, y: 0, width: 1, height: 0.5),
-                CGRect(x: 0, y: 0.5, width: 1, height: 0.5)
-            ]
-
-        case (.splitTwo, .landscape):
+        case .splitTwo:
             return [
                 CGRect(x: 0, y: 0, width: 0.5, height: 1),
                 CGRect(x: 0.5, y: 0, width: 0.5, height: 1)
             ]
 
-        case (.splitThree, .portrait):
+        case .splitThree:
             return [
-                CGRect(x: 0, y: 0, width: 1, height: 0.5),
-                CGRect(x: 0, y: 0.5, width: 0.5, height: 0.5),
-                CGRect(x: 0.5, y: 0.5, width: 0.5, height: 0.5)
-            ]
-
-        case (.splitThree, .landscape):
-            return [
-                CGRect(x: 0, y: 0, width: 0.5, height: 1),
-                CGRect(x: 0.5, y: 0, width: 0.5, height: 0.5),
-                CGRect(x: 0.5, y: 0.5, width: 0.5, height: 0.5)
+                CGRect(x: 0, y: 0, width: 1.0 / 3.0, height: 1),
+                CGRect(x: 1.0 / 3.0, y: 0, width: 1.0 / 3.0, height: 1),
+                CGRect(x: 2.0 / 3.0, y: 0, width: 1.0 / 3.0, height: 1)
             ]
         }
     }
@@ -137,22 +85,19 @@ enum VideoCompositionLayout: String, CaseIterable, Equatable, Sendable, Identifi
 
 struct VideoCompositionConfiguration: Equatable, Sendable {
     var layout: VideoCompositionLayout
-    var canvasOrientation: VideoCanvasOrientation
 
     init(
-        layout: VideoCompositionLayout = .single,
-        canvasOrientation: VideoCanvasOrientation = .portrait
+        layout: VideoCompositionLayout = .single
     ) {
         self.layout = layout
-        self.canvasOrientation = canvasOrientation
     }
 
     var renderSize: CGSize {
-        canvasOrientation.renderSize
+        CGSize(width: 1_080, height: 1_920)
     }
 
     var aspectRatio: CGFloat {
-        canvasOrientation.aspectRatio
+        renderSize.width / renderSize.height
     }
 
     var requiredClipCount: Int {

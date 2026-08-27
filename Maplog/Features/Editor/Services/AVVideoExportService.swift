@@ -113,7 +113,8 @@ actor AVVideoExportService: VideoExportService {
                 for: compositionVideoTrack,
                 sourceVideoTrack: source.videoTrack,
                 destinationFrame: targetFrame,
-                at: insertionTime
+                at: insertionTime,
+                contentMode: .fit
             )
 
             let instruction = AVMutableVideoCompositionInstruction()
@@ -175,9 +176,7 @@ actor AVVideoExportService: VideoExportService {
             isMuted: request.isMuted
         )
         let renderSize = configuration.renderSize
-        let frames = configuration.layout.normalizedFrames(
-            for: configuration.canvasOrientation
-        ).map { normalizedFrame in
+        let frames = configuration.layout.normalizedFrames.map { normalizedFrame in
             CGRect(
                 x: normalizedFrame.minX * renderSize.width,
                 y: normalizedFrame.minY * renderSize.height,
@@ -216,7 +215,8 @@ actor AVVideoExportService: VideoExportService {
                 for: compositionVideoTrack,
                 sourceVideoTrack: source.videoTrack,
                 destinationFrame: frames[index],
-                at: .zero
+                at: .zero,
+                contentMode: .fill
             )
             layerInstructions.append(layerInstruction)
         }
@@ -311,31 +311,37 @@ actor AVVideoExportService: VideoExportService {
         for compositionTrack: AVCompositionTrack,
         sourceVideoTrack: AVAssetTrack,
         destinationFrame: CGRect,
-        at time: CMTime
+        at time: CMTime,
+        contentMode: VideoSlotContentMode
     ) async throws -> AVMutableVideoCompositionLayerInstruction {
-        let placement = try await makeFilledPlacement(
+        let placement = try await makeVideoPlacement(
             for: sourceVideoTrack,
-            in: destinationFrame
+            in: destinationFrame,
+            contentMode: contentMode
         )
         let layerInstruction = AVMutableVideoCompositionLayerInstruction(
             assetTrack: compositionTrack
         )
 
-        layerInstruction.setCropRectangle(
-            placement.sourceCropRect,
-            at: time
-        )
+        if let sourceCropRect = placement.sourceCropRect {
+            layerInstruction.setCropRectangle(sourceCropRect, at: time)
+        }
         layerInstruction.setTransform(placement.transform, at: time)
 
         return layerInstruction
     }
 
-    /// 원본 영상을 목적 슬롯에 aspectFill로 배치하고, 슬롯 밖을 덮지 않도록
-    /// 원본 좌표계의 crop rect도 함께 계산합니다.
-    private func makeFilledPlacement(
+    /// 원본의 회전 메타데이터(`preferredTransform`)를 먼저 적용해 세워 놓고,
+    /// 그 뒤 슬롯에 맞춰 확대·이동합니다.
+    ///
+    /// 일반 영상은 `fit`으로 배치해 가로 원본이 세로 릴스의 가로 폭을 채우되
+    /// 원본 비율을 잃지 않습니다. 분할 슬롯은 서로를 덮으면 안 되므로 `fill`과
+    /// 원본 좌표계 crop을 함께 사용합니다.
+    private func makeVideoPlacement(
         for sourceVideoTrack: AVAssetTrack,
-        in destinationFrame: CGRect
-    ) async throws -> FilledVideoPlacement {
+        in destinationFrame: CGRect,
+        contentMode: VideoSlotContentMode
+    ) async throws -> VideoPlacement {
         let naturalSize = try await sourceVideoTrack.load(.naturalSize)
         let preferredTransform = try await sourceVideoTrack.load(
             .preferredTransform
@@ -357,36 +363,71 @@ actor AVVideoExportService: VideoExportService {
         }
 
         let sourceAspectRatio = orientedWidth / orientedHeight
-        let destinationAspectRatio = destinationFrame.width / destinationFrame.height
+        let destinationAspectRatio = destinationFrame.width
+            / destinationFrame.height
 
-        let orientedCropSize: CGSize
-        if sourceAspectRatio > destinationAspectRatio {
-            orientedCropSize = CGSize(
-                width: orientedHeight * destinationAspectRatio,
-                height: orientedHeight
+        let orientedSourceRect: CGRect
+        let sourceCropRect: CGRect?
+
+        switch contentMode {
+        case .fit:
+            orientedSourceRect = transformedBounds
+            sourceCropRect = nil
+
+        case .fill:
+            let orientedCropSize: CGSize
+            if sourceAspectRatio > destinationAspectRatio {
+                orientedCropSize = CGSize(
+                    width: orientedHeight * destinationAspectRatio,
+                    height: orientedHeight
+                )
+            } else {
+                orientedCropSize = CGSize(
+                    width: orientedWidth,
+                    height: orientedWidth / destinationAspectRatio
+                )
+            }
+
+            orientedSourceRect = CGRect(
+                x: transformedBounds.midX - orientedCropSize.width / 2,
+                y: transformedBounds.midY - orientedCropSize.height / 2,
+                width: orientedCropSize.width,
+                height: orientedCropSize.height
             )
-        } else {
-            orientedCropSize = CGSize(
-                width: orientedWidth,
-                height: orientedWidth / destinationAspectRatio
-            )
+
+            let sourceBounds = CGRect(origin: .zero, size: naturalSize)
+            sourceCropRect = orientedSourceRect
+                .applying(preferredTransform.inverted())
+                .standardized
+                .intersection(sourceBounds)
         }
 
-        let orientedCropRect = CGRect(
-            x: transformedBounds.midX - orientedCropSize.width / 2,
-            y: transformedBounds.midY - orientedCropSize.height / 2,
-            width: orientedCropSize.width,
-            height: orientedCropSize.height
-        )
-        let sourceCropRect = orientedCropRect
-            .applying(preferredTransform.inverted())
-            .standardized
-        let scale = destinationFrame.width / orientedCropSize.width
+        let scale: CGFloat
+        let targetOrigin: CGPoint
+
+        switch contentMode {
+        case .fit:
+            scale = min(
+                destinationFrame.width / orientedSourceRect.width,
+                destinationFrame.height / orientedSourceRect.height
+            )
+            targetOrigin = CGPoint(
+                x: destinationFrame.midX
+                    - orientedSourceRect.width * scale / 2,
+                y: destinationFrame.midY
+                    - orientedSourceRect.height * scale / 2
+            )
+
+        case .fill:
+            scale = destinationFrame.width / orientedSourceRect.width
+            targetOrigin = destinationFrame.origin
+        }
+
         var transform = preferredTransform
         transform = transform.concatenating(
             CGAffineTransform(
-                translationX: -orientedCropRect.minX,
-                y: -orientedCropRect.minY
+                translationX: -orientedSourceRect.minX,
+                y: -orientedSourceRect.minY
             )
         )
         transform = transform.concatenating(
@@ -394,12 +435,12 @@ actor AVVideoExportService: VideoExportService {
         )
         transform = transform.concatenating(
             CGAffineTransform(
-                translationX: destinationFrame.minX,
-                y: destinationFrame.minY
+                translationX: targetOrigin.x,
+                y: targetOrigin.y
             )
         )
 
-        return FilledVideoPlacement(
+        return VideoPlacement(
             sourceCropRect: sourceCropRect,
             transform: transform
         )
@@ -415,6 +456,10 @@ actor AVVideoExportService: VideoExportService {
         videoComposition.renderSize = renderSize
         videoComposition.frameDuration = CMTime(value: 1, timescale: 30)
         videoComposition.instructions = instructions
+        videoComposition.instructions.forEach { instruction in
+            (instruction as? AVMutableVideoCompositionInstruction)?
+                .backgroundColor = CGColor(gray: 0, alpha: 1)
+        }
         videoComposition.animationTool = textOverlayRenderer.makeAnimationTool(
             overlays: textOverlays,
             timeline: timeline,
@@ -459,7 +504,12 @@ private struct SourceVideo {
     let duration: CMTime
 }
 
-private struct FilledVideoPlacement {
-    let sourceCropRect: CGRect
+private enum VideoSlotContentMode {
+    case fit
+    case fill
+}
+
+private struct VideoPlacement {
+    let sourceCropRect: CGRect?
     let transform: CGAffineTransform
 }

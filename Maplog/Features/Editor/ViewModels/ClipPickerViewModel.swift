@@ -181,10 +181,6 @@ final class ClipPickerViewModel: ObservableObject {
         }
     }
 
-    func selectCanvasOrientation(_ orientation: VideoCanvasOrientation) {
-        compositionConfiguration.canvasOrientation = orientation
-    }
-
     var hasValidCompositionSelection: Bool {
         switch compositionConfiguration.layout {
         case .single:

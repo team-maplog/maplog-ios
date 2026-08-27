@@ -399,8 +399,9 @@ final class AVCameraCaptureService: NSObject, CameraCaptureService {
         }
     }
 
-    /// 카메라 화면은 세로 UI를 유지하더라도, 기기를 옆으로 든 촬영은 회전 메타데이터를
-    /// 반영해 가로 원본으로 저장합니다. 이후 편집 화면에서 가로 캔버스를 선택할 수 있어요.
+    /// 기기를 옆으로 들어 촬영한 경우에는 회전 메타데이터를 원본에 기록합니다.
+    /// 편집 결과는 항상 세로 릴스 캔버스이므로, 내보내기 단계에서 이 정보를 읽어
+    /// 가로 원본의 방향을 보존한 채 화면 너비에 맞춰 배치합니다.
     private func captureRotationAngle() -> CGFloat {
         switch UIDevice.current.orientation {
         case .landscapeLeft:

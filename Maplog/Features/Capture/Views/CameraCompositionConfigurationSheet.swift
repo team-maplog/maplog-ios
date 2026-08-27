@@ -38,9 +38,6 @@ struct CameraCompositionConfigurationSheet: View {
                     selectedClipCount: draftConfiguration.requiredClipCount,
                     onLayoutSelect: { layout in
                         draftConfiguration.layout = layout
-                    },
-                    onCanvasOrientationSelect: { orientation in
-                        draftConfiguration.canvasOrientation = orientation
                     }
                 )
 
@@ -65,9 +62,7 @@ struct CameraCompositionGuideOverlay: View {
 
     var body: some View {
         GeometryReader { proxy in
-            let frames = configuration.layout.normalizedFrames(
-                for: configuration.canvasOrientation
-            )
+            let frames = configuration.layout.normalizedFrames
 
             ForEach(Array(frames.enumerated()), id: \.offset) { _, frame in
                 RoundedRectangle(cornerRadius: 2, style: .continuous)

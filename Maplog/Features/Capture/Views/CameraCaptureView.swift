@@ -115,7 +115,7 @@ struct CameraCaptureView: View {
                 VStack(spacing: MaplogSpacing.medium) {
                     if viewModel.settings.compositionConfiguration.layout != .single {
                         Text(
-                            "\(viewModel.settings.compositionConfiguration.layout.title) · \(viewModel.settings.compositionConfiguration.canvasOrientation.title)"
+                            viewModel.settings.compositionConfiguration.layout.title
                         )
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.white)
