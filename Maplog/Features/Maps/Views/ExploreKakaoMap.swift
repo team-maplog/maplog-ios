@@ -121,8 +121,13 @@ private struct ExploreKakaoMapRepresentable: UIViewRepresentable {
     final class Coordinator: NSObject, MapControllerDelegate, KakaoMapEventDelegate {
         private let mapViewName = "explore-map"
         private let markerLayerID = "explore-map-marker-layer"
+        // KakaoMap이 지도 내부 레이어로 쓰는 0~4,999를 피하고,
+        // 사용자 레이블에 허용된 5,000 이상 영역을 사용한다.
+        private let markerLayerZOrder = 5_000
         private let currentLocationPulseLayerID = "explore-map-current-location-pulse-layer"
         private let currentLocationLayerID = "explore-map-current-location-layer"
+        private let currentLocationPulseLayerZOrder = 5_001
+        private let currentLocationLayerZOrder = 5_002
         private let currentLocationPulsePoiID = "explore-map-current-location-pulse"
         private let currentLocationPoiID = "explore-map-current-location"
         private let currentLocationPulseStyleID = "explore-map-current-location-pulse-style"
@@ -424,13 +429,13 @@ private struct ExploreKakaoMapRepresentable: UIViewRepresentable {
             ) == nil {
                 let options = LabelLayerOptions(
                     layerID: markerLayerID,
-                    // 로그 썸네일과 관광 말풍선이 지도 기본 라벨과 겹칠 때는
-                    // 이 레이어(상위)의 마커를 남기고, 하위 라벨을 숨긴다.
-                    // 같은 레이어 안에서는 아래의 PoiOptions.rank가 선택 항목을 우선한다.
-                    competitionType: .lower,
+                    // 로그 썸네일과 관광 말풍선이 도로·역·장소 등 모든 지도
+                    // 라벨 영역과 경쟁한다. Maplog 마커 레이어를 높게 두어
+                    // 겹치는 기본 라벨은 숨기고, 같은 레이어에서는 rank로 고른다.
+                    competitionType: .all,
                     competitionUnit: .symbolFirst,
                     orderType: .rank,
-                    zOrder: 1
+                    zOrder: markerLayerZOrder
                 )
 
                 _ = labelManager.addLabelLayer(
@@ -527,12 +532,12 @@ private struct ExploreKakaoMapRepresentable: UIViewRepresentable {
 
             addCurrentLocationLayerIfNeeded(
                 layerID: currentLocationPulseLayerID,
-                zOrder: 2,
+                zOrder: currentLocationPulseLayerZOrder,
                 labelManager: labelManager
             )
             addCurrentLocationLayerIfNeeded(
                 layerID: currentLocationLayerID,
-                zOrder: 3,
+                zOrder: currentLocationLayerZOrder,
                 labelManager: labelManager
             )
         }
