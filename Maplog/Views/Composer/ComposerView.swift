@@ -24,7 +24,7 @@ struct ComposerView: View {
                     .overlay(alignment: .topTrailing) {
                         Image(systemName: "camera.fill")
                             .font(.system(size: MaplogSize.iconMedium, weight: .semibold))
-                            .foregroundStyle(Color.maplogInk)
+                            .foregroundStyle(Color.maplogOnPrimary)
                             .frame(width: 42, height: 42)
                             .background(Color.maplogLime)
                             .clipShape(Circle())

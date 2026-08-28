@@ -34,6 +34,8 @@ enum BackendErrorCode: Equatable {
     case thumbnailGenerationFailed
     case invalidThumbnailTime
     case invalidClipTimeRange
+    case locationAddressNotFound
+    case locationLookupFailed
 
     case logNotFound
     case logNotReadable
@@ -110,6 +112,12 @@ enum BackendErrorCode: Equatable {
 
         case "LOG-012":
             self = .invalidClipTimeRange
+
+        case "LOCATION-002":
+            self = .locationAddressNotFound
+
+        case "LOCATION-003":
+            self = .locationLookupFailed
 
         case "LOG-001":
             self = .logNotFound

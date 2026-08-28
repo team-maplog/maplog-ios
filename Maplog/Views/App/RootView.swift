@@ -74,7 +74,6 @@ enum MaplogLaunchRequest {
 }
 
 struct RootView: View {
-    @Environment(\.scenePhase) private var scenePhase
     @EnvironmentObject private var authSessionStore: AuthSessionStore // 로그인 여부와 JWT 토큰을 관리해. MaplogApp에서 만들어서 주입한 객체
 
     @StateObject private var sessionStore = MaplogSessionStore() // 기존 앱의 위치 권한, 저장한 로그·장소 같은 앱 내부 상태를 관리해. RootView가 직접 생성·소유
@@ -109,6 +108,8 @@ struct RootView: View {
     private let homeSearchRepository: any HomeSearchRepository
     private let mapCurrentLocationService: any MapCurrentLocationService
     private let locationPermissionService: any LocationPermissionService
+    private let photoLibraryVideoImportService: any PhotoLibraryVideoImporting
+    private let photoLibraryVideoSaveService: any PhotoLibraryVideoSaving
     @State private var isRequestingLocationPermission = false
 
     init(
@@ -135,6 +136,8 @@ struct RootView: View {
         homeSearchRepository: any HomeSearchRepository,
         mapCurrentLocationService: any MapCurrentLocationService,
         locationPermissionService: any LocationPermissionService,
+        photoLibraryVideoImportService: any PhotoLibraryVideoImporting,
+        photoLibraryVideoSaveService: any PhotoLibraryVideoSaving,
     ) {
         self.authRepository = authRepository
         self.tourismRepository = tourismRepository
@@ -159,6 +162,8 @@ struct RootView: View {
         self.homeSearchRepository = homeSearchRepository
         self.mapCurrentLocationService = mapCurrentLocationService
         self.locationPermissionService = locationPermissionService
+        self.photoLibraryVideoImportService = photoLibraryVideoImportService
+        self.photoLibraryVideoSaveService = photoLibraryVideoSaveService
         #if DEBUG
         if ProcessInfo.processInfo.arguments.contains("-MaplogSkipOnboarding") {
             _phase = State(initialValue: .app)
@@ -205,6 +210,8 @@ struct RootView: View {
                     mapRepository: mapRepository,
                     homeSearchRepository: homeSearchRepository,
                     mapCurrentLocationService: mapCurrentLocationService,
+                    photoLibraryVideoImportService: photoLibraryVideoImportService,
+                    photoLibraryVideoSaveService: photoLibraryVideoSaveService,
                     requestedTab: $requestedTab,
                     requestedCapturePlaceName: $requestedCapturePlaceName
                 )
@@ -217,10 +224,6 @@ struct RootView: View {
         }
         .environmentObject(sessionStore)
         .onAppear(perform: consumeLaunchRequest)
-        .onChange(of: scenePhase) { _, newPhase in
-            guard newPhase == .active else { return }
-            consumeLaunchRequest()
-        }
         .onReceive(NotificationCenter.default.publisher(for: MaplogLaunchRequest.didChangeNotification)) { _ in
             consumeLaunchRequest()
         } // 앱 시작 시 세션 복구

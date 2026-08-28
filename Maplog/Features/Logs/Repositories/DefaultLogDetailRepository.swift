@@ -16,16 +16,24 @@ final class DefaultLogDetailRepository: LogDetailRepository {
         return try LogResponseMapper.makeLogDetail(from: detailDTO)
     }
 
-    func updateCaption(
+    func updateLog(
         logID: Int64,
-        caption: String
-    ) async throws -> LogCaptionUpdateResult {
-        let responseDTO = try await apiService.updateLogCaption(
+        draft: LogUpdateDraft
+    ) async throws -> LogUpdateResult {
+        let responseDTO = try await apiService.updateLog(
             logID: logID,
-            request: UpdateLogRequestDTO(caption: caption)
+            request: UpdateLogRequestDTO(
+                caption: draft.caption,
+                tags: draft.tags?.map(\.rawValue)
+            )
         )
 
-        return LogCaptionUpdateResult(caption: responseDTO.caption)
+        return LogUpdateResult(
+            caption: responseDTO.caption,
+            tags: responseDTO.tags.map { LogTag.makeTags(from: $0) }
+                ?? draft.tags
+                ?? []
+        )
     }
 
     func deleteLog(

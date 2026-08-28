@@ -58,6 +58,37 @@ final class ProfileRepositoryTests: XCTestCase {
         XCTAssertEqual(profile.bio, "새로운 소개")
     }
 
+    func testFetchPublicProfileMapsViewerFollowState() async throws {
+        let publicProfile = PublicProfileResponseDTO(
+            userID: UUID(),
+            nickname: "slow.seoul",
+            profileImageURL: "/api/v1/files/31",
+            bio: "서울의 느린 산책을 기록합니다.",
+            followerCount: 14,
+            followingCount: 9,
+            logCount: 21,
+            followedByViewer: true,
+            createdAt: "2026-07-10T09:00:00"
+        )
+        let apiService = ProfileAPIServiceStub(
+            logPage: ProfileLogPageDTO(
+                content: [],
+                hasNext: false,
+                nextCursor: nil
+            ),
+            publicProfile: publicProfile
+        )
+        let repository = DefaultProfileRepository(apiService: apiService)
+
+        let profile = try await repository.fetchPublicProfile(
+            nickname: "slow.seoul"
+        )
+
+        XCTAssertEqual(profile.nickname, "slow.seoul")
+        XCTAssertTrue(profile.isFollowedByViewer)
+        XCTAssertEqual(profile.profileImageURL?.path, "/api/v1/files/31")
+    }
+
     private func makeProfileDTO(
         nickname: String,
         bio: String
@@ -77,19 +108,32 @@ final class ProfileRepositoryTests: XCTestCase {
 private final class ProfileAPIServiceStub: ProfileAPIService {
     private let logPage: ProfileLogPageDTO
     private let updatedProfile: MyProfileResponseDTO?
+    private let publicProfile: PublicProfileResponseDTO?
     private(set) var uploadedImageData: Data?
     private(set) var updateRequest: UpdateMyProfileRequestDTO?
 
     init(
         logPage: ProfileLogPageDTO,
-        updatedProfile: MyProfileResponseDTO? = nil
+        updatedProfile: MyProfileResponseDTO? = nil,
+        publicProfile: PublicProfileResponseDTO? = nil
     ) {
         self.logPage = logPage
         self.updatedProfile = updatedProfile
+        self.publicProfile = publicProfile
     }
 
     func fetchMyProfile() async throws -> MyProfileResponseDTO {
         fatalError("This test does not request a profile.")
+    }
+
+    func fetchPublicProfile(
+        nickname: String
+    ) async throws -> PublicProfileResponseDTO {
+        guard let publicProfile else {
+            fatalError("This test does not request a public profile.")
+        }
+
+        return publicProfile
     }
 
     func fetchMyLogs(
@@ -97,6 +141,14 @@ private final class ProfileAPIServiceStub: ProfileAPIService {
         size: Int
     ) async throws -> ProfileLogPageDTO {
         logPage
+    }
+
+    func fetchPublicProfileLogs(
+        nickname: String,
+        cursor: String?,
+        size: Int
+    ) async throws -> ProfileLogPageDTO {
+        fatalError("This test does not request public profile logs.")
     }
 
     func updateMyProfile(

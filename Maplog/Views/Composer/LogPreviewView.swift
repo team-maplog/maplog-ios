@@ -203,7 +203,7 @@ struct LogPreviewView: View {
                 } label: {
                     Label("내 기록 보기", systemImage: "play.circle.fill")
                         .font(MaplogFont.cardTitle)
-                        .foregroundStyle(Color.maplogInk)
+                        .foregroundStyle(Color.maplogOnPrimary)
                         .frame(maxWidth: .infinity)
                         .frame(height: 56)
                         .background(Color.maplogLime)
@@ -287,7 +287,7 @@ struct LogPreviewView: View {
             } label: {
                 Label("게시 완료", systemImage: "checkmark")
                     .font(MaplogFont.cardTitle)
-                    .foregroundStyle(Color.maplogInk)
+                    .foregroundStyle(Color.maplogOnPrimary)
                     .frame(maxWidth: .infinity)
                     .frame(height: 56)
                     .background(Color.maplogLime)
@@ -308,7 +308,7 @@ struct LogPreviewView: View {
         HStack(spacing: MaplogSpacing.small) {
             Text("\(index)")
                 .font(.system(size: 13, weight: .black))
-                .foregroundStyle(Color.maplogInk)
+                .foregroundStyle(Color.maplogOnPrimary)
                 .frame(width: 32, height: 32)
                 .background(Color.maplogLime.opacity(0.72))
                 .clipShape(Circle())
@@ -401,7 +401,7 @@ private struct PublishedShareSheet: View {
             } label: {
                 Label("내 지도 상단에 고정", systemImage: "pin.fill")
                     .font(MaplogFont.cardTitle)
-                    .foregroundStyle(Color.maplogInk)
+                    .foregroundStyle(Color.maplogOnPrimary)
                     .frame(maxWidth: .infinity)
                     .frame(height: 54)
                     .background(Color.maplogLime)

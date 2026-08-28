@@ -49,8 +49,6 @@ struct ProfileEditFeatureView: View {
                     )
                 }
 
-                ProfileEditNotice()
-
                 ProfileEditFormMessage(
                     message: viewModel.formMessage,
                     recoveryAction: viewModel.recoveryAction,
@@ -68,7 +66,7 @@ struct ProfileEditFeatureView: View {
                                 .font(.headline.weight(.bold))
                         }
                     }
-                    .foregroundStyle(Color.maplogInk)
+                    .foregroundStyle(Color.maplogOnPrimary)
                     .frame(maxWidth: .infinity)
                     .frame(height: 52)
                     .background(Color.maplogLime, in: Capsule())
@@ -238,23 +236,6 @@ private struct ProfileEditFieldMessage: View {
                 .font(.caption)
                 .foregroundStyle(.red)
         }
-    }
-}
-
-private struct ProfileEditNotice: View {
-    var body: some View {
-        Label(
-            "닉네임, 프로필 사진, 소개는 서버 계정 정보에 바로 반영됩니다.",
-            systemImage: "info.circle"
-        )
-        .font(.caption)
-        .foregroundStyle(Color.maplogMuted)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .background(
-            Color.maplogCanvas,
-            in: RoundedRectangle(cornerRadius: 14, style: .continuous)
-        )
     }
 }
 

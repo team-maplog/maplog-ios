@@ -148,7 +148,7 @@ private struct LocationPermissionActions: View {
                             .font(.system(size: 18, weight: .medium))
                     }
                 }
-                .foregroundStyle(Color.maplogInk)
+                .foregroundStyle(Color.maplogOnPrimary)
                 .frame(maxWidth: .infinity)
                 .frame(height: 54)
                 .background(Color.maplogLime)
@@ -390,7 +390,7 @@ struct NotificationsView: View {
             } label: {
                 Text(emptyNotificationActionTitle)
                     .font(.system(size: 14, weight: .black))
-                    .foregroundStyle(Color.maplogInk)
+                    .foregroundStyle(Color.maplogOnPrimary)
                     .padding(.horizontal, 18)
                     .frame(height: 42)
                     .background(Color.maplogLime)
@@ -584,7 +584,7 @@ private struct NotificationDetailView: View {
                     } label: {
                         Label("관련 화면 보기", systemImage: "arrow.right.circle.fill")
                             .font(MaplogFont.cardTitle)
-                            .foregroundStyle(Color.maplogInk)
+                            .foregroundStyle(Color.maplogOnPrimary)
                             .frame(maxWidth: .infinity)
                             .frame(height: 56)
                             .background(Color.maplogLime)
@@ -787,7 +787,7 @@ struct ServiceDetailView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Text(profile.badge)
                         .font(.system(size: 13, weight: .black))
-                        .foregroundStyle(Color.maplogInk)
+                        .foregroundStyle(Color.maplogOnPrimary)
                         .padding(.horizontal, MaplogSpacing.small)
                         .padding(.vertical, 7)
                         .background(Color.maplogLime)
@@ -815,7 +815,7 @@ struct ServiceDetailView: View {
         } label: {
             Label(isIssued ? profile.issuedTitle : profile.ctaTitle, systemImage: isIssued ? "checkmark.seal.fill" : "person.text.rectangle.fill")
                 .font(.system(size: 18, weight: .black))
-                .foregroundStyle(Color.maplogInk)
+                .foregroundStyle(Color.maplogOnPrimary)
                 .frame(maxWidth: .infinity)
                 .frame(height: 58)
                 .background(Color.maplogLime)
@@ -870,7 +870,7 @@ struct ServiceDetailView: View {
                         } label: {
                             Text(sessionStore.hasSavedSpot(benefit.spot) ? "저장됨" : benefit.discount)
                                 .font(.system(size: 12, weight: .black))
-                                .foregroundStyle(Color.maplogInk)
+                                .foregroundStyle(Color.maplogOnPrimary)
                                 .padding(.horizontal, 10)
                                 .frame(height: 28)
                                 .background(Color.maplogLime)
@@ -894,7 +894,7 @@ struct ServiceDetailView: View {
                     HStack(spacing: MaplogSpacing.small) {
                         Text("\(index + 1)")
                             .font(.system(size: 14, weight: .black))
-                            .foregroundStyle(Color.maplogInk)
+                            .foregroundStyle(Color.maplogOnPrimary)
                             .frame(width: 32, height: 32)
                             .background(Color.maplogLime)
                             .clipShape(Circle())
@@ -1276,7 +1276,7 @@ private struct ServiceIssueSheet: View {
             VStack(alignment: .leading, spacing: 14) {
                 Text(isIssued ? "발급 완료" : "패스 미리보기")
                     .font(.system(size: 13, weight: .black))
-                    .foregroundStyle(Color.maplogInk)
+                    .foregroundStyle(Color.maplogOnPrimary)
                     .padding(.horizontal, 11)
                     .padding(.vertical, 6)
                     .background(Color.maplogLime)
@@ -1310,7 +1310,7 @@ private struct ServiceIssueSheet: View {
             } label: {
                 Label(isIssued ? "패스 확인 완료" : "발급 완료하기", systemImage: isIssued ? "checkmark" : "checkmark.seal.fill")
                     .font(MaplogFont.cardTitle)
-                    .foregroundStyle(Color.maplogInk)
+                    .foregroundStyle(Color.maplogOnPrimary)
                     .frame(maxWidth: .infinity)
                     .frame(height: 54)
                     .background(Color.maplogLime)
@@ -1397,7 +1397,7 @@ private struct ServiceShareSheet: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(isIssued ? profile.issuedTitle : profile.badge)
                         .font(.system(size: 12, weight: .black))
-                        .foregroundStyle(Color.maplogInk)
+                        .foregroundStyle(Color.maplogOnPrimary)
                         .padding(.horizontal, 9)
                         .frame(height: 24)
                         .background(Color.maplogLime)
@@ -1638,7 +1638,7 @@ struct FeaturedEventDetailView: View {
                 } label: {
                     Label("지도 보기", systemImage: "point.topleft.down.curvedto.point.bottomright.up")
                         .font(.headline)
-                        .foregroundStyle(Color.maplogInk)
+                        .foregroundStyle(Color.maplogOnPrimary)
                         .frame(maxWidth: .infinity)
                         .frame(minHeight: 54)
                         .background(Color.maplogLime)
@@ -1927,7 +1927,7 @@ private struct EventDetailRecommendationCard: View {
 
                 Text(recommendation.badge)
                     .font(.caption2.weight(.bold))
-                    .foregroundStyle(Color.maplogInk)
+                    .foregroundStyle(Color.maplogOnPrimary)
                     .padding(.horizontal, MaplogSpacing.xSmall)
                     .frame(minHeight: 24)
                     .background(Color.maplogLime, in: Capsule())
@@ -2190,7 +2190,7 @@ private struct FestivalCard: View {
 
             Text(event.title.contains("서울") ? "D-2" : "진행 중")
                 .font(MaplogFont.badge)
-                .foregroundStyle(Color.maplogInk)
+                .foregroundStyle(Color.maplogOnPrimary)
                 .padding(.horizontal, 10)
                 .frame(height: 26)
                 .background(Color.maplogLime)

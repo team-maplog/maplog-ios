@@ -20,6 +20,31 @@ struct MyProfileResponseDTO: Decodable {
     }
 }
 
+/// GET /api/v1/users/@{nickname}의 data입니다.
+struct PublicProfileResponseDTO: Decodable {
+    let userID: UUID
+    let nickname: String
+    let profileImageURL: String?
+    let bio: String?
+    let followerCount: Int64
+    let followingCount: Int64
+    let logCount: Int64
+    let followedByViewer: Bool
+    let createdAt: String
+
+    enum CodingKeys: String, CodingKey {
+        case userID = "userId"
+        case nickname
+        case profileImageURL = "profileImageUrl"
+        case bio
+        case followerCount
+        case followingCount
+        case logCount
+        case followedByViewer
+        case createdAt
+    }
+}
+
 struct ProfileLogPageDTO: Decodable {
     let content: [ProfileLogResponseDTO]
     let hasNext: Bool

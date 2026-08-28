@@ -9,6 +9,7 @@ import Foundation
 
 struct LogCreateRequestDTO: Encodable {
     let caption: String
+    let tags: [String]
     let address: String
     let videoFileId: Int64
     let thumbnailTimeMillis: Int?
@@ -16,6 +17,7 @@ struct LogCreateRequestDTO: Encodable {
 
     enum CodingKeys: String, CodingKey {
         case caption
+        case tags
         case address
         case videoFileId
         case thumbnailTimeMillis
@@ -26,6 +28,8 @@ struct LogCreateRequestDTO: Encodable {
         var container = encoder.container(keyedBy: CodingKeys.self)
 
         try container.encode(caption, forKey: .caption)
+        // 본문에서 추출한 해시태그입니다. `#`은 제거한 값만 보냅니다.
+        try container.encode(tags, forKey: .tags)
         try container.encode(address, forKey: .address)
         try container.encode(videoFileId, forKey: .videoFileId)
         try container.encodeIfPresent( // encodeIfPresent는 값이 있으면 숫자를 넣고, nil이면 그 JSON 키를 아예 보내지 않음

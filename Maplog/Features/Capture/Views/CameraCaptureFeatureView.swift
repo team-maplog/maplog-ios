@@ -17,6 +17,8 @@ struct CameraCaptureFeatureView: View {
     private let videoExportService: any VideoExportService
     private let logLocationRepository: any LogLocationRepository
     private let logPublishingRepository: any LogPublishingRepository
+    private let photoLibraryVideoImportService: any PhotoLibraryVideoImporting
+    private let photoLibraryVideoSaveService: any PhotoLibraryVideoSaving
 
     let onClose: () -> Void
 
@@ -29,6 +31,8 @@ struct CameraCaptureFeatureView: View {
         captureLocationService: any CaptureLocationService,
         logLocationRepository: any LogLocationRepository,
         logPublishingRepository: any LogPublishingRepository,
+        photoLibraryVideoImportService: any PhotoLibraryVideoImporting,
+        photoLibraryVideoSaveService: any PhotoLibraryVideoSaving,
         onClose: @escaping () -> Void
     ) {
         self.mediaDraftRepository = mediaDraftRepository
@@ -37,6 +41,8 @@ struct CameraCaptureFeatureView: View {
         self.videoExportService = videoExportService
         self.logLocationRepository = logLocationRepository
         self.logPublishingRepository = logPublishingRepository
+        self.photoLibraryVideoImportService = photoLibraryVideoImportService
+        self.photoLibraryVideoSaveService = photoLibraryVideoSaveService
         _viewModel = StateObject(
             wrappedValue: CameraCaptureViewModel(
                 cameraCaptureService: cameraCaptureService,
@@ -78,7 +84,11 @@ struct CameraCaptureFeatureView: View {
                 videoPlaybackService: videoPlaybackService,
                 videoExportService: videoExportService,
                 logLocationRepository: logLocationRepository,
-                logPublishingRepository: logPublishingRepository
+                logPublishingRepository: logPublishingRepository,
+                photoLibraryVideoImportService: photoLibraryVideoImportService,
+                photoLibraryVideoSaveService: photoLibraryVideoSaveService,
+                initialCompositionConfiguration: viewModel.settings.compositionConfiguration,
+                onCompositionConfigurationChanged: viewModel.updateCompositionConfiguration
             )
         }
     }

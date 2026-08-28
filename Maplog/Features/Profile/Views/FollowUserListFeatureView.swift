@@ -238,7 +238,7 @@ private struct FollowUserListFailureState: View {
             case .retry:
                 Button("다시 시도", action: onRetry)
                     .font(.subheadline.weight(.bold))
-                    .foregroundStyle(Color.maplogInk)
+                    .foregroundStyle(Color.maplogOnPrimary)
                     .padding(.horizontal, 18)
                     .frame(height: 40)
                     .background(Color.maplogLime, in: Capsule())
@@ -246,7 +246,7 @@ private struct FollowUserListFailureState: View {
             case .signIn:
                 Button("로그인으로 이동", action: onSignIn)
                     .font(.subheadline.weight(.bold))
-                    .foregroundStyle(Color.maplogInk)
+                    .foregroundStyle(Color.maplogOnPrimary)
                     .padding(.horizontal, 18)
                     .frame(height: 40)
                     .background(Color.maplogLime, in: Capsule())

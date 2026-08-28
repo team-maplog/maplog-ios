@@ -19,6 +19,7 @@ final class AVCameraCaptureService: NSObject, CameraCaptureService {
     private var videoInput: AVCaptureDeviceInput?
     private var audioInput: AVCaptureDeviceInput?
     private var currentVideoDevice: AVCaptureDevice?
+    private var rotationCoordinator: AVCaptureDevice.RotationCoordinator?
     
     private var storedPosition: CameraPosition = .rear
     private var recordingStartDate: Date?
@@ -247,7 +248,20 @@ final class AVCameraCaptureService: NSObject, CameraCaptureService {
                 }
                 
                 recordingStartDate = Date()
-                
+
+                if let videoConnection = movieOutput.connection(
+                    with: .video
+                ) {
+                    let rotationAngle = rotationCoordinator?
+                        .videoRotationAngleForHorizonLevelCapture ?? 0
+
+                    if videoConnection.isVideoRotationAngleSupported(
+                        rotationAngle
+                    ) {
+                        videoConnection.videoRotationAngle = rotationAngle
+                    }
+                }
+
                 movieOutput.startRecording(
                     to: outputURL,
                     recordingDelegate: self
@@ -341,6 +355,10 @@ final class AVCameraCaptureService: NSObject, CameraCaptureService {
         previewSession.addInput(newVideoInput)
         videoInput = newVideoInput
         currentVideoDevice = videoDevice
+        rotationCoordinator = AVCaptureDevice.RotationCoordinator(
+            device: videoDevice,
+            previewLayer: nil
+        )
         storedPosition = position
         
         let microphoneIsAuthorized =
@@ -384,6 +402,7 @@ final class AVCameraCaptureService: NSObject, CameraCaptureService {
             return .denied
         }
     }
+
 }
 
 extension AVCameraCaptureService:

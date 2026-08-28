@@ -5,10 +5,10 @@ protocol LogDetailRepository {
         logID: Int64
     ) async throws -> LogDetail
 
-    func updateCaption(
+    func updateLog(
         logID: Int64,
-        caption: String
-    ) async throws -> LogCaptionUpdateResult
+        draft: LogUpdateDraft
+    ) async throws -> LogUpdateResult
 
     func deleteLog(
         logID: Int64

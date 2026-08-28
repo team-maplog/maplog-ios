@@ -9,12 +9,6 @@ struct ProfileSettingsFeatureView: View {
     private let profileRepository: any ProfileRepository
     private let onProfileSaved: () async -> Void
 
-    @AppStorage("maplog.profile.pushNotificationsEnabled")
-    private var pushNotificationsEnabled = true
-
-    @AppStorage("maplog.profile.serviceAnnouncementsEnabled")
-    private var serviceAnnouncementsEnabled = true
-
     @StateObject private var viewModel: ProfileSettingsViewModel
     @State private var showsLogoutConfirmation = false
     @State private var showsWithdrawalConfirmation = false
@@ -53,22 +47,6 @@ struct ProfileSettingsFeatureView: View {
                         )
                     }
                     .buttonStyle(.plain)
-                }
-
-                ProfileSettingsSection(title: "알림") {
-                    ProfileSettingsToggleRow(
-                        title: "푸시 알림",
-                        subtitle: "좋아요와 댓글 등 활동 알림을 받아요.",
-                        isOn: $pushNotificationsEnabled
-                    )
-
-                    ProfileSettingsDivider()
-
-                    ProfileSettingsToggleRow(
-                        title: "서비스 공지 알림",
-                        subtitle: "새 기능과 서비스 소식을 받아요.",
-                        isOn: $serviceAnnouncementsEnabled
-                    )
                 }
 
                 ProfileSettingsSection(title: "서비스 정보") {

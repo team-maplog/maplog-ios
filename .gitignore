@@ -1,4 +1,5 @@
 Config/Secrets.xcconfig
+Maplog/GoogleService-Info.plist
 DerivedData/
 .DS_Store
 *.xcuserstate

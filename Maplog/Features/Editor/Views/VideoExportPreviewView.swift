@@ -12,6 +12,7 @@ import SwiftUI
 struct VideoExportPreviewView: View {
     let result: VideoExportResult
     let player: AVPlayer
+    let aspectRatio: CGFloat
     let onPreviewAppear: () -> Void
     let onWriteLogTap: () -> Void
 
@@ -31,7 +32,7 @@ struct VideoExportPreviewView: View {
                         .foregroundStyle(.secondary)
 
                     VideoPlayer(player: player) // AVPlayer를 받아 실제 영상을 그리는 SwiftUI 컴포넌트
-                        .aspectRatio(9.0 / 16.0, contentMode: .fit)
+                        .aspectRatio(aspectRatio, contentMode: .fit)
                         .frame(maxWidth: .infinity, alignment: .center)
                         .clipShape(
                             RoundedRectangle(

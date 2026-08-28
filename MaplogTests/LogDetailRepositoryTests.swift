@@ -16,14 +16,16 @@ final class LogDetailRepositoryTests: XCTestCase {
         XCTAssertEqual(detail.playbackURL?.path, "/api/v1/logs/501/video")
         XCTAssertEqual(detail.clips.map(\.id), [701, 702])
         XCTAssertEqual(detail.clips.map(\.displayOrder), [0, 1])
+        XCTAssertEqual(detail.tags, [.cafe, .walk])
     }
 
-    func testUpdateCaptionForwardsRequestAndMapsResponse() async throws {
+    func testUpdateLogForwardsCaptionAndTags() async throws {
         let apiService = LogDetailAPIServiceStub(
             detail: makeDetailDTO(),
             updatedLog: LogBasicResponseDTO(
                 logID: 501,
                 caption: "수정한 캡션",
+                tags: nil,
                 address: "서울 성동구",
                 publishedAt: "2026-08-14T10:30:00",
                 viewCount: 12,
@@ -32,14 +34,19 @@ final class LogDetailRepositoryTests: XCTestCase {
         )
         let repository = DefaultLogDetailRepository(apiService: apiService)
 
-        let result = try await repository.updateCaption(
+        let result = try await repository.updateLog(
             logID: 501,
-            caption: "수정한 캡션"
+            draft: LogUpdateDraft(
+                caption: "수정한 캡션",
+                tags: [.cafe, .walk]
+            )
         )
 
         XCTAssertEqual(apiService.updatedLogID, 501)
         XCTAssertEqual(apiService.updateRequest?.caption, "수정한 캡션")
+        XCTAssertEqual(apiService.updateRequest?.tags, ["CAFE", "WALK"])
         XCTAssertEqual(result.caption, "수정한 캡션")
+        XCTAssertEqual(result.tags, [.cafe, .walk])
     }
 
     func testDeleteForwardsLogID() async throws {
@@ -60,6 +67,7 @@ final class LogDetailRepositoryTests: XCTestCase {
                 profileImageURL: nil
             ),
             caption: "성수 산책",
+            tags: ["CAFE", "WALK"],
             address: "서울 성동구",
             thumbnailURL: "/api/v1/logs/501/thumbnail",
             playbackURL: "/api/v1/logs/501/video",
@@ -122,7 +130,7 @@ private final class LogDetailAPIServiceStub: LogDetailAPIService {
         detail
     }
 
-    func updateLogCaption(
+    func updateLog(
         logID: Int64,
         request: UpdateLogRequestDTO
     ) async throws -> LogBasicResponseDTO {

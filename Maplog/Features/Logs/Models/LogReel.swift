@@ -17,6 +17,7 @@ struct LogReel: Identifiable, Equatable, Sendable {
     let id: Int64
     let author: LogReelAuthor
     let caption: String
+    let tags: [LogTag]
     let address: String
     let thumbnailURL: URL?
     let playbackURL: URL?

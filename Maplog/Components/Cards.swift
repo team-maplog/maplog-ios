@@ -50,7 +50,7 @@ struct SavedRouteActionCard: View {
                     .overlay(alignment: .topTrailing) {
                         Text(statusText)
                             .font(MaplogFont.badge)
-                            .foregroundStyle(Color.maplogInk)
+                            .foregroundStyle(Color.maplogOnPrimary)
                             .padding(.horizontal, MaplogSpacing.small)
                             .frame(height: 28)
                             .background(Color.maplogLime)
@@ -71,7 +71,7 @@ struct SavedRouteActionCard: View {
                 } label: {
                     Label("지도 보기", systemImage: "map.fill")
                         .font(MaplogFont.caption)
-                        .foregroundStyle(Color.maplogInk)
+                        .foregroundStyle(Color.maplogOnPrimary)
                         .padding(.horizontal, MaplogSpacing.small)
                         .frame(height: 34)
                         .background(Color.maplogLime)
@@ -152,7 +152,7 @@ struct SpotRowCard: View {
                 HStack {
                     Text(spot.category)
                         .font(MaplogFont.badge)
-                        .foregroundStyle(Color.maplogInk)
+                        .foregroundStyle(Color.maplogOnPrimary)
                         .padding(.horizontal, MaplogSpacing.xSmall)
                         .padding(.vertical, MaplogSpacing.xxSmall)
                         .background(Color.maplogLime)

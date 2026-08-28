@@ -785,6 +785,7 @@ final class HomeViewModel: ObservableObject {
     ) -> HomeReelViewData {
         HomeReelViewData(
             id: reel.id,
+            authorID: reel.author.id,
             authorName: reel.author.nickname,
             authorProfileImageURL: reel.author.profileImageURL,
             caption: reel.caption,

@@ -17,6 +17,7 @@ struct LogReelDTO: Decodable {
     let logID: Int64
     let author: LogReelAuthorDTO
     let caption: String
+    let tags: [String]?
     let address: String
     let thumbnailURL: String?
     let playbackURL: String?
@@ -32,6 +33,7 @@ struct LogReelDTO: Decodable {
         case logID = "logId"
         case author
         case caption
+        case tags
         case address
         case thumbnailURL = "thumbnailUrl"
         case playbackURL = "playbackUrl"

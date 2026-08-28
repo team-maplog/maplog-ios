@@ -19,6 +19,12 @@ protocol VideoPlaybackService: AnyObject {
         from urls: [URL]
     ) async throws
 
+    /// 2·3분할은 선택한 클립을 이어 붙이지 않고 같은 시간에 한 캔버스에 배치한다.
+    func loadVideoComposition(
+        from clips: [CaptureDraftClip],
+        configuration: VideoCompositionConfiguration
+    ) async throws
+
     func seek(
         to seconds: TimeInterval
     )

@@ -102,6 +102,7 @@ final class HomeSearchViewModelTests: XCTestCase {
                 profileImageURL: nil
             ),
             caption: "성수 산책",
+            tags: [],
             address: "서울 성동구 성수동",
             thumbnailURL: URL(string: "https://example.com/thumbnail.jpg"),
             playbackURL: nil,

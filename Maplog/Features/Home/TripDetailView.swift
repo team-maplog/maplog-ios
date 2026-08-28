@@ -181,7 +181,7 @@ struct TripDetailView: View {
             } label: {
                 Label("지도에서 따라가기", systemImage: "location.north.fill")
                     .font(MaplogFont.cardTitle)
-                    .foregroundStyle(Color.maplogInk)
+                    .foregroundStyle(Color.maplogOnPrimary)
                     .frame(maxWidth: .infinity)
                     .frame(height: 56)
                     .background(Color.maplogLime, in: RoundedRectangle(cornerRadius: MaplogRadius.large, style: .continuous))
@@ -494,7 +494,7 @@ struct RouteShareSheet: View {
                 } label: {
                     Label("내 지도에 고정", systemImage: "pin.fill")
                         .font(.system(size: 16, weight: .black))
-                        .foregroundStyle(Color.maplogInk)
+                        .foregroundStyle(Color.maplogOnPrimary)
                         .frame(maxWidth: .infinity)
                         .frame(height: 52)
                         .background(Color.maplogLime)

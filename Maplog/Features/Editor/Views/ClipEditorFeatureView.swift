@@ -16,6 +16,8 @@ struct ClipEditorFeatureView: View {
     private let videoPlaybackService: any VideoPlaybackService // 재생기를 보관
     private let logLocationRepository: any LogLocationRepository
     private let logPublishingRepository: any LogPublishingRepository
+    private let photoLibraryVideoImportService: any PhotoLibraryVideoImporting
+    private let photoLibraryVideoSaveService: any PhotoLibraryVideoSaving
 
     init(
         input: ClipEditorInput,
@@ -24,13 +26,17 @@ struct ClipEditorFeatureView: View {
         videoPlaybackService: any VideoPlaybackService,
         videoExportService: any VideoExportService,
         logLocationRepository: any LogLocationRepository,
-        logPublishingRepository: any LogPublishingRepository
+        logPublishingRepository: any LogPublishingRepository,
+        photoLibraryVideoImportService: any PhotoLibraryVideoImporting,
+        photoLibraryVideoSaveService: any PhotoLibraryVideoSaving
     ) {
         self.mediaDraftRepository = mediaDraftRepository
         self.videoThumbnailService = videoThumbnailService
         self.videoPlaybackService = videoPlaybackService
         self.logLocationRepository = logLocationRepository
         self.logPublishingRepository = logPublishingRepository
+        self.photoLibraryVideoImportService = photoLibraryVideoImportService
+        self.photoLibraryVideoSaveService = photoLibraryVideoSaveService
         _viewModel = StateObject(wrappedValue: ClipEditorViewModel(
             input: input,
             videoThumbnailService: videoThumbnailService,
@@ -48,6 +54,7 @@ struct ClipEditorFeatureView: View {
             videoThumbnailService: videoThumbnailService,
             logLocationRepository: logLocationRepository,
             logPublishingRepository: logPublishingRepository,
+            photoLibraryVideoSaveService: photoLibraryVideoSaveService,
             onAddClipTap: {
                 isClipSelectionPresented = true
             }
@@ -63,6 +70,7 @@ struct ClipEditorFeatureView: View {
             ClipPickerSelectionFeatureView(
                 mediaDraftRepository: mediaDraftRepository,
                 videoThumbnailService: videoThumbnailService,
+                photoLibraryVideoImportService: photoLibraryVideoImportService,
                 initialSelectedClipIDs: viewModel.editingClipIDsInOrder,
                 onComplete: { selectedClips in
                     viewModel.applyClipSelection(selectedClips)

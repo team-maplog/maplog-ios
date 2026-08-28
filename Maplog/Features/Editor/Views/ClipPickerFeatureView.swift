@@ -18,6 +18,9 @@ struct ClipPickerFeatureView: View {
     private let videoExportService: any VideoExportService
     private let logLocationRepository: any LogLocationRepository
     private let logPublishingRepository: any LogPublishingRepository
+    private let photoLibraryVideoImportService: any PhotoLibraryVideoImporting
+    private let photoLibraryVideoSaveService: any PhotoLibraryVideoSaving
+    private let onCompositionConfigurationChanged: (VideoCompositionConfiguration) -> Void
 
     init(
         mediaDraftRepository: any MediaDraftRepository,
@@ -25,7 +28,11 @@ struct ClipPickerFeatureView: View {
         videoPlaybackService: any VideoPlaybackService,
         videoExportService: any VideoExportService,
         logLocationRepository: any LogLocationRepository,
-        logPublishingRepository: any LogPublishingRepository
+        logPublishingRepository: any LogPublishingRepository,
+        photoLibraryVideoImportService: any PhotoLibraryVideoImporting,
+        photoLibraryVideoSaveService: any PhotoLibraryVideoSaving,
+        initialCompositionConfiguration: VideoCompositionConfiguration = .init(),
+        onCompositionConfigurationChanged: @escaping (VideoCompositionConfiguration) -> Void = { _ in }
 
     ) {
         self.mediaDraftRepository = mediaDraftRepository
@@ -34,10 +41,15 @@ struct ClipPickerFeatureView: View {
         self.videoExportService = videoExportService
         self.logLocationRepository = logLocationRepository
         self.logPublishingRepository = logPublishingRepository
+        self.photoLibraryVideoImportService = photoLibraryVideoImportService
+        self.photoLibraryVideoSaveService = photoLibraryVideoSaveService
+        self.onCompositionConfigurationChanged = onCompositionConfigurationChanged
         _viewModel = StateObject(
             wrappedValue: ClipPickerViewModel(
                 mediaDraftRepository: mediaDraftRepository,
-                videoThumbnailService: videoThumbnailService
+                videoThumbnailService: videoThumbnailService,
+                photoLibraryVideoImportService: photoLibraryVideoImportService,
+                initialCompositionConfiguration: initialCompositionConfiguration
             )
         )
     }
@@ -46,15 +58,20 @@ struct ClipPickerFeatureView: View {
         ClipPickerView(
             viewModel: viewModel,
             allowsPermanentDeletion: true,
+            allowsCompositionSelection: true,
             confirmationTitle: { count in
                 "\(count)개 클립 편집하기"
             },
             onConfirmSelection: { clips in
                 editorInput = ClipEditorInput(
-                    clips: clips
+                    clips: clips,
+                    compositionConfiguration: viewModel.compositionConfiguration
                 )
             }
         )
+        .onChange(of: viewModel.compositionConfiguration) { _, configuration in
+            onCompositionConfigurationChanged(configuration)
+        }
         .fullScreenCover(item: $editorInput) { input in
             ClipEditorFeatureView(
                 input: input,
@@ -63,7 +80,9 @@ struct ClipPickerFeatureView: View {
                 videoPlaybackService: videoPlaybackService,
                 videoExportService: videoExportService,
                 logLocationRepository: logLocationRepository,
-                logPublishingRepository: logPublishingRepository
+                logPublishingRepository: logPublishingRepository,
+                photoLibraryVideoImportService: photoLibraryVideoImportService,
+                photoLibraryVideoSaveService: photoLibraryVideoSaveService
             )
         }
     }

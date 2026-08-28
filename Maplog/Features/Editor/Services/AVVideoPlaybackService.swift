@@ -78,6 +78,32 @@ final class AVVideoPlaybackService: VideoPlaybackService {
         )
     }
 
+    func loadVideoComposition(
+        from clips: [CaptureDraftClip],
+        configuration: VideoCompositionConfiguration
+    ) async throws {
+        guard configuration.layout != .single else {
+            try await loadVideoSequence(
+                from: clips
+                    .filter { $0.mediaType == .video }
+                    .map(\.fileURL)
+            )
+            return
+        }
+
+        stop()
+
+        let templateItem = try await makeSplitCompositionItem(
+            from: clips,
+            configuration: configuration
+        )
+
+        playerLooper = AVPlayerLooper(
+            player: queuePlayer,
+            templateItem: templateItem
+        )
+    }
+
     // 재생 위치 이동 기능
 //    seek(to: 0)
 //    → 전체 영상 맨 처음 A 시작
@@ -267,7 +293,6 @@ final class AVVideoPlaybackService: VideoPlaybackService {
         var renderSize: CGSize?
 
         for url in urls {
-            print("영상 준비 시작:", url.lastPathComponent)
             let asset = AVURLAsset(url: url)
 
             guard let sourceVideoTrack = try await asset
@@ -410,6 +435,143 @@ final class AVVideoPlaybackService: VideoPlaybackService {
         return item
     }
 
+    /// 분할 모드의 편집 화면도 export와 같은 시간축(0초부터 동시에)을 사용한다.
+    /// 따라서 사용자는 "영상 만들기"를 누르기 전부터 실제 2·3분할 결과를 확인한다.
+    private func makeSplitCompositionItem(
+        from clips: [CaptureDraftClip],
+        configuration: VideoCompositionConfiguration
+    ) async throws -> AVPlayerItem {
+        let visibleClips = Array(
+            clips
+                .filter { $0.mediaType == .video }
+                .prefix(configuration.requiredClipCount)
+        )
+
+        guard visibleClips.count == configuration.requiredClipCount else {
+            throw VideoPlaybackServiceError.noSourceVideos
+        }
+
+        let sources = try await visibleClips.asyncMap {
+            clip in
+            try await makeSourceVideo(for: clip.fileURL)
+        }
+
+        guard
+            let sharedDuration = sources.map(\.duration).min(),
+            sharedDuration > .zero
+        else {
+            throw VideoPlaybackServiceError.sourceVideoUnavailable
+        }
+
+        let composition = AVMutableComposition()
+        let audioTrack = composition.addMutableTrack(
+            withMediaType: .audio,
+            preferredTrackID: kCMPersistentTrackID_Invalid
+        )
+        let sharedRange = CMTimeRange(
+            start: .zero,
+            duration: sharedDuration
+        )
+        let sceneFrame = configuration.sceneFrame
+        let destinationFrames = configuration.layout
+            .normalizedFrames(for: configuration.sceneOrientation)
+            .map { normalizedFrame in
+                CGRect(
+                    x: sceneFrame.minX + normalizedFrame.minX * sceneFrame.width,
+                    y: sceneFrame.minY + normalizedFrame.minY * sceneFrame.height,
+                    width: normalizedFrame.width * sceneFrame.width,
+                    height: normalizedFrame.height * sceneFrame.height
+                )
+            }
+
+        var layerInstructions: [AVMutableVideoCompositionLayerInstruction] = []
+
+        for (index, source) in sources.enumerated() {
+            guard let compositionVideoTrack = composition.addMutableTrack(
+                withMediaType: .video,
+                preferredTrackID: kCMPersistentTrackID_Invalid
+            ) else {
+                throw VideoPlaybackServiceError.unableToCreateCompositionTrack
+            }
+
+            try compositionVideoTrack.insertTimeRange(
+                sharedRange,
+                of: source.videoTrack,
+                at: .zero
+            )
+
+            if index == 0,
+               let sourceAudioTrack = try await source.asset
+                .loadTracks(withMediaType: .audio)
+                .first,
+               let audioTrack {
+                try audioTrack.insertTimeRange(
+                    sharedRange,
+                    of: sourceAudioTrack,
+                    at: .zero
+                )
+            }
+
+            let placement = try await VideoCompositionPlacement.make(
+                for: source.videoTrack,
+                in: destinationFrames[index],
+                contentMode: .fill
+            )
+            let layerInstruction = AVMutableVideoCompositionLayerInstruction(
+                assetTrack: compositionVideoTrack
+            )
+
+            if let sourceCropRect = placement.sourceCropRect {
+                layerInstruction.setCropRectangle(
+                    sourceCropRect,
+                    at: .zero
+                )
+            }
+            layerInstruction.setTransform(placement.transform, at: .zero)
+            layerInstructions.append(layerInstruction)
+        }
+
+        let instruction = AVMutableVideoCompositionInstruction()
+        instruction.timeRange = sharedRange
+        instruction.layerInstructions = layerInstructions
+        instruction.backgroundColor = CGColor(gray: 0, alpha: 1)
+
+        let videoComposition = AVMutableVideoComposition()
+        videoComposition.renderSize = configuration.renderSize
+        videoComposition.frameDuration = CMTime(value: 1, timescale: 30)
+        videoComposition.instructions = [instruction]
+
+        let item = AVPlayerItem(asset: composition)
+        item.videoComposition = videoComposition
+
+        return item
+    }
+
+    private func makeSourceVideo(
+        for url: URL
+    ) async throws -> PlaybackSourceVideo {
+        let asset = AVURLAsset(url: url)
+
+        guard let videoTrack = try await asset
+            .loadTracks(withMediaType: .video)
+            .first
+        else {
+            throw VideoPlaybackServiceError.sourceVideoUnavailable
+        }
+
+        let duration = try await asset.load(.duration)
+
+        guard duration.seconds.isFinite, duration.seconds > 0 else {
+            throw VideoPlaybackServiceError.sourceVideoUnavailable
+        }
+
+        return PlaybackSourceVideo(
+            asset: asset,
+            videoTrack: videoTrack,
+            duration: duration
+        )
+    }
+
     private func removeProgressObserver() {
         guard let periodicTimeObserver else {
             return
@@ -417,6 +579,28 @@ final class AVVideoPlaybackService: VideoPlaybackService {
 
         queuePlayer.removeTimeObserver(periodicTimeObserver)
         self.periodicTimeObserver = nil
+    }
+}
+
+private struct PlaybackSourceVideo {
+    let asset: AVURLAsset
+    let videoTrack: AVAssetTrack
+    let duration: CMTime
+}
+
+private extension Collection {
+    func asyncMap<T>(
+        _ transform: (Element) async throws -> T
+    ) async rethrows -> [T] {
+        var values: [T] = []
+        values.reserveCapacity(count)
+
+        for element in self {
+            let value = try await transform(element)
+            values.append(value)
+        }
+
+        return values
     }
 }
 

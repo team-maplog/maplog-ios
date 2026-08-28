@@ -93,7 +93,7 @@ struct OnboardingView: View {
                                 .frame(width: 58, height: 58)
                             Image(systemName: "mappin.and.ellipse")
                                 .font(.system(size: 27, weight: .bold))
-                                .foregroundStyle(Color.maplogTextPrimary)
+                                .foregroundStyle(Color.maplogOnPrimary)
                         }
 
                         VStack(spacing: MaplogSpacing.xSmall) {
@@ -118,7 +118,7 @@ struct OnboardingView: View {
                             MaplogButtonStyle(
                                 variant: .brand(
                                     background: .maplogLime,
-                                    foreground: .maplogInk
+                                    foreground: .maplogOnPrimary
                                 ),
                                 size: .large,
                                 fullWidth: true
@@ -382,7 +382,7 @@ private struct AuthFlowSheet: View {
         HStack(alignment: .top, spacing: MaplogSpacing.small) {
             Image(systemName: headerIcon)
                 .font(.system(size: MaplogSize.iconLarge, weight: .semibold))
-                .foregroundStyle(Color.maplogInk)
+                .foregroundStyle(Color.maplogOnPrimary)
                 .frame(width: 48, height: 48)
                 .background(Color.maplogPrimary)
                 .clipShape(Circle())

@@ -1,13 +1,13 @@
 //
-//  ClipLocationEditErrorPolicy.swift
+//  LogLocationErrorPolicy.swift
 //  Maplog
 //
-//  Created by 한채림 on 8/12/26.
+//  위치 자동 조회와 사용자의 위치 수정 화면이 공통으로 사용하는 오류 정책
 //
 
 import Foundation
 
-enum ClipLocationEditErrorPolicy {
+enum LogLocationErrorPolicy {
     static func presentation(
         for error: Error
     ) -> ErrorPresentation {
@@ -40,6 +40,23 @@ enum ClipLocationEditErrorPolicy {
                 backendErrorCode == .invalidAuthentication
             {
                 return authenticationPresentation
+            }
+
+            switch backendErrorCode {
+            case .locationAddressNotFound:
+                return ErrorPresentation(
+                    message: "현재 좌표의 주소를 찾지 못했어요. 다시 조회해 주세요.",
+                    recoveryAction: .retry
+                )
+
+            case .locationLookupFailed:
+                return ErrorPresentation(
+                    message: "주소를 조회하지 못했어요. 잠시 후 다시 시도해 주세요.",
+                    recoveryAction: .retry
+                )
+
+            default:
+                break
             }
 
             if (500...599).contains(statusCode) {

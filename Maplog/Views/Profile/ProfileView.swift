@@ -278,7 +278,7 @@ struct ProfileView: View {
             } label: {
                 Label("새 로그 촬영하기", systemImage: "camera.fill")
                     .font(.system(size: 16, weight: .black))
-                    .foregroundStyle(Color.maplogInk)
+                    .foregroundStyle(Color.maplogOnPrimary)
                     .frame(maxWidth: .infinity)
                     .frame(height: 52)
                     .background(Color.maplogLime)
@@ -356,7 +356,7 @@ struct ProfileView: View {
             } label: {
                 Label("추천 루트 보러가기", systemImage: "sparkles")
                     .font(.system(size: 16, weight: .black))
-                    .foregroundStyle(Color.maplogInk)
+                    .foregroundStyle(Color.maplogOnPrimary)
                     .frame(maxWidth: .infinity)
                     .frame(height: 52)
                     .background(Color.maplogLime)
@@ -422,7 +422,7 @@ private struct DraftActionRow: View {
                         .overlay(alignment: .topLeading) {
                             Text("작성 중")
                                 .font(.system(size: 10, weight: .black))
-                                .foregroundStyle(Color.maplogInk)
+                                .foregroundStyle(Color.maplogOnPrimary)
                                 .padding(.horizontal, MaplogSpacing.xSmall)
                                 .frame(height: 24)
                                 .background(Color.maplogLime)
@@ -847,7 +847,7 @@ struct MyLogDetailView: View {
             } label: {
                 Label("완성 영상 보기", systemImage: "play.circle.fill")
                     .font(MaplogFont.cardTitle)
-                    .foregroundStyle(Color.maplogInk)
+                    .foregroundStyle(Color.maplogOnPrimary)
                     .frame(maxWidth: .infinity)
                     .frame(height: MaplogSize.primaryButtonHeight)
                     .background(Color.maplogLime)

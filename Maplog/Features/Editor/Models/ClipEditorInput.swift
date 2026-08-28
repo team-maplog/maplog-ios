@@ -10,10 +10,15 @@ import Foundation
 struct ClipEditorInput: Identifiable, Equatable, Sendable {
     let id: UUID
     let clips: [CaptureDraftClip]
+    let compositionConfiguration: VideoCompositionConfiguration
 
-    init(clips: [CaptureDraftClip]) {
+    init(
+        clips: [CaptureDraftClip],
+        compositionConfiguration: VideoCompositionConfiguration = .init()
+    ) {
         self.id = UUID()
         self.clips = clips
+        self.compositionConfiguration = compositionConfiguration
     }
 }
 

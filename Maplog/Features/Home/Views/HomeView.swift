@@ -1,9 +1,26 @@
 import SwiftUI
 
+private enum HomeFestivalCarouselLayout {
+    static let cornerRadius: CGFloat = 18
+}
+
 struct HomeView: View {
     private static let viewportCoordinateSpace = "home-viewport"
     private static let panelSwipeEdgeWidth: CGFloat = 28
     private static let panelSwipeMinimumDistance: CGFloat = 56
+
+    private struct FirstReelTopOffsetPreferenceKey: PreferenceKey {
+        static var defaultValue: CGFloat?
+
+        static func reduce(
+            value: inout CGFloat?,
+            nextValue: () -> CGFloat?
+        ) {
+            if let nextValue = nextValue() {
+                value = nextValue
+            }
+        }
+    }
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @EnvironmentObject private var sessionStore: MaplogSessionStore
@@ -20,6 +37,10 @@ struct HomeView: View {
     let onShowAllTourisms: () -> Void
     let onShowTourismDetail: (Int64) -> Void
     let onShowLogDetail: (Int64) -> Void
+    /// 작성자 선택만 상위에 알리고, 공개 프로필 화면 생성과 의존성 주입은 Composition Root가 담당한다.
+    let onShowAuthorProfile: (HomeReelViewData) -> Void
+    /// 홈은 버튼 탭만 알리고, 클립 선택·편집·발행 화면 전환은 상위 화면이 담당한다.
+    let onCreateLog: () -> Void
 
     private enum HomePanel: Int, CaseIterable, Identifiable {
         case reels
@@ -40,6 +61,7 @@ struct HomeView: View {
     @State private var commentsReel: HomeReelViewData?
     @State private var shareReel: HomeReelViewData?
     @State private var saveToastText: String?
+    @State private var firstReelTopOffset: CGFloat?
 
     private var reelInteractionErrorPresented: Binding<Bool> {
         Binding(
@@ -96,6 +118,157 @@ struct HomeView: View {
         )
     }
 
+    private var firstReel: HomeReelViewData? {
+        guard case let .content(reels) = viewModel.reelState else {
+            return nil
+        }
+
+        return reels.first
+    }
+
+    /// 첫 릴스의 실제 화면 위치에서 0...1 진행도를 만들면,
+    /// 드래그 중에도 프로필과 모서리 모양이 같은 속도로 변한다.
+    private func firstReelRevealProgress(
+        viewportHeight: CGFloat
+    ) -> CGFloat {
+        guard let firstReelTopOffset,
+              viewportHeight > 0
+        else {
+            return 0
+        }
+
+        return min(
+            max((viewportHeight - firstReelTopOffset) / viewportHeight, 0),
+            1
+        )
+    }
+
+    private func interpolatedValue(
+        from source: CGFloat,
+        to destination: CGFloat,
+        progress: CGFloat
+    ) -> CGFloat {
+        source + ((destination - source) * progress)
+    }
+
+    private struct MorphingReelMetadata: View {
+        let reel: HomeReelViewData
+        let imageData: Data?
+        let contentWidth: CGFloat
+        let engagementOpacity: CGFloat
+        let isUpdatingLike: Bool
+        let onShowAuthorProfile: () -> Void
+        let onToggleLike: () -> Void
+        let onShowComments: () -> Void
+
+        var body: some View {
+            HStack(alignment: .bottom, spacing: MaplogSpacing.medium) {
+                information
+                    .frame(
+                        width: informationWidth,
+                        alignment: .leading
+                    )
+
+                VStack(spacing: MaplogSpacing.small) {
+                    HomeReelMetric(
+                        systemImage: reel.isLikedByViewer ? "heart.fill" : "heart",
+                        text: countText(reel.likeCount),
+                        tint: reel.isLikedByViewer
+                            ? Color.maplogLime
+                            : .white,
+                        accessibilityLabel: reel.isLikedByViewer
+                            ? "좋아요 취소, \(reel.likeCount)개"
+                            : "좋아요, \(reel.likeCount)개",
+                        isLoading: isUpdatingLike,
+                        action: onToggleLike
+                    )
+
+                    HomeReelMetric(
+                        systemImage: "message.fill",
+                        text: countText(reel.commentCount),
+                        accessibilityLabel: "댓글 \(reel.commentCount)개",
+                        action: onShowComments
+                    )
+                }
+                .frame(width: MaplogSize.minimumTapTarget)
+                .opacity(engagementOpacity)
+                .allowsHitTesting(engagementOpacity > 0.1)
+            }
+            .frame(width: contentWidth, alignment: .leading)
+        }
+
+        private var informationWidth: CGFloat {
+            max(
+                0,
+                contentWidth
+                    - MaplogSpacing.medium
+                    - MaplogSize.minimumTapTarget
+            )
+        }
+
+        private var information: some View {
+            VStack(alignment: .leading, spacing: 10) {
+                authorProfileButton
+
+                if !reel.caption.isEmpty {
+                    Text(reel.caption)
+                        .font(.subheadline)
+                        .foregroundStyle(.white.opacity(0.86))
+                        .lineLimit(3)
+                }
+
+                HStack(spacing: MaplogSpacing.xxSmall) {
+                    MaplogPinGlyphIcon(size: 13)
+
+                    Text(reel.address)
+                }
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.82))
+                    .lineLimit(1)
+                    .accessibilityElement(children: .combine)
+            }
+        }
+
+        private var authorProfileButton: some View {
+            Button(action: onShowAuthorProfile) {
+                HStack(spacing: 6) {
+                    MaplogProfileAvatar(
+                        imageData: imageData,
+                        nickname: reel.authorName,
+                        size: 32,
+                        fallbackBackground: .white.opacity(0.22),
+                        fallbackForeground: .white,
+                        borderColor: .white.opacity(0.64)
+                    )
+
+                    Text(reel.authorName)
+                        .font(.headline)
+                }
+                .frame(
+                    minWidth: MaplogSize.minimumTapTarget,
+                    minHeight: MaplogSize.minimumTapTarget,
+                    alignment: .leading
+                )
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.white)
+            .accessibilityLabel("\(reel.authorName)의 프로필")
+            .accessibilityHint("탭하면 작성자의 공개 프로필을 봅니다")
+        }
+
+        private func countText(_ count: Int64) -> String {
+            guard count >= 1_000 else {
+                return "\(count)"
+            }
+
+            let value = Double(count) / 1_000
+            let text = String(format: "%.1f", value)
+
+            return "\(text.replacingOccurrences(of: ".0", with: ""))K"
+        }
+    }
+
     // 상단 영상/지도 전환 버튼
     private struct HomePanelSwitcher: View {
         @Binding var selection: HomePanel
@@ -123,7 +296,7 @@ struct HomeView: View {
                 Button {
                     selection = .map
                 } label: {
-                    Image(systemName: "map.fill")
+                    MaplogMapGlyphIcon(size: 18)
                         .foregroundStyle(
                             selection == .map
                                 ? Color.maplogInk
@@ -485,6 +658,9 @@ struct HomeView: View {
                 .refreshable {
                     await viewModel.refreshHome()
                 }
+                .onPreferenceChange(FirstReelTopOffsetPreferenceKey.self) {
+                    firstReelTopOffset = $0
+                }
                 .onChange(of: homeScrollPosition) {
                     previousPosition,
                     newPosition in
@@ -511,6 +687,17 @@ struct HomeView: View {
             }
             .offset(y: -pageTopOffset)
         }
+        .overlayPreferenceValue(HomeReelAuthorAnchorPreferenceKey.self) {
+            anchors in
+
+            GeometryReader { overlayProxy in
+                firstReelMetadataOverlay(
+                    anchors: anchors,
+                    overlayProxy: overlayProxy,
+                    viewportSize: overlayProxy.size
+                )
+            }
+        }
         .background(
             isHomeReelActive
                 ? Color.black
@@ -533,6 +720,75 @@ struct HomeView: View {
     }
 
     @ViewBuilder
+    private func firstReelMetadataOverlay(
+        anchors: [Int64: Anchor<CGRect>],
+        overlayProxy: GeometryProxy,
+        viewportSize: CGSize
+    ) -> some View {
+        if let firstReel,
+           let authorAnchor = anchors[firstReel.id],
+           let firstReelTopOffset {
+            let revealProgress = firstReelRevealProgress(
+                viewportHeight: viewportSize.height
+            )
+            let authorFrame = overlayProxy[authorAnchor]
+            let contentWidth = max(
+                0,
+                viewportSize.width
+                    - (MaplogSpacing.page * 2)
+            )
+            let destinationX = authorFrame.minX
+            let destinationY = authorFrame.minY - firstReelTopOffset
+            let sourceX = MaplogSpacing.page
+            // 홈에서는 정보 블록의 아래쪽이 네비게이션 바 위에 머물도록 둔다.
+            // 캡션이 있는 릴스는 최대 3줄 높이를 미리 확보한다.
+            let sourceMetadataHeight: CGFloat = firstReel.caption.isEmpty
+                ? 72
+                : 144
+            let sourceY = viewportSize.height
+                - MaplogSpacing.reelTabBarClearance
+                - sourceMetadataHeight
+                - MaplogSpacing.small
+                - MaplogSpacing.large
+            // 홈 미리보기의 하트는 릴스와 같은 불투명한 포인트색으로
+            // 유지하고, 전체 릴스에 도착한 순간 실제 오른쪽 레일에 넘긴다.
+            let engagementOpacity: CGFloat = revealProgress < 1 ? 1 : 0
+
+            MorphingReelMetadata(
+                reel: firstReel,
+                imageData: viewModel.authorProfileImageData(for: firstReel.id),
+                contentWidth: contentWidth,
+                engagementOpacity: engagementOpacity,
+                isUpdatingLike: viewModel.isUpdatingLike(for: firstReel.id),
+                onShowAuthorProfile: {
+                    onShowAuthorProfile(firstReel)
+                },
+                onToggleLike: {
+                    Task {
+                        await viewModel.toggleLike(for: firstReel.id)
+                    }
+                },
+                onShowComments: {
+                    commentsReel = firstReel
+                }
+            )
+            .offset(
+                x: interpolatedValue(
+                    from: sourceX,
+                    to: destinationX,
+                    progress: revealProgress
+                ),
+                y: interpolatedValue(
+                    from: sourceY,
+                    to: destinationY,
+                    progress: revealProgress
+                )
+            )
+            .zIndex(2)
+        }
+    }
+
+    @ViewBuilder
     private var homeIntro: some View {
         if reduceMotion {
             homeIntroContent
@@ -547,7 +803,9 @@ struct HomeView: View {
 
     @ViewBuilder
     private func homeReelPage(
-        for reel: HomeReelViewData
+        for reel: HomeReelViewData,
+        usesExternalReelInfoOverlay: Bool,
+        topCornerRadius: CGFloat
     ) -> some View {
         if reduceMotion {
             HomeReelPage(
@@ -588,9 +846,14 @@ struct HomeView: View {
                 onShowComments: {
                     commentsReel = reel
                 },
+                onShowAuthorProfile: {
+                    onShowAuthorProfile(reel)
+                },
                 onShare: {
                     shareReel = reel
-                }
+                },
+                topCornerRadius: topCornerRadius,
+                usesExternalReelInfoOverlay: usesExternalReelInfoOverlay
             )
             .task(id: reel.id) {
                 await viewModel.loadThumbnail(for: reel.id)
@@ -637,9 +900,14 @@ struct HomeView: View {
                 onShowComments: {
                     commentsReel = reel
                 },
+                onShowAuthorProfile: {
+                    onShowAuthorProfile(reel)
+                },
                 onShare: {
                     shareReel = reel
-                }
+                },
+                topCornerRadius: topCornerRadius,
+                usesExternalReelInfoOverlay: usesExternalReelInfoOverlay
             )
             .task(id: reel.id) {
                 await viewModel.loadThumbnail(for: reel.id)
@@ -678,13 +946,46 @@ struct HomeView: View {
             .id("reel-loading")
 
         case let .content(reels):
+            let firstReelID = reels.first?.id
+            let revealProgress = firstReelRevealProgress(
+                viewportHeight: viewportSize.height
+            )
+            // 릴스가 홈 미리보기로 보이는 동안에는 축제 카드와 같은
+            // 18pt 모서리를 유지한 뒤, 전체 화면 진입 직전에만 편다.
+            let roundedCornerProgress = min(
+                max((revealProgress - 0.62) / 0.38, 0),
+                1
+            )
+
             ForEach(reels) { reel in
-                homeReelPage(for: reel)
+                let usesExternalReelInfoOverlay = reel.id == firstReelID
+                let topCornerRadius = usesExternalReelInfoOverlay
+                    ? HomeFestivalCarouselLayout.cornerRadius
+                        * (1 - roundedCornerProgress)
+                    : 0
+
+                homeReelPage(
+                    for: reel,
+                    usesExternalReelInfoOverlay: usesExternalReelInfoOverlay,
+                    topCornerRadius: topCornerRadius
+                )
                     .frame(
                         width: viewportSize.width,
                         height: viewportSize.height
-                )
-                .id("reel-\(reel.id)")
+                    )
+                    .background {
+                        if usesExternalReelInfoOverlay {
+                            GeometryReader { reelProxy in
+                                Color.clear.preference(
+                                    key: FirstReelTopOffsetPreferenceKey.self,
+                                    value: reelProxy.frame(
+                                        in: .named(Self.viewportCoordinateSpace)
+                                    ).minY
+                                )
+                            }
+                        }
+                    }
+                    .id("reel-\(reel.id)")
             }
 
         case .empty:
@@ -770,6 +1071,19 @@ struct HomeView: View {
                 .foregroundStyle(.primary)
 
             Spacer()
+
+            Button(action: onCreateLog) {
+                Image(systemName: "plus")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundStyle(Color.maplogInk)
+                    .frame(
+                        width: MaplogSize.minimumTapTarget,
+                        height: MaplogSize.minimumTapTarget
+                    )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("로그 작성")
+            .accessibilityHint("저장한 클립을 골라 로그 작성을 시작합니다")
 
             NavigationLink {
                 HomeSearchFeatureView(
@@ -1104,7 +1418,7 @@ private struct HomeTourismCarouselCard: View {
             VStack(alignment: .leading, spacing: 7) {
                 Text("축제")
                     .font(.caption.weight(.bold))
-                    .foregroundStyle(Color.maplogInk)
+                    .foregroundStyle(Color.maplogOnPrimary)
                     .padding(.horizontal, 10)
                     .frame(minHeight: 26)
                     .background(Color.maplogLime, in: Capsule())
@@ -1117,7 +1431,10 @@ private struct HomeTourismCarouselCard: View {
                     .lineLimit(2)
 
                 HStack(spacing: 10) {
-                    Label(card.locationText, systemImage: "mappin.and.ellipse")
+                    HStack(spacing: MaplogSpacing.xxSmall) {
+                        MaplogPinGlyphIcon(size: 12)
+                        Text(card.locationText)
+                    }
                         .lineLimit(1)
 
                     Label(card.periodText, systemImage: "calendar")
@@ -1129,9 +1446,17 @@ private struct HomeTourismCarouselCard: View {
             .padding(14)
         }
         .frame(width: 264, height: 172)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .clipShape(
+            RoundedRectangle(
+                cornerRadius: HomeFestivalCarouselLayout.cornerRadius,
+                style: .continuous
+            )
+        )
         .overlay {
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
+            RoundedRectangle(
+                cornerRadius: HomeFestivalCarouselLayout.cornerRadius,
+                style: .continuous
+            )
                 .stroke(.white.opacity(0.16), lineWidth: 1)
         }
         .overlay(alignment: .topTrailing) {
@@ -1224,7 +1549,7 @@ private struct HomeWeekendCard: View {
             VStack(alignment: .leading, spacing: 11) {
                 Text("오늘 진행 중")
                     .font(.caption.weight(.bold))
-                    .foregroundStyle(Color.maplogInk)
+                    .foregroundStyle(Color.maplogOnPrimary)
                     .padding(.horizontal, MaplogSpacing.small)
                     .frame(height: 25)
                     .background(Color.maplogLime)
@@ -1749,7 +2074,7 @@ private struct ReelSaveCollectionSheet: View {
             } label: {
                 Text("완료")
                     .font(.headline)
-                    .foregroundStyle(Color.maplogInk)
+                    .foregroundStyle(Color.maplogOnPrimary)
                     .frame(maxWidth: .infinity)
                     .frame(minHeight: 52)
                     .background(Color.maplogLime, in: Capsule())

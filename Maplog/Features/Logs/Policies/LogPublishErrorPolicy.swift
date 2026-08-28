@@ -29,6 +29,15 @@ enum LogPublishErrorPolicy {
             )
 
         case .server(let statusCode, let response):
+            if let captionError = response.data?.first(
+                where: { $0.field == "caption" }
+            ) {
+                return ErrorPresentation(
+                    message: captionError.message,
+                    recoveryAction: .none
+                )
+            }
+
             let errorCode = BackendErrorCode(
                 serverCode: response.code
             )
@@ -92,6 +101,12 @@ enum LogPublishErrorPolicy {
         case .invalidClipTimeRange:
             return ErrorPresentation(
                 message: "클립별 시간 범위를 확인해 주세요.",
+                recoveryAction: .none
+            )
+
+        case .commonInvalidRequest:
+            return ErrorPresentation(
+                message: "클립 시간과 해시태그 입력을 확인해 주세요.",
                 recoveryAction: .none
             )
 

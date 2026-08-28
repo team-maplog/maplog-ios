@@ -24,6 +24,7 @@ struct ClipEditorView: View {
     let videoThumbnailService: any VideoThumbnailService
     let logLocationRepository: any LogLocationRepository
     let logPublishingRepository: any LogPublishingRepository
+    let photoLibraryVideoSaveService: any PhotoLibraryVideoSaving
     let onAddClipTap: () -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -107,6 +108,7 @@ struct ClipEditorView: View {
             VideoExportPreviewView(
                 result: result,
                 player: previewPlayer,
+                aspectRatio: viewModel.previewAspectRatio,
                 onPreviewAppear: {
                         viewModel.playExportedVideo(result)
                     },
@@ -136,7 +138,8 @@ struct ClipEditorView: View {
                     videoPlaybackService: videoPlaybackService,
                     videoThumbnailService: videoThumbnailService,
                     logLocationRepository: logLocationRepository,
-                    logPublishingRepository: logPublishingRepository
+                    logPublishingRepository: logPublishingRepository,
+                    photoLibraryVideoSaveService: photoLibraryVideoSaveService
                 )
             }
         }
@@ -185,7 +188,7 @@ struct ClipEditorView: View {
         }
 
         let videoHeightForFullWidth =
-            size.width * (16.0 / 9.0)
+            size.width / viewModel.previewAspectRatio
 
         let availableHeight =
             size.height
@@ -262,6 +265,7 @@ struct ClipEditorView: View {
                 )
             },
             showsAlignmentGrid: isOverlayDragging
+            , aspectRatio: viewModel.previewAspectRatio
         )
         .frame(maxWidth: .infinity)
         .frame(height: height)
@@ -449,7 +453,7 @@ struct ClipEditorView: View {
             MaplogButtonStyle(
                 variant: .brand(
                     background: .maplogLime,
-                    foreground: .maplogInk
+                    foreground: .maplogOnPrimary
                 ),
                 size: .compact,
                 fullWidth: true

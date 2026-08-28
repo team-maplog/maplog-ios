@@ -20,6 +20,7 @@ final class LogDetailViewModel: ObservableObject {
     @Published private(set) var playbackProgress = 0.0
     @Published private(set) var isPlaying = false
     @Published var captionDraft = ""
+    @Published private(set) var tagDraft = Set<LogTag>()
     @Published private(set) var isSavingCaption = false
     @Published private(set) var captionFormMessage: String?
     @Published private(set) var captionMessage: String?
@@ -83,6 +84,7 @@ final class LogDetailViewModel: ObservableObject {
 
             self.detail = detail
             captionDraft = detail.caption
+            tagDraft = Set(detail.tags)
             state = .content
 
             await loadPlayback()
@@ -159,6 +161,7 @@ final class LogDetailViewModel: ObservableObject {
 
     func beginCaptionEditing() {
         captionDraft = detail?.caption ?? ""
+        tagDraft = Set(detail?.tags ?? [])
         clearCaptionMessages()
     }
 
@@ -169,8 +172,19 @@ final class LogDetailViewModel: ObservableObject {
         clearCaptionMessages()
     }
 
+    func toggleTagDraft(_ tag: LogTag) {
+        if tagDraft.contains(tag) {
+            tagDraft.remove(tag)
+        } else {
+            tagDraft.insert(tag)
+        }
+
+        clearCaptionMessages()
+    }
+
     func cancelCaptionEditing() {
         captionDraft = detail?.caption ?? ""
+        tagDraft = Set(detail?.tags ?? [])
         clearCaptionMessages()
     }
 
@@ -203,17 +217,24 @@ final class LogDetailViewModel: ObservableObject {
         }
 
         do {
-            let result = try await logDetailRepository.updateCaption(
+            let result = try await logDetailRepository.updateLog(
                 logID: detail.id,
-                caption: trimmedCaption
+                draft: LogUpdateDraft(
+                    caption: trimmedCaption,
+                    tags: LogTag.allCases.filter(tagDraft.contains)
+                )
             )
 
             guard !Task.isCancelled else {
                 return false
             }
 
-            self.detail = detail.replacingCaption(with: result.caption)
+            self.detail = detail.replacingContent(
+                caption: result.caption,
+                tags: result.tags
+            )
             captionDraft = result.caption
+            tagDraft = Set(result.tags)
             return true
         } catch is CancellationError {
             return false

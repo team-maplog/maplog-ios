@@ -121,9 +121,13 @@ private struct ExploreKakaoMapRepresentable: UIViewRepresentable {
     final class Coordinator: NSObject, MapControllerDelegate, KakaoMapEventDelegate {
         private let mapViewName = "explore-map"
         private let markerLayerID = "explore-map-marker-layer"
+        private let currentLocationPulseLayerID = "explore-map-current-location-pulse-layer"
         private let currentLocationLayerID = "explore-map-current-location-layer"
+        private let currentLocationPulsePoiID = "explore-map-current-location-pulse"
         private let currentLocationPoiID = "explore-map-current-location"
+        private let currentLocationPulseStyleID = "explore-map-current-location-pulse-style"
         private let currentLocationStyleID = "explore-map-current-location-style"
+        private let currentLocationPulseAnimatorID = "explore-map-current-location-pulse-animator"
 
         private var markers: [MapMarker]
         private var thumbnailDataByMarkerID: [String: Data]
@@ -139,7 +143,9 @@ private struct ExploreKakaoMapRepresentable: UIViewRepresentable {
         private var needsMarkerRender = true
         private var needsCurrentLocationRender = true
         private var registeredMarkerStyleIDs: Set<String> = []
+        private var isCurrentLocationPulseStyleRegistered = false
         private var isCurrentLocationStyleRegistered = false
+        private var activeCurrentLocationPulseID: UUID?
 
         private weak var viewContainer: KMViewContainer?
         private var controller: KMController?
@@ -205,7 +211,9 @@ private struct ExploreKakaoMapRepresentable: UIViewRepresentable {
             controller?.resetEngine()
 
             registeredMarkerStyleIDs.removeAll()
+            isCurrentLocationPulseStyleRegistered = false
             isCurrentLocationStyleRegistered = false
+            activeCurrentLocationPulseID = nil
             needsMarkerRender = true
             needsCurrentLocationRender = true
             handledCurrentLocationFocusRequestID = nil
@@ -416,7 +424,10 @@ private struct ExploreKakaoMapRepresentable: UIViewRepresentable {
             ) == nil {
                 let options = LabelLayerOptions(
                     layerID: markerLayerID,
-                    competitionType: .none,
+                    // 로그 썸네일과 관광 말풍선이 지도 기본 라벨과 겹칠 때는
+                    // 이 레이어(상위)의 마커를 남기고, 하위 라벨을 숨긴다.
+                    // 같은 레이어 안에서는 아래의 PoiOptions.rank가 선택 항목을 우선한다.
+                    competitionType: .lower,
                     competitionUnit: .symbolFirst,
                     orderType: .rank,
                     zOrder: 1
@@ -443,12 +454,20 @@ private struct ExploreKakaoMapRepresentable: UIViewRepresentable {
                 on: mapView
             )
 
-            guard let currentLocationLayer = labelManager.getLabelLayer(
+            guard let currentLocationPulseLayer = labelManager.getLabelLayer(
+                layerID: currentLocationPulseLayerID
+            ),
+            let currentLocationLayer = labelManager.getLabelLayer(
                 layerID: currentLocationLayerID
-            ) else {
+            )
+            else {
                 return
             }
 
+            invalidateCurrentLocationPulse(
+                on: labelManager
+            )
+            currentLocationPulseLayer.clearAllItems()
             currentLocationLayer.clearAllItems()
 
             guard let currentLocation else {
@@ -460,21 +479,43 @@ private struct ExploreKakaoMapRepresentable: UIViewRepresentable {
                 on: labelManager
             )
 
-            let option = PoiOptions(
+            let position = MapPoint(
+                longitude: currentLocation.longitude,
+                latitude: currentLocation.latitude
+            )
+
+            let pulseOption = PoiOptions(
+                styleID: currentLocationPulseStyleID,
+                poiID: currentLocationPulsePoiID
+            )
+            pulseOption.clickable = false
+            pulseOption.rank = 19_999
+
+            let currentLocationOption = PoiOptions(
                 styleID: currentLocationStyleID,
                 poiID: currentLocationPoiID
             )
-            option.clickable = false
-            option.rank = 20_000
+            currentLocationOption.clickable = false
+            currentLocationOption.rank = 20_000
 
-            let poi = currentLocationLayer.addPoi(
-                option: option,
-                at: MapPoint(
-                    longitude: currentLocation.longitude,
-                    latitude: currentLocation.latitude
-                )
+            let pulsePoi = currentLocationPulseLayer.addPoi(
+                option: pulseOption,
+                at: position
             )
-            poi?.show()
+            pulsePoi?.show()
+
+            let currentLocationPoi = currentLocationLayer.addPoi(
+                option: currentLocationOption,
+                at: position
+            )
+            currentLocationPoi?.show()
+
+            if let pulsePoi {
+                startCurrentLocationPulse(
+                    for: pulsePoi,
+                    on: labelManager
+                )
+            }
 
             needsCurrentLocationRender = false
         }
@@ -484,26 +525,64 @@ private struct ExploreKakaoMapRepresentable: UIViewRepresentable {
         ) {
             let labelManager = mapView.getLabelManager()
 
-            if labelManager.getLabelLayer(
-                layerID: currentLocationLayerID
-            ) == nil {
-                let options = LabelLayerOptions(
-                    layerID: currentLocationLayerID,
-                    competitionType: .none,
-                    competitionUnit: .symbolFirst,
-                    orderType: .rank,
-                    zOrder: 2
-                )
+            addCurrentLocationLayerIfNeeded(
+                layerID: currentLocationPulseLayerID,
+                zOrder: 2,
+                labelManager: labelManager
+            )
+            addCurrentLocationLayerIfNeeded(
+                layerID: currentLocationLayerID,
+                zOrder: 3,
+                labelManager: labelManager
+            )
+        }
 
-                _ = labelManager.addLabelLayer(
-                    option: options
-                )
+        private func addCurrentLocationLayerIfNeeded(
+            layerID: String,
+            zOrder: Int,
+            labelManager: LabelManager
+        ) {
+            guard labelManager.getLabelLayer(
+                layerID: layerID
+            ) == nil else {
+                return
             }
+
+            let options = LabelLayerOptions(
+                layerID: layerID,
+                competitionType: .none,
+                competitionUnit: .symbolFirst,
+                orderType: .rank,
+                zOrder: zOrder
+            )
+
+            _ = labelManager.addLabelLayer(
+                option: options
+            )
         }
 
         private func registerCurrentLocationStyleIfNeeded(
             on labelManager: LabelManager
         ) {
+            if !isCurrentLocationPulseStyleRegistered {
+                let pulseIconStyle = PoiIconStyle(
+                    symbol: makeCurrentLocationPulseImage(),
+                    anchorPoint: CGPoint(x: 0.5, y: 0.5)
+                )
+                let pulseStyle = PoiStyle(
+                    styleID: currentLocationPulseStyleID,
+                    styles: [
+                        PerLevelPoiStyle(
+                            iconStyle: pulseIconStyle,
+                            level: 0
+                        )
+                    ]
+                )
+
+                labelManager.addPoiStyle(pulseStyle)
+                isCurrentLocationPulseStyleRegistered = true
+            }
+
             guard !isCurrentLocationStyleRegistered else {
                 return
             }
@@ -528,28 +607,153 @@ private struct ExploreKakaoMapRepresentable: UIViewRepresentable {
 
         private func makeCurrentLocationImage() -> UIImage {
             let size = CGSize(width: 24, height: 24)
+            let ringRect = CGRect(x: 2, y: 2, width: 20, height: 20)
+            let whiteBorderRect = CGRect(x: 5, y: 5, width: 14, height: 14)
+            let dotRect = CGRect(x: 8, y: 8, width: 8, height: 8)
+            let blue = UIColor(
+                red: 0.165,
+                green: 0.486,
+                blue: 1,
+                alpha: 1
+            )
 
             return UIGraphicsImageRenderer(size: size).image { context in
-                let outerRect = CGRect(
-                    x: 3,
-                    y: 3,
-                    width: 18,
-                    height: 18
-                )
-                let innerRect = outerRect.insetBy(dx: 3, dy: 3)
+                context.cgContext.setLineWidth(2)
+                blue.withAlphaComponent(0.3).setStroke()
+                context.cgContext.strokeEllipse(in: ringRect)
 
+                context.cgContext.saveGState()
+                context.cgContext.setShadow(
+                    offset: CGSize(width: 0, height: 3),
+                    blur: 6,
+                    color: blue.withAlphaComponent(0.35).cgColor
+                )
                 UIColor.white.setFill()
-                context.cgContext.fillEllipse(in: outerRect)
+                context.cgContext.fillEllipse(in: whiteBorderRect)
+                context.cgContext.restoreGState()
 
-                UIColor(
-                    red: 0.05,
-                    green: 0.43,
-                    blue: 0.95,
-                    alpha: 1
-                )
-                .setFill()
-                context.cgContext.fillEllipse(in: innerRect)
+                blue.setFill()
+                context.cgContext.fillEllipse(in: dotRect)
             }
+        }
+
+        private func makeCurrentLocationPulseImage() -> UIImage {
+            let size = CGSize(width: 18, height: 18)
+            let pulseRect = CGRect(x: 2, y: 2, width: 14, height: 14)
+            let blue = UIColor(
+                red: 0.165,
+                green: 0.486,
+                blue: 1,
+                alpha: 1
+            )
+
+            return UIGraphicsImageRenderer(size: size).image { context in
+                context.cgContext.setLineWidth(2)
+                blue.withAlphaComponent(0.55).setStroke()
+                context.cgContext.strokeEllipse(in: pulseRect)
+            }
+        }
+
+        private func startCurrentLocationPulse(
+            for pulsePoi: Poi,
+            on labelManager: LabelManager,
+            pulseID: UUID = UUID()
+        ) {
+            activeCurrentLocationPulseID = pulseID
+            removeCurrentLocationPulseAnimator(
+                from: labelManager
+            )
+
+            let effect = ScaleAlphaAnimationEffect()
+            effect.hideAtStop = false
+            effect.removeAtStop = false
+            effect.resetToInitialState = true
+            effect.addKeyframe(
+                ScaleAlphaAnimationKeyFrame(
+                    scale: makeVector(x: 1.7, y: 1.7),
+                    alpha: 0,
+                    interpolation: makeAnimationInterpolation(
+                        duration: 1_800,
+                        method: .cubicOut
+                    )
+                )
+            )
+
+            guard let animator = labelManager.addPoiAnimator(
+                animatorID: currentLocationPulseAnimatorID,
+                effect: effect
+            ) else {
+                return
+            }
+
+            animator.setStopCallback { [weak self] _ in
+                DispatchQueue.main.asyncAfter(
+                    deadline: .now() + 0.2
+                ) { [weak self] in
+                    guard let self,
+                          self.activeCurrentLocationPulseID == pulseID,
+                          self.currentLocation != nil,
+                          let labelManager = self.currentMapView?.getLabelManager(),
+                          let pulseLayer = labelManager.getLabelLayer(
+                            layerID: self.currentLocationPulseLayerID
+                          ),
+                          let nextPulsePoi = pulseLayer.getPoi(
+                            poiID: self.currentLocationPulsePoiID
+                          )
+                    else {
+                        return
+                    }
+
+                    self.startCurrentLocationPulse(
+                        for: nextPulsePoi,
+                        on: labelManager,
+                        pulseID: pulseID
+                    )
+                }
+            }
+            animator.addPoi(pulsePoi)
+            animator.start()
+        }
+
+        private func invalidateCurrentLocationPulse(
+            on labelManager: LabelManager
+        ) {
+            activeCurrentLocationPulseID = nil
+            removeCurrentLocationPulseAnimator(
+                from: labelManager
+            )
+        }
+
+        private func removeCurrentLocationPulseAnimator(
+            from labelManager: LabelManager
+        ) {
+            labelManager.getPoiAnimator(
+                animatorID: currentLocationPulseAnimatorID
+            )?
+            .setStopCallback(nil)
+            labelManager.removePoiAnimator(
+                animatorID: currentLocationPulseAnimatorID
+            )
+        }
+
+        private func makeVector(
+            x: Double,
+            y: Double
+        ) -> Vector2 {
+            var vector = Vector2()
+            vector.x = x
+            vector.y = y
+            return vector
+        }
+
+        private func makeAnimationInterpolation(
+            duration: UInt32,
+            method: InterpolationMethodType
+        ) -> AnimationInterpolation {
+            var interpolation = AnimationInterpolation()
+            interpolation.duration = duration
+            interpolation.method = method
+            return interpolation
         }
 
         private func focusCurrentLocationIfNeeded() {
@@ -645,7 +849,8 @@ private struct ExploreKakaoMapRepresentable: UIViewRepresentable {
                 return "explore-map-\(marker.id)-\(imageState)-\(selection)"
 
             case .tourism:
-                return "explore-map-tourism-\(selection)"
+                // 말풍선마다 장소명이 다르므로 관광 ID까지 포함해 개별 스타일로 등록한다.
+                return "explore-map-tourism-\(marker.id)-\(selection)"
             }
         }
 
@@ -688,7 +893,8 @@ private struct ExploreKakaoMapRepresentable: UIViewRepresentable {
                 symbol: markerImage,
                 anchorPoint: CGPoint(
                     x: 0.5,
-                    y: marker.kind == .tourism ? 1 : 0.5
+                    // 포인터의 끝이 실제 지도 좌표를 정확히 가리킨다.
+                    y: 1
                 )
             )
 
@@ -721,8 +927,9 @@ private struct ExploreKakaoMapRepresentable: UIViewRepresentable {
                     isSelected: isSelected
                 )
 
-            case .tourism:
+            case let .tourism(tourismMarker):
                 return makeTourismMarkerImage(
+                    marker: tourismMarker,
                     isSelected: isSelected
                 )
             }
@@ -732,29 +939,65 @@ private struct ExploreKakaoMapRepresentable: UIViewRepresentable {
             thumbnailData: Data?,
             isSelected: Bool
         ) -> UIImage {
-            let side: CGFloat = isSelected ? 52 : 44
-            let size = CGSize(width: side, height: side)
+            let cardSize = CGSize(
+                width: isSelected ? 36 : 30,
+                height: isSelected ? 40 : 34
+            )
+            let pointerHeight: CGFloat = isSelected ? 6 : 5
+            let canvasInset: CGFloat = 1
+            let size = CGSize(
+                width: cardSize.width + canvasInset * 2,
+                height: cardSize.height + pointerHeight + canvasInset
+            )
             let cardRect = CGRect(
-                x: 2,
-                y: 2,
-                width: side - 4,
-                height: side - 4
+                x: canvasInset,
+                y: canvasInset,
+                width: cardSize.width,
+                height: cardSize.height
             )
             let cardPath = UIBezierPath(
                 roundedRect: cardRect,
-                cornerRadius: isSelected ? 12 : 10
+                cornerRadius: isSelected ? 9 : 7
             )
+            let pointerPath = UIBezierPath()
+            pointerPath.move(
+                to: CGPoint(
+                    x: cardRect.midX - (isSelected ? 5 : 4),
+                    y: cardRect.maxY - 1
+                )
+            )
+            pointerPath.addLine(
+                to: CGPoint(
+                    x: cardRect.midX,
+                    y: size.height
+                )
+            )
+            pointerPath.addLine(
+                to: CGPoint(
+                    x: cardRect.midX + (isSelected ? 5 : 4),
+                    y: cardRect.maxY - 1
+                )
+            )
+            pointerPath.close()
 
             return UIGraphicsImageRenderer(size: size).image { context in
                 let graphicsContext = context.cgContext
 
+                graphicsContext.saveGState()
+                graphicsContext.setShadow(
+                    offset: CGSize(width: 0, height: 1),
+                    blur: 2,
+                    color: UIColor.black.withAlphaComponent(0.16).cgColor
+                )
                 UIColor.white.setFill()
                 cardPath.fill()
+                pointerPath.fill()
+                graphicsContext.restoreGState()
 
-                let imageRect = cardRect.insetBy(dx: 2, dy: 2)
+                let imageRect = cardRect.insetBy(dx: 1.5, dy: 1.5)
                 let imagePath = UIBezierPath(
                     roundedRect: imageRect,
-                    cornerRadius: isSelected ? 10 : 8
+                    cornerRadius: isSelected ? 7.5 : 5.5
                 )
 
                 graphicsContext.saveGState()
@@ -776,7 +1019,7 @@ private struct ExploreKakaoMapRepresentable: UIViewRepresentable {
                     .setFill()
                     graphicsContext.fill(imageRect)
 
-                    let symbolSize: CGFloat = isSelected ? 19 : 16
+                    let symbolSize: CGFloat = isSelected ? 14 : 12
                     UIImage(
                         systemName: "play.fill",
                         withConfiguration: UIImage.SymbolConfiguration(
@@ -803,103 +1046,177 @@ private struct ExploreKakaoMapRepresentable: UIViewRepresentable {
                 (
                     isSelected
                         ? UIColor(
-                            red: 0.72,
-                            green: 0.95,
-                            blue: 0,
+                            red: 0.220,
+                            green: 0.396,
+                            blue: 0.541,
                             alpha: 1
                         )
                         : UIColor.white
                 )
                 .setStroke()
-                cardPath.lineWidth = isSelected ? 2.5 : 1.5
+                cardPath.lineWidth = isSelected ? 2 : 1
                 cardPath.stroke()
+                pointerPath.lineWidth = isSelected ? 2 : 1
+                pointerPath.stroke()
             }
         }
 
         private func makeTourismMarkerImage(
+            marker: TourismMapMarker,
             isSelected: Bool
         ) -> UIImage {
-            let size = CGSize(
-                width: isSelected ? 40 : 34,
-                height: isSelected ? 50 : 43
+            let title: String
+            if let markerName = marker.name?
+                .trimmingCharacters(in: .whitespacesAndNewlines),
+                !markerName.isEmpty {
+                title = markerName
+            } else {
+                title = "관광 장소"
+            }
+            let font = UIFont.systemFont(
+                ofSize: isSelected ? 10 : 9,
+                weight: .medium
             )
-            let width = size.width
-            let height = size.height
-
-            return UIGraphicsImageRenderer(size: size).image { context in
-                let path = UIBezierPath()
-
-                path.move(
-                    to: CGPoint(
-                        x: width / 2,
-                        y: height - 3
-                    )
-                )
-                path.addCurve(
-                    to: CGPoint(x: 4, y: height * 0.45),
-                    controlPoint1: CGPoint(x: width * 0.30, y: height * 0.76),
-                    controlPoint2: CGPoint(x: 4, y: height * 0.63)
-                )
-                path.addCurve(
-                    to: CGPoint(x: width / 2, y: 3),
-                    controlPoint1: CGPoint(x: 4, y: height * 0.16),
-                    controlPoint2: CGPoint(x: width * 0.28, y: 3)
-                )
-                path.addCurve(
-                    to: CGPoint(x: width - 4, y: height * 0.45),
-                    controlPoint1: CGPoint(x: width * 0.72, y: 3),
-                    controlPoint2: CGPoint(x: width - 4, y: height * 0.16)
-                )
-                path.addCurve(
-                    to: CGPoint(x: width / 2, y: height - 3),
-                    controlPoint1: CGPoint(x: width - 4, y: height * 0.63),
-                    controlPoint2: CGPoint(x: width * 0.70, y: height * 0.76)
-                )
-                path.close()
-
-                let graphicsContext = context.cgContext
-                graphicsContext.setShadow(
-                    offset: CGSize(width: 0, height: 4),
-                    blur: 7,
-                    color: UIColor.black
-                        .withAlphaComponent(0.24)
-                        .cgColor
-                )
-                UIColor(
-                    red: 0.56,
-                    green: 0.45,
-                    blue: 0.91,
+            let horizontalInset: CGFloat = isSelected ? 6 : 5.5
+            let iconSize: CGFloat = isSelected ? 14 : 12
+            let iconGap: CGFloat = 3
+            let maximumTitleWidth: CGFloat = isSelected ? 74 : 64
+            let titleAttributes: [NSAttributedString.Key: Any] = [
+                .font: font,
+                .foregroundColor: UIColor(
+                    red: 0.11,
+                    green: 0.13,
+                    blue: 0.17,
                     alpha: 1
                 )
-                .setFill()
-                path.fill()
-                graphicsContext.setShadow(offset: .zero, blur: 0)
+            ]
+            let measuredTitleWidth = ceil(
+                (title as NSString).boundingRect(
+                    with: CGSize(
+                        width: maximumTitleWidth,
+                        height: font.lineHeight
+                    ),
+                    options: .usesLineFragmentOrigin,
+                    attributes: titleAttributes,
+                    context: nil
+                ).width
+            )
+            let titleWidth = min(
+                maximumTitleWidth,
+                max(18, measuredTitleWidth)
+            )
+            let bubbleHeight: CGFloat = isSelected ? 29 : 25
+            let pointerHeight: CGFloat = 4
+            let bubbleWidth = horizontalInset * 2
+                + iconSize
+                + iconGap
+                + titleWidth
+            let size = CGSize(
+                width: bubbleWidth + 2,
+                height: bubbleHeight + pointerHeight + 1
+            )
+            let bubbleRect = CGRect(
+                x: 1,
+                y: 1,
+                width: bubbleWidth,
+                height: bubbleHeight
+            )
+            let bubblePath = UIBezierPath(
+                roundedRect: bubbleRect,
+                cornerRadius: bubbleHeight / 2
+            )
+            let pointerPath = UIBezierPath()
+            pointerPath.move(
+                to: CGPoint(
+                    x: bubbleRect.midX - (isSelected ? 4 : 3.5),
+                    y: bubbleRect.maxY - 1
+                )
+            )
+            pointerPath.addLine(
+                to: CGPoint(
+                    x: bubbleRect.midX,
+                    y: size.height
+                )
+            )
+            pointerPath.addLine(
+                to: CGPoint(
+                    x: bubbleRect.midX + (isSelected ? 4 : 3.5),
+                    y: bubbleRect.maxY - 1
+                )
+            )
+            pointerPath.close()
+            let tourismBlue = UIColor(
+                red: 0.220,
+                green: 0.396,
+                blue: 0.541,
+                alpha: 1
+            )
 
-                UIColor.white.setStroke()
-                path.lineWidth = isSelected ? 3 : 2
-                path.stroke()
+            return UIGraphicsImageRenderer(size: size).image { context in
+                let graphicsContext = context.cgContext
 
-                let symbolSide: CGFloat = isSelected ? 18 : 15
-                let symbolImage = UIImage(
+                graphicsContext.saveGState()
+                graphicsContext.setShadow(
+                    offset: CGSize(width: 0, height: 1),
+                    blur: 2.5,
+                    color: UIColor.black.withAlphaComponent(0.16).cgColor
+                )
+                UIColor.white.setFill()
+                bubblePath.fill()
+                pointerPath.fill()
+                graphicsContext.restoreGState()
+
+                let iconRect = CGRect(
+                    x: horizontalInset,
+                    y: bubbleRect.midY - iconSize / 2,
+                    width: iconSize,
+                    height: iconSize
+                )
+                tourismBlue.setFill()
+                UIBezierPath(
+                    ovalIn: iconRect
+                )
+                .fill()
+
+                let symbolSize: CGFloat = isSelected ? 8 : 7
+                UIImage(
                     systemName: "building.columns.fill",
                     withConfiguration: UIImage.SymbolConfiguration(
-                        pointSize: symbolSide,
+                        pointSize: symbolSize,
                         weight: .semibold
                     )
                 )?
-                .withTintColor(
-                    .white,
-                    renderingMode: .alwaysOriginal
-                )
-
-                symbolImage?.draw(
+                .withTintColor(.white, renderingMode: .alwaysOriginal)
+                .draw(
                     in: CGRect(
-                        x: width / 2 - symbolSide / 2,
-                        y: height * 0.38 - symbolSide / 2,
-                        width: symbolSide,
-                        height: symbolSide
+                        x: iconRect.midX - symbolSize / 2,
+                        y: iconRect.midY - symbolSize / 2,
+                        width: symbolSize,
+                        height: symbolSize
                     )
                 )
+
+                let textRect = CGRect(
+                    x: iconRect.maxX + iconGap,
+                    y: bubbleRect.midY - font.lineHeight / 2,
+                    width: titleWidth,
+                    height: font.lineHeight
+                )
+                title.draw(
+                    with: textRect,
+                    options: [
+                        .usesLineFragmentOrigin,
+                        .truncatesLastVisibleLine
+                    ],
+                    attributes: titleAttributes,
+                    context: nil
+                )
+
+                (isSelected ? tourismBlue : UIColor.white).setStroke()
+                bubblePath.lineWidth = isSelected ? 1.25 : 1
+                bubblePath.stroke()
+                pointerPath.lineWidth = isSelected ? 1.25 : 1
+                pointerPath.stroke()
             }
         }
 

@@ -28,6 +28,7 @@ struct MainTabView: View {
     @State private var isTabBarHidden = false
     @State private var prefersReelTabBarStyle = false
     @State private var activeCapturePlaceName: String?
+    @State private var isLogClipPickerPresented = false
 
     private let tourismRepository: any TourismRepository
     private let cameraCaptureService: any CameraCaptureService
@@ -49,6 +50,8 @@ struct MainTabView: View {
     private let mapRepository: any MapRepository
     private let homeSearchRepository: any HomeSearchRepository
     private let mapCurrentLocationService: any MapCurrentLocationService
+    private let photoLibraryVideoImportService: any PhotoLibraryVideoImporting
+    private let photoLibraryVideoSaveService: any PhotoLibraryVideoSaving
     @State private var homeNavigationPath: [HomeNavigationRoute] = []
 
 
@@ -74,6 +77,8 @@ struct MainTabView: View {
         mapRepository: any MapRepository,
         homeSearchRepository: any HomeSearchRepository,
         mapCurrentLocationService: any MapCurrentLocationService,
+        photoLibraryVideoImportService: any PhotoLibraryVideoImporting,
+        photoLibraryVideoSaveService: any PhotoLibraryVideoSaving,
         requestedTab: Binding<MaplogTab?> = .constant(nil),
         requestedCapturePlaceName: Binding<String?> = .constant(nil)
     ) {
@@ -97,6 +102,8 @@ struct MainTabView: View {
         self.mapRepository = mapRepository
         self.homeSearchRepository = homeSearchRepository
         self.mapCurrentLocationService = mapCurrentLocationService
+        self.photoLibraryVideoImportService = photoLibraryVideoImportService
+        self.photoLibraryVideoSaveService = photoLibraryVideoSaveService
 
         _requestedTab = requestedTab
         _requestedCapturePlaceName = requestedCapturePlaceName
@@ -132,6 +139,7 @@ struct MainTabView: View {
         case tourismList // 관광 목록 화면으로 이동하라는 경로 값
         case tourismDetail(tourismID: Int64)
         case logDetail(logID: Int64)
+        case publicProfile(user: FollowUser)
     }
 
     private var tabSelection: Binding<MaplogTab> {
@@ -209,8 +217,41 @@ struct MainTabView: View {
                                 homeNavigationPath.append(
                                     .logDetail(logID: logID)
                                 )
+                            },
+                            onShowAuthorProfile: { reel in
+                                homeNavigationPath.append(
+                                    .publicProfile(
+                                        user: FollowUser(
+                                            id: reel.authorID,
+                                            nickname: reel.authorName,
+                                            profileImageURL: reel.authorProfileImageURL
+                                        )
+                                    )
+                                )
+                            },
+                            onCreateLog: {
+                                isLogClipPickerPresented = true
                             }
                         )
+                        .fullScreenCover(
+                            isPresented: $isLogClipPickerPresented,
+                            onDismiss: {
+                                Task {
+                                    await homeviewModel.refreshHome()
+                                }
+                            }
+                        ) {
+                            ClipPickerFeatureView(
+                                mediaDraftRepository: mediaDraftRepository,
+                                videoThumbnailService: videoThumbnailService,
+                                videoPlaybackService: videoPlaybackService,
+                                videoExportService: videoExportService,
+                                logLocationRepository: logLocationRepository,
+                                logPublishingRepository: logPublishingRepository,
+                                photoLibraryVideoImportService: photoLibraryVideoImportService,
+                                photoLibraryVideoSaveService: photoLibraryVideoSaveService
+                            )
+                        }
                         .navigationDestination(for: HomeNavigationRoute.self) { route in
                             switch route {
                             case .tourismList:
@@ -235,6 +276,13 @@ struct MainTabView: View {
                                     playbackService: videoPlaybackService,
                                     onLogRemoved: {}
                                 )
+
+                            case .publicProfile(let user):
+                                PublicProfileFeatureView(
+                                    user: user,
+                                    followRepository: followRepository,
+                                    profileRepository: profileRepository
+                                )
                             }
                         }
                         .ignoresSafeArea(
@@ -253,7 +301,9 @@ struct MainTabView: View {
                         videoExportService: videoExportService,
                         captureLocationService: captureLocationService,
                         logLocationRepository: logLocationRepository,
-                        logPublishingRepository: logPublishingRepository
+                        logPublishingRepository: logPublishingRepository,
+                        photoLibraryVideoImportService: photoLibraryVideoImportService,
+                        photoLibraryVideoSaveService: photoLibraryVideoSaveService
                     ) {
                         withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
                             selectedTab = previousTab
@@ -307,9 +357,6 @@ struct MainTabView: View {
             )
             .ignoresSafeArea()
         }
-        .preferredColorScheme(
-            usesReelTabBarStyle ? .dark : .light
-        )
         .onPreferenceChange(MaplogTabBarHiddenPreferenceKey.self) { hidden in
             withAnimation(.spring(response: 0.32, dampingFraction: 0.9)) {
                 isTabBarHidden = hidden
@@ -350,6 +397,12 @@ struct MainTabView: View {
     }
 
     private func applyRequestedTab(_ tab: MaplogTab, capturePlaceName: String?) {
+        // 홈에서 시작한 발행이 성공하면 LogComposeView가 홈 탭 선택을 요청한다.
+        // 그 신호로 선택·편집·작성 전체 화면 흐름도 함께 닫아 홈 목록을 새로 고친다.
+        if tab == .home {
+            isLogClipPickerPresented = false
+        }
+
         if tab == .capture {
             activeCapturePlaceName = capturePlaceName
             if selectedTab != .capture {
@@ -550,6 +603,7 @@ struct MaplogTabBar: View {
             }
         }
     }
+
 }
 
 private struct MaplogTabBarItem: View {

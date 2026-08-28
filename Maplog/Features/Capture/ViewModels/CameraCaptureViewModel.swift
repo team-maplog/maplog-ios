@@ -27,6 +27,7 @@ final class CameraCaptureViewModel: ObservableObject {
     @Published private(set) var lastSavedDraft: CaptureDraftClip? // 방금 찍은 클립 썸네일과 편집 화면 진입 버튼을 만들 때
     @Published private(set) var recordingProgress: Double = 0
     @Published private(set) var latestThumbnailData: Data? // 최근 저장 영상의 JPEG 파일 내용, 다음 단계에서 View가 이것을 화면 이미지로 바꿔 그림
+    @Published private(set) var activeCompositionSlotIndex = 0
 
     private let mediaDraftRepository: any MediaDraftRepository
 
@@ -193,6 +194,13 @@ final class CameraCaptureViewModel: ObservableObject {
         settings.clipDuration = duration
     }
 
+    func updateCompositionConfiguration(
+        _ configuration: VideoCompositionConfiguration
+    ) {
+        settings.compositionConfiguration = configuration
+        activeCompositionSlotIndex = 0
+    }
+
     func shutterTapped() {
         switch state {
         case .ready:
@@ -314,6 +322,7 @@ final class CameraCaptureViewModel: ObservableObject {
 
             lastSavedDraft = savedDraft
             latestThumbnailData = nil
+            moveToNextCompositionSlot()
 
             await loadThumbnail(for: savedDraft)
 
@@ -322,6 +331,20 @@ final class CameraCaptureViewModel: ObservableObject {
             state = .ready
             actionError = CameraCaptureErrorPolicy.presentation(for: error)
         }
+    }
+
+    /// 분할 촬영은 한 번에 화면을 합성하는 방식이 아니라, 각 칸에 들어갈 클립을
+    /// 차례로 촬영합니다. 초안 저장이 성공한 경우에만 다음 칸으로 이동합니다.
+    private func moveToNextCompositionSlot() {
+        let configuration = settings.compositionConfiguration
+
+        guard configuration.layout != .single else {
+            activeCompositionSlotIndex = 0
+            return
+        }
+
+        activeCompositionSlotIndex =
+            (activeCompositionSlotIndex + 1) % configuration.requiredClipCount
     }
 
     // 최근 초안 조회 + 썸네일 생성

@@ -9,6 +9,8 @@ import Foundation
 
 struct HomeReelViewData: Identifiable, Equatable {
     let id: Int64
+    /// 홈에서 작성자의 공개 프로필로 이동할 때 쓰는 도메인 식별자입니다.
+    let authorID: UUID
     let authorName: String
     let authorProfileImageURL: URL?
     let caption: String
@@ -33,6 +35,7 @@ struct HomeReelViewData: Identifiable, Equatable {
     ) -> HomeReelViewData {
         HomeReelViewData(
             id: id,
+            authorID: authorID,
             authorName: authorName,
             authorProfileImageURL: authorProfileImageURL,
             caption: caption,
@@ -54,6 +57,7 @@ struct HomeReelViewData: Identifiable, Equatable {
     ) -> HomeReelViewData {
         HomeReelViewData(
             id: id,
+            authorID: authorID,
             authorName: authorName,
             authorProfileImageURL: authorProfileImageURL,
             caption: caption,
@@ -75,6 +79,7 @@ struct HomeReelViewData: Identifiable, Equatable {
     ) -> HomeReelViewData {
         HomeReelViewData(
             id: id,
+            authorID: authorID,
             authorName: authorName,
             authorProfileImageURL: authorProfileImageURL,
             caption: caption,

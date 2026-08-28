@@ -221,7 +221,7 @@ private struct TourismDetailTitleSection: View {
             HStack(spacing: MaplogSpacing.xSmall) {
                 Text(detail.categoryText)
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(Color.maplogTextPrimary)
+                    .foregroundStyle(Color.maplogOnPrimary)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
                     .background(Color.maplogPrimary, in: Capsule())
@@ -804,7 +804,7 @@ private struct TourismDetailDirectionsBar: View {
         } label: {
             Label("길찾기", systemImage: MaplogSymbol.directions)
                 .font(.system(size: 18, weight: .bold))
-                .foregroundStyle(Color.maplogTextPrimary)
+                .foregroundStyle(Color.maplogOnPrimary)
                 .frame(maxWidth: .infinity)
                 .frame(height: 54)
                 .background(Color.maplogPrimary, in: RoundedRectangle(cornerRadius: 15, style: .continuous))

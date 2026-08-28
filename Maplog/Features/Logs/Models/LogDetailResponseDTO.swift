@@ -6,6 +6,7 @@ struct LogDetailResponseDTO: Decodable {
     let logID: Int64
     let author: LogReelAuthorDTO
     let caption: String
+    let tags: [String]?
     let address: String
     let thumbnailURL: String?
     let playbackURL: String?
@@ -21,6 +22,7 @@ struct LogDetailResponseDTO: Decodable {
         case logID = "logId"
         case author
         case caption
+        case tags
         case address
         case thumbnailURL = "thumbnailUrl"
         case playbackURL = "playbackUrl"
@@ -36,13 +38,27 @@ struct LogDetailResponseDTO: Decodable {
 
 /// PATCH /api/v1/logs/{logId}의 request body입니다.
 struct UpdateLogRequestDTO: Encodable {
-    let caption: String
+    let caption: String?
+    let tags: [String]?
+
+    enum CodingKeys: String, CodingKey {
+        case caption
+        case tags
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encodeIfPresent(caption, forKey: .caption)
+        // nil은 "태그는 수정하지 않음", 빈 배열은 "태그 전체 해제"입니다.
+        try container.encodeIfPresent(tags, forKey: .tags)
+    }
 }
 
 /// PATCH /api/v1/logs/{logId}의 data입니다.
 struct LogBasicResponseDTO: Decodable {
     let logID: Int64
     let caption: String
+    let tags: [String]?
     let address: String
     let publishedAt: String
     let viewCount: Int64
@@ -51,6 +67,7 @@ struct LogBasicResponseDTO: Decodable {
     enum CodingKeys: String, CodingKey {
         case logID = "logId"
         case caption
+        case tags
         case address
         case publishedAt
         case viewCount

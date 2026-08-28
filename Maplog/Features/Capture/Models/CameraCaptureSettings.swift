@@ -47,4 +47,5 @@ struct CameraCaptureSettings: Equatable, Sendable {
     var clipDuration: CaptureClipDuration = .seconds1
     var isGridEnabled = false
     var timestampStyle: CaptureTimestampStyle = .dateAndPlace
+    var compositionConfiguration = VideoCompositionConfiguration()
 }

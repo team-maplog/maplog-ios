@@ -9,22 +9,29 @@ import SwiftUI
 
 struct CameraCaptureView: View {
     @ObservedObject var viewModel: CameraCaptureViewModel
+    @State private var isCompositionQuickPickerPresented = false
     
     let onClose: () -> Void
     let onLatestClipTap: () -> Void
     
     var body: some View {
         ZStack {
-            if shouldShowPreview {
-                CameraPreviewView(session: viewModel.previewSession)
-                    .ignoresSafeArea()
-            } else {
-                Color.black
-                    .ignoresSafeArea()
-            }
-            
+            previewContent
+
             screenContent
+
+            if isCompositionQuickPickerPresented {
+                compositionQuickPicker
+                    .transition(
+                        .move(edge: .bottom)
+                            .combined(with: .opacity)
+                    )
+            }
         }
+        .animation(
+            .spring(response: 0.28, dampingFraction: 0.86),
+            value: isCompositionQuickPickerPresented
+        )
         .toolbar(.hidden, for: .navigationBar)
         .maplogTabBarHidden()
         .task {
@@ -52,6 +59,59 @@ struct CameraCaptureView: View {
             }
         } message: {
             Text(viewModel.actionError?.message ?? "")
+        }
+    }
+
+    private var compositionQuickPicker: some View {
+        VStack {
+            Spacer(minLength: 0)
+
+            CameraCompositionQuickPicker(
+                configuration: viewModel.settings.compositionConfiguration,
+                onConfigurationChange: { configuration in
+                    withAnimation(.spring(response: 0.28, dampingFraction: 0.86)) {
+                        viewModel.updateCompositionConfiguration(configuration)
+                    }
+                }
+            )
+            .padding(.horizontal, MaplogSpacing.page)
+            .padding(.bottom, 176)
+        }
+    }
+
+    @ViewBuilder
+    private var previewContent: some View {
+        if shouldShowPreview {
+            let configuration = viewModel.settings.compositionConfiguration
+
+            if configuration.layout == .single
+                && configuration.sceneOrientation == .vertical {
+                CameraPreviewView(session: viewModel.previewSession)
+                    .ignoresSafeArea()
+            } else {
+                Color.black
+                    .ignoresSafeArea()
+
+                GeometryReader { proxy in
+                    CameraCompositionCapturePreview(
+                        session: viewModel.previewSession,
+                        configuration: configuration,
+                        activeSlotIndex: viewModel.activeCompositionSlotIndex
+                    )
+                    .frame(
+                        width: max(0, proxy.size.width - 40),
+                        height: max(360, proxy.size.height - 270)
+                    )
+                    .position(
+                        x: proxy.size.width / 2,
+                        y: proxy.size.height / 2 + 18
+                    )
+                }
+                .ignoresSafeArea()
+            }
+        } else {
+            Color.black
+                .ignoresSafeArea()
         }
     }
     
@@ -93,12 +153,25 @@ struct CameraCaptureView: View {
         
     private var readyControls: some View {
         VStack(spacing: 0) {
-                topControls
+            topControls
+            compositionProgressHeader
 
-                Spacer()
+            Spacer()
 
             ZStack(alignment: .bottomLeading) {
                 VStack(spacing: MaplogSpacing.medium) {
+                    if viewModel.settings.compositionConfiguration.layout != .single
+                        || viewModel.settings.compositionConfiguration.sceneOrientation == .horizontal {
+                        Text(
+                            "한 칸 \(viewModel.settings.compositionConfiguration.captureFrameRatioTitle) 프레임"
+                        )
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, MaplogSpacing.small)
+                        .padding(.vertical, MaplogSpacing.xxSmall)
+                        .background(.black.opacity(0.36), in: Capsule())
+                    }
+
                     durationPicker
                     
                     shutterButton
@@ -124,16 +197,19 @@ struct CameraCaptureView: View {
     
     private var recordingControls: some View {
         VStack(spacing: 16) {
-                Spacer()
+            topControls
+            compositionProgressHeader
 
-                Text("\(Int((viewModel.recordingProgress * viewModel.settings.clipDuration.seconds).rounded(.down))) / \(Int(viewModel.settings.clipDuration.seconds))s")
-                    .font(.subheadline.weight(.bold))
-                    .foregroundStyle(.white)
-                    .monospacedDigit()
+            Spacer()
 
-                shutterButton
-                    .padding(.bottom, 32)
-            }
+            Text("\(Int((viewModel.recordingProgress * viewModel.settings.clipDuration.seconds).rounded(.down))) / \(Int(viewModel.settings.clipDuration.seconds))s")
+                .font(.subheadline.weight(.bold))
+                .foregroundStyle(.white)
+                .monospacedDigit()
+
+            shutterButton
+                .padding(.bottom, 32)
+        }
     }
     
     private var savingView: some View {
@@ -171,8 +247,9 @@ struct CameraCaptureView: View {
     // 셔터
     private var shutterButton: some View {
         Button {
-                viewModel.shutterTapped()
-            } label: {
+            isCompositionQuickPickerPresented = false
+            viewModel.shutterTapped()
+        } label: {
                 ZStack {
                     if viewModel.isRecording {
                         Circle()
@@ -236,7 +313,7 @@ struct CameraCaptureView: View {
                 .foregroundStyle(.white)
         }
         
-        private var topControls: some View {
+    private var topControls: some View {
                 HStack {
                     circleButton(
                         icon: "xmark",
@@ -246,6 +323,10 @@ struct CameraCaptureView: View {
                     
                     Spacer()
                     
+                    compositionConfigurationButton
+                        .opacity(viewModel.isRecording ? 0.4 : 1)
+                        .disabled(viewModel.isRecording)
+
                     circleButton(
                         icon: viewModel.isTorchEnabled
                         ? "bolt.fill"
@@ -274,6 +355,65 @@ struct CameraCaptureView: View {
                 .padding(.top, MaplogSpacing.xSmall)
             
         }
+
+    private var compositionConfigurationButton: some View {
+        Button {
+            isCompositionQuickPickerPresented.toggle()
+        } label: {
+            Image("MaplogCollageGlyph")
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .frame(width: 21, height: 21)
+                .foregroundStyle(.white)
+                .frame(width: 44, height: 44)
+                .background(.black.opacity(0.28), in: Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("분할 영상 구성 선택")
+        .accessibilityValue(
+            "(viewModel.settings.compositionConfiguration.sceneOrientation.title), "
+                + "(viewModel.settings.compositionConfiguration.layout.title)"
+        )
+        .accessibilityHint(
+            isCompositionQuickPickerPresented
+                ? "분할 구성 선택기를 닫습니다"
+                : "세로 또는 가로 장면과 분할 수를 바로 선택합니다"
+        )
+    }
+
+    @ViewBuilder
+    private var compositionProgressHeader: some View {
+        let configuration = viewModel.settings.compositionConfiguration
+
+        if configuration.layout != .single {
+            HStack(spacing: MaplogSpacing.xSmall) {
+                Text("\(configuration.requiredClipCount)컷 촬영")
+                    .font(MaplogFont.calloutStrong)
+
+                Text("\(viewModel.activeCompositionSlotIndex + 1) / \(configuration.requiredClipCount)")
+                    .font(MaplogFont.caption)
+                    .monospacedDigit()
+                    .foregroundStyle(.white.opacity(0.68))
+
+                Spacer(minLength: 0)
+
+                Text("프레임 \(configuration.captureFrameRatioTitle)")
+                    .font(MaplogFont.badge)
+                    .foregroundStyle(.white.opacity(0.72))
+                    .padding(.horizontal, MaplogSpacing.xSmall)
+                    .padding(.vertical, MaplogSpacing.xxSmall)
+                    .background(.white.opacity(0.12), in: Capsule())
+            }
+            .foregroundStyle(.white)
+            .padding(.horizontal, MaplogSpacing.xLarge)
+            .padding(.top, MaplogSpacing.xSmall)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(
+                "\(configuration.requiredClipCount)컷 촬영, \(viewModel.activeCompositionSlotIndex + 1)번째 장면"
+            )
+        }
+    }
         
         private var permissionDeniedView: some View {
             VStack(spacing: 12) {

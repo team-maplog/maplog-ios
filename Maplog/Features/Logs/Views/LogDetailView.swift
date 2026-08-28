@@ -117,9 +117,16 @@ private struct LogDetailCaptionSection: View {
                 .foregroundStyle(Color.maplogInk)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
+            if !detail.tags.isEmpty {
+                Text(detail.tags.map(\.title).map { "#\($0)" }.joined(separator: "  "))
+                    .font(MaplogFont.caption)
+                    .foregroundStyle(Color.maplogOlive)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
             HStack(spacing: MaplogSpacing.xSmall) {
                 HStack(spacing: MaplogSpacing.xxSmall) {
-                    Text("📍")
+                    MaplogPinGlyphIcon(size: 12)
 
                     Text(detail.address)
                 }
@@ -162,7 +169,7 @@ private struct LogDetailFailureState: View {
             case .retry:
                 Button("다시 시도", action: onRetry)
                     .font(MaplogFont.calloutStrong)
-                    .foregroundStyle(Color.maplogInk)
+                    .foregroundStyle(Color.maplogOnPrimary)
                     .padding(.horizontal, 18)
                     .frame(height: MaplogSize.compactControlHeight)
                     .background(Color.maplogLime, in: Capsule())

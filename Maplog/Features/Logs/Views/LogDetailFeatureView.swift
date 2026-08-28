@@ -148,12 +148,14 @@ struct LogDetailFeatureView: View {
             NavigationStack {
                 LogCaptionEditView(
                     caption: captionBinding,
+                    selectedTags: viewModel.tagDraft,
                     thumbnailData: viewModel.thumbnailData,
                     address: detail.address,
                     isSaving: viewModel.isSavingCaption,
                     formMessage: viewModel.captionFormMessage,
                     captionMessage: viewModel.captionMessage,
                     recoveryAction: viewModel.captionRecoveryAction,
+                    onTagToggle: viewModel.toggleTagDraft,
                     onSave: saveCaption,
                     onCancel: cancelCaptionEditing,
                     onSignIn: performLogout

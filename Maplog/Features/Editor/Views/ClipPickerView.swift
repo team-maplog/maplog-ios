@@ -12,6 +12,7 @@
 //                      └─ loading / content / empty / failed 화면 갱신
 
 
+import PhotosUI
 import SwiftUI
 
 struct ClipPickerView: View {
@@ -20,20 +21,31 @@ struct ClipPickerView: View {
     @Environment(\.dismiss) private var dismiss
     
     @State private var isDeleteConfirmationPresented = false
+    @State private var selectedPhotoItems: [PhotosPickerItem] = []
     
     let allowsPermanentDeletion: Bool
+    let allowsCompositionSelection: Bool
     let confirmationTitle: (Int) -> String // 하단 버튼 문구를 상황에 따라 바꿈
     let onConfirmSelection: ([CaptureDraftClip]) -> Void // 선택 결과를 Feature에 전달하는 통로
     
     
-    private let gridColumns = Array(
-        repeating: GridItem(
-            .flexible(),
-            spacing: MaplogSpacing.xSmall),
-        count: 3
-    )
+    // 썸네일의 최소·최대 너비를 그리드가 직접 관리한다.
+    // 카드가 자신의 이미지 크기 때문에 이웃 열까지 넓어지는 것을 막고,
+    // 좁은 화면에서는 자동으로 두 열로 전환한다.
+    private let gridColumns = [
+        GridItem(
+            .adaptive(
+                minimum: 104,
+                maximum: 120
+            ),
+            spacing: MaplogSpacing.xSmall,
+            alignment: .top
+        )
+    ]
     
     var body: some View {
+        let isImporting = viewModel.isImporting
+
         NavigationStack {
             content
                 .navigationTitle("클립 선택")
@@ -63,6 +75,24 @@ struct ClipPickerView: View {
                                 || viewModel.isDeleting
                             )
                             .accessibilityLabel("선택한 클립 삭제")
+                        }
+                    }
+
+                    if allowsCompositionSelection {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            PhotosPicker(
+                                selection: $selectedPhotoItems,
+                                maxSelectionCount: 12,
+                                matching: .videos
+                            ) {
+                                if isImporting {
+                                    ProgressView()
+                                } else {
+                                    Image(systemName: "photo.badge.plus")
+                                }
+                            }
+                            .disabled(isImporting)
+                            .accessibilityLabel("사진 앱에서 영상 가져오기")
                         }
                     }
                 }
@@ -102,6 +132,16 @@ struct ClipPickerView: View {
         .task {
             await viewModel.load()
         }
+        .onChange(of: selectedPhotoItems) { _, items in
+            guard !items.isEmpty else {
+                return
+            }
+
+            Task {
+                await viewModel.importVideos(from: items)
+                selectedPhotoItems = []
+            }
+        }
     }
     @ViewBuilder
     private var content: some View {
@@ -126,9 +166,18 @@ struct ClipPickerView: View {
                             )
                             .font(MaplogFont.screenTitle)
 
-                            Text("선택한 순서대로 영상을 이어 붙여요.")
+                            Text(selectionDescription)
                                 .font(MaplogFont.callout)
                                 .foregroundStyle(.secondary)
+                        }
+
+                        if allowsCompositionSelection {
+                            VideoCompositionConfigurationPicker(
+                                configuration: viewModel.compositionConfiguration,
+                                selectedClipCount: viewModel.selectedCount,
+                                onLayoutSelect: viewModel.selectCompositionLayout,
+                                onSceneOrientationSelect: viewModel.selectSceneOrientation
+                            )
                         }
 
                         LazyVGrid(
@@ -149,6 +198,8 @@ struct ClipPickerView: View {
                                     )
                                 }
                                 .buttonStyle(.plain)
+                                .contentShape(Rectangle())
+                                .id(item.id)
                                 .accessibilityLabel(
                                     "\(item.capturedAtText) 촬영 클립"
                                 )
@@ -232,9 +283,18 @@ struct ClipPickerView: View {
                         in: Capsule()
                     )
         }
-        .disabled(viewModel.selectedCount == 0)
+        .disabled(!viewModel.hasValidCompositionSelection)
         .padding(.horizontal, MaplogSpacing.page)
         .padding(.vertical, MaplogSpacing.small)
         .background(.ultraThinMaterial)
+    }
+
+    private var selectionDescription: String {
+        switch viewModel.compositionConfiguration.layout {
+        case .single:
+            return "선택한 순서대로 영상을 이어 붙여요."
+        case .splitTwo, .splitThree:
+            return "선택한 순서대로 분할 화면의 장면 위치가 정해져요."
+        }
     }
 }
