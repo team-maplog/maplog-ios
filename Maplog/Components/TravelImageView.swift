@@ -239,7 +239,7 @@ struct MaplogReelRoutePage: View {
 
                 Text("\(index + 1)")
                     .font(.caption.weight(.bold))
-                    .foregroundStyle(Color.maplogInk)
+                    .foregroundStyle(Color.maplogOnPrimary)
                     .frame(width: 30, height: 30)
                     .background(Color.maplogLime, in: Circle())
             }
@@ -268,7 +268,7 @@ struct MaplogReelRoutePage: View {
                 } label: {
                     Label("전체 루트", systemImage: "location.north.fill")
                         .font(.caption.weight(.bold))
-                        .foregroundStyle(Color.maplogInk)
+                        .foregroundStyle(Color.maplogOnPrimary)
                         .frame(maxWidth: .infinity)
                         .frame(minHeight: 40)
                         .background(Color.maplogLime)

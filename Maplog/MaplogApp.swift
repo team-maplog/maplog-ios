@@ -90,7 +90,6 @@ struct MaplogApp: App { // 앱의 조립 담당자
         let homeSearchRepository = DefaultHomeSearchRepository(
             apiService: homeSearchAPIService
         )
-
         self.authRepository = authRepository
 
         _signOutViewModel = StateObject(wrappedValue: SignOutViewModel(authRepository: authRepository, authSessionStore: sessionStore))
@@ -160,6 +159,7 @@ struct MaplogApp: App { // 앱의 조립 담당자
             )
             .environmentObject(authSessionStore)
             .environmentObject(signOutViewModel)
+            .preferredColorScheme(.light)
         }
     }
 }

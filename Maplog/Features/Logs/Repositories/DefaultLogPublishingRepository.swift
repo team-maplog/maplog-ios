@@ -43,6 +43,7 @@ final class DefaultLogPublishingRepository: LogPublishingRepository {
     ) -> LogCreateRequestDTO {
         LogCreateRequestDTO(
             caption: draft.caption,
+            tags: draft.tags,
             address: draft.representativeAddress,
             videoFileId: videoFileID,
             thumbnailTimeMillis: draft.thumbnailTimeMillis,

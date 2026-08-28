@@ -5,7 +5,7 @@ protocol LogDetailAPIService {
         logID: Int64
     ) async throws -> LogDetailResponseDTO
 
-    func updateLogCaption(
+    func updateLog(
         logID: Int64,
         request: UpdateLogRequestDTO
     ) async throws -> LogBasicResponseDTO

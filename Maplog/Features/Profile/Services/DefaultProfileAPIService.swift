@@ -18,6 +18,17 @@ final class DefaultProfileAPIService: ProfileAPIService {
         return try data(from: response)
     }
 
+    func fetchPublicProfile(
+        nickname: String
+    ) async throws -> PublicProfileResponseDTO {
+        let response: APIResponse<PublicProfileResponseDTO> = try await request(
+            url: try publicProfileEndpoint(nickname: nickname),
+            responseType: APIResponse<PublicProfileResponseDTO>.self
+        )
+
+        return try data(from: response)
+    }
+
     func fetchMyLogs(
         cursor: String?,
         size: Int
@@ -54,6 +65,46 @@ final class DefaultProfileAPIService: ProfileAPIService {
             url: endpoint,
             resolvingAgainstBaseURL: false
         )
+        components?.queryItems = queryItems
+
+        guard let url = components?.url else {
+            throw APIError.invalidURL
+        }
+
+        let response: APIResponse<ProfileLogPageDTO> = try await request(
+            url: url,
+            responseType: APIResponse<ProfileLogPageDTO>.self
+        )
+
+        return try data(from: response)
+    }
+
+    func fetchPublicProfileLogs(
+        nickname: String,
+        cursor: String?,
+        size: Int
+    ) async throws -> ProfileLogPageDTO {
+        guard (1...100).contains(size) else {
+            throw APIError.invalidRequest(
+                reason: "공개 프로필 로그 목록 크기는 1부터 100 사이여야 합니다."
+            )
+        }
+
+        var components = URLComponents(
+            url: try publicProfileEndpoint(nickname: nickname)
+                .appendingPathComponent("logs"),
+            resolvingAgainstBaseURL: false
+        )
+        var queryItems = [
+            URLQueryItem(name: "size", value: String(size))
+        ]
+
+        if let cursor,
+           !cursor.isEmpty {
+            queryItems.append(
+                URLQueryItem(name: "cursor", value: cursor)
+            )
+        }
         components?.queryItems = queryItems
 
         guard let url = components?.url else {
@@ -207,6 +258,28 @@ final class DefaultProfileAPIService: ProfileAPIService {
             .appendingPathComponent("v1")
             .appendingPathComponent("users")
             .appendingPathComponent("me")
+    }
+
+    private func publicProfileEndpoint(
+        nickname: String
+    ) throws -> URL {
+        let trimmedNickname = nickname.trimmingCharacters(
+            in: .whitespacesAndNewlines
+        )
+
+        guard !trimmedNickname.isEmpty,
+              !trimmedNickname.contains("@")
+        else {
+            throw APIError.invalidRequest(
+                reason: "공개 프로필 닉네임은 @ 없이 입력해야 합니다."
+            )
+        }
+
+        return APIConfiguration.baseURL
+            .appendingPathComponent("api")
+            .appendingPathComponent("v1")
+            .appendingPathComponent("users")
+            .appendingPathComponent("@\(trimmedNickname)")
     }
 
     private var filesEndpoint: URL {

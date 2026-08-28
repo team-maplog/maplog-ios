@@ -38,7 +38,7 @@ final class DefaultLogDetailAPIService: LogDetailAPIService {
         return detail
     }
 
-    func updateLogCaption(
+    func updateLog(
         logID: Int64,
         request: UpdateLogRequestDTO
     ) async throws -> LogBasicResponseDTO {

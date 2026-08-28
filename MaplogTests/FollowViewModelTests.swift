@@ -55,7 +55,9 @@ final class FollowViewModelTests: XCTestCase {
         let viewModel = PublicProfileViewModel(
             user: user,
             followRepository: followRepository,
-            profileRepository: FollowProfileRepositoryStub()
+            profileRepository: FollowProfileRepositoryStub(
+                publicUserID: user.id
+            )
         )
 
         await viewModel.loadIfNeeded()
@@ -171,9 +173,20 @@ private final class FollowRepositoryStub: FollowRepository {
 }
 
 private final class FollowProfileRepositoryStub: ProfileRepository {
+    private let myUserID: UUID
+    private let publicUserID: UUID
+
+    init(
+        myUserID: UUID = UUID(),
+        publicUserID: UUID = UUID()
+    ) {
+        self.myUserID = myUserID
+        self.publicUserID = publicUserID
+    }
+
     func fetchMyProfile() async throws -> MyProfile {
         MyProfile(
-            id: UUID(),
+            id: myUserID,
             nickname: "나",
             profileImageURL: nil,
             bio: "",
@@ -183,7 +196,31 @@ private final class FollowProfileRepositoryStub: ProfileRepository {
         )
     }
 
+    func fetchPublicProfile(
+        nickname: String
+    ) async throws -> PublicProfile {
+        PublicProfile(
+            id: publicUserID,
+            nickname: nickname,
+            profileImageURL: nil,
+            bio: "여행 기록을 남겨요.",
+            followerCount: 3,
+            followingCount: 2,
+            logCount: 1,
+            isFollowedByViewer: false,
+            createdAt: .now
+        )
+    }
+
     func fetchMyLogs(
+        cursor: String?,
+        size: Int
+    ) async throws -> ProfileLogPage {
+        ProfileLogPage(logs: [], hasNext: false, nextCursor: nil)
+    }
+
+    func fetchPublicProfileLogs(
+        nickname: String,
         cursor: String?,
         size: Int
     ) async throws -> ProfileLogPage {

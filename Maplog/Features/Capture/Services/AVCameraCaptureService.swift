@@ -7,7 +7,6 @@
 
 import AVFoundation
 import Foundation
-import UIKit
 
 final class AVCameraCaptureService: NSObject, CameraCaptureService {
     let previewSession = AVCaptureSession()
@@ -20,6 +19,7 @@ final class AVCameraCaptureService: NSObject, CameraCaptureService {
     private var videoInput: AVCaptureDeviceInput?
     private var audioInput: AVCaptureDeviceInput?
     private var currentVideoDevice: AVCaptureDevice?
+    private var rotationCoordinator: AVCaptureDevice.RotationCoordinator?
     
     private var storedPosition: CameraPosition = .rear
     private var recordingStartDate: Date?
@@ -28,7 +28,6 @@ final class AVCameraCaptureService: NSObject, CameraCaptureService {
     init(fileManager: FileManager = .default) {
         self.fileManager = fileManager
         super.init()
-        UIDevice.current.beginGeneratingDeviceOrientationNotifications()
     }
     
     var currentPosition: CameraPosition {
@@ -253,7 +252,8 @@ final class AVCameraCaptureService: NSObject, CameraCaptureService {
                 if let videoConnection = movieOutput.connection(
                     with: .video
                 ) {
-                    let rotationAngle = captureRotationAngle()
+                    let rotationAngle = rotationCoordinator?
+                        .videoRotationAngleForHorizonLevelCapture ?? 0
 
                     if videoConnection.isVideoRotationAngleSupported(
                         rotationAngle
@@ -355,6 +355,10 @@ final class AVCameraCaptureService: NSObject, CameraCaptureService {
         previewSession.addInput(newVideoInput)
         videoInput = newVideoInput
         currentVideoDevice = videoDevice
+        rotationCoordinator = AVCaptureDevice.RotationCoordinator(
+            device: videoDevice,
+            previewLayer: nil
+        )
         storedPosition = position
         
         let microphoneIsAuthorized =
@@ -399,23 +403,6 @@ final class AVCameraCaptureService: NSObject, CameraCaptureService {
         }
     }
 
-    /// 기기를 옆으로 들어 촬영한 경우에는 회전 메타데이터를 원본에 기록합니다.
-    /// 편집 결과는 항상 세로 릴스 캔버스이므로, 내보내기 단계에서 이 정보를 읽어
-    /// 가로 원본의 방향을 보존한 채 화면 너비에 맞춰 배치합니다.
-    private func captureRotationAngle() -> CGFloat {
-        switch UIDevice.current.orientation {
-        case .landscapeLeft:
-            return 90
-        case .landscapeRight:
-            return 270
-        case .portraitUpsideDown:
-            return 180
-        case .portrait, .faceUp, .faceDown, .unknown:
-            return 0
-        @unknown default:
-            return 0
-        }
-    }
 }
 
 extension AVCameraCaptureService:

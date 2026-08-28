@@ -215,7 +215,7 @@ struct LogCommentsFeatureSheet: View {
                     }
                     .buttonStyle(MaplogPressFeedbackStyle())
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Color.maplogInk)
+                    .foregroundStyle(Color.maplogOnPrimary)
                     .padding(.horizontal, MaplogSpacing.medium)
                     .frame(height: MaplogSize.controlHeight)
                     .background(Color.maplogLime, in: Capsule())
@@ -453,7 +453,7 @@ struct LogCommentsFeatureSheet: View {
                     }
                 }
                 .buttonStyle(MaplogPressFeedbackStyle())
-                .foregroundStyle(Color.maplogInk)
+                .foregroundStyle(Color.maplogOnPrimary)
                 .frame(
                     width: MaplogSize.controlHeight,
                     height: MaplogSize.controlHeight

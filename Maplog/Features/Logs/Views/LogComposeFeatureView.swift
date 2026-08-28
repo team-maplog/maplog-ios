@@ -37,6 +37,7 @@ struct LogComposeFeatureView: View {
                 input: input,
                 videoPlaybackService: videoPlaybackService,
                 videoThumbnailService: videoThumbnailService,
+                logLocationRepository: logLocationRepository,
                 logPublishingRepository: logPublishingRepository,
                 photoLibraryVideoSaveService: photoLibraryVideoSaveService
             )
@@ -56,11 +57,6 @@ struct LogComposeFeatureView: View {
                     selectedClipLocation = viewModel.clipLocation(
                         for: clipID
                     )
-                },
-                onComplete: { destinations in
-                    Task {
-                        await viewModel.complete(destinations: destinations)
-                    }
                 }
             )
             .task {

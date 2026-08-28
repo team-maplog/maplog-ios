@@ -80,4 +80,68 @@ final class VideoCompositionConfigurationTests: XCTestCase {
         XCTAssertEqual(VideoCompositionLayout.splitTwo.requiredClipCount, 2)
         XCTAssertEqual(VideoCompositionLayout.splitThree.requiredClipCount, 3)
     }
+
+    func testVerticalSplitCaptureFrameMatchesOneDestinationSlot() {
+        let twoSplit = VideoCompositionConfiguration(layout: .splitTwo)
+        let threeSplit = VideoCompositionConfiguration(layout: .splitThree)
+
+        XCTAssertEqual(
+            twoSplit.captureFrameAspectRatio(for: 0),
+            9.0 / 8.0,
+            accuracy: 0.0001
+        )
+        XCTAssertEqual(twoSplit.captureFrameRatioTitle, "9:8")
+
+        XCTAssertEqual(
+            threeSplit.captureFrameAspectRatio(for: 2),
+            27.0 / 16.0,
+            accuracy: 0.0001
+        )
+        XCTAssertEqual(threeSplit.captureFrameRatioTitle, "27:16")
+    }
+
+    func testHorizontalSplitCaptureFrameMatchesOneDestinationSlot() {
+        let configuration = VideoCompositionConfiguration(
+            layout: .splitThree,
+            sceneOrientation: .horizontal
+        )
+
+        XCTAssertEqual(
+            configuration.captureFrameAspectRatio(for: 1),
+            16.0 / 27.0,
+            accuracy: 0.0001
+        )
+        XCTAssertEqual(configuration.captureFrameRatioTitle, "16:27")
+    }
+
+    func testSplitTimelineStartsEverySelectedClipTogether() {
+        let clips = [
+            makeClip(duration: 5),
+            makeClip(duration: 3),
+            makeClip(duration: 4)
+        ]
+        let timeline = ClipEditorTimeline(
+            clips: clips,
+            compositionConfiguration: VideoCompositionConfiguration(
+                layout: .splitThree
+            )
+        )
+
+        XCTAssertEqual(timeline.segments.count, 3)
+        XCTAssertTrue(timeline.segments.allSatisfy { $0.startTime == 0 })
+        XCTAssertTrue(timeline.segments.allSatisfy { $0.endTime == 3 })
+        XCTAssertEqual(timeline.totalDuration, 3)
+    }
+
+    private func makeClip(duration: TimeInterval) -> CaptureDraftClip {
+        CaptureDraftClip(
+            id: UUID(),
+            mediaType: .video,
+            fileURL: URL(fileURLWithPath: "/tmp/clip.mov"),
+            capturedAt: .now,
+            duration: duration,
+            location: nil,
+            timestampStyle: .none
+        )
+    }
 }

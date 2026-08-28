@@ -176,7 +176,7 @@ struct HomeMapPanel: View {
             HStack(spacing: 8) {
                 Text("\(point.sequence)번째 장소")
                     .font(.caption2.weight(.bold))
-                    .foregroundStyle(Color.maplogInk)
+                    .foregroundStyle(.white)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
                     .background(
@@ -236,7 +236,7 @@ struct HomeMapPanel: View {
                     systemImage: "play.fill"
                 )
                 .font(.caption.weight(.bold))
-                .foregroundStyle(Color.maplogInk)
+                .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 8)
                 .background(

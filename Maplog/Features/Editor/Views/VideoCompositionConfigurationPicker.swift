@@ -15,7 +15,7 @@ struct VideoCompositionConfigurationPicker: View {
     var body: some View {
         VStack(alignment: .leading, spacing: MaplogSpacing.medium) {
             VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
-                Text("장면 비율")
+                Text("완성 장면 비율")
                     .font(MaplogFont.calloutStrong)
 
                 HStack(spacing: MaplogSpacing.xSmall) {
@@ -24,7 +24,7 @@ struct VideoCompositionConfigurationPicker: View {
                     }
                 }
 
-                Text("장면 구성")
+                Text("화면 구성")
                     .font(MaplogFont.calloutStrong)
                     .padding(.top, MaplogSpacing.small)
 

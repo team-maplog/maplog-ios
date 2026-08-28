@@ -9,6 +9,19 @@ import SwiftUI
 import UIKit
 import AVFoundation
 
+/// 홈 첫 릴스 진입 중에는 부모 화면이 같은 프로필 행을 이동시킨다.
+/// 이 기준점은 이동이 끝나는 실제 릴스 안 작성자 위치를 알려 준다.
+struct HomeReelAuthorAnchorPreferenceKey: PreferenceKey {
+    static var defaultValue: [Int64: Anchor<CGRect>] = [:]
+
+    static func reduce(
+        value: inout [Int64: Anchor<CGRect>],
+        nextValue: () -> [Int64: Anchor<CGRect>]
+    ) {
+        value.merge(nextValue(), uniquingKeysWith: { _, next in next })
+    }
+}
+
 struct HomeReelPage: View {
     let reel: HomeReelViewData
     let thumbnailData: Data?
@@ -25,7 +38,12 @@ struct HomeReelPage: View {
     let onToggleLike: () -> Void
     let onToggleSave: () -> Void
     let onShowComments: () -> Void
+    let onShowAuthorProfile: () -> Void
     let onShare: () -> Void
+    /// 홈 소개 영역에서 첫 릴스가 올라올 때만 상단 모서리를 살짝 둥글게 보인다.
+    var topCornerRadius: CGFloat = 0
+    /// 홈 첫 릴스 진입 중에는 HomeView가 정보 블록 전체를 이동시킨다.
+    var usesExternalReelInfoOverlay = false
 
     @State private var isScrubbing = false
     @State private var scrubbingProgress = 0.0
@@ -81,6 +99,12 @@ struct HomeReelPage: View {
 
                 HStack(alignment: .bottom, spacing: 16) {
                     reelInformation
+                        // 캡션이 3줄이어도 장소가 하단 네비게이션과 겹치지 않도록
+                        // 정보 묶음만 트레이에서 한 단계 위로 올린다.
+                        .padding(
+                            .bottom,
+                            MaplogSpacing.xLarge + MaplogSpacing.large
+                        )
                         .frame(
                             maxWidth: .infinity,
                             alignment: .leading
@@ -96,6 +120,17 @@ struct HomeReelPage: View {
             }
         }
         .background(Color.black)
+        .clipShape(
+            UnevenRoundedRectangle(
+                cornerRadii: .init(
+                    topLeading: topCornerRadius,
+                    bottomLeading: 0,
+                    bottomTrailing: 0,
+                    topTrailing: topCornerRadius
+                ),
+                style: .continuous
+            )
+        )
         .accessibilityElement(children: .contain)
         .accessibilityLabel(
             "\(reel.authorName)의 로그, \(reel.address)"
@@ -250,19 +285,7 @@ struct HomeReelPage: View {
 
     private var reelInformation: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 6) {
-                MaplogProfileAvatar(
-                    imageData: authorProfileImageData,
-                    nickname: reel.authorName,
-                    size: 28,
-                    fallbackBackground: .white.opacity(0.22),
-                    fallbackForeground: .white,
-                    borderColor: .white.opacity(0.48)
-                )
-
-                Text(reel.authorName)
-                    .font(.headline)
-            }
+            authorProfileButton
 
             if !reel.caption.isEmpty {
                 Text(reel.caption)
@@ -271,12 +294,51 @@ struct HomeReelPage: View {
                     .lineLimit(3)
             }
 
-            Label(reel.address, systemImage: "mappin.and.ellipse")
+            HStack(spacing: MaplogSpacing.xxSmall) {
+                MaplogPinGlyphIcon(size: 13)
+
+                Text(reel.address)
+            }
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.white.opacity(0.82))
                 .lineLimit(1)
+                .accessibilityElement(children: .combine)
         }
         .foregroundStyle(.white)
+        .opacity(usesExternalReelInfoOverlay ? 0 : 1)
+        .allowsHitTesting(!usesExternalReelInfoOverlay)
+        .accessibilityHidden(usesExternalReelInfoOverlay)
+    }
+
+    private var authorProfileButton: some View {
+        Button(action: onShowAuthorProfile) {
+            HStack(spacing: 6) {
+                MaplogProfileAvatar(
+                    imageData: authorProfileImageData,
+                    nickname: reel.authorName,
+                    size: 32,
+                    fallbackBackground: .white.opacity(0.22),
+                    fallbackForeground: .white,
+                    borderColor: .white.opacity(0.64)
+                )
+
+                Text(reel.authorName)
+                    .font(.headline)
+            }
+            .frame(
+                minWidth: MaplogSize.minimumTapTarget,
+                minHeight: MaplogSize.minimumTapTarget,
+                alignment: .leading
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(reel.authorName)의 프로필")
+        .accessibilityHint("탭하면 작성자의 공개 프로필을 봅니다")
+        .anchorPreference(
+            key: HomeReelAuthorAnchorPreferenceKey.self,
+            value: .bounds
+        ) { [reel.id: $0] }
     }
 
     private var actionRail: some View {
@@ -421,7 +483,8 @@ struct HomeReelPage: View {
     }
 }
 
-private struct HomeReelMetric: View {
+/// 홈 미리보기와 전체 릴스가 동일한 세로 액션 모양을 사용한다.
+struct HomeReelMetric: View {
     let systemImage: String
     let text: String
     var tint: Color = .white

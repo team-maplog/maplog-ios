@@ -342,7 +342,7 @@ struct VlogCommentsSheet: View {
                     Button(action: sendComment) {
                         Image(systemName: "arrow.up")
                             .font(.system(size: 17, weight: .bold))
-                            .foregroundStyle(Color.maplogInk)
+                            .foregroundStyle(Color.maplogOnPrimary)
                             .frame(width: MaplogSize.controlHeight, height: MaplogSize.controlHeight)
                             .background(Color.maplogPrimary, in: Circle())
                     }

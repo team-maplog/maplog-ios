@@ -184,4 +184,36 @@ struct VideoCompositionConfiguration: Equatable, Sendable {
     var requiredClipCount: Int {
         layout.requiredClipCount
     }
+
+    /// 카메라에서 한 번에 구도를 잡아야 하는 실제 분할 칸의 가로/세로 비율입니다.
+    /// export가 `.fill`로 넣는 대상 칸과 같은 비율을 돌려주므로, 미리보기와
+    /// 완성 영상에서 보이는 중심 영역이 일치합니다.
+    func captureFrameAspectRatio(for slotIndex: Int) -> CGFloat {
+        let frames = layout.normalizedFrames(for: sceneOrientation)
+
+        guard frames.indices.contains(slotIndex) else {
+            return sceneOrientation.aspectRatio
+        }
+
+        let slot = frames[slotIndex]
+        return sceneOrientation.aspectRatio * slot.width / slot.height
+    }
+
+    /// 설정 화면에서 보여 줄, 한 컷을 촬영할 때의 실제 프레임 비율입니다.
+    var captureFrameRatioTitle: String {
+        switch (sceneOrientation, layout) {
+        case (.vertical, .single):
+            return "9:16"
+        case (.vertical, .splitTwo):
+            return "9:8"
+        case (.vertical, .splitThree):
+            return "27:16"
+        case (.horizontal, .single):
+            return "16:9"
+        case (.horizontal, .splitTwo):
+            return "8:9"
+        case (.horizontal, .splitThree):
+            return "16:27"
+        }
+    }
 }

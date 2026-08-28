@@ -453,7 +453,7 @@ struct ClipEditorView: View {
             MaplogButtonStyle(
                 variant: .brand(
                     background: .maplogLime,
-                    foreground: .maplogInk
+                    foreground: .maplogOnPrimary
                 ),
                 size: .compact,
                 fullWidth: true

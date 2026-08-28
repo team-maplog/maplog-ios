@@ -196,6 +196,7 @@ final class ProfileViewModelTests: XCTestCase {
                 profileImageURL: nil
             ),
             caption: "저장한 여행 기록",
+            tags: [],
             address: address,
             thumbnailURL: nil,
             playbackURL: nil,
@@ -232,6 +233,12 @@ private final class ProfileRepositoryStub: ProfileRepository {
         return profile
     }
 
+    func fetchPublicProfile(
+        nickname: String
+    ) async throws -> PublicProfile {
+        fatalError("This test does not request a public profile.")
+    }
+
     func fetchMyLogs(
         cursor: String?,
         size: Int
@@ -247,6 +254,14 @@ private final class ProfileRepositoryStub: ProfileRepository {
         }
 
         return pages.removeFirst()
+    }
+
+    func fetchPublicProfileLogs(
+        nickname: String,
+        cursor: String?,
+        size: Int
+    ) async throws -> ProfileLogPage {
+        fatalError("This test does not request public profile logs.")
     }
 
     func updateMyProfile(

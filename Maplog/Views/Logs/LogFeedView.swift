@@ -307,7 +307,7 @@ struct LogFeedView: View {
             } label: {
                 Label("추천 피드 둘러보기", systemImage: "play.rectangle.fill")
                     .font(.system(size: 16, weight: .black))
-                    .foregroundStyle(Color.maplogInk)
+                    .foregroundStyle(Color.maplogOnPrimary)
                     .frame(maxWidth: .infinity)
                     .frame(height: 52)
                     .background(Color.maplogLime)
@@ -348,7 +348,7 @@ struct LogFeedView: View {
             } label: {
                 Text("팔로우")
                     .font(.system(size: 12, weight: .black))
-                    .foregroundStyle(Color.maplogInk)
+                    .foregroundStyle(Color.maplogOnPrimary)
                     .padding(.horizontal, MaplogSpacing.small)
                     .frame(height: 34)
                     .background(Color.maplogLime)
@@ -451,7 +451,7 @@ struct LogFeedView: View {
         } label: {
             Label("루트 따라가기", systemImage: "location.north.fill")
                 .font(.subheadline.weight(.bold))
-                .foregroundStyle(Color.maplogInk)
+                .foregroundStyle(Color.maplogOnPrimary)
                 .padding(.horizontal, 14)
                 .frame(minHeight: 40)
                 .background(Color.maplogLime)
@@ -904,7 +904,7 @@ struct PopularMaplogDetailView: View {
             } label: {
                 Label("따라가기 시작", systemImage: "play.circle.fill")
                     .font(MaplogFont.cardTitle)
-                    .foregroundStyle(Color.maplogInk)
+                    .foregroundStyle(Color.maplogOnPrimary)
                     .frame(maxWidth: .infinity)
                     .frame(height: 64)
                     .background(Color.maplogLime, in: RoundedRectangle(cornerRadius: MaplogRadius.large, style: .continuous))
@@ -1052,7 +1052,7 @@ struct VlogPlaceInfoSheet: View {
                                 if index == 0 {
                                     Text("대표")
                                         .font(.system(size: 11, weight: .black))
-                                        .foregroundStyle(Color.maplogInk)
+                                        .foregroundStyle(Color.maplogOnPrimary)
                                         .padding(.horizontal, 9)
                                         .padding(.vertical, 5)
                                         .background(Color.maplogLime)
@@ -1193,7 +1193,7 @@ struct VlogPlaceInfoSheet: View {
             } label: {
                 Label(routeAdded ? "내 루트에 추가됨" : "내 루트에 추가", systemImage: routeAdded ? "checkmark" : "plus")
                     .font(MaplogFont.sectionTitle)
-                    .foregroundStyle(Color.maplogInk)
+                    .foregroundStyle(Color.maplogOnPrimary)
                     .frame(maxWidth: .infinity)
                     .frame(height: 58)
                     .background(Color.maplogLime)
@@ -1569,7 +1569,7 @@ private struct LegacyVlogCommentsSheet: View {
                 Button(action: sendComment) {
                     Image(systemName: "arrow.up")
                         .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(Color.maplogInk)
+                        .foregroundStyle(Color.maplogOnPrimary)
                         .frame(width: 46, height: 46)
                         .background(Color.maplogLime, in: Circle())
                 }
@@ -1880,7 +1880,7 @@ struct OtherProfileView: View {
                     if isBlocked {
                         Text("차단됨")
                             .font(.system(size: 12, weight: .black))
-                            .foregroundStyle(Color.maplogInk)
+                            .foregroundStyle(Color.maplogOnPrimary)
                             .padding(.horizontal, 10)
                             .frame(height: 26)
                             .background(Color.maplogLime)
@@ -2608,7 +2608,7 @@ struct RouteDetailView: View {
             } label: {
                 Label(isGuidingRoute ? "안내 중 · \(currentRouteIndex + 1)/\(trip.spots.count)" : "지도에서 따라가기", systemImage: "location.north.fill")
                     .font(MaplogFont.cardTitle)
-                    .foregroundStyle(Color.maplogInk)
+                    .foregroundStyle(Color.maplogOnPrimary)
                     .frame(maxWidth: .infinity)
                     .frame(height: 56)
                     .background(Color.maplogLime, in: RoundedRectangle(cornerRadius: MaplogRadius.large, style: .continuous))
@@ -2697,7 +2697,7 @@ private struct RouteStartSheet: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("루트 시작")
                         .font(.system(size: 12, weight: .black))
-                        .foregroundStyle(Color.maplogInk)
+                        .foregroundStyle(Color.maplogOnPrimary)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 5)
                         .background(Color.maplogLime)

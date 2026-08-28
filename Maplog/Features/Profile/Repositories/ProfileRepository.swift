@@ -3,7 +3,17 @@ import Foundation
 protocol ProfileRepository {
     func fetchMyProfile() async throws -> MyProfile
 
+    func fetchPublicProfile(
+        nickname: String
+    ) async throws -> PublicProfile
+
     func fetchMyLogs(
+        cursor: String?,
+        size: Int
+    ) async throws -> ProfileLogPage
+
+    func fetchPublicProfileLogs(
+        nickname: String,
         cursor: String?,
         size: Int
     ) async throws -> ProfileLogPage

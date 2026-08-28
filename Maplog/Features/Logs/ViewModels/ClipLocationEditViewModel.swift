@@ -181,7 +181,7 @@ final class ClipLocationEditViewModel: ObservableObject {
 
                 isResolvingLocation = false
                 locationResolutionError =
-                    ClipLocationEditErrorPolicy.presentation(
+                    LogLocationErrorPolicy.presentation(
                         for: error
                     )
             }

@@ -1166,7 +1166,7 @@ private struct CaptureTextStickerSheet: View {
                 } label: {
                     Text("적용")
                         .font(.system(size: 16, weight: .black))
-                        .foregroundStyle(Color.maplogInk)
+                        .foregroundStyle(Color.maplogOnPrimary)
                         .frame(maxWidth: .infinity)
                         .frame(height: 52)
                         .background(Color.maplogLime)
@@ -1218,7 +1218,7 @@ private struct CaptureGallerySheet: View {
                             .overlay(alignment: .topLeading) {
                                 Text("0\(index + 1)")
                                     .font(.system(size: 11, weight: .black))
-                                    .foregroundStyle(Color.maplogInk)
+                                    .foregroundStyle(Color.maplogOnPrimary)
                                     .padding(.horizontal, 7)
                                     .frame(height: 22)
                                     .background(Color.maplogLime)
@@ -1350,7 +1350,7 @@ struct PlaceMatchingView: View {
             } label: {
                 Text("장소 확정하기")
                     .font(MaplogFont.cardTitle)
-                    .foregroundStyle(Color.maplogInk)
+                    .foregroundStyle(Color.maplogOnPrimary)
                     .frame(maxWidth: .infinity)
                     .frame(height: 58)
                     .background(Color.maplogLime)
@@ -1787,7 +1787,7 @@ struct UploadView: View {
             } label: {
                 Text("게시하기")
                     .font(MaplogFont.cardTitle)
-                    .foregroundStyle(Color.maplogInk)
+                    .foregroundStyle(Color.maplogOnPrimary)
                     .frame(maxWidth: .infinity)
                     .frame(height: 56)
                     .background(Color.maplogLime)
@@ -1835,7 +1835,7 @@ struct UploadView: View {
         HStack(spacing: MaplogSpacing.small) {
             Image(systemName: "tray.and.arrow.down.fill")
                 .font(.system(size: 18, weight: .black))
-                .foregroundStyle(Color.maplogInk)
+                .foregroundStyle(Color.maplogOnPrimary)
                 .frame(width: 42, height: 42)
                 .background(Color.maplogLime)
                 .clipShape(Circle())
@@ -2173,7 +2173,7 @@ private struct CoverEditSheet: View {
                                     if selectedStyle == style {
                                         Image(systemName: "checkmark")
                                             .font(.system(size: 12, weight: .black))
-                                            .foregroundStyle(Color.maplogInk)
+                                            .foregroundStyle(Color.maplogOnPrimary)
                                             .frame(width: 26, height: 26)
                                             .background(Color.maplogLime)
                                             .clipShape(Circle())

@@ -1,5 +1,33 @@
 import SwiftUI
 
+/// 사용자 제공 지도 글리프를 앱 전반에서 같은 비율로 사용한다.
+struct MaplogMapGlyphIcon: View {
+    var size: CGFloat = MaplogSize.iconMedium
+
+    var body: some View {
+        Image("MaplogMapGlyph")
+            .renderingMode(.template)
+            .resizable()
+            .scaledToFit()
+            .frame(width: size, height: size)
+            .accessibilityHidden(true)
+    }
+}
+
+/// 사용자 제공 위치 핀 글리프를 주소 메타데이터에 사용한다.
+struct MaplogPinGlyphIcon: View {
+    var size: CGFloat = MaplogSize.iconSmall
+
+    var body: some View {
+        Image("MaplogPinGlyph")
+            .renderingMode(.template)
+            .resizable()
+            .scaledToFit()
+            .frame(width: size, height: size)
+            .accessibilityHidden(true)
+    }
+}
+
 struct MaplogSectionHeader<Action: View>: View {
     let title: String
     var systemImage: String?

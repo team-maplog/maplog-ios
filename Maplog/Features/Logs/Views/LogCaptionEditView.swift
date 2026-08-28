@@ -1,12 +1,12 @@
 import SwiftUI
 import UIKit
 
-/// 상세 화면과 분리된 캡션 수정 화면입니다.
-/// 현재 서버 계약은 caption만 PATCH할 수 있으므로 장소는 읽기 전용으로 표시합니다.
+/// 상세 화면과 분리된 로그 수정 화면입니다. 장소는 읽기 전용으로 표시합니다.
 struct LogCaptionEditView: View {
     @Environment(\.dismiss) private var dismiss
 
     @Binding var caption: String
+    let selectedTags: Set<LogTag>
 
     let thumbnailData: Data?
     let address: String
@@ -14,6 +14,7 @@ struct LogCaptionEditView: View {
     let formMessage: String?
     let captionMessage: String?
     let recoveryAction: ErrorPresentation.RecoveryAction?
+    let onTagToggle: (LogTag) -> Void
     let onSave: () -> Void
     let onCancel: () -> Void
     let onSignIn: () -> Void
@@ -29,6 +30,7 @@ struct LogCaptionEditView: View {
             VStack(alignment: .leading, spacing: MaplogSpacing.xLarge) {
                 LogCaptionEditPreview(thumbnailData: thumbnailData)
                 captionEditor
+                tagEditor
                 placeRow
             }
             .maplogPagePadding()
@@ -142,6 +144,19 @@ struct LogCaptionEditView: View {
                 .frame(height: 1)
         }
         .accessibilityHint("현재 장소 수정은 지원하지 않습니다")
+    }
+
+    private var tagEditor: some View {
+        VStack(alignment: .leading, spacing: MaplogSpacing.small) {
+            Text("태그")
+                .font(MaplogFont.caption)
+                .foregroundStyle(Color.maplogMuted)
+
+            LogTagPicker(
+                selectedTags: selectedTags,
+                onToggle: onTagToggle
+            )
+        }
     }
 
     private func cancel() {

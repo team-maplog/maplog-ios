@@ -30,6 +30,7 @@ final class LogDetailViewModelTests: XCTestCase {
 
         XCTAssertTrue(didSave)
         XCTAssertEqual(repository.updatedCaption, "수정한 캡션")
+        XCTAssertEqual(repository.updatedTags, [])
         XCTAssertEqual(viewModel.detail?.caption, "수정한 캡션")
     }
 
@@ -188,6 +189,7 @@ final class LogDetailViewModelTests: XCTestCase {
                 profileImageURL: nil
             ),
             caption: "기존 캡션",
+            tags: [],
             address: "서울 성동구",
             thumbnailURL: nil,
             playbackURL: nil,
@@ -208,6 +210,7 @@ private final class LogDetailRepositoryStub: LogDetailRepository {
     private let updateError: Error?
 
     private(set) var updatedCaption: String?
+    private(set) var updatedTags: [LogTag]?
 
     init(
         detail: LogDetail,
@@ -229,16 +232,20 @@ private final class LogDetailRepositoryStub: LogDetailRepository {
         return detail
     }
 
-    func updateCaption(
+    func updateLog(
         logID: Int64,
-        caption: String
-    ) async throws -> LogCaptionUpdateResult {
+        draft: LogUpdateDraft
+    ) async throws -> LogUpdateResult {
         if let updateError {
             throw updateError
         }
 
-        updatedCaption = caption
-        return LogCaptionUpdateResult(caption: caption)
+        updatedCaption = draft.caption
+        updatedTags = draft.tags
+        return LogUpdateResult(
+            caption: draft.caption ?? detail.caption,
+            tags: draft.tags ?? detail.tags
+        )
     }
 
     func deleteLog(
@@ -283,6 +290,11 @@ private final class VideoPlaybackServiceStub: VideoPlaybackService {
 
     func loadVideoSequence(
         from urls: [URL]
+    ) async throws {}
+
+    func loadVideoComposition(
+        from clips: [CaptureDraftClip],
+        configuration: VideoCompositionConfiguration
     ) async throws {}
 
     func seek(to seconds: TimeInterval) {}

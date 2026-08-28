@@ -313,7 +313,7 @@ private struct ThemeAlertSettingsSheet: View {
             } label: {
                 Label("설정 완료", systemImage: "checkmark")
                     .font(MaplogFont.cardTitle)
-                    .foregroundStyle(Color.maplogInk)
+                    .foregroundStyle(Color.maplogOnPrimary)
                     .frame(maxWidth: .infinity)
                     .frame(height: 54)
                     .background(Color.maplogLime)
@@ -595,7 +595,7 @@ struct NearbyRecommendationsView: View {
             } label: {
                 Text("전체 보기")
                     .font(.system(size: 15, weight: .black))
-                    .foregroundStyle(Color.maplogInk)
+                    .foregroundStyle(Color.maplogOnPrimary)
                     .padding(.horizontal, 18)
                     .frame(height: 42)
                     .background(Color.maplogLime)
@@ -918,7 +918,7 @@ struct MapSearchView: View {
                     .foregroundStyle(Color.maplogInk)
                 Text("\(searchResults.count)")
                     .font(.system(size: 13, weight: .black))
-                    .foregroundStyle(Color.maplogInk)
+                    .foregroundStyle(Color.maplogOnPrimary)
                     .padding(.horizontal, 9)
                     .padding(.vertical, 5)
                     .background(Color.maplogLime)
@@ -983,7 +983,7 @@ struct MapSearchView: View {
                 } label: {
                     Label("추천 검색", systemImage: "sparkles")
                         .font(.system(size: 14, weight: .black))
-                        .foregroundStyle(Color.maplogInk)
+                        .foregroundStyle(Color.maplogOnPrimary)
                         .frame(maxWidth: .infinity)
                         .frame(height: 44)
                         .background(Color.maplogLime)
@@ -1054,7 +1054,7 @@ struct MapSearchView: View {
                     } label: {
                         Label("이 장소 선택", systemImage: "checkmark.circle.fill")
                             .font(.system(size: 15, weight: .black))
-                            .foregroundStyle(Color.maplogInk)
+                            .foregroundStyle(Color.maplogOnPrimary)
                             .frame(maxWidth: .infinity)
                             .frame(height: 50)
                             .background(Color.maplogLime)
@@ -1081,7 +1081,7 @@ struct MapSearchView: View {
                 } label: {
                     Label("상세보기", systemImage: "chevron.right")
                         .font(.system(size: 15, weight: .black))
-                        .foregroundStyle(Color.maplogInk)
+                        .foregroundStyle(Color.maplogOnPrimary)
                         .frame(maxWidth: .infinity)
                         .frame(height: 50)
                         .background(Color.maplogLime)
@@ -1165,7 +1165,7 @@ private struct MapSearchResultCard: View {
                     if isSelected {
                         Image(systemName: "checkmark")
                             .font(.system(size: 11, weight: .black))
-                            .foregroundStyle(Color.maplogInk)
+                            .foregroundStyle(Color.maplogOnPrimary)
                             .frame(width: 24, height: 24)
                             .background(Color.maplogLime)
                             .clipShape(Circle())
@@ -1346,7 +1346,7 @@ struct RouteLibraryView: View {
                         .frame(width: 112, height: 112)
                     Image(systemName: "bookmark.fill")
                         .font(.system(size: 22, weight: .bold))
-                        .foregroundStyle(Color.maplogInk)
+                        .foregroundStyle(Color.maplogOnPrimary)
                         .frame(width: 46, height: 46)
                         .background(Color.maplogLime)
                         .clipShape(Circle())
@@ -1371,7 +1371,7 @@ struct RouteLibraryView: View {
                     } label: {
                         Label("지도에서 탐색하기", systemImage: "safari")
                             .font(.system(size: 18, weight: .black))
-                            .foregroundStyle(Color.maplogInk)
+                            .foregroundStyle(Color.maplogOnPrimary)
                             .frame(maxWidth: .infinity)
                             .frame(height: 58)
                             .background(Color.maplogLime)
@@ -1416,7 +1416,7 @@ struct RouteLibraryView: View {
 
                     Text(sortMode)
                         .font(.system(size: 12, weight: .black))
-                        .foregroundStyle(Color.maplogInk)
+                        .foregroundStyle(Color.maplogOnPrimary)
                         .padding(.horizontal, 10)
                         .frame(height: 30)
                         .background(Color.maplogLime)
@@ -1429,7 +1429,7 @@ struct RouteLibraryView: View {
                     HStack(spacing: MaplogSpacing.small) {
                         Image(systemName: "plus")
                             .font(.system(size: 15, weight: .black))
-                            .foregroundStyle(Color.maplogInk)
+                            .foregroundStyle(Color.maplogOnPrimary)
                             .frame(width: 36, height: 36)
                             .background(Color.maplogLime)
                             .clipShape(Circle())
@@ -1590,7 +1590,7 @@ private struct RouteLibraryOptionRow: View {
             HStack(spacing: MaplogSpacing.small) {
                 Image(systemName: systemImage)
                     .font(.system(size: 17, weight: .bold))
-                    .foregroundStyle(Color.maplogInk)
+                    .foregroundStyle(Color.maplogOnPrimary)
                     .frame(width: 38, height: 38)
                     .background(Color.maplogLime.opacity(0.72))
                     .clipShape(Circle())
@@ -1654,7 +1654,7 @@ struct SuggestedRouteSheet: View {
                         VStack(spacing: 6) {
                             Text("\(index + 1)")
                                 .font(.system(size: 11, weight: .black))
-                                .foregroundStyle(Color.maplogInk)
+                                .foregroundStyle(Color.maplogOnPrimary)
                                 .frame(width: 24, height: 24)
                                 .background(Color.maplogLime)
                                 .clipShape(Circle())
@@ -1691,7 +1691,7 @@ struct SuggestedRouteSheet: View {
                     } label: {
                         Label("루트 보기", systemImage: "map.fill")
                             .font(.system(size: 17, weight: .bold))
-                            .foregroundStyle(Color.maplogInk)
+                            .foregroundStyle(Color.maplogOnPrimary)
                             .frame(maxWidth: .infinity)
                             .frame(height: 58)
                             .background(Color.maplogLime)

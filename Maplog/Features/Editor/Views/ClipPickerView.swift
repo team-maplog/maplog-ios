@@ -29,14 +29,19 @@ struct ClipPickerView: View {
     let onConfirmSelection: ([CaptureDraftClip]) -> Void // 선택 결과를 Feature에 전달하는 통로
     
     
-    private let gridColumns = Array(
-        repeating: GridItem(
-            .flexible(minimum: 0),
+    // 썸네일의 최소·최대 너비를 그리드가 직접 관리한다.
+    // 카드가 자신의 이미지 크기 때문에 이웃 열까지 넓어지는 것을 막고,
+    // 좁은 화면에서는 자동으로 두 열로 전환한다.
+    private let gridColumns = [
+        GridItem(
+            .adaptive(
+                minimum: 104,
+                maximum: 120
+            ),
             spacing: MaplogSpacing.xSmall,
             alignment: .top
-        ),
-        count: 3
-    )
+        )
+    ]
     
     var body: some View {
         let isImporting = viewModel.isImporting
@@ -191,9 +196,10 @@ struct ClipPickerView: View {
                                         item: item,
                                         selectionOrder: selectionOrder
                                     )
-                                    .frame(maxWidth: .infinity, alignment: .top)
                                 }
                                 .buttonStyle(.plain)
+                                .contentShape(Rectangle())
+                                .id(item.id)
                                 .accessibilityLabel(
                                     "\(item.capturedAtText) 촬영 클립"
                                 )

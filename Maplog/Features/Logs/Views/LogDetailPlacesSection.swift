@@ -40,7 +40,7 @@ private struct LogDetailPlaceCard: View {
                 HStack(spacing: MaplogSpacing.xxSmall) {
                     Text("\(clip.displayOrder + 1)")
                         .font(.caption2.weight(.bold))
-                        .foregroundStyle(Color.maplogInk)
+                        .foregroundStyle(Color.maplogOnPrimary)
                         .frame(width: 18, height: 18)
                         .background(Color.maplogLime, in: Circle())
 

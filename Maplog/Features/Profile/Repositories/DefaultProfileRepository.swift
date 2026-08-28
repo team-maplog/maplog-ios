@@ -15,11 +15,43 @@ final class DefaultProfileRepository: ProfileRepository {
         return makeMyProfile(from: dto)
     }
 
+    func fetchPublicProfile(
+        nickname: String
+    ) async throws -> PublicProfile {
+        let dto = try await apiService.fetchPublicProfile(
+            nickname: nickname
+        )
+
+        return try makePublicProfile(from: dto)
+    }
+
     func fetchMyLogs(
         cursor: String?,
         size: Int
     ) async throws -> ProfileLogPage {
         let pageDTO = try await apiService.fetchMyLogs(
+            cursor: cursor,
+            size: size
+        )
+
+        let logs = try pageDTO.content.map(
+            makeProfileLog
+        )
+
+        return ProfileLogPage(
+            logs: logs,
+            hasNext: pageDTO.hasNext,
+            nextCursor: pageDTO.nextCursor
+        )
+    }
+
+    func fetchPublicProfileLogs(
+        nickname: String,
+        cursor: String?,
+        size: Int
+    ) async throws -> ProfileLogPage {
+        let pageDTO = try await apiService.fetchPublicProfileLogs(
+            nickname: nickname,
             cursor: cursor,
             size: size
         )
@@ -86,6 +118,22 @@ final class DefaultProfileRepository: ProfileRepository {
         )
     }
 
+    private func makePublicProfile(
+        from dto: PublicProfileResponseDTO
+    ) throws -> PublicProfile {
+        PublicProfile(
+            id: dto.userID,
+            nickname: dto.nickname,
+            profileImageURL: url(from: dto.profileImageURL),
+            bio: dto.bio ?? "",
+            followerCount: dto.followerCount,
+            followingCount: dto.followingCount,
+            logCount: dto.logCount,
+            isFollowedByViewer: dto.followedByViewer,
+            createdAt: try date(from: dto.createdAt)
+        )
+    }
+
     private func makeProfileLog(
         from dto: ProfileLogResponseDTO
     ) throws -> ProfileLog {
@@ -145,6 +193,12 @@ final class DefaultProfileRepository: ProfileRepository {
             return date
         }
 
+        if let date = localDateTimeWithoutFractionalSecondsFormatter.date(
+            from: value
+        ) {
+            return date
+        }
+
         throw ProfileRepositoryError.invalidCreatedAt(
             value: value
         )
@@ -179,6 +233,15 @@ final class DefaultProfileRepository: ProfileRepository {
         formatter.calendar = Calendar(identifier: .gregorian)
         formatter.timeZone = TimeZone(identifier: "Asia/Seoul")
         formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS"
+        return formatter
+    }()
+
+    private let localDateTimeWithoutFractionalSecondsFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.timeZone = TimeZone(identifier: "Asia/Seoul")
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
         return formatter
     }()
 }

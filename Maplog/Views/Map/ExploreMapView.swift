@@ -218,7 +218,10 @@ struct ExploreMapView: View {
                             }
                         }
                     } label: {
-                        ChipView(title: filter, isSelected: viewModel.selectedFilter == filter)
+                        mapFilterChip(
+                            title: filter,
+                            isSelected: viewModel.selectedFilter == filter
+                        )
                     }
                     .buttonStyle(MaplogPressFeedbackStyle())
                 }
@@ -226,6 +229,19 @@ struct ExploreMapView: View {
             .padding(.vertical, 8)
         }
         .contentMargins(.horizontal, MaplogSpacing.page, for: .scrollContent)
+    }
+
+    private func mapFilterChip(title: String, isSelected: Bool) -> some View {
+        Text(title)
+            .font(MaplogFont.calloutStrong)
+            .foregroundStyle(isSelected ? Color.white : Color.maplogMuted)
+            .padding(.horizontal, MaplogSpacing.medium)
+            .frame(height: MaplogSize.chipHeight)
+            .background(
+                isSelected ? Color.maplogPrimary : .clear,
+                in: Capsule()
+            )
+            .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
     
     private func routeSheet(for screenHeight: CGFloat) -> some View {
@@ -694,7 +710,7 @@ struct MockMapCanvas: View {
                             if selectedSpot?.id == spot.id {
                                 Text("\(index + 1)")
                                     .font(.system(size: 12, weight: .black))
-                                    .foregroundStyle(Color.maplogInk)
+                                    .foregroundStyle(Color.maplogOnPrimary)
                                     .frame(width: 23, height: 23)
                                     .background(Color.maplogLime)
                                     .clipShape(Circle())

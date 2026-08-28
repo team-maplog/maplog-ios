@@ -17,7 +17,6 @@ struct LogComposeView: View {
     let previewPlayer: AVPlayer
     let onCoverChangeTap: () -> Void
     let onClipLocationTap: (UUID) -> Void
-    let onComplete: (Set<LogPublicationDestination>) -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var isPublicationDestinationPresented = false
@@ -50,13 +49,13 @@ struct LogComposeView: View {
         .maplogNavigationAppearance()
         .safeAreaInset(edge: .bottom) {
             PrimaryActionButton(
-                viewModel.isPublishing
+                viewModel.isPerformingPublicationAction
                 ? "처리 중..."
                 : "발행 옵션",
-                systemImage: viewModel.isPublishing
+                systemImage: viewModel.isPerformingPublicationAction
                 ? nil
                 : "paperplane.fill",
-                isEnabled: !viewModel.isPublishing
+                isEnabled: !viewModel.isPerformingPublicationAction
             ) {
                 isPublicationDestinationPresented = true
             }
@@ -64,59 +63,12 @@ struct LogComposeView: View {
             .padding(.vertical, MaplogSpacing.small)
             .background(Color.maplogSurface)
         }
-        .alert(
-            "작업을 완료하지 못했어요",
-            isPresented: Binding(
-                get: { viewModel.publishError != nil },
-                set: { isPresented in
-                    if !isPresented {
-                        viewModel.dismissPublishError()
-                    }
-                }
-            )
-        ) {
-            if viewModel.publishError?.recoveryAction == .retry {
-                Button("다시 시도") {
-                    isPublicationDestinationPresented = true
-                }
-            }
-
-            Button("확인", role: .cancel) {
-                viewModel.dismissPublishError()
-            }
-        } message: {
-            Text(viewModel.publishError?.message ?? "")
-        }
-        .alert(
-            "완료했어요",
-            isPresented: Binding(
-                get: { viewModel.publicationCompletion != nil },
-                set: { isPresented in
-                    if !isPresented {
-                        viewModel.dismissPublicationCompletion()
-                    }
-                }
-            )
-        ) {
-            Button("확인") {
-                let shouldMoveHome = viewModel.publicationCompletion?.publishedLog != nil
-                viewModel.dismissPublicationCompletion()
-
-                if shouldMoveHome {
+        .navigationDestination(isPresented: $isPublicationDestinationPresented) {
+            LogPublicationOptionsView(
+                viewModel: viewModel,
+                previewPlayer: previewPlayer,
+                onMaplogPublished: {
                     selectTab(.home)
-                }
-            }
-        } message: {
-            Text(viewModel.publicationCompletion?.message ?? "")
-        }
-        .sheet(isPresented: $isPublicationDestinationPresented) {
-            LogPublicationDestinationSheet(
-                videoFileURL: viewModel.video.fileURL,
-                canComplete: viewModel.canComplete,
-                isCompleting: viewModel.isPublishing,
-                onComplete: { destinations in
-                    isPublicationDestinationPresented = false
-                    onComplete(destinations)
                 }
             )
         }
@@ -281,9 +233,13 @@ struct LogComposeView: View {
         VStack(alignment: .leading, spacing: MaplogSpacing.small) {
             SectionHeader(title: "피드에 기록")
 
+            Text("여행 이야기와 해시태그를 남기면 검색에서 더 쉽게 발견돼요.")
+                .font(MaplogFont.caption)
+                .foregroundStyle(Color.maplogTextSecondary)
+
             ZStack(alignment: .topLeading) {
                 if viewModel.caption.isEmpty {
-                    Text("영상과 함께 남기고 싶은 이야기를 적어보세요.")
+                    Text("영상과 함께 남기고 싶은 여행 이야기를 적어보세요.\n#성수카페 #한강산책")
                         .font(MaplogFont.body)
                         .foregroundStyle(Color.maplogTextTertiary)
                         .padding(.horizontal, MaplogSpacing.medium)
@@ -291,17 +247,66 @@ struct LogComposeView: View {
                         .allowsHitTesting(false)
                 }
 
-                TextEditor(text: $viewModel.caption)
-                    .font(MaplogFont.body)
-                    .foregroundStyle(Color.maplogInk)
-                    .frame(minHeight: 120)
-                    .padding(MaplogSpacing.xSmall)
-                    .scrollContentBackground(.hidden)
+                LogHashtagTextEditor(
+                    text: $viewModel.caption,
+                    isFocused: $isCaptionFocused
+                )
+                    .frame(minHeight: 148)
                     .accessibilityLabel("피드 내용")
+                    .accessibilityHint("본문에 #해시태그를 입력하면 통합 검색 키워드로 저장됩니다")
+                    .accessibilityValue(
+                        viewModel.hashtags.isEmpty
+                        ? "해시태그 없음"
+                        : "해시태그 \(viewModel.hashtagPreviewText)"
+                    )
                     .focused($isCaptionFocused)
             }
             .maplogCard()
+
+            hashtagInputGuide
         }
+    }
+
+    private var hashtagInputGuide: some View {
+        VStack(alignment: .leading, spacing: MaplogSpacing.xxSmall) {
+            HStack(spacing: MaplogSpacing.xxSmall) {
+                Label(
+                    "검색 해시태그 \(viewModel.hashtagCountText)",
+                    systemImage: "number"
+                )
+                .font(MaplogFont.caption)
+                .foregroundStyle(
+                    viewModel.hashtagValidationMessage == nil
+                    ? Color.maplogPrimary
+                    : Color.maplogDanger
+                )
+
+                Spacer()
+
+                Text("최대 10개")
+                    .font(MaplogFont.caption)
+                    .foregroundStyle(Color.maplogTextSecondary)
+            }
+
+            if let message = viewModel.hashtagValidationMessage {
+                Text(message)
+                    .font(MaplogFont.caption)
+                    .foregroundStyle(Color.maplogDanger)
+                    .accessibilityAddTraits(.isStaticText)
+            } else if viewModel.hashtags.isEmpty {
+                Text("예: #성수카페 #한강산책 · 장소와 여행 주제를 더하면 사람들이 내 로그를 더 쉽게 찾을 수 있어요.")
+                    .font(MaplogFont.caption)
+                    .foregroundStyle(Color.maplogTextSecondary)
+            } else {
+                Text(viewModel.hashtagPreviewText)
+                    .font(MaplogFont.caption)
+                    .foregroundStyle(Color.maplogPrimary)
+                    .lineLimit(2)
+                    .accessibilityLabel("추출된 검색 해시태그")
+                    .accessibilityValue(viewModel.hashtagPreviewText)
+            }
+        }
+        .padding(.horizontal, MaplogSpacing.xSmall)
     }
 
     private var clipLocationSection: some View {
@@ -314,6 +319,30 @@ struct LogComposeView: View {
                 Text(viewModel.clipLocationCountText)
                     .font(MaplogFont.calloutStrong)
                     .foregroundStyle(Color.maplogPrimary)
+            }
+
+            Text(
+                viewModel.isResolvingClipLocations
+                ? "촬영 위치를 자동으로 확인하고 있어요."
+                : "촬영 위치는 자동으로 기록돼요. 필요할 때만 수정하세요."
+            )
+            .font(MaplogFont.caption)
+            .foregroundStyle(Color.maplogTextSecondary)
+
+            if let error = viewModel.locationResolutionError {
+                Text(error.message)
+                    .font(MaplogFont.caption)
+                    .foregroundStyle(Color.maplogDanger)
+            }
+
+            if viewModel.canRetryLocationResolution {
+                Button("위치 다시 조회") {
+                    Task {
+                        await viewModel.retryLocationResolution()
+                    }
+                }
+                .font(MaplogFont.caption)
+                .foregroundStyle(Color.maplogPrimary)
             }
 
             LazyVStack(spacing: MaplogSpacing.xSmall) {
@@ -336,6 +365,7 @@ struct LogComposeView: View {
             }
         }
     }
+
 }
 
 private enum LogComposeLayout {

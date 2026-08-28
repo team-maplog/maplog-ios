@@ -529,7 +529,7 @@ struct SpotDetailView: View {
                 MaplogButtonStyle(
                     variant: isInRoute
                         ? .tonal
-                        : .brand(background: .maplogLime, foreground: .maplogInk),
+                        : .brand(background: .maplogLime, foreground: .maplogOnPrimary),
                     size: .large,
                     fullWidth: true
                 )
@@ -762,7 +762,7 @@ struct SpotShareSheet: View {
             } label: {
                 Label("내 지도에 고정", systemImage: "pin.fill")
                     .font(MaplogFont.cardTitle)
-                    .foregroundStyle(Color.maplogInk)
+                    .foregroundStyle(Color.maplogOnPrimary)
                     .frame(maxWidth: .infinity)
                     .frame(height: 54)
                     .background(Color.maplogLime)
@@ -839,7 +839,7 @@ private struct SpotReviewCard: View {
 
                 Label("\(rating).0", systemImage: "star.fill")
                     .font(.system(size: 12, weight: .black))
-                    .foregroundStyle(Color.maplogInk)
+                    .foregroundStyle(Color.maplogOnPrimary)
                     .padding(.horizontal, 9)
                     .padding(.vertical, 6)
                     .background(Color.maplogLime.opacity(0.55))

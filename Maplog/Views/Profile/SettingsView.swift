@@ -635,7 +635,7 @@ private struct SecuritySettingsSheet: View {
                 } label: {
                     Label("저장", systemImage: "checkmark")
                         .font(.system(size: 16, weight: .black))
-                        .foregroundStyle(Color.maplogInk)
+                        .foregroundStyle(Color.maplogOnPrimary)
                         .frame(maxWidth: .infinity)
                         .frame(height: 52)
                         .background(Color.maplogLime)
@@ -674,7 +674,7 @@ private struct SecurityDeviceRow: View {
             if isCurrent {
                 Text("현재")
                     .font(.system(size: 11, weight: .black))
-                    .foregroundStyle(Color.maplogInk)
+                    .foregroundStyle(Color.maplogOnPrimary)
                     .padding(.horizontal, MaplogSpacing.xSmall)
                     .frame(height: 24)
                     .background(Color.maplogLime)

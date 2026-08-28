@@ -5,144 +5,148 @@
 
 import SwiftUI
 
-struct CameraCompositionConfigurationSheet: View {
+/// 촬영 화면에서 분할과 장면 비율을 바로 바꾸는 인라인 선택기입니다.
+/// 별도의 적용 단계 없이 한 항목을 누르는 즉시 카메라 프리뷰에도 반영합니다.
+struct CameraCompositionQuickPicker: View {
     let configuration: VideoCompositionConfiguration
     let onConfigurationChange: (VideoCompositionConfiguration) -> Void
 
-    @Environment(\.dismiss) private var dismiss
-    @State private var draftConfiguration: VideoCompositionConfiguration
-
-    init(
-        configuration: VideoCompositionConfiguration,
-        onConfigurationChange: @escaping (VideoCompositionConfiguration) -> Void
-    ) {
-        self.configuration = configuration
-        self.onConfigurationChange = onConfigurationChange
-        _draftConfiguration = State(initialValue: configuration)
-    }
-
     var body: some View {
-        NavigationStack {
-            VStack(alignment: .leading, spacing: MaplogSpacing.section) {
-                VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
-                    Text("촬영 구성")
-                        .font(MaplogFont.screenTitle)
+        VStack(alignment: .leading, spacing: MaplogSpacing.small) {
+            HStack(spacing: MaplogSpacing.xSmall) {
+                Image("MaplogCollageGlyph")
+                    .renderingMode(.template)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 18, height: 18)
 
-                    Text("장면을 차례로 촬영한 뒤 선택한 구성으로 한 영상에 배치해요.")
-                        .font(MaplogFont.callout)
-                        .foregroundStyle(Color.maplogTextSecondary)
-                }
+                Text("촬영 구성")
+                    .font(MaplogFont.calloutStrong)
 
-                VideoCompositionConfigurationPicker(
-                    configuration: draftConfiguration,
-                    selectedClipCount: draftConfiguration.requiredClipCount,
-                    onLayoutSelect: { layout in
-                        draftConfiguration.layout = layout
-                    },
-                    onSceneOrientationSelect: { orientation in
-                        draftConfiguration.sceneOrientation = orientation
-                    }
-                )
+                Spacer(minLength: 0)
 
-                Spacer()
+                Text("누르는 즉시 적용")
+                    .font(MaplogFont.badge)
+                    .foregroundStyle(.white.opacity(0.68))
+            }
+            .foregroundStyle(.white)
 
-                PrimaryActionButton("구성 적용", systemImage: "checkmark") {
-                    onConfigurationChange(draftConfiguration)
-                    dismiss()
+            HStack(spacing: MaplogSpacing.xSmall) {
+                ForEach(VideoSceneOrientation.allCases) { orientation in
+                    orientationButton(orientation)
                 }
             }
-            .padding(MaplogSpacing.page)
-            .navigationTitle("촬영 설정")
-            .navigationBarTitleDisplayMode(.inline)
+
+            HStack(spacing: MaplogSpacing.xSmall) {
+                ForEach(VideoCompositionLayout.allCases) { layout in
+                    layoutButton(layout)
+                }
+            }
         }
-        .presentationDetents([.medium])
-        .presentationDragIndicator(.visible)
+        .padding(MaplogSpacing.medium)
+        .background(.black.opacity(0.72), in: RoundedRectangle(
+            cornerRadius: MaplogRadius.large,
+            style: .continuous
+        ))
+        .overlay {
+            RoundedRectangle(cornerRadius: MaplogRadius.large, style: .continuous)
+                .stroke(.white.opacity(0.22), lineWidth: 1)
+        }
+        .shadow(color: .black.opacity(0.28), radius: 16, y: 8)
+    }
+
+    private func orientationButton(
+        _ orientation: VideoSceneOrientation
+    ) -> some View {
+        let isSelected = configuration.sceneOrientation == orientation
+
+        return Button {
+            onConfigurationChange(
+                VideoCompositionConfiguration(
+                    layout: configuration.layout,
+                    sceneOrientation: orientation
+                )
+            )
+        } label: {
+            HStack(spacing: MaplogSpacing.xSmall) {
+                CameraCompositionOrientationGlyph(
+                    orientation: orientation,
+                    tint: isSelected ? Color.maplogInk : .white
+                )
+                .frame(width: 20, height: 20)
+
+                Text("\(orientation.title) · \(orientation.detail)")
+                    .font(MaplogFont.caption.weight(.semibold))
+            }
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .foregroundStyle(isSelected ? Color.maplogInk : .white)
+            .background(
+                isSelected ? Color.maplogLime : .white.opacity(0.14),
+                in: Capsule()
+            )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(orientation.title) 장면 비율")
+        .accessibilityValue(isSelected ? "선택됨" : "선택되지 않음")
+    }
+
+    private func layoutButton(
+        _ layout: VideoCompositionLayout
+    ) -> some View {
+        let isSelected = configuration.layout == layout
+        let title = layout == .single ? "1컷" : layout.title
+
+        return Button {
+            onConfigurationChange(
+                VideoCompositionConfiguration(
+                    layout: layout,
+                    sceneOrientation: configuration.sceneOrientation
+                )
+            )
+        } label: {
+            VStack(spacing: MaplogSpacing.xxxSmall) {
+                VideoCompositionLayoutPreview(
+                    layout: layout,
+                    sceneOrientation: configuration.sceneOrientation,
+                    tint: isSelected ? Color.maplogLime : .white.opacity(0.48)
+                )
+                .frame(width: 30, height: 30)
+
+                Text(title)
+                    .font(MaplogFont.caption.weight(.semibold))
+            }
+            .frame(maxWidth: .infinity, minHeight: 68)
+            .foregroundStyle(isSelected ? Color.maplogLime : .white)
+            .background(
+                isSelected ? Color.maplogLime.opacity(0.18) : .white.opacity(0.08),
+                in: RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: MaplogRadius.medium, style: .continuous)
+                    .stroke(
+                        isSelected ? Color.maplogLime : .white.opacity(0.16),
+                        lineWidth: isSelected ? 1.5 : 1
+                    )
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(title)
+        .accessibilityValue(isSelected ? "선택됨" : "선택되지 않음")
     }
 }
 
-struct CameraCompositionGuideOverlay: View {
-    let configuration: VideoCompositionConfiguration
-    let activeSlotIndex: Int
+private struct CameraCompositionOrientationGlyph: View {
+    let orientation: VideoSceneOrientation
+    let tint: Color
 
     var body: some View {
-        GeometryReader { proxy in
-            let sceneFrame = configuration.sceneFrame(in: proxy.size)
-            let frames = configuration.layout.normalizedFrames(
-                for: configuration.sceneOrientation
+        RoundedRectangle(cornerRadius: 3, style: .continuous)
+            .stroke(tint, lineWidth: 1.7)
+            .frame(
+                width: orientation == .vertical ? 11 : 20,
+                height: orientation == .vertical ? 20 : 11
             )
-            let visibleSlotIndex = min(
-                activeSlotIndex,
-                max(0, frames.count - 1)
-            )
-
-            ZStack {
-                letterboxMask(sceneFrame: sceneFrame, canvasSize: proxy.size)
-
-                ForEach(Array(frames.enumerated()), id: \.offset) { index, frame in
-                    let isActive = index == visibleSlotIndex
-                    let slotFrame = CGRect(
-                        x: sceneFrame.minX + sceneFrame.width * frame.minX,
-                        y: sceneFrame.minY + sceneFrame.height * frame.minY,
-                        width: sceneFrame.width * frame.width,
-                        height: sceneFrame.height * frame.height
-                    )
-
-                    RoundedRectangle(cornerRadius: 4, style: .continuous)
-                        .fill(isActive ? Color.clear : Color.black.opacity(0.74))
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 4, style: .continuous)
-                                .stroke(
-                                    isActive
-                                    ? Color.maplogLime
-                                    : Color.white.opacity(0.28),
-                                    lineWidth: isActive ? 3 : 1
-                                )
-                        }
-                        .overlay(alignment: .topLeading) {
-                            if isActive {
-                                Text("지금 촬영")
-                                    .font(.caption.weight(.bold))
-                                    .foregroundStyle(Color.maplogInk)
-                                    .padding(.horizontal, MaplogSpacing.small)
-                                    .padding(.vertical, MaplogSpacing.xxSmall)
-                                    .background(Color.maplogLime, in: Capsule())
-                                    .padding(MaplogSpacing.xSmall)
-                            } else {
-                                Text("\(index + 1)")
-                                    .font(.caption.weight(.bold))
-                                    .foregroundStyle(.white.opacity(0.7))
-                                    .frame(width: 24, height: 24)
-                                    .background(.black.opacity(0.5), in: Circle())
-                                    .padding(MaplogSpacing.xSmall)
-                            }
-                        }
-                        .frame(width: slotFrame.width - 4, height: slotFrame.height - 4)
-                        .position(x: slotFrame.midX, y: slotFrame.midY)
-                }
-            }
-        }
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
-        .animation(.easeInOut(duration: 0.2), value: activeSlotIndex)
-    }
-
-    @ViewBuilder
-    private func letterboxMask(
-        sceneFrame: CGRect,
-        canvasSize: CGSize
-    ) -> some View {
-        if configuration.sceneOrientation == .horizontal {
-            VStack(spacing: 0) {
-                Color.black.opacity(0.88)
-                    .frame(height: sceneFrame.minY)
-
-                Color.clear
-                    .frame(height: sceneFrame.height)
-
-                Color.black.opacity(0.88)
-                    .frame(height: max(0, canvasSize.height - sceneFrame.maxY))
-            }
-            .frame(width: canvasSize.width, height: canvasSize.height)
-        }
+            .frame(width: 20, height: 20)
+            .accessibilityHidden(true)
     }
 }

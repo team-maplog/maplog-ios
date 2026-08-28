@@ -111,7 +111,8 @@ final class ClipEditorViewModel: ObservableObject {
         orderedClips = input.clips
 
         editorTimeline = ClipEditorTimeline( // A,B,C 전체 Schedule을 만듦
-            clips: orderedClips
+            clips: orderedClips,
+            compositionConfiguration: compositionConfiguration
         )
 
         timelineItems = orderedClips.map { clip in
@@ -131,9 +132,7 @@ final class ClipEditorViewModel: ObservableObject {
         }
 
         do {
-            print("1. 편집 준비 시작")
             try await loadSequencePreview() // 실제 A-B-C 영상을 AVPlayer에 준비
-            print("2. 영상 시퀀스 준비 완료")
             guard !Task.isCancelled else {
                 return
             }
@@ -830,7 +829,8 @@ final class ClipEditorViewModel: ObservableObject {
 
     func restoreSelectedPreview() async {
         editorTimeline = ClipEditorTimeline( // Picker를 닫을 때 새 타임라인 기준으로 다시 재생
-            clips: orderedClips
+            clips: orderedClips,
+            compositionConfiguration: compositionConfiguration
         )
         guard let selectedID = selectedPreview?.id else {
             stopPreview()
@@ -994,7 +994,8 @@ final class ClipEditorViewModel: ObservableObject {
         orderedClips = finalClips
 
         editorTimeline = ClipEditorTimeline(
-            clips: finalClips
+            clips: finalClips,
+            compositionConfiguration: compositionConfiguration
         )
 
         timelineItems = finalClips.map { clip in
@@ -1122,9 +1123,16 @@ final class ClipEditorViewModel: ObservableObject {
             .filter { $0.mediaType == .video }
             .map(\.fileURL)
 
-        try await videoPlaybackService.loadVideoSequence(
-            from: videoURLs
-        )
+        if compositionConfiguration.layout == .single {
+            try await videoPlaybackService.loadVideoSequence(
+                from: videoURLs
+            )
+        } else {
+            try await videoPlaybackService.loadVideoComposition(
+                from: orderedClips,
+                configuration: compositionConfiguration
+            )
+        }
 
         videoPlaybackService.observeProgress { [weak self] progress in
             guard let self, !self.ignoresPlaybackProgress else { // 드래그 중에는 playbackProgress, playingClipID, playingLocalTime이 계속 바뀌지 않게 막는 거야. 즉 화면 전체가 0.05초마다 다시 그려지는 것을 막음
@@ -1172,7 +1180,8 @@ final class ClipEditorViewModel: ObservableObject {
         preferredSelectionID: UUID?
     ) async {
         editorTimeline = ClipEditorTimeline(
-            clips: orderedClips
+            clips: orderedClips,
+            compositionConfiguration: compositionConfiguration
         )
 
         do {
