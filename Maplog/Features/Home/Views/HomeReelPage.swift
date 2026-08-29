@@ -49,6 +49,8 @@ struct HomeReelPage: View {
     @State private var scrubbingProgress = 0.0
     @State private var showPlayStateBadge = false
     @State private var hideBadgeTask: Task<Void, Never>?
+    /// 첫 영상 프레임이 준비되기 전에는 썸네일을 유지해 검은 화면 전환을 막는다.
+    @State private var isPlayerFrameReady = false
 
     private let reelBottomBlurHeight: CGFloat =
         VideoRenderCanvas.reelBottomTrayHeight
@@ -135,6 +137,14 @@ struct HomeReelPage: View {
         .accessibilityLabel(
             "\(reel.authorName)의 로그, \(reel.address)"
         )
+        .onChange(of: player == nil) { _, _ in
+            resetPlayerFrameReadiness()
+        }
+        .onChange(of: isLoadingPlayback) { _, isLoading in
+            if isLoading {
+                resetPlayerFrameReadiness()
+            }
+        }
     }
 
     private func reelMedia(
@@ -153,7 +163,7 @@ struct HomeReelPage: View {
         mediaSize: CGSize,
         trayHeight: CGFloat
     ) -> some View {
-        originalMedia
+        originalThumbnail
             .frame(
                 width: mediaSize.width,
                 height: mediaSize.height
@@ -177,11 +187,12 @@ struct HomeReelPage: View {
             originalThumbnail
 
             if let player {
-                MaplogVideoPlayerLayerView(
+                HomeReelFirstFramePlayerView(
                     player: player,
-                    videoGravity: .resizeAspectFill
+                    onFirstFrameReady: revealPlayerFrame
                 )
                 .equatable()
+                .opacity(isPlayerFrameReady ? 1 : 0)
                 .allowsHitTesting(false)
             }
 
@@ -480,6 +491,14 @@ struct HomeReelPage: View {
                 }
             }
         }
+    }
+
+    private func revealPlayerFrame() {
+        isPlayerFrameReady = true
+    }
+
+    private func resetPlayerFrameReadiness() {
+        isPlayerFrameReady = false
     }
 }
 
