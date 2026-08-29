@@ -56,6 +56,7 @@ struct TourismMapMarkerResponseDTO: Decodable {
     let thumbnailURL: String?
     let startDate: String?
     let endDate: String?
+    let category: String?
     let latitude: Double?
     let longitude: Double?
 
@@ -65,6 +66,7 @@ struct TourismMapMarkerResponseDTO: Decodable {
         case thumbnailURL = "thumbnailUrl"
         case startDate
         case endDate
+        case category
         case latitude
         case longitude
     }

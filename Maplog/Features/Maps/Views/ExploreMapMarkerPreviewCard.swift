@@ -123,8 +123,8 @@ struct ExploreMapMarkerPreviewCard: View {
         case .log:
             return "맵로그"
 
-        case .tourism:
-            return "관광"
+        case let .tourism(tourismMarker):
+            return tourismMarker.category.title
         }
     }
 
@@ -143,8 +143,11 @@ struct ExploreMapMarkerPreviewCard: View {
         case .log:
             return "play.fill"
 
-        case .tourism:
-            return "sparkles"
+        case let .tourism(tourismMarker):
+            return TourismMapMarkerAppearance.style(
+                for: tourismMarker.category
+            )
+            .symbolName
         }
     }
 
@@ -153,8 +156,13 @@ struct ExploreMapMarkerPreviewCard: View {
         case .log:
             return Color.maplogOlive
 
-        case .tourism:
-            return Color.purple
+        case let .tourism(tourismMarker):
+            return Color(
+                uiColor: TourismMapMarkerAppearance.style(
+                    for: tourismMarker.category
+                )
+                .color
+            )
         }
     }
 }

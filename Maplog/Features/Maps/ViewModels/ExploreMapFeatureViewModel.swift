@@ -15,7 +15,7 @@ final class ExploreMapFeatureViewModel: ObservableObject {
     @Published private(set) var selectedMarkerThumbnailData: Data?
     @Published private(set) var isLoadingSelectedMarkerThumbnail = false
     @Published private(set) var searchQuery = ""
-    @Published private(set) var selectedSearchScope: ExploreMapSearchScope = .all
+    @Published private(set) var selectedFilter: ExploreMapFilter = .all
     @Published private(set) var mapLogThumbnailDataByMarkerID: [String: Data] = [:]
     @Published private(set) var currentLocation: MapCoordinate?
     @Published private(set) var currentLocationFocusRequestID: UUID?
@@ -29,9 +29,14 @@ final class ExploreMapFeatureViewModel: ObservableObject {
     private var selectedMarkerThumbnailTask: Task<Void, Never>?
     private var mapMarkerThumbnailLoadTask: Task<Void, Never>?
     private var latestObservedViewport: MapViewport?
-    private var latestRequestedViewport: MapViewport?
+    private var latestRequestedLoad: ViewportContentLoad?
 
     private static let mapThumbnailPrefetchLimit = 24
+
+    private struct ViewportContentLoad: Equatable {
+        let viewport: MapViewport
+        let tourismCategory: TourismMapCategory
+    }
 
     init(
         mapRepository: any MapRepository,
@@ -68,7 +73,12 @@ final class ExploreMapFeatureViewModel: ObservableObject {
     ) {
         latestObservedViewport = viewport
 
-        guard viewport != latestRequestedViewport else {
+        let load = ViewportContentLoad(
+            viewport: viewport,
+            tourismCategory: selectedFilter.tourismRequestCategory
+        )
+
+        guard load != latestRequestedLoad else {
             return
         }
 
@@ -88,7 +98,7 @@ final class ExploreMapFeatureViewModel: ObservableObject {
             }
 
             await self?.loadContent(
-                in: viewport
+                for: load
             )
         }
     }
@@ -101,7 +111,10 @@ final class ExploreMapFeatureViewModel: ObservableObject {
         scheduledLoadTask?.cancel()
 
         await loadContent(
-            in: latestObservedViewport
+            for: ViewportContentLoad(
+                viewport: latestObservedViewport,
+                tourismCategory: selectedFilter.tourismRequestCategory
+            )
         )
     }
 
@@ -148,17 +161,8 @@ final class ExploreMapFeatureViewModel: ObservableObject {
 
     var filteredMarkers: [MapMarker] {
         markers(
-            matching: selectedSearchScope
+            matching: selectedFilter
         )
-    }
-
-    func markerCount(
-        for scope: ExploreMapSearchScope
-    ) -> Int {
-        markers(
-            matching: scope
-        )
-        .count
     }
 
     func updateSearchQuery(
@@ -168,17 +172,40 @@ final class ExploreMapFeatureViewModel: ObservableObject {
         clearSelectionIfFilteredOut()
     }
 
-    func selectSearchScope(
-        _ scope: ExploreMapSearchScope
+    func selectFilter(
+        _ filter: ExploreMapFilter
     ) {
-        selectedSearchScope = scope
+        guard selectedFilter != filter else {
+            return
+        }
+
+        selectedFilter = filter
         clearSelectionIfFilteredOut()
+
+        guard let latestObservedViewport else {
+            return
+        }
+
+        scheduledLoadTask?.cancel()
+
+        let load = ViewportContentLoad(
+            viewport: latestObservedViewport,
+            tourismCategory: filter.tourismRequestCategory
+        )
+
+        Task { [weak self] in
+            await self?.loadContent(for: load)
+        }
     }
 
     func clearSearch() {
         searchQuery = ""
-        selectedSearchScope = .all
-        clearSelectionIfFilteredOut()
+
+        if selectedFilter == .all {
+            clearSelectionIfFilteredOut()
+        } else {
+            selectFilter(.all)
+        }
     }
 
     func retrySelectedMarkerThumbnail() {
@@ -192,11 +219,11 @@ final class ExploreMapFeatureViewModel: ObservableObject {
     }
 
     private func loadContent(
-        in viewport: MapViewport
+        for load: ViewportContentLoad
     ) async {
         let previousContent = state.content
 
-        latestRequestedViewport = viewport
+        latestRequestedLoad = load
         refreshError = nil
 
         if previousContent == nil {
@@ -206,11 +233,12 @@ final class ExploreMapFeatureViewModel: ObservableObject {
         do {
             let content = try await mapRepository
                 .fetchViewportContent(
-                    in: viewport
+                    in: load.viewport,
+                    tourismCategory: load.tourismCategory
                 )
 
             guard !Task.isCancelled,
-                  latestRequestedViewport == viewport
+                  latestRequestedLoad == load
             else {
                 return
             }
@@ -231,7 +259,7 @@ final class ExploreMapFeatureViewModel: ObservableObject {
             return
 
         } catch {
-            guard latestRequestedViewport == viewport else {
+            guard latestRequestedLoad == load else {
                 return
             }
 
@@ -386,14 +414,14 @@ final class ExploreMapFeatureViewModel: ObservableObject {
     }
 
     private func markers(
-        matching scope: ExploreMapSearchScope
+        matching filter: ExploreMapFilter
     ) -> [MapMarker] {
         guard let content = state.content else {
             return []
         }
 
         return content.markers.filter { marker in
-            scope.includes(marker)
+            filter.includes(marker)
             && markerMatchesSearchQuery(marker)
         }
     }
@@ -442,10 +470,23 @@ final class ExploreMapFeatureViewModel: ObservableObject {
     }
 }
 
-enum ExploreMapSearchScope: CaseIterable, Equatable, Identifiable {
+enum ExploreMapFilter: CaseIterable, Equatable, Identifiable {
     case all
     case maplog
     case tourism
+    case events
+    case festival
+    case performance
+    case event
+    case accommodation
+    case food
+    case shopping
+    case recommendedCourse
+    case experienceTourism
+    case historyTourism
+    case leisureSports
+    case natureTourism
+    case culturalTourism
 
     var id: Self {
         self
@@ -460,7 +501,66 @@ enum ExploreMapSearchScope: CaseIterable, Equatable, Identifiable {
             return "맵로그"
 
         case .tourism:
-            return "관광"
+            return "관광 전체"
+        case .events:
+            return "행사 전체"
+        case .festival:
+            return "축제"
+        case .performance:
+            return "공연"
+        case .event:
+            return "행사"
+        case .accommodation:
+            return "숙소"
+        case .food:
+            return "음식점·카페"
+        case .shopping:
+            return "쇼핑"
+        case .recommendedCourse:
+            return "추천 코스"
+        case .experienceTourism:
+            return "체험 관광"
+        case .historyTourism:
+            return "역사 관광"
+        case .leisureSports:
+            return "레저·스포츠"
+        case .natureTourism:
+            return "자연 관광"
+        case .culturalTourism:
+            return "문화 관광"
+        }
+    }
+
+    var tourismRequestCategory: TourismMapCategory {
+        switch self {
+        case .all, .maplog, .tourism:
+            return .all
+        case .events:
+            return .events
+        case .festival:
+            return .festival
+        case .performance:
+            return .performance
+        case .event:
+            return .event
+        case .accommodation:
+            return .accommodation
+        case .food:
+            return .food
+        case .shopping:
+            return .shopping
+        case .recommendedCourse:
+            return .recommendedCourse
+        case .experienceTourism:
+            return .experienceTourism
+        case .historyTourism:
+            return .historyTourism
+        case .leisureSports:
+            return .leisureSports
+        case .natureTourism:
+            return .natureTourism
+        case .culturalTourism:
+            return .culturalTourism
         }
     }
 
@@ -476,6 +576,15 @@ enum ExploreMapSearchScope: CaseIterable, Equatable, Identifiable {
 
         case .tourism:
             return marker.kind == .tourism
+
+        default:
+            guard let tourismCategory = marker.tourismCategory else {
+                return false
+            }
+
+            return tourismCategory.matches(
+                requestedCategory: tourismRequestCategory
+            )
         }
     }
 }

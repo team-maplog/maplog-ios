@@ -72,13 +72,8 @@ struct ExploreMapFeatureView: View {
                 ExploreMapSearchControls(
                     query: searchQueryBinding,
                     isSearchFieldFocused: $isSearchFieldFocused,
-                    selectedScope: viewModel.selectedSearchScope,
-                    markerCount: {
-                        viewModel.markerCount(
-                            for: $0
-                        )
-                    },
-                    onSelectScope: handleSearchScopeSelected,
+                    selectedFilter: viewModel.selectedFilter,
+                    onSelectFilter: handleFilterSelected,
                     onClearSearch: viewModel.clearSearch
                 )
 
@@ -176,11 +171,11 @@ struct ExploreMapFeatureView: View {
         )
     }
 
-    private func handleSearchScopeSelected(
-        _ scope: ExploreMapSearchScope
+    private func handleFilterSelected(
+        _ filter: ExploreMapFilter
     ) {
         dismissSearchKeyboard()
-        viewModel.selectSearchScope(scope)
+        viewModel.selectFilter(filter)
     }
 
     private func dismissSearchKeyboard() {
