@@ -218,7 +218,10 @@ private final class HomeSearchRepositoryStub: HomeSearchRepository {
 }
 
 private final class LogMediaRepositoryStub: LogMediaRepository {
-    func fetchThumbnailData(logID: Int64) async throws -> Data {
+    func fetchThumbnailData(
+        logID: Int64,
+        targetSize: MaplogImageTargetSize
+    ) async throws -> Data {
         Data()
     }
 
@@ -226,7 +229,10 @@ private final class LogMediaRepositoryStub: LogMediaRepository {
         URL(fileURLWithPath: "/tmp/log.mov")
     }
 
-    func fetchRoutePointThumbnailData(from url: URL) async throws -> Data {
+    func fetchRoutePointThumbnailData(
+        from url: URL,
+        targetSize: MaplogImageTargetSize
+    ) async throws -> Data {
         Data()
     }
 }

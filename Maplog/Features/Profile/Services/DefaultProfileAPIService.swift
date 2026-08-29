@@ -2,11 +2,14 @@ import Foundation
 
 final class DefaultProfileAPIService: ProfileAPIService {
     private let authenticatedAPIClient: AuthenticatedAPIClient
+    private let imageDataLoader: any ImageDataLoading
 
     init(
-        authenticatedAPIClient: AuthenticatedAPIClient
+        authenticatedAPIClient: AuthenticatedAPIClient,
+        imageDataLoader: any ImageDataLoading
     ) {
         self.authenticatedAPIClient = authenticatedAPIClient
+        self.imageDataLoader = imageDataLoader
     }
 
     func fetchMyProfile() async throws -> MyProfileResponseDTO {
@@ -221,17 +224,14 @@ final class DefaultProfileAPIService: ProfileAPIService {
     }
 
     func fetchImageData(
-        from url: URL
+        from url: URL,
+        cacheKey: String,
+        targetSize: MaplogImageTargetSize
     ) async throws -> Data {
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        request.setValue(
-            "image/*",
-            forHTTPHeaderField: "Accept"
-        )
-
-        return try await authenticatedAPIClient.data(
-            for: request
+        try await imageDataLoader.imageData(
+            from: url,
+            cacheKey: cacheKey,
+            targetSize: targetSize
         )
     }
 

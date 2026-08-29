@@ -8,25 +8,28 @@
 import Foundation
 
 final class DefaultLogMediaAPIService: LogMediaAPIService {
-    private let apiClient: APIClient
     private let authenticatedAPIClient: AuthenticatedAPIClient
+    private let imageDataLoader: any ImageDataLoading
 
     init(
-        apiClient: APIClient,
-        authenticatedAPIClient: AuthenticatedAPIClient
+        authenticatedAPIClient: AuthenticatedAPIClient,
+        imageDataLoader: any ImageDataLoading
     ) {
-        self.apiClient = apiClient
         self.authenticatedAPIClient = authenticatedAPIClient
+        self.imageDataLoader = imageDataLoader
     }
 
-    func fetchThumbnailData(logID: Int64) async throws -> Data {
+    func fetchThumbnailData(
+        logID: Int64,
+        targetSize: MaplogImageTargetSize
+    ) async throws -> Data {
         let url = logMediaURL(logID: logID, resource: "thumbnail")
 
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        request.setValue("image/*", forHTTPHeaderField: "Accept")
-
-        return try await authenticatedAPIClient.data(for: request) // AuthenticatedAPIClient를 지나면서 저장된 access token이 헤더에 붙고, 서버가 돌려준 이미지 원본 바이트(Data)를 받게 됨
+        return try await imageDataLoader.imageData(
+            from: url,
+            cacheKey: "log-thumbnail-\(logID)",
+            targetSize: targetSize
+        )
     }
 
     // 영상 요청 메서드
@@ -51,34 +54,14 @@ final class DefaultLogMediaAPIService: LogMediaAPIService {
     }
 
     func fetchRoutePointThumbnailData(
-        from url: URL
+        from url: URL,
+        targetSize: MaplogImageTargetSize
     ) async throws -> Data {
-        var request = URLRequest(url: url)
-        request.httpMethod = "GET"
-        request.setValue(
-            "image/*",
-            forHTTPHeaderField: "Accept"
+        try await imageDataLoader.imageData(
+            from: url,
+            cacheKey: MaplogImageCacheKey.stableURL(url),
+            targetSize: targetSize
         )
-
-        if isMaplogAPIURL(url) {
-            return try await authenticatedAPIClient.data(
-                for: request
-            )
-        }
-
-        return try await apiClient.data(
-            for: request
-        )
-    }
-
-    private func isMaplogAPIURL(
-        _ url: URL
-    ) -> Bool {
-        let baseURL = APIConfiguration.baseURL
-
-        return url.scheme == baseURL.scheme
-            && url.host == baseURL.host
-            && url.port == baseURL.port
     }
 
     private func logMediaURL(

@@ -97,10 +97,14 @@ final class DefaultProfileRepository: ProfileRepository {
     }
 
     func fetchImageData(
-        from url: URL
+        from url: URL,
+        cacheKey: String,
+        targetSize: MaplogImageTargetSize
     ) async throws -> Data {
         try await apiService.fetchImageData(
-            from: url
+            from: url,
+            cacheKey: cacheKey,
+            targetSize: targetSize
         )
     }
 

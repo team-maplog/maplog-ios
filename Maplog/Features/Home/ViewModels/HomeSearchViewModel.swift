@@ -278,7 +278,8 @@ final class HomeSearchViewModel: ObservableObject {
 
         do {
             let data = try await logMediaRepository.fetchThumbnailData(
-                logID: log.id
+                logID: log.id,
+                targetSize: .listThumbnail
             )
 
             guard !Task.isCancelled else {

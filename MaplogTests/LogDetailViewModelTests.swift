@@ -257,7 +257,8 @@ private final class LogMediaRepositoryStub: LogMediaRepository {
     private(set) var requestedRoutePointThumbnailURLs: [URL] = []
 
     func fetchThumbnailData(
-        logID: Int64
+        logID: Int64,
+        targetSize: MaplogImageTargetSize
     ) async throws -> Data {
         Data()
     }
@@ -269,7 +270,8 @@ private final class LogMediaRepositoryStub: LogMediaRepository {
     }
 
     func fetchRoutePointThumbnailData(
-        from url: URL
+        from url: URL,
+        targetSize: MaplogImageTargetSize
     ) async throws -> Data {
         requestedRoutePointThumbnailURLs.append(url)
         return Data()

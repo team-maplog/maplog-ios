@@ -173,7 +173,9 @@ private final class ProfileAPIServiceStub: ProfileAPIService {
     func deleteMyProfile() async throws {}
 
     func fetchImageData(
-        from url: URL
+        from url: URL,
+        cacheKey: String,
+        targetSize: MaplogImageTargetSize
     ) async throws -> Data {
         Data()
     }

@@ -14,8 +14,14 @@ final class DefaultLogMediaRepository: LogMediaRepository {
         self.apiService = apiService
     }
 
-    func fetchThumbnailData(logID: Int64) async throws -> Data {
-        try await apiService.fetchThumbnailData(logID: logID)
+    func fetchThumbnailData(
+        logID: Int64,
+        targetSize: MaplogImageTargetSize
+    ) async throws -> Data {
+        try await apiService.fetchThumbnailData(
+            logID: logID,
+            targetSize: targetSize
+        )
     }
 
     func fetchPlaybackFileURL(
@@ -27,10 +33,12 @@ final class DefaultLogMediaRepository: LogMediaRepository {
     }
 
     func fetchRoutePointThumbnailData(
-        from url: URL
+        from url: URL,
+        targetSize: MaplogImageTargetSize
     ) async throws -> Data {
         try await apiService.fetchRoutePointThumbnailData(
-            from: url
+            from: url,
+            targetSize: targetSize
         )
     }
 }

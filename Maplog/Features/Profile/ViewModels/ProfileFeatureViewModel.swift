@@ -539,7 +539,11 @@ final class ProfileTabViewModel: ObservableObject {
 
             do {
                 let data = try await self.profileRepository
-                    .fetchImageData(from: thumbnailURL)
+                    .fetchImageData(
+                        from: thumbnailURL,
+                        cacheKey: "profile-log-thumbnail-\(logID)",
+                        targetSize: .listThumbnail
+                    )
 
                 guard !Task.isCancelled,
                       self.containsVisibleLog(withID: logID)

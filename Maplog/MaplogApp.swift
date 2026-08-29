@@ -68,13 +68,23 @@ struct MaplogApp: App { // 앱의 조립 담당자
             apiService: logCommentAPIService
         )
         let textOverlayRenderer = VideoTextOverlayRenderer()
-        let logMediaAPIService = DefaultLogMediaAPIService(apiClient: apiClient, authenticatedAPIClient: authenticatedAPIClient)
+        let imageDataLoader = KingfisherImageDataLoader(
+            apiClient: apiClient,
+            authenticatedAPIClient: authenticatedAPIClient
+        )
+        let logMediaAPIService = DefaultLogMediaAPIService(
+            authenticatedAPIClient: authenticatedAPIClient,
+            imageDataLoader: imageDataLoader
+        )
         let logMediaRepository = DefaultLogMediaRepository(apiService: logMediaAPIService)
         let logRouteAPIService = DefaultLogRouteAPIService(authenticatedAPIClient: authenticatedAPIClient)
         let logRouteRepository = DefaultLogRouteRepository(apiService: logRouteAPIService)
         let logDetailAPIService = DefaultLogDetailAPIService(authenticatedAPIClient: authenticatedAPIClient)
         let logDetailRepository = DefaultLogDetailRepository(apiService: logDetailAPIService)
-        let profileAPIService = DefaultProfileAPIService(authenticatedAPIClient: authenticatedAPIClient)
+        let profileAPIService = DefaultProfileAPIService(
+            authenticatedAPIClient: authenticatedAPIClient,
+            imageDataLoader: imageDataLoader
+        )
         let profileRepository = DefaultProfileRepository(apiService: profileAPIService)
         let followAPIService = DefaultFollowAPIService(
             authenticatedAPIClient: authenticatedAPIClient
