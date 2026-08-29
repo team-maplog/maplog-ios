@@ -23,6 +23,8 @@
 		99558FA4864B1D3D371887CB /* MockMaplogData.swift in Sources */ = {isa = PBXBuildFile; fileRef = B178E7FBFB73E78FCFC05218 /* MockMaplogData.swift */; };
 		A00B2ABF9A8E2FC357C0A64C /* ComposerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0640AE75B057F41C8A1BEC9 /* ComposerView.swift */; };
 		A54F18BDB73628E81E84EC2E /* MaplogButtons.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDDE9E21B157D66A4C02AC14 /* MaplogButtons.swift */; };
+		A5C0A0010000000000000001 /* Kingfisher in Frameworks */ = {isa = PBXBuildFile; productRef = A5C0A0010000000000000003 /* Kingfisher */; };
+		A5C0A0010000000000000004 /* MaplogCachedRemoteImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5C0A0010000000000000005 /* MaplogCachedRemoteImage.swift */; };
 		A8D3584C883AE074D4757BEC /* KakaoMapCanvas.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABC782CD8FA602F351A4F8D1 /* KakaoMapCanvas.swift */; };
 		B8BBE3F5A7C53D50B176913A /* QuickMaplogIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2B4AB164A4CD66EF46DB763 /* QuickMaplogIntent.swift */; };
 		BD1E134CF66A662A18C9C841 /* TravelImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 041F9B0198AC4A718A00360E /* TravelImageView.swift */; };
@@ -75,6 +77,7 @@
 		8B45817772DB8C538E6D5D16 /* MaplogLogoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MaplogLogoView.swift; sourceTree = "<group>"; };
 		8D9314A18D17963AF051A613 /* Secrets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Secrets.xcconfig; sourceTree = "<group>"; };
 		90640D820DF57FB03ADAB4BB /* ExploreMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExploreMapView.swift; sourceTree = "<group>"; };
+		A5C0A0010000000000000005 /* MaplogCachedRemoteImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MaplogCachedRemoteImage.swift; sourceTree = "<group>"; };
 		ABC782CD8FA602F351A4F8D1 /* KakaoMapCanvas.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KakaoMapCanvas.swift; sourceTree = "<group>"; };
 		AF44666EFC016FEA25AB3362 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		B178E7FBFB73E78FCFC05218 /* MockMaplogData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockMaplogData.swift; sourceTree = "<group>"; };
@@ -160,6 +163,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				0F38CC8E9CFCBB2E9982A900 /* KakaoMapsSDK-SPM in Frameworks */,
+				A5C0A0010000000000000001 /* Kingfisher in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -300,6 +304,7 @@
 		86B65D051A5C8E1403262757 /* Components */ = {
 			isa = PBXGroup;
 			children = (
+				A5C0A0010000000000000005 /* MaplogCachedRemoteImage.swift */,
 				C0D3E0010A2B3C4D5E6F7011 /* MaplogProfileAvatar.swift */,
 				E28BFDBD302F758E00CA97BD /* MaplogVideoPlayerLayerView.swift */,
 				D4C0A1B2C3D4E5F607080901 /* MaplogVideoPlaybackBar.swift */,
@@ -389,6 +394,7 @@
 			name = Maplog;
 			packageProductDependencies = (
 				6B18CAE8F036967CBD6A5FD0 /* KakaoMapsSDK-SPM */,
+				A5C0A0010000000000000003 /* Kingfisher */,
 			);
 			productName = Maplog;
 			productReference = C9D76282FF2FFEEC0209C7A9 /* Maplog.app */;
@@ -444,6 +450,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				4CA97833B5B1FA813701067E /* XCRemoteSwiftPackageReference "KakaoMapsSDK-SPM" */,
+				A5C0A0010000000000000002 /* XCRemoteSwiftPackageReference "Kingfisher" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 89737E8A663CE85CB215E1ED /* Products */;
@@ -479,6 +486,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A5C0A0010000000000000004 /* MaplogCachedRemoteImage.swift in Sources */,
 				C0D3E0010A2B3C4D5E6F7003 /* CaptureEditorView.swift in Sources */,
 				C0D3E0010A2B3C4D5E6F7004 /* CaptureRecordingShutterButton.swift in Sources */,
 				E28BFDBE302F759F00CA97BD /* MaplogVideoPlayerLayerView.swift in Sources */,
@@ -801,6 +809,14 @@
 				minimumVersion = 2.12.14;
 			};
 		};
+		A5C0A0010000000000000002 /* XCRemoteSwiftPackageReference "Kingfisher" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/onevcat/Kingfisher.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 8.0.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -808,6 +824,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 4CA97833B5B1FA813701067E /* XCRemoteSwiftPackageReference "KakaoMapsSDK-SPM" */;
 			productName = "KakaoMapsSDK-SPM";
+		};
+		A5C0A0010000000000000003 /* Kingfisher */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A5C0A0010000000000000002 /* XCRemoteSwiftPackageReference "Kingfisher" */;
+			productName = Kingfisher;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

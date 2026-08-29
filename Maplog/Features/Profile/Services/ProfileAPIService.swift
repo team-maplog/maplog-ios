@@ -29,6 +29,20 @@ protocol ProfileAPIService {
     func deleteMyProfile() async throws
 
     func fetchImageData(
-        from url: URL
+        from url: URL,
+        cacheKey: String,
+        targetSize: MaplogImageTargetSize
     ) async throws -> Data
+}
+
+extension ProfileAPIService {
+    func fetchImageData(
+        from url: URL
+    ) async throws -> Data {
+        try await fetchImageData(
+            from: url,
+            cacheKey: MaplogImageCacheKey.stableURL(url),
+            targetSize: .profileAvatar
+        )
+    }
 }

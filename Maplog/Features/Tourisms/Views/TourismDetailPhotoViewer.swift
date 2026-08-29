@@ -87,25 +87,15 @@ private struct TourismDetailFullscreenPhoto: View {
     let photo: TourismDetailCarouselPhoto
 
     var body: some View {
-        AsyncImage(url: photo.imageURL) { phase in
-            switch phase {
-            case .empty:
-                ProgressView()
-                    .tint(.white)
-
-            case .success(let image):
-                image
-                    .resizable()
-                    .scaledToFit()
-
-            case .failure:
-                Image(systemName: "photo")
-                    .font(.largeTitle)
-                    .foregroundStyle(Color.maplogTextTertiary)
-
-            @unknown default:
-                EmptyView()
-            }
+        MaplogCachedRemoteImage(
+            url: photo.imageURL,
+            cacheKey: photo.cacheKey,
+            targetSize: CGSize(width: 430, height: 932),
+            contentMode: .fit
+        ) {
+            Image(systemName: "photo")
+                .font(.largeTitle)
+                .foregroundStyle(Color.maplogTextTertiary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityLabel(photo.title ?? "관광지 사진")

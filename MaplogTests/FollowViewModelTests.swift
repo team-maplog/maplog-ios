@@ -236,7 +236,9 @@ private final class FollowProfileRepositoryStub: ProfileRepository {
     func deleteMyProfile() async throws {}
 
     func fetchImageData(
-        from url: URL
+        from url: URL,
+        cacheKey: String,
+        targetSize: MaplogImageTargetSize
     ) async throws -> Data {
         Data()
     }

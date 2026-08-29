@@ -1487,25 +1487,17 @@ private struct HomeTourismCarouselCard: View {
     @ViewBuilder
     private var tourismThumbnail: some View {
         if let thumbnailURL = card.thumbnailURL {
-            AsyncImage(url: thumbnailURL) { phase in
-                switch phase {
-                case .empty:
-                    thumbnailPlaceholder
-                        .overlay {
-                            ProgressView()
-                                .tint(.secondary)
-                        }
-                case .success(let image):
-                                    image
-                                        .resizable()
-                                        .scaledToFill()
-
-                                case .failure:
-                                    thumbnailPlaceholder
-
-                @unknown default:
-                    thumbnailPlaceholder
-                }
+            MaplogCachedRemoteImage(
+                url: thumbnailURL,
+                cacheKey: "tourism-thumbnail-\(card.id)",
+                targetSize: CGSize(width: 264, height: 172),
+                contentMode: .fill
+            ) {
+                thumbnailPlaceholder
+                    .overlay {
+                        ProgressView()
+                            .tint(.secondary)
+                    }
             }
         } else {
             thumbnailPlaceholder

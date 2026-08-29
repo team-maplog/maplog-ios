@@ -390,7 +390,11 @@ final class PublicProfileViewModel: ObservableObject {
             }
 
             do {
-                let data = try await profileRepository.fetchImageData(from: url)
+                let data = try await profileRepository.fetchImageData(
+                    from: url,
+                    cacheKey: "profile-log-thumbnail-\(log.id)",
+                    targetSize: .listThumbnail
+                )
 
                 guard !Task.isCancelled else {
                     return

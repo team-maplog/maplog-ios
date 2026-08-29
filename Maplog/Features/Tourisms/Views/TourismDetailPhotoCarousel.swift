@@ -22,8 +22,9 @@ struct TourismDetailPhotoCarousel: View {
         if let heroImageURL {
             photoItems.append(
                 TourismDetailCarouselPhoto(
-                    id: "hero-\(heroImageURL.absoluteString)",
+                    id: "hero-\(MaplogImageCacheKey.stableURL(heroImageURL))",
                     imageURL: heroImageURL,
+                    cacheKey: "tourism-hero-\(MaplogImageCacheKey.stableURL(heroImageURL))",
                     title: nil
                 )
             )
@@ -35,6 +36,7 @@ struct TourismDetailPhotoCarousel: View {
                 TourismDetailCarouselPhoto(
                     id: image.id,
                     imageURL: image.imageURL,
+                    cacheKey: "tourism-image-\(image.id)",
                     title: image.title
                 )
             )
@@ -153,6 +155,7 @@ struct TourismDetailPhotoCarousel: View {
 struct TourismDetailCarouselPhoto: Identifiable {
     let id: String
     let imageURL: URL
+    let cacheKey: String
     let title: String?
 }
 
@@ -163,26 +166,17 @@ private struct TourismDetailCarouselPhotoView: View {
     let onSelect: () -> Void
 
     var body: some View {
-        AsyncImage(url: photo.imageURL) { phase in
-            switch phase {
-            case .empty:
-                TourismDetailPhotoPlaceholder()
-                    .overlay {
-                        ProgressView()
-                            .tint(.white)
-                    }
-
-            case .success(let image):
-                image
-                    .resizable()
-                    .scaledToFit()
-
-            case .failure:
-                TourismDetailPhotoPlaceholder()
-
-            @unknown default:
-                TourismDetailPhotoPlaceholder()
-            }
+        MaplogCachedRemoteImage(
+            url: photo.imageURL,
+            cacheKey: photo.cacheKey,
+            targetSize: CGSize(width: 390, height: 340),
+            contentMode: .fit
+        ) {
+            TourismDetailPhotoPlaceholder()
+                .overlay {
+                    ProgressView()
+                        .tint(.white)
+                }
         }
         .background(Color.black)
         .clipShape(

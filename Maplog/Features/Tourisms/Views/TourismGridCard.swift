@@ -72,26 +72,17 @@ struct TourismGridCard: View {
     @ViewBuilder
     private var thumbnail: some View {
         if let thumbnailURL = item.thumbnailURL {
-            AsyncImage(url: thumbnailURL) { phase in
-                switch phase {
-                case .empty:
-                    imagePlaceholder
-                        .overlay {
-                                ProgressView()
-                                    .tint(.secondary)
-                        }
-                case .success(let image):
-                    image
-                        .resizable()
-                        .scaledToFill()
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-                case .failure:
-                    imagePlaceholder
-
-                @unknown default:
-                    imagePlaceholder
-                }
+            MaplogCachedRemoteImage(
+                url: thumbnailURL,
+                cacheKey: "tourism-thumbnail-\(item.id)",
+                targetSize: CGSize(width: cardWidth, height: imageHeight),
+                contentMode: .fill
+            ) {
+                imagePlaceholder
+                    .overlay {
+                        ProgressView()
+                            .tint(.secondary)
+                    }
             }
         } else {
             imagePlaceholder

@@ -1,5 +1,5 @@
 {
-  "originHash" : "b9deccd30d26431dbdb22caaf025a07b15001cd6a13f38af4460b15157f1145a",
+  "originHash" : "32d86c4677a3edd5e7ab787fba53ff41a912d1e4ef5421936953cf21be618a9e",
   "pins" : [
     {
       "identity" : "kakaomapssdk-spm",
@@ -8,6 +8,15 @@
       "state" : {
         "revision" : "c79e35a08dff76c451940c5c8606b97e17de5461",
         "version" : "2.12.15"
+      }
+    },
+    {
+      "identity" : "kingfisher",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/onevcat/Kingfisher.git",
+      "state" : {
+        "revision" : "be0d257b9bd47a4e6e1265fc8c237411825f107a",
+        "version" : "8.12.0"
       }
     }
   ],

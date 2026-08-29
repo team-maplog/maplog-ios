@@ -571,22 +571,13 @@ private struct TourismDetailRepeatInfoCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: MaplogSpacing.small) {
             if let imageURL = item.imageURL {
-                AsyncImage(url: imageURL) { phase in
-                    switch phase {
-                    case .empty:
-                        Color.maplogSurfaceRaised
-
-                    case .success(let image):
-                        image
-                            .resizable()
-                            .scaledToFill()
-
-                    case .failure:
-                        Color.maplogSurfaceRaised
-
-                    @unknown default:
-                        Color.maplogSurfaceRaised
-                    }
+                MaplogCachedRemoteImage(
+                    url: imageURL,
+                    cacheKey: "tourism-repeat-info-\(item.id)",
+                    targetSize: CGSize(width: 390, height: 180),
+                    contentMode: .fill
+                ) {
+                    Color.maplogSurfaceRaised
                 }
                 .frame(height: 180)
                 .clipped()

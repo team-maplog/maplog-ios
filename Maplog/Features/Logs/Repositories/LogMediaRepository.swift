@@ -8,8 +8,34 @@
 import Foundation
 
 protocol LogMediaRepository {
-    func fetchThumbnailData(logID: Int64) async throws -> Data
+    func fetchThumbnailData(
+        logID: Int64,
+        targetSize: MaplogImageTargetSize
+    ) async throws -> Data
     func fetchPlaybackFileURL(logID: Int64) async throws -> URL
 
-    func fetchRoutePointThumbnailData(from url: URL) async throws -> Data
+    func fetchRoutePointThumbnailData(
+        from url: URL,
+        targetSize: MaplogImageTargetSize
+    ) async throws -> Data
+}
+
+extension LogMediaRepository {
+    func fetchThumbnailData(
+        logID: Int64
+    ) async throws -> Data {
+        try await fetchThumbnailData(
+            logID: logID,
+            targetSize: .reelCover
+        )
+    }
+
+    func fetchRoutePointThumbnailData(
+        from url: URL
+    ) async throws -> Data {
+        try await fetchRoutePointThumbnailData(
+            from: url,
+            targetSize: .mapMarker
+        )
+    }
 }
