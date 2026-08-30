@@ -57,6 +57,99 @@ struct MapCoordinate: Equatable {
     let longitude: Double
 }
 
+/// 지도 API가 관광 marker에 내려주는 실제 분류값이다.
+/// `ALL`과 `EVENTS`는 요청용 묶음이고, marker에는 세부 분류가 내려오는 것이 기본이다.
+enum TourismMapCategory: String, CaseIterable, Equatable, Sendable {
+    case all = "ALL"
+    case events = "EVENTS"
+    case festival = "FESTIVAL"
+    case performance = "PERFORMANCE"
+    case event = "EVENT"
+    case accommodation = "ACCOMMODATION"
+    case food = "FOOD"
+    case shopping = "SHOPPING"
+    case recommendedCourse = "RECOMMENDED_COURSE"
+    case experienceTourism = "EXPERIENCE_TOURISM"
+    case historyTourism = "HISTORY_TOURISM"
+    case leisureSports = "LEISURE_SPORTS"
+    case natureTourism = "NATURE_TOURISM"
+    case culturalTourism = "CULTURAL_TOURISM"
+    case unknown = "UNKNOWN"
+
+    init(apiValue: String?) {
+        let normalizedValue = apiValue?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .uppercased()
+
+        self = normalizedValue
+            .flatMap(Self.init(rawValue:))
+            ?? .unknown
+    }
+
+    var requestValue: String {
+        self == .unknown ? Self.all.rawValue : rawValue
+    }
+
+    var title: String {
+        switch self {
+        case .all:
+            return "관광 전체"
+        case .events:
+            return "행사 전체"
+        case .festival:
+            return "축제"
+        case .performance:
+            return "공연"
+        case .event:
+            return "행사"
+        case .accommodation:
+            return "숙소"
+        case .food:
+            return "음식점·카페"
+        case .shopping:
+            return "쇼핑"
+        case .recommendedCourse:
+            return "추천 코스"
+        case .experienceTourism:
+            return "체험 관광"
+        case .historyTourism:
+            return "역사 관광"
+        case .leisureSports:
+            return "레저·스포츠"
+        case .natureTourism:
+            return "자연 관광"
+        case .culturalTourism:
+            return "문화 관광"
+        case .unknown:
+            return "관광"
+        }
+    }
+
+    func matches(
+        requestedCategory: TourismMapCategory
+    ) -> Bool {
+        switch requestedCategory {
+        case .all:
+            return true
+
+        case .events:
+            return [
+                TourismMapCategory.events,
+                .festival,
+                .performance,
+                .event
+            ]
+            .contains(self)
+
+        case .unknown:
+            return self == .unknown
+
+        default:
+            return self == requestedCategory
+        }
+    }
+}
+
 // 로그 클립 핀 하나
 struct MapLogMarker: Equatable {
     let logID: Int64
@@ -83,6 +176,7 @@ struct TourismMapMarker: Equatable {
     let thumbnailURL: URL?
     let startDateText: String?
     let endDateText: String?
+    let category: TourismMapCategory
     let coordinate: MapCoordinate
 }
 
@@ -120,6 +214,14 @@ enum MapMarker: Identifiable, Equatable {
         case .tourism:
             return .tourism
         }
+    }
+
+    var tourismCategory: TourismMapCategory? {
+        guard case let .tourism(marker) = self else {
+            return nil
+        }
+
+        return marker.category
     }
 
     var title: String {

@@ -11,24 +11,21 @@ struct ExploreMapSearchControls: View {
     @Binding private var query: String
     @FocusState.Binding private var isSearchFieldFocused: Bool
 
-    private let selectedScope: ExploreMapSearchScope
-    private let markerCount: (ExploreMapSearchScope) -> Int
-    private let onSelectScope: (ExploreMapSearchScope) -> Void
+    private let selectedFilter: ExploreMapFilter
+    private let onSelectFilter: (ExploreMapFilter) -> Void
     private let onClearSearch: () -> Void
 
     init(
         query: Binding<String>,
         isSearchFieldFocused: FocusState<Bool>.Binding,
-        selectedScope: ExploreMapSearchScope,
-        markerCount: @escaping (ExploreMapSearchScope) -> Int,
-        onSelectScope: @escaping (ExploreMapSearchScope) -> Void,
+        selectedFilter: ExploreMapFilter,
+        onSelectFilter: @escaping (ExploreMapFilter) -> Void,
         onClearSearch: @escaping () -> Void
     ) {
         _query = query
         _isSearchFieldFocused = isSearchFieldFocused
-        self.selectedScope = selectedScope
-        self.markerCount = markerCount
-        self.onSelectScope = onSelectScope
+        self.selectedFilter = selectedFilter
+        self.onSelectFilter = onSelectFilter
         self.onClearSearch = onClearSearch
     }
 
@@ -72,14 +69,12 @@ struct ExploreMapSearchControls: View {
                 showsIndicators: false
             ) {
                 HStack(spacing: 8) {
-                    ForEach(ExploreMapSearchScope.allCases) {
-                        scope in
-                        ExploreMapSearchScopeChip(
-                            title: scope.title,
-                            count: markerCount(scope),
-                            isSelected: selectedScope == scope
+                    ForEach(ExploreMapFilter.allCases) { filter in
+                        ExploreMapFilterChip(
+                            filter: filter,
+                            isSelected: selectedFilter == filter
                         ) {
-                            onSelectScope(scope)
+                            onSelectFilter(filter)
                         }
                     }
                 }
@@ -88,34 +83,75 @@ struct ExploreMapSearchControls: View {
     }
 }
 
-private struct ExploreMapSearchScopeChip: View {
-    let title: String
-    let count: Int
+private struct ExploreMapFilterChip: View {
+    let filter: ExploreMapFilter
     let isSelected: Bool
     let action: () -> Void
+
+    private var iconName: String {
+        switch filter {
+        case .all:
+            return "square.grid.2x2.fill"
+        case .maplog:
+            return "play.rectangle.fill"
+        default:
+            return TourismMapMarkerAppearance.style(
+                for: filter.tourismRequestCategory
+            )
+            .symbolName
+        }
+    }
+
+    private var tint: Color {
+        switch filter {
+        case .all:
+            return Color.maplogPrimary
+        case .maplog:
+            return Color.maplogOlive
+        default:
+            return Color(
+                uiColor: TourismMapMarkerAppearance.style(
+                    for: filter.tourismRequestCategory
+                )
+                .color
+            )
+        }
+    }
 
     var body: some View {
         Button(
             action: action
         ) {
-            Text("\(title) \(count)")
+            HStack(spacing: 5) {
+                Image(systemName: iconName)
+                    .font(.caption2.weight(.bold))
+
+                Text(filter.title)
+            }
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(
                     isSelected
-                        ? Color.maplogInk
+                        ? Color.white
                         : Color.maplogMuted
                 )
                 .padding(.horizontal, 14)
                 .frame(height: 34)
                 .background(
                     isSelected
-                        ? Color.maplogLime
+                        ? tint
                         : Color.white.opacity(0.92),
                     in: Capsule()
                 )
+                .overlay {
+                    Capsule()
+                        .strokeBorder(
+                            tint.opacity(isSelected ? 0 : 0.24),
+                            lineWidth: 1
+                        )
+                }
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(title) \(count)개")
+        .accessibilityLabel("\(filter.title) 필터")
         .accessibilityAddTraits(
             isSelected
                 ? .isSelected

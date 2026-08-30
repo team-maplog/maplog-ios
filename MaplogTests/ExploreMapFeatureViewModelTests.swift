@@ -21,7 +21,7 @@ final class ExploreMapFeatureViewModelTests: XCTestCase {
             ]
         )
 
-        viewModel.selectSearchScope(.maplog)
+        viewModel.selectFilter(.maplog)
 
         XCTAssertEqual(
             viewModel.filteredMarkers.map(\.id),
@@ -94,6 +94,21 @@ final class ExploreMapFeatureViewModelTests: XCTestCase {
         XCTAssertEqual(locationService.requestCount, 1)
     }
 
+    func testTourismCategoryFilterShowsOnlyMatchingTourismMarkers() async throws {
+        let viewModel = makeViewModel()
+
+        await loadContent(
+            into: viewModel
+        )
+
+        viewModel.selectFilter(.food)
+
+        XCTAssertEqual(
+            viewModel.filteredMarkers.map(\.id),
+            ["tourism-4"]
+        )
+    }
+
     private func loadContent(
         into viewModel: ExploreMapFeatureViewModel
     ) async {
@@ -159,9 +174,22 @@ final class ExploreMapFeatureViewModelTests: XCTestCase {
                             thumbnailURL: nil,
                             startDateText: nil,
                             endDateText: nil,
+                            category: .festival,
                             coordinate: MapCoordinate(
                                 latitude: 37.53,
                                 longitude: 127.05
+                            )
+                        ),
+                        TourismMapMarker(
+                            tourismID: 4,
+                            name: "강남 맛집",
+                            thumbnailURL: nil,
+                            startDateText: nil,
+                            endDateText: nil,
+                            category: .food,
+                            coordinate: MapCoordinate(
+                                latitude: 37.52,
+                                longitude: 127.01
                             )
                         )
                     ],
@@ -195,7 +223,8 @@ private final class MapRepositoryStub: MapRepository {
     }
 
     func fetchViewportContent(
-        in viewport: MapViewport
+        in viewport: MapViewport,
+        tourismCategory: TourismMapCategory
     ) async throws -> MapViewportContent {
         content
     }

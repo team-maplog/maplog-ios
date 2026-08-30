@@ -20,7 +20,8 @@ final class DefaultMapAPIService: MapAPIService {
     }
 
     func fetchViewportContent(
-        in viewport: MapViewport
+        in viewport: MapViewport,
+        tourismCategory: TourismMapCategory
     ) async throws -> MapViewportResponseDTO {
         guard isValid(viewport) else {
             throw APIError.invalidRequest(
@@ -54,6 +55,10 @@ final class DefaultMapAPIService: MapAPIService {
             URLQueryItem(
                 name: "eastLongitude",
                 value: String(viewport.eastLongitude)
+            ),
+            URLQueryItem(
+                name: "category",
+                value: tourismCategory.requestValue
             ),
             URLQueryItem(
                 name: "size",

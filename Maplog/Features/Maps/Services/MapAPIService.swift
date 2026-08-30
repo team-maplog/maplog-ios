@@ -9,6 +9,7 @@ import Foundation
 
 protocol MapAPIService {
     func fetchViewportContent(
-        in viewport: MapViewport
+        in viewport: MapViewport,
+        tourismCategory: TourismMapCategory
     ) async throws -> MapViewportResponseDTO
 }

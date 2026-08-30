@@ -17,10 +17,12 @@ final class DefaultMapRepository: MapRepository {
     }
 
     func fetchViewportContent(
-        in viewport: MapViewport
+        in viewport: MapViewport,
+        tourismCategory: TourismMapCategory
     ) async throws -> MapViewportContent {
         let responseDTO = try await apiService.fetchViewportContent(
-            in: viewport
+            in: viewport,
+            tourismCategory: tourismCategory
         )
 
         let logMarkers = (responseDTO.markers ?? []).compactMap(
@@ -108,6 +110,7 @@ final class DefaultMapRepository: MapRepository {
             thumbnailURL: makeURL(from: dto.thumbnailURL),
             startDateText: normalizedText(dto.startDate),
             endDateText: normalizedText(dto.endDate),
+            category: TourismMapCategory(apiValue: dto.category),
             coordinate: MapCoordinate(
                 latitude: latitude,
                 longitude: longitude

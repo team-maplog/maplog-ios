@@ -9,6 +9,7 @@ import Foundation
 
 protocol MapRepository {
     func fetchViewportContent(
-        in viewport: MapViewport
+        in viewport: MapViewport,
+        tourismCategory: TourismMapCategory
     ) async throws -> MapViewportContent
 }

@@ -853,9 +853,10 @@ private struct ExploreKakaoMapRepresentable: UIViewRepresentable {
             case .log:
                 return "explore-map-\(marker.id)-\(imageState)-\(selection)"
 
-            case .tourism:
+            case let .tourism(tourismMarker):
                 // 말풍선마다 장소명이 다르므로 관광 ID까지 포함해 개별 스타일로 등록한다.
-                return "explore-map-tourism-\(marker.id)-\(selection)"
+                // 응답 category가 달라졌을 때도 기존 스타일을 재사용하지 않도록 함께 구분한다.
+                return "explore-map-tourism-\(marker.id)-\(tourismMarker.category.rawValue.lowercased())-\(selection)"
             }
         }
 
@@ -1086,7 +1087,7 @@ private struct ExploreKakaoMapRepresentable: UIViewRepresentable {
             let iconSize: CGFloat = isSelected ? 14 : 12
             let iconGap: CGFloat = 3
             let maximumTitleWidth: CGFloat = isSelected ? 74 : 64
-            let titleAttributes: [NSAttributedString.Key: Any] = [
+            let measurementTitleAttributes: [NSAttributedString.Key: Any] = [
                 .font: font,
                 .foregroundColor: UIColor(
                     red: 0.11,
@@ -1102,7 +1103,7 @@ private struct ExploreKakaoMapRepresentable: UIViewRepresentable {
                         height: font.lineHeight
                     ),
                     options: .usesLineFragmentOrigin,
-                    attributes: titleAttributes,
+                    attributes: measurementTitleAttributes,
                     context: nil
                 ).width
             )
@@ -1150,12 +1151,34 @@ private struct ExploreKakaoMapRepresentable: UIViewRepresentable {
                 )
             )
             pointerPath.close()
-            let tourismBlue = UIColor(
-                red: 0.220,
-                green: 0.396,
-                blue: 0.541,
-                alpha: 1
+            let visualStyle = TourismMapMarkerAppearance.style(
+                for: marker.category
             )
+            let bubbleColor = isSelected
+                ? visualStyle.color
+                : UIColor.white
+            let textColor = isSelected
+                ? UIColor.white
+                : UIColor(
+                    red: 0.11,
+                    green: 0.13,
+                    blue: 0.17,
+                    alpha: 1
+                )
+            let iconBackgroundColor = isSelected
+                ? UIColor.white
+                : visualStyle.color
+            let iconColor = isSelected
+                ? visualStyle.color
+                : UIColor.white
+            let borderColor = isSelected
+                ? visualStyle.color
+                : UIColor.white
+
+            let titleAttributes: [NSAttributedString.Key: Any] = [
+                .font: font,
+                .foregroundColor: textColor
+            ]
 
             return UIGraphicsImageRenderer(size: size).image { context in
                 let graphicsContext = context.cgContext
@@ -1166,7 +1189,7 @@ private struct ExploreKakaoMapRepresentable: UIViewRepresentable {
                     blur: 2.5,
                     color: UIColor.black.withAlphaComponent(0.16).cgColor
                 )
-                UIColor.white.setFill()
+                bubbleColor.setFill()
                 bubblePath.fill()
                 pointerPath.fill()
                 graphicsContext.restoreGState()
@@ -1177,7 +1200,7 @@ private struct ExploreKakaoMapRepresentable: UIViewRepresentable {
                     width: iconSize,
                     height: iconSize
                 )
-                tourismBlue.setFill()
+                iconBackgroundColor.setFill()
                 UIBezierPath(
                     ovalIn: iconRect
                 )
@@ -1185,13 +1208,13 @@ private struct ExploreKakaoMapRepresentable: UIViewRepresentable {
 
                 let symbolSize: CGFloat = isSelected ? 8 : 7
                 UIImage(
-                    systemName: "building.columns.fill",
+                    systemName: visualStyle.symbolName,
                     withConfiguration: UIImage.SymbolConfiguration(
                         pointSize: symbolSize,
                         weight: .semibold
                     )
                 )?
-                .withTintColor(.white, renderingMode: .alwaysOriginal)
+                .withTintColor(iconColor, renderingMode: .alwaysOriginal)
                 .draw(
                     in: CGRect(
                         x: iconRect.midX - symbolSize / 2,
@@ -1217,7 +1240,7 @@ private struct ExploreKakaoMapRepresentable: UIViewRepresentable {
                     context: nil
                 )
 
-                (isSelected ? tourismBlue : UIColor.white).setStroke()
+                borderColor.setStroke()
                 bubblePath.lineWidth = isSelected ? 1.25 : 1
                 bubblePath.stroke()
                 pointerPath.lineWidth = isSelected ? 1.25 : 1
