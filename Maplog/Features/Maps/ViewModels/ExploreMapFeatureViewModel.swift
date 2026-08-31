@@ -208,16 +208,6 @@ final class ExploreMapFeatureViewModel: ObservableObject {
         }
     }
 
-    func retrySelectedMarkerThumbnail() {
-        guard let selectedMarker else {
-            return
-        }
-
-        loadThumbnail(
-            for: selectedMarker
-        )
-    }
-
     private func loadContent(
         for load: ViewportContentLoad
     ) async {

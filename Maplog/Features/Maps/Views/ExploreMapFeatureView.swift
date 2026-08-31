@@ -93,8 +93,7 @@ struct ExploreMapFeatureView: View {
                     thumbnailData: viewModel.selectedMarkerThumbnailData,
                     isLoadingThumbnail: viewModel.isLoadingSelectedMarkerThumbnail,
                     onOpen: openSelectedMarker,
-                    onDismiss: viewModel.clearSelection,
-                    onRetryThumbnail: viewModel.retrySelectedMarkerThumbnail
+                    onDismiss: viewModel.clearSelection
                 )
                 .padding(.horizontal, MaplogSpacing.page)
                 .padding(

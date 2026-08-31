@@ -15,57 +15,58 @@ struct ExploreMapMarkerPreviewCard: View {
 
     let onOpen: () -> Void
     let onDismiss: () -> Void
-    let onRetryThumbnail: () -> Void
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            thumbnail
-
-            VStack(alignment: .leading, spacing: 5) {
-                Text(markerTypeTitle)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(Color.maplogOlive)
-
-                Text(marker.title)
-                    .font(.headline)
-                    .foregroundStyle(Color.maplogInk)
-                    .lineLimit(1)
-
-                if !marker.subtitle.isEmpty {
-                    Text(marker.subtitle)
-                        .font(.caption)
-                        .foregroundStyle(Color.maplogMuted)
-                        .lineLimit(2)
-                }
-
-                Button(
-                    actionTitle,
-                    action: onOpen
-                )
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(Color.maplogInk)
-                .padding(.horizontal, 14)
-                .frame(height: 34)
-                .background(
-                    Color.maplogLime,
-                    in: Capsule()
-                )
-                .padding(.top, 3)
-            }
-
-            Spacer(minLength: 0)
-
-            Button(
-                action: onDismiss
-            ) {
-                Image(systemName: "xmark")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(Color.maplogMuted)
-                    .frame(width: 32, height: 32)
-                    .contentShape(Rectangle())
+        ZStack {
+            Button(action: onOpen) {
+                Color.clear
+                    .contentShape(
+                        RoundedRectangle(
+                            cornerRadius: 20,
+                            style: .continuous
+                        )
+                    )
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("장소 카드 닫기")
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .accessibilityLabel("\(marker.title) 상세 보기")
+            .accessibilityHint("카드를 탭하면 상세 화면으로 이동합니다.")
+
+            HStack(alignment: .top, spacing: 12) {
+                thumbnail
+
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(markerTypeTitle)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Color.maplogOlive)
+
+                    Text(marker.title)
+                        .font(.headline)
+                        .foregroundStyle(Color.maplogInk)
+                        .lineLimit(1)
+
+                    if !marker.subtitle.isEmpty {
+                        Text(marker.subtitle)
+                            .font(.caption)
+                            .foregroundStyle(Color.maplogMuted)
+                            .lineLimit(2)
+                    }
+                }
+
+                Spacer(minLength: 0)
+
+                Button(
+                    action: onDismiss
+                ) {
+                    Image(systemName: "xmark")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(Color.maplogMuted)
+                        .frame(width: 32, height: 32)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("장소 카드 닫기")
+            }
         }
         .padding(12)
         .background(
@@ -100,9 +101,6 @@ struct ExploreMapMarkerPreviewCard: View {
                 Image(systemName: fallbackImageName)
                     .font(.title3.weight(.semibold))
                     .foregroundStyle(.white)
-                    .onTapGesture(
-                        perform: onRetryThumbnail
-                    )
             }
         }
         .frame(width: 72, height: 72)
@@ -125,16 +123,6 @@ struct ExploreMapMarkerPreviewCard: View {
 
         case let .tourism(tourismMarker):
             return tourismMarker.category.title
-        }
-    }
-
-    private var actionTitle: String {
-        switch marker {
-        case .log:
-            return "로그 보기"
-
-        case .tourism:
-            return "관광 보기"
         }
     }
 

@@ -671,26 +671,38 @@ private struct TourismDetailFailedView: View {
     let onDismiss: () -> Void
 
     var body: some View {
-        VStack(spacing: MaplogSpacing.medium) {
-            ContentUnavailableView(
-                "관광 상세 정보를 표시할 수 없어요",
-                systemImage: "exclamationmark.triangle",
-                description: Text(presentation.message)
-            )
-
-            switch presentation.recoveryAction {
-            case .retry:
-                Button("다시 시도", action: onRetry)
-                    .buttonStyle(.borderedProminent)
-
-            case .signIn:
-                Button("다시 로그인", action: onSignIn)
-                    .buttonStyle(.borderedProminent)
-
-            case .none:
-                Button("목록으로 돌아가기", action: onDismiss)
-                    .buttonStyle(.bordered)
+        VStack(alignment: .leading, spacing: MaplogSpacing.medium) {
+            Button(action: onDismiss) {
+                Label("뒤로가기", systemImage: "chevron.left")
+                    .font(MaplogFont.callout.weight(.semibold))
+                    .foregroundStyle(Color.maplogInk)
+                    .frame(minHeight: 44)
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel("관광 상세 화면에서 뒤로가기")
+
+            VStack(spacing: MaplogSpacing.medium) {
+                ContentUnavailableView(
+                    "관광 상세 정보를 표시할 수 없어요",
+                    systemImage: "exclamationmark.triangle",
+                    description: Text(presentation.message)
+                )
+
+                switch presentation.recoveryAction {
+                case .retry:
+                    Button("다시 시도", action: onRetry)
+                        .buttonStyle(.borderedProminent)
+
+                case .signIn:
+                    Button("다시 로그인", action: onSignIn)
+                        .buttonStyle(.borderedProminent)
+
+                case .none:
+                    Button("목록으로 돌아가기", action: onDismiss)
+                        .buttonStyle(.bordered)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(MaplogSpacing.page)

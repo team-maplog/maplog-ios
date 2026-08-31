@@ -130,6 +130,12 @@ final class TourismDetailViewModel: ObservableObject {
             return "공연"
         case .event:
             return "행사"
+        case .accommodation:
+            return "숙박"
+        case .food:
+            return "음식점·카페"
+        case .shopping:
+            return "쇼핑"
         case .recommendedCourse:
             return "추천 코스"
         case .experienceTourism:
