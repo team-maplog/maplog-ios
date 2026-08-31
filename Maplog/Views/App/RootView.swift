@@ -84,8 +84,10 @@ struct RootView: View {
     @State private var requestedCapturePlaceName: String?
 
 
-   // init이 끝난 뒤에도 body에서 쓸 값을 보관
+    // init이 끝난 뒤에도 body에서 쓸 값을 보관
     private let authRepository: any AuthRepository
+    private let oauthRepository: any OAuthRepository
+    private let webAuthenticationSession: any OAuthWebAuthenticationSession
     private let tourismRepository: any TourismRepository
     private let cameraCaptureService: any CameraCaptureService
     private let mediaDraftRepository: any MediaDraftRepository
@@ -114,6 +116,8 @@ struct RootView: View {
 
     init(
         authRepository: any AuthRepository,
+        oauthRepository: any OAuthRepository,
+        webAuthenticationSession: any OAuthWebAuthenticationSession,
         tourismRepository: any TourismRepository,
         cameraCaptureService: any CameraCaptureService,
         mediaDraftRepository: any MediaDraftRepository,
@@ -140,6 +144,8 @@ struct RootView: View {
         photoLibraryVideoSaveService: any PhotoLibraryVideoSaving,
     ) {
         self.authRepository = authRepository
+        self.oauthRepository = oauthRepository
+        self.webAuthenticationSession = webAuthenticationSession
         self.tourismRepository = tourismRepository
         self.cameraCaptureService = cameraCaptureService
         self.mediaDraftRepository = mediaDraftRepository
@@ -175,12 +181,12 @@ struct RootView: View {
         Group {
             switch phase {
             case .login:
-                OnboardingView(authRepository: authRepository)
-                {
-                    withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) {
-                        phase = .location
-                    }
-                }
+                OnboardingView(
+                    authRepository: authRepository,
+                    oauthRepository: oauthRepository,
+                    webAuthenticationSession: webAuthenticationSession,
+                    authSession: authSessionStore
+                )
             case .location:
                 LocationPermissionView(
                     onAllow: requestLocationPermission,

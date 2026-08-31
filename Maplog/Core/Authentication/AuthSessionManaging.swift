@@ -13,6 +13,7 @@ protocol AuthSessionManaging:
         AccessTokenProviding,
         RefreshTokenProviding {
 
+        func startSession(with token: AuthToken) throws
         func replaceTokens(with token: AuthToken) throws
         func endSession() throws
 }

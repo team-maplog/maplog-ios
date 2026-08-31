@@ -85,6 +85,10 @@ private final class AuthSessionSpy: AuthSessionManaging {
         "old-refresh-token"
     }
 
+    func startSession(with token: AuthToken) throws {
+        replacedTokens.append(token)
+    }
+
     func replaceTokens(
         with token: AuthToken
     ) throws {
