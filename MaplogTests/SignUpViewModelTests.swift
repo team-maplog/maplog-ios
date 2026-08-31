@@ -164,6 +164,10 @@ private final class SignUpAuthSessionSpy: AuthSessionManaging {
         nil
     }
 
+    func startSession(with token: AuthToken) throws {
+        replacedTokens.append(token)
+    }
+
     func replaceTokens(
         with token: AuthToken
     ) throws {

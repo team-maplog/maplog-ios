@@ -5,6 +5,8 @@ struct MaplogApp: App { // 앱의 조립 담당자
     @StateObject private var authSessionStore:  AuthSessionStore
     @StateObject private var signOutViewModel: SignOutViewModel
     private let authRepository: any AuthRepository
+    private let oauthRepository: any OAuthRepository
+    private let webAuthenticationSession: any OAuthWebAuthenticationSession
     private let tourismRepository: any TourismRepository // 여기서 선언
     private let cameraCaptureService: any CameraCaptureService
     private let mediaDraftRepository: any MediaDraftRepository
@@ -46,6 +48,9 @@ struct MaplogApp: App { // 앱의 조립 담당자
         )
 
         let authRepository = DefaultAuthRepository(apiService: authAPIService)
+        let oauthAPIService = DefaultOAuthAPIService(apiClient: apiClient)
+        let oauthRepository = DefaultOAuthRepository(apiService: oauthAPIService)
+        let webAuthenticationSession = SystemOAuthWebAuthenticationSession()
         let tokenRefresher = DefaultAccessTokenRefresher(authRepository: authRepository, authSession: sessionStore)
         let authenticatedAPIClient = AuthenticatedAPIClient(apiClient: apiClient, authSession: sessionStore, tokenRefresher: tokenRefresher)
         let apiService = DefaultTourismAPIService(authenticatedAPIClient: authenticatedAPIClient)
@@ -101,6 +106,8 @@ struct MaplogApp: App { // 앱의 조립 담당자
             apiService: homeSearchAPIService
         )
         self.authRepository = authRepository
+        self.oauthRepository = oauthRepository
+        self.webAuthenticationSession = webAuthenticationSession
 
         _signOutViewModel = StateObject(wrappedValue: SignOutViewModel(authRepository: authRepository, authSessionStore: sessionStore))
 
@@ -141,6 +148,8 @@ struct MaplogApp: App { // 앱의 조립 담당자
         WindowGroup {
             RootView(
                 authRepository: authRepository,
+                oauthRepository: oauthRepository,
+                webAuthenticationSession: webAuthenticationSession,
                 tourismRepository: tourismRepository, // Composition Root
                 cameraCaptureService: cameraCaptureService,
                 mediaDraftRepository: mediaDraftRepository,

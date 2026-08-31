@@ -19,9 +19,14 @@ struct SignInView: View {
     
     init(
         authRepository: any AuthRepository,
-        authSessionStore: AuthSessionStore
+        authSession: any AuthSessionManaging
     ) {
-        _viewModel = StateObject(wrappedValue: SignInViewModel(authRepository: authRepository, authSessionStore: authSessionStore))
+        _viewModel = StateObject(
+            wrappedValue: SignInViewModel(
+                authRepository: authRepository,
+                authSession: authSession
+            )
+        )
     }
 
     var body: some View {
