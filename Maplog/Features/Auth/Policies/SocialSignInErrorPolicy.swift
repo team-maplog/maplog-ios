@@ -12,9 +12,15 @@ struct SocialSignInErrorPresentation: Equatable {
 
 enum SocialSignInErrorPolicy {
     static func presentation(for error: Error) -> SocialSignInErrorPresentation {
-        if let sessionError = error as? OAuthWebAuthenticationSessionError,
-           sessionError == .cancelled {
-            return SocialSignInErrorPresentation(message: nil, recoveryAction: .none)
+        if let sessionError = error as? OAuthWebAuthenticationSessionError {
+            switch sessionError {
+            case .cancelled:
+                return SocialSignInErrorPresentation(message: nil, recoveryAction: .none)
+            case .couldNotStart, .presentationContextUnavailable:
+                return retryPresentation(
+                    "로그인 화면을 열지 못했어요. 앱을 다시 연 뒤 시도해 주세요."
+                )
+            }
         }
 
         if error is OAuthCallbackError {
