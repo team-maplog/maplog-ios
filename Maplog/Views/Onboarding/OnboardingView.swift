@@ -69,13 +69,30 @@ private extension String {
 
 struct OnboardingView: View {
     let authRepository: any AuthRepository
-    let onStart: () -> Void
+    private let authSession: any AuthSessionManaging
 
-    // 내가 만들지는 않지만, 상위 화면이 제공한 공유 객체를 사용
-    @EnvironmentObject private var authSessionStore: AuthSessionStore
     @StateObject private var viewModel = OnboardingViewModel()
+    @StateObject private var socialSignInViewModel: SocialSignInViewModel
     @State private var activeFlow: AuthFlow?
     @State private var resetConfirmation: ResetConfirmation?
+
+    init(
+        authRepository: any AuthRepository,
+        oauthRepository: any OAuthRepository,
+        webAuthenticationSession: any OAuthWebAuthenticationSession,
+        authSession: any AuthSessionManaging,
+        sessionLifecycle: any AuthSessionLifecycleManaging
+    ) {
+        self.authRepository = authRepository
+        self.authSession = authSession
+        _socialSignInViewModel = StateObject(
+            wrappedValue: SocialSignInViewModel(
+                oauthRepository: oauthRepository,
+                webAuthenticationSession: webAuthenticationSession,
+                sessionLifecycle: sessionLifecycle
+            )
+        )
+    }
 
     var body: some View {
         NavigationStack{
@@ -110,7 +127,7 @@ struct OnboardingView: View {
 
                     VStack(spacing: MaplogSpacing.small) {
                         NavigationLink{
-                            SignInView(authRepository: authRepository, authSessionStore: authSessionStore)
+                            SignInView(authRepository: authRepository, authSession: authSession)
                         } label: {
                             OnboardingLoginButtonLabel(title: "이메일로 로그인", icon: "envelope.fill")
                         }
@@ -134,20 +151,43 @@ struct OnboardingView: View {
                         }
                         .padding(.vertical, MaplogSpacing.xxSmall)
 
-                        loginButton(title: "카카오로 로그인", background: Color(red: 1.0, green: 0.86, blue: 0.0), foreground: .black, icon: "message.fill") {
-                            socialLogin(provider: "카카오")
-                        }
-                        loginButton(title: "네이버로 로그인", background: Color(red: 0.02, green: 0.78, blue: 0.33), foreground: .white, icon: "n.circle.fill") {
-                            socialLogin(provider: "네이버")
-                        }
-                        loginButton(title: "Apple로 로그인", background: .black, foreground: .white, icon: "apple.logo") {
-                            socialLogin(provider: "Apple")
+                        socialLoginButton(
+                            provider: .google,
+                            background: .maplogSurfaceRaised,
+                            foreground: .maplogInk,
+                            icon: "g.circle.fill"
+                        )
+                        socialLoginButton(
+                            provider: .kakao,
+                            background: Color(red: 1.0, green: 0.86, blue: 0.0),
+                            foreground: .black,
+                            icon: "message.fill"
+                        )
+                        socialLoginButton(
+                            provider: .naver,
+                            background: Color(red: 0.02, green: 0.78, blue: 0.33),
+                            foreground: .white,
+                            icon: "n.circle.fill"
+                        )
+                        socialLoginButton(
+                            provider: .apple,
+                            background: .black,
+                            foreground: .white,
+                            icon: "apple.logo"
+                        )
+
+                        if let message = socialSignInViewModel.errorMessage {
+                            Text(message)
+                                .font(MaplogFont.caption)
+                                .foregroundStyle(Color.maplogDanger)
+                                .multilineTextAlignment(.center)
+                                .frame(maxWidth: .infinity)
                         }
 
                         HStack(spacing: MaplogSpacing.xSmall) {
                             NavigationLink(destination: SignUpView(
                                 authRepository: authRepository,
-                                authSession: authSessionStore
+                                authSession: authSession
                             )) {
                                 Text("회원가입")
                             }
@@ -181,7 +221,6 @@ struct OnboardingView: View {
             AuthFlowSheet(
                 flow: flow,
                 viewModel: viewModel,
-                onAuthenticated: onStart,
                 onResetSent: {
                     resetConfirmation = ResetConfirmation(email: viewModel.resetEmail)
                     showToast("재설정 링크를 보냈어요")
@@ -193,19 +232,27 @@ struct OnboardingView: View {
         .sheet(item: $resetConfirmation) { confirmation in
             ResetLinkSentSheet(email: confirmation.email) {
                 resetConfirmation = nil
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
-                    activeFlow = .email
-                }
             }
             .presentationDetents([.height(342)])
             .presentationDragIndicator(.visible)
         }
     }
 
-    private func loginButton(title: String, background: Color, foreground: Color, icon: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+    private func socialLoginButton(
+        provider: OAuthProvider,
+        background: Color,
+        foreground: Color,
+        icon: String
+    ) -> some View {
+        Button {
+            Task {
+                await socialSignInViewModel.signIn(provider: provider)
+            }
+        } label: {
             OnboardingLoginButtonLabel(
-                title: title,
+                title: socialSignInViewModel.activeProvider == provider
+                    ? "로그인 중..."
+                    : "\(provider.displayName)로 로그인",
                 icon: icon
             )
         }
@@ -216,13 +263,8 @@ struct OnboardingView: View {
                 fullWidth: true
             )
         )
-    }
-
-    private func socialLogin(provider: String) {
-        showToast("\(provider) 계정으로 로그인했어요")
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            onStart()
-        }
+        .disabled(socialSignInViewModel.isLoading)
+        .accessibilityLabel("\(provider.displayName)로 로그인")
     }
 
     private func showToast(_ text: String) {
@@ -235,6 +277,17 @@ struct OnboardingView: View {
                     viewModel.toastText = nil
                 }
             }
+        }
+    }
+}
+
+private extension OAuthProvider {
+    var displayName: String {
+        switch self {
+        case .google: return "Google"
+        case .kakao: return "카카오"
+        case .naver: return "네이버"
+        case .apple: return "Apple"
         }
     }
 }
@@ -316,7 +369,6 @@ private struct ResetLinkSentSheet: View {
 private struct AuthFlowSheet: View {
     let flow: AuthFlow
     @ObservedObject var viewModel: OnboardingViewModel
-    let onAuthenticated: () -> Void
     let onResetSent: () -> Void
     @Environment(\.dismiss) private var dismiss
 
@@ -512,7 +564,7 @@ private struct AuthFlowSheet: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
             switch flow {
             case .email, .signup:
-                onAuthenticated()
+                break
             case .resetPassword:
                 onResetSent()
             }

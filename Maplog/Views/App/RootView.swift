@@ -158,8 +158,11 @@ struct RootView: View {
     @State private var requestedNotificationDestination: MaplogNotificationDestination?
 
 
-   // init이 끝난 뒤에도 body에서 쓸 값을 보관
+    // init이 끝난 뒤에도 body에서 쓸 값을 보관
     private let authRepository: any AuthRepository
+    private let oauthRepository: any OAuthRepository
+    private let webAuthenticationSession: any OAuthWebAuthenticationSession
+    private let sessionLifecycle: any AuthSessionLifecycleManaging
     private let tourismRepository: any TourismRepository
     private let cameraCaptureService: any CameraCaptureService
     private let mediaDraftRepository: any MediaDraftRepository
@@ -190,6 +193,9 @@ struct RootView: View {
 
     init(
         authRepository: any AuthRepository,
+        oauthRepository: any OAuthRepository,
+        webAuthenticationSession: any OAuthWebAuthenticationSession,
+        sessionLifecycle: any AuthSessionLifecycleManaging,
         tourismRepository: any TourismRepository,
         cameraCaptureService: any CameraCaptureService,
         mediaDraftRepository: any MediaDraftRepository,
@@ -218,6 +224,9 @@ struct RootView: View {
         photoLibraryVideoSaveService: any PhotoLibraryVideoSaving,
     ) {
         self.authRepository = authRepository
+        self.oauthRepository = oauthRepository
+        self.webAuthenticationSession = webAuthenticationSession
+        self.sessionLifecycle = sessionLifecycle
         self.tourismRepository = tourismRepository
         self.cameraCaptureService = cameraCaptureService
         self.mediaDraftRepository = mediaDraftRepository
@@ -255,12 +264,13 @@ struct RootView: View {
         Group {
             switch phase {
             case .login:
-                OnboardingView(authRepository: authRepository)
-                {
-                    withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) {
-                        phase = .location
-                    }
-                }
+                OnboardingView(
+                    authRepository: authRepository,
+                    oauthRepository: oauthRepository,
+                    webAuthenticationSession: webAuthenticationSession,
+                    authSession: authSessionStore,
+                    sessionLifecycle: sessionLifecycle
+                )
             case .location:
                 LocationPermissionView(
                     onAllow: requestLocationPermission,
@@ -302,8 +312,12 @@ struct RootView: View {
         }
         .tint(.maplogLime)
         .font(MaplogFont.body)
-        .environment(\.maplogLogout) { // endSession이 토큰을 삭제하고 isAuthenticated = false로 만들면, .onChange가 자동으로 로그인 화면으로 이동시킴
+        .environment(\.maplogLogout) {
+            // 이미 토큰이 지워진 오류 상태여도 버튼은 항상 로그인 화면으로 보냄
             try? authSessionStore.endSession()
+            withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) {
+                phase = .login
+            }
         }
         .environmentObject(sessionStore)
         .onAppear(perform: consumeLaunchRequest)
@@ -316,18 +330,22 @@ struct RootView: View {
             }
 
             do {
-                try authSessionStore.restoreSession() // refresh token 존재 확인, isAuthenticated 변경
+                try authSessionStore.restoreSession()
             } catch {
-
+                try? authSessionStore.endSession()
             }
 
             hasFinishedInitialAuthCheck = true
 
-            if authSessionStore.isAuthenticated {
-                phase = .app // ture, 기존 로그인 세션 있으므로 app
-            } else {
-                phase = .login // false, 로그인 정보 없으므로 login
+            guard authSessionStore.isAuthenticated else {
+                phase = .login
+                return
             }
+
+            // 저장된 refresh token 존재만으로 홈을 열지 않고 보호 API까지 확인함
+            phase = await sessionLifecycle.validateRestoredSession()
+                ? .app
+                : .login
         } // 회원가입 성공 로그아웃 변화 감지
         .onChange(of: authSessionStore.isAuthenticated) { _, isAuthenticated in
             guard hasFinishedInitialAuthCheck else {

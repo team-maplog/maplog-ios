@@ -25,6 +25,13 @@ enum BackendErrorCode: Equatable {
     case commonInvalidRequest
     case tourismNotFound
 
+    case oauthEmailPermissionRequired
+    case oauthStateExpired
+    case oauthEmailAlreadyInUse
+    case oauthHandoffInvalid
+    case oauthHandoffStoreUnavailable
+    case requestRateLimited
+
     case fileTooLarge
     case unsupportedFileType
     case missingLogVideo
@@ -85,6 +92,24 @@ enum BackendErrorCode: Equatable {
 
         case "TOUR-003":
             self = .tourismNotFound
+
+        case "OAUTH-003", "OAUTH-009":
+            self = .oauthEmailPermissionRequired
+
+        case "OAUTH-004":
+            self = .oauthStateExpired
+
+        case "OAUTH-010":
+            self = .oauthEmailAlreadyInUse
+
+        case "OAUTH-014":
+            self = .oauthHandoffInvalid
+
+        case "OAUTH-015":
+            self = .oauthHandoffStoreUnavailable
+
+        case "RATE-001":
+            self = .requestRateLimited
 
         case "FILE-002":
             self = .fileTooLarge

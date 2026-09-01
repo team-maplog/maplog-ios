@@ -38,7 +38,25 @@ final class AuthSessionStore: ObservableObject, AuthSessionManaging, Authenticat
 
     // 회원가입 로그인 성공 시 세션 시작
     func startSession(with token: AuthToken) throws {
+        try stageSession(with: token)
+        try activateStagedSession()
+    }
+
+    func stageSession(with token: AuthToken) throws {
         try saveTokens(token)
+        // handoff 교환 직후에는 /users/me 검증이 끝날 때까지 홈을 열지 않음
+        isAuthenticated = false
+    }
+
+    func activateStagedSession() throws {
+        guard let accessToken = try KeychainService.read(for: TokenKey.accessToken),
+              !accessToken.isEmpty,
+              let refreshToken = try KeychainService.read(for: TokenKey.refreshToken),
+              !refreshToken.isEmpty
+        else {
+            throw APIError.missingAccessToken
+        }
+
         isAuthenticated = true
     }
 
@@ -66,14 +84,9 @@ final class AuthSessionStore: ObservableObject, AuthSessionManaging, Authenticat
 
     // 로그아웃 토큰 무효시 세션 종료
     func endSession() throws {
-        guard isAuthenticated else { // 첫 번째 호출이 토큰을 지우고 isAuthenticated = false로 바꾸고, 뒤따라 들어온 호출은 guard에서 바로 종료. 멱등성
-            return
-        }
-        
+        // 이미 비로그인 상태여도 남아 있을 수 있는 임시 토큰까지 지움
         try KeychainService.delete(for: TokenKey.accessToken)
-
         try KeychainService.delete(for: TokenKey.refreshToken)
-
         isAuthenticated = false
     }
 
