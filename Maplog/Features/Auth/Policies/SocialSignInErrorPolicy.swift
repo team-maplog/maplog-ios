@@ -63,6 +63,9 @@ enum SocialSignInErrorPolicy {
         case .oauthHandoffStoreUnavailable:
             return retryPresentation("로그인을 처리하지 못했어요. 잠시 후 다시 시도해 주세요.")
 
+        case .expiredAccessToken, .invalidAuthentication:
+            return retryPresentation("로그인 정보를 확인하지 못했어요. 처음부터 다시 시도해 주세요.")
+
         case .requestRateLimited:
             return retryPresentation("요청이 많아요. 잠시 후 다시 시도해 주세요.")
 

@@ -80,7 +80,8 @@ struct OnboardingView: View {
         authRepository: any AuthRepository,
         oauthRepository: any OAuthRepository,
         webAuthenticationSession: any OAuthWebAuthenticationSession,
-        authSession: any AuthSessionManaging
+        authSession: any AuthSessionManaging,
+        sessionLifecycle: any AuthSessionLifecycleManaging
     ) {
         self.authRepository = authRepository
         self.authSession = authSession
@@ -88,7 +89,7 @@ struct OnboardingView: View {
             wrappedValue: SocialSignInViewModel(
                 oauthRepository: oauthRepository,
                 webAuthenticationSession: webAuthenticationSession,
-                authSession: authSession
+                sessionLifecycle: sessionLifecycle
             )
         )
     }

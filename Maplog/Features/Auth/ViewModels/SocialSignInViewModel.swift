@@ -13,7 +13,7 @@ final class SocialSignInViewModel: ObservableObject {
 
     private let oauthRepository: any OAuthRepository
     private let webAuthenticationSession: any OAuthWebAuthenticationSession
-    private let authSession: any AuthSessionManaging
+    private let sessionLifecycle: any AuthSessionLifecycleManaging
 
     var isLoading: Bool {
         activeProvider != nil
@@ -22,11 +22,11 @@ final class SocialSignInViewModel: ObservableObject {
     init(
         oauthRepository: any OAuthRepository,
         webAuthenticationSession: any OAuthWebAuthenticationSession,
-        authSession: any AuthSessionManaging
+        sessionLifecycle: any AuthSessionLifecycleManaging
     ) {
         self.oauthRepository = oauthRepository
         self.webAuthenticationSession = webAuthenticationSession
-        self.authSession = authSession
+        self.sessionLifecycle = sessionLifecycle
     }
 
     func signIn(provider: OAuthProvider) async {
@@ -48,8 +48,8 @@ final class SocialSignInViewModel: ObservableObject {
             let callbackURL = try await webAuthenticationSession.authenticate(at: redirectURL)
             let handoffCode = try OAuthHandoffCode(callbackURL: callbackURL)
             let authToken = try await oauthRepository.exchange(handoffCode: handoffCode)
-            // Keychain 저장 뒤 RootView가 로그인 상태 변화를 감지함
-            try authSession.startSession(with: authToken)
+            // handoff token은 /users/me 검증을 통과한 경우에만 홈 전환 상태가 됨
+            try await sessionLifecycle.establishSession(with: authToken)
         } catch {
             let presentation = SocialSignInErrorPolicy.presentation(for: error)
             errorMessage = presentation.message

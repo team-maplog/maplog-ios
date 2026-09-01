@@ -9,6 +9,7 @@ struct MaplogApp: App { // 앱의 조립 담당자
     private let authRepository: any AuthRepository
     private let oauthRepository: any OAuthRepository
     private let webAuthenticationSession: any OAuthWebAuthenticationSession
+    private let sessionLifecycle: any AuthSessionLifecycleManaging
     private let tourismRepository: any TourismRepository // 여기서 선언
     private let cameraCaptureService: any CameraCaptureService
     private let mediaDraftRepository: any MediaDraftRepository
@@ -94,6 +95,16 @@ struct MaplogApp: App { // 앱의 조립 담당자
             imageDataLoader: imageDataLoader
         )
         let profileRepository = DefaultProfileRepository(apiService: profileAPIService)
+        let sessionValidationAPIService = DefaultSessionValidationAPIService(
+            authenticatedAPIClient: authenticatedAPIClient
+        )
+        let sessionValidationRepository = DefaultSessionValidationRepository(
+            apiService: sessionValidationAPIService
+        )
+        let sessionLifecycle = DefaultAuthSessionLifecycleManager(
+            authSession: sessionStore,
+            sessionValidationRepository: sessionValidationRepository
+        )
         let followAPIService = DefaultFollowAPIService(
             authenticatedAPIClient: authenticatedAPIClient
         )
@@ -117,6 +128,7 @@ struct MaplogApp: App { // 앱의 조립 담당자
         self.authRepository = authRepository
         self.oauthRepository = oauthRepository
         self.webAuthenticationSession = webAuthenticationSession
+        self.sessionLifecycle = sessionLifecycle
 
         _signOutViewModel = StateObject(wrappedValue: SignOutViewModel(authRepository: authRepository, authSessionStore: sessionStore))
         _pushNotificationCoordinator = StateObject(
@@ -170,6 +182,7 @@ struct MaplogApp: App { // 앱의 조립 담당자
                 authRepository: authRepository,
                 oauthRepository: oauthRepository,
                 webAuthenticationSession: webAuthenticationSession,
+                sessionLifecycle: sessionLifecycle,
                 tourismRepository: tourismRepository, // Composition Root
                 cameraCaptureService: cameraCaptureService,
                 mediaDraftRepository: mediaDraftRepository,

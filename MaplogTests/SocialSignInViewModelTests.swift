@@ -4,18 +4,18 @@ import XCTest
 
 @MainActor
 final class SocialSignInViewModelTests: XCTestCase {
-    func testSignInExchangesHandoffCodeAndStartsSession() async throws {
+    func testSignInExchangesHandoffCodeAndEstablishesValidatedSession() async throws {
         let repository = OAuthRepositorySpy()
         let webSession = OAuthWebAuthenticationSessionSpy(
             callbackURL: try XCTUnwrap(
                 URL(string: "https://maplog.millenniumrhino.com/auth/ios?handoffCode=one-time-code")
             )
         )
-        let authSession = OAuthAuthSessionSpy()
+        let sessionLifecycle = AuthSessionLifecycleSpy()
         let viewModel = SocialSignInViewModel(
             oauthRepository: repository,
             webAuthenticationSession: webSession,
-            authSession: authSession
+            sessionLifecycle: sessionLifecycle
         )
 
         await viewModel.signIn(provider: .kakao)
@@ -24,7 +24,7 @@ final class SocialSignInViewModelTests: XCTestCase {
         let exchangedHandoffCode = await repository.exchangedHandoffCode()
         XCTAssertEqual(requestedProvider, .kakao)
         XCTAssertEqual(exchangedHandoffCode, "one-time-code")
-        XCTAssertEqual(authSession.startedTokens.count, 1)
+        XCTAssertEqual(sessionLifecycle.establishedTokens.count, 1)
         XCTAssertNil(viewModel.errorMessage)
         XCTAssertFalse(viewModel.isLoading)
     }
@@ -35,18 +35,18 @@ final class SocialSignInViewModelTests: XCTestCase {
             callbackURL: try XCTUnwrap(URL(string: "https://maplog.millenniumrhino.com/auth/ios")),
             error: OAuthWebAuthenticationSessionError.cancelled
         )
-        let authSession = OAuthAuthSessionSpy()
+        let sessionLifecycle = AuthSessionLifecycleSpy()
         let viewModel = SocialSignInViewModel(
             oauthRepository: repository,
             webAuthenticationSession: webSession,
-            authSession: authSession
+            sessionLifecycle: sessionLifecycle
         )
 
         await viewModel.signIn(provider: .apple)
 
         let exchangedHandoffCode = await repository.exchangedHandoffCode()
         XCTAssertNil(exchangedHandoffCode)
-        XCTAssertTrue(authSession.startedTokens.isEmpty)
+        XCTAssertTrue(sessionLifecycle.establishedTokens.isEmpty)
         XCTAssertNil(viewModel.errorMessage)
     }
 
@@ -67,17 +67,50 @@ final class SocialSignInViewModelTests: XCTestCase {
                 URL(string: "https://maplog.millenniumrhino.com/auth/ios?handoffCode=expired-code")
             )
         )
-        let authSession = OAuthAuthSessionSpy()
+        let sessionLifecycle = AuthSessionLifecycleSpy()
         let viewModel = SocialSignInViewModel(
             oauthRepository: repository,
             webAuthenticationSession: webSession,
-            authSession: authSession
+            sessionLifecycle: sessionLifecycle
         )
 
         await viewModel.signIn(provider: .google)
 
         XCTAssertEqual(viewModel.errorMessage, "로그인 시간이 만료되었어요. 처음부터 다시 시도해 주세요.")
-        XCTAssertTrue(authSession.startedTokens.isEmpty)
+        XCTAssertTrue(sessionLifecycle.establishedTokens.isEmpty)
+    }
+
+    func testInvalidValidatedSessionShowsRestartMessage() async throws {
+        let repository = OAuthRepositorySpy()
+        let webSession = OAuthWebAuthenticationSessionSpy(
+            callbackURL: try XCTUnwrap(
+                URL(string: "https://maplog.millenniumrhino.com/auth/ios?handoffCode=one-time-code")
+            )
+        )
+        let sessionLifecycle = AuthSessionLifecycleSpy(
+            establishError: APIError.server(
+                statusCode: 401,
+                response: APIErrorResponse(
+                    successFlag: false,
+                    code: "WRONG_TOKEN",
+                    message: "invalid token",
+                    data: nil
+                )
+            )
+        )
+        let viewModel = SocialSignInViewModel(
+            oauthRepository: repository,
+            webAuthenticationSession: webSession,
+            sessionLifecycle: sessionLifecycle
+        )
+
+        await viewModel.signIn(provider: .kakao)
+
+        XCTAssertEqual(
+            viewModel.errorMessage,
+            "로그인 정보를 확인하지 못했어요. 처음부터 다시 시도해 주세요."
+        )
+        XCTAssertEqual(sessionLifecycle.establishedTokens.count, 1)
     }
 }
 
@@ -133,22 +166,21 @@ private final class OAuthWebAuthenticationSessionSpy: OAuthWebAuthenticationSess
 }
 
 @MainActor
-private final class OAuthAuthSessionSpy: AuthSessionManaging {
-    private(set) var startedTokens: [AuthToken] = []
+private final class AuthSessionLifecycleSpy: AuthSessionLifecycleManaging {
+    private(set) var establishedTokens: [AuthToken] = []
+    private let establishError: Error?
 
-    func startSession(with token: AuthToken) throws {
-        startedTokens.append(token)
+    init(establishError: Error? = nil) {
+        self.establishError = establishError
     }
 
-    func replaceTokens(with token: AuthToken) throws { }
+    func establishSession(with token: AuthToken) async throws {
+        establishedTokens.append(token)
 
-    func endSession() throws { }
-
-    func currentAccessToken() throws -> String? {
-        nil
+        if let establishError {
+            throw establishError
+        }
     }
 
-    func currentRefreshToken() throws -> String? {
-        nil
-    }
+    func validateRestoredSession() async -> Bool { true }
 }
