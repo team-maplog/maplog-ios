@@ -164,12 +164,6 @@ struct OnboardingView: View {
                             icon: "message.fill"
                         )
                         socialLoginButton(
-                            provider: .naver,
-                            background: Color(red: 0.02, green: 0.78, blue: 0.33),
-                            foreground: .white,
-                            icon: "n.circle.fill"
-                        )
-                        socialLoginButton(
                             provider: .apple,
                             background: .black,
                             foreground: .white,
@@ -286,7 +280,6 @@ private extension OAuthProvider {
         switch self {
         case .google: return "Google"
         case .kakao: return "카카오"
-        case .naver: return "네이버"
         case .apple: return "Apple"
         }
     }
