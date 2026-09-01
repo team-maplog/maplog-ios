@@ -9,6 +9,9 @@
 /* Begin PBXBuildFile section */
 		0BDB4C1D30FCD6A8E747770C /* LogPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65ABBA241CCE59F34DF290A0 /* LogPreviewView.swift */; };
 		0F38CC8E9CFCBB2E9982A900 /* KakaoMapsSDK-SPM in Frameworks */ = {isa = PBXBuildFile; productRef = 6B18CAE8F036967CBD6A5FD0 /* KakaoMapsSDK-SPM */; };
+		FCA100000000000000000001 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = FCA100000000000000000006 /* FirebaseCore */; };
+		FCA100000000000000000002 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = FCA100000000000000000007 /* FirebaseMessaging */; };
+		FCA100000000000000000003 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = FCA100000000000000000004 /* GoogleService-Info.plist */; };
 		1F799557AF09B31CA1D664EF /* MaplogModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 717E1AC786880C4F9F3E0447 /* MaplogModels.swift */; };
 		28E82DEB362C514D0763D2DC /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0C944E2B4B65B383EDBD76C /* ProfileView.swift */; };
 		2F5692305C0C1CB4922668FB /* MaplogApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2672356266064D88A9AB90F5 /* MaplogApp.swift */; };
@@ -68,6 +71,7 @@
 		2672356266064D88A9AB90F5 /* MaplogApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MaplogApp.swift; sourceTree = "<group>"; };
 		301951B5ED69D1CB3A145958 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		466D4CDACC71C57EB22009EB /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		FCA100000000000000000004 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		65ABBA241CCE59F34DF290A0 /* LogPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogPreviewView.swift; sourceTree = "<group>"; };
 		691D6E56B0806BACA016DE02 /* CaptureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureView.swift; sourceTree = "<group>"; };
 		717E1AC786880C4F9F3E0447 /* MaplogModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MaplogModels.swift; sourceTree = "<group>"; };
@@ -164,6 +168,8 @@
 			files = (
 				0F38CC8E9CFCBB2E9982A900 /* KakaoMapsSDK-SPM in Frameworks */,
 				A5C0A0010000000000000001 /* Kingfisher in Frameworks */,
+				FCA100000000000000000001 /* FirebaseCore in Frameworks */,
+				FCA100000000000000000002 /* FirebaseMessaging in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -184,6 +190,7 @@
 				E281F79B300EACAC00562F7C /* Core */,
 				E21BAE2B300BC22400B95B53 /* Stores */,
 				466D4CDACC71C57EB22009EB /* Info.plist */,
+				FCA100000000000000000004 /* GoogleService-Info.plist */,
 				2672356266064D88A9AB90F5 /* MaplogApp.swift */,
 				788BE76129F3163C4DBBEAC5 /* AppIntents */,
 				86B65D051A5C8E1403262757 /* Components */,
@@ -395,6 +402,8 @@
 			packageProductDependencies = (
 				6B18CAE8F036967CBD6A5FD0 /* KakaoMapsSDK-SPM */,
 				A5C0A0010000000000000003 /* Kingfisher */,
+				FCA100000000000000000006 /* FirebaseCore */,
+				FCA100000000000000000007 /* FirebaseMessaging */,
 			);
 			productName = Maplog;
 			productReference = C9D76282FF2FFEEC0209C7A9 /* Maplog.app */;
@@ -451,6 +460,7 @@
 			packageReferences = (
 				4CA97833B5B1FA813701067E /* XCRemoteSwiftPackageReference "KakaoMapsSDK-SPM" */,
 				A5C0A0010000000000000002 /* XCRemoteSwiftPackageReference "Kingfisher" */,
+				FCA100000000000000000005 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 89737E8A663CE85CB215E1ED /* Products */;
@@ -469,6 +479,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				77DB9C9792EBE33C03EC4360 /* Assets.xcassets in Resources */,
+				FCA100000000000000000003 /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -674,6 +685,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Maplog/Maplog.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DEVELOPMENT_TEAM = 6K7Z5G4HYN;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -754,6 +766,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = Maplog/Maplog.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DEVELOPMENT_TEAM = 6K7Z5G4HYN;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -817,6 +830,14 @@
 				minimumVersion = 8.0.0;
 			};
 		};
+		FCA100000000000000000005 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 12.0.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -829,6 +850,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = A5C0A0010000000000000002 /* XCRemoteSwiftPackageReference "Kingfisher" */;
 			productName = Kingfisher;
+		};
+		FCA100000000000000000006 /* FirebaseCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FCA100000000000000000005 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseCore;
+		};
+		FCA100000000000000000007 /* FirebaseMessaging */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = FCA100000000000000000005 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseMessaging;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

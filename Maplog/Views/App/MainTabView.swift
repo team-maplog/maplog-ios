@@ -22,6 +22,7 @@ struct MainTabView: View {
 
     @Binding private var requestedTab: MaplogTab?
     @Binding private var requestedCapturePlaceName: String?
+    @Binding private var requestedNotificationDestination: MaplogNotificationDestination?
 
     @State private var selectedTab: MaplogTab
     @State private var previousTab: MaplogTab
@@ -49,6 +50,8 @@ struct MainTabView: View {
     private let followRepository: any FollowRepository
     private let mapRepository: any MapRepository
     private let homeSearchRepository: any HomeSearchRepository
+    private let notificationRepository: any NotificationRepository
+    private let pushNotificationCoordinator: PushNotificationCoordinator
     private let mapCurrentLocationService: any MapCurrentLocationService
     private let photoLibraryVideoImportService: any PhotoLibraryVideoImporting
     private let photoLibraryVideoSaveService: any PhotoLibraryVideoSaving
@@ -76,11 +79,14 @@ struct MainTabView: View {
         followRepository: any FollowRepository,
         mapRepository: any MapRepository,
         homeSearchRepository: any HomeSearchRepository,
+        notificationRepository: any NotificationRepository,
+        pushNotificationCoordinator: PushNotificationCoordinator,
         mapCurrentLocationService: any MapCurrentLocationService,
         photoLibraryVideoImportService: any PhotoLibraryVideoImporting,
         photoLibraryVideoSaveService: any PhotoLibraryVideoSaving,
         requestedTab: Binding<MaplogTab?> = .constant(nil),
-        requestedCapturePlaceName: Binding<String?> = .constant(nil)
+        requestedCapturePlaceName: Binding<String?> = .constant(nil),
+        requestedNotificationDestination: Binding<MaplogNotificationDestination?> = .constant(nil)
     ) {
         self.tourismRepository = tourismRepository
         self.cameraCaptureService = cameraCaptureService
@@ -101,12 +107,15 @@ struct MainTabView: View {
         self.followRepository = followRepository
         self.mapRepository = mapRepository
         self.homeSearchRepository = homeSearchRepository
+        self.notificationRepository = notificationRepository
+        self.pushNotificationCoordinator = pushNotificationCoordinator
         self.mapCurrentLocationService = mapCurrentLocationService
         self.photoLibraryVideoImportService = photoLibraryVideoImportService
         self.photoLibraryVideoSaveService = photoLibraryVideoSaveService
 
         _requestedTab = requestedTab
         _requestedCapturePlaceName = requestedCapturePlaceName
+        _requestedNotificationDestination = requestedNotificationDestination
         _selectedTab = State(initialValue: .home)
         _previousTab = State(initialValue: .home)
 
@@ -202,6 +211,8 @@ struct MainTabView: View {
                             profileRepository: profileRepository,
                             followRepository: followRepository,
                             homeSearchRepository: homeSearchRepository,
+                            notificationRepository: notificationRepository,
+                            pushNotificationCoordinator: pushNotificationCoordinator,
                             logReelRepository: logReelRepository,
                             logMediaRepository: logMediaRepository,
                             topSafeAreaInset: rootProxy.safeAreaInsets.top,
@@ -228,6 +239,9 @@ struct MainTabView: View {
                                         )
                                     )
                                 )
+                            },
+                            onShowPublicProfile: { user in
+                                homeNavigationPath.append(.publicProfile(user: user))
                             },
                             onCreateLog: {
                                 isLogClipPickerPresented = true
@@ -377,6 +391,14 @@ struct MainTabView: View {
             requestedTab = nil
             requestedCapturePlaceName = nil
         }
+        .onChange(of: requestedNotificationDestination) { _, destination in
+            guard let destination else {
+                return
+            }
+
+            openNotificationDestination(destination)
+            requestedNotificationDestination = nil
+        }
         .environment(\.maplogSelectTab) { tab in
             withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
                 applyRequestedTab(tab)
@@ -385,6 +407,12 @@ struct MainTabView: View {
     }
 
     private func applyPendingRequestedTab() {
+        if let requestedNotificationDestination {
+            openNotificationDestination(requestedNotificationDestination)
+            self.requestedNotificationDestination = nil
+            return
+        }
+
         guard let requestedTab else { return }
 
         applyRequestedTab(requestedTab, capturePlaceName: requestedCapturePlaceName)
@@ -412,6 +440,25 @@ struct MainTabView: View {
             previousTab = tab
         }
         selectedTab = tab
+    }
+
+    private func openNotificationDestination(
+        _ destination: MaplogNotificationDestination
+    ) {
+        applyRequestedTab(.home)
+        homeNavigationPath.removeAll()
+
+        switch destination {
+        case let .logDetail(logID, _):
+            // 댓글 ID는 서버의 딥링크 계약에 포함되지만, 현재 상세 화면은 logID로
+            // 댓글 시트를 여는 구조입니다. 우선 해당 로그 상세로 안전하게 진입합니다.
+            homeNavigationPath.append(.logDetail(logID: logID))
+
+        case .userProfile, .inbox:
+            // 공개 프로필은 현재 nickname 기반 API이므로 UUID만 온 푸시는 홈으로 안전하게 복귀합니다.
+            // 알림 목록에서 actor 닉네임이 함께 온 경우에는 목록 탭 경로로 정상 진입합니다.
+            break
+        }
     }
 }
 

@@ -5,7 +5,7 @@ import SwiftUI
 extension Color {
     // Asset-backed semantic colors keep every feature on the same visual system.
     // 기존 호출부와의 호환성을 위해 이름은 유지합니다.
-    // 실제 에셋은 블루베리 네이비 팔레트의 브랜드 포인트 색입니다.
+    // 에셋은 Maplog의 라임 팔레트 브랜드 포인트 색입니다.
     static let maplogLime = Color("MaplogAccent")
     static let maplogLimePressed = Color("MaplogAccentPressed")
     static let maplogCaptureAccent = maplogLime
