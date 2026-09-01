@@ -30,6 +30,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.maplog.app
+        DEVELOPMENT_TEAM: ZTTSJ4D5X7
         GENERATE_INFOPLIST_FILE: NO
         INFOPLIST_FILE: Maplog/Info.plist
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
