@@ -13,7 +13,7 @@ import Combine
 import Foundation
 
 @MainActor // ui 상태 변경을 메인 스레드에서 안전하게 함
-final class AuthSessionStore: ObservableObject, AuthSessionManaging { // AuthSessionStore는 AccessTokenProviding 역할을 수행할 수 있음
+final class AuthSessionStore: ObservableObject, AuthSessionManaging, AuthenticationStateProviding { // AuthSessionStore는 AccessTokenProviding 역할을 수행할 수 있음
     @Published private(set) var isAuthenticated = false
 
     private enum TokenKey {
@@ -86,4 +86,3 @@ final class AuthSessionStore: ObservableObject, AuthSessionManaging { // AuthSes
         try KeychainService.read(for: TokenKey.refreshToken)
     }
 }
-

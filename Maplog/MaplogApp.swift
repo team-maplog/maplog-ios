@@ -2,8 +2,10 @@ import SwiftUI
 
 @main
 struct MaplogApp: App { // 앱의 조립 담당자
+    @UIApplicationDelegateAdaptor(MaplogAppDelegate.self) private var appDelegate
     @StateObject private var authSessionStore:  AuthSessionStore
     @StateObject private var signOutViewModel: SignOutViewModel
+    @StateObject private var pushNotificationCoordinator: PushNotificationCoordinator
     private let authRepository: any AuthRepository
     private let tourismRepository: any TourismRepository // 여기서 선언
     private let cameraCaptureService: any CameraCaptureService
@@ -25,6 +27,7 @@ struct MaplogApp: App { // 앱의 조립 담당자
     private let followRepository: any FollowRepository
     private let mapRepository: any MapRepository
     private let homeSearchRepository: any HomeSearchRepository
+    private let notificationRepository: any NotificationRepository
     private let mapCurrentLocationService: any MapCurrentLocationService
     private let locationPermissionService: any LocationPermissionService
     private let photoLibraryVideoImportService: any PhotoLibraryVideoImporting
@@ -100,9 +103,25 @@ struct MaplogApp: App { // 앱의 조립 담당자
         let homeSearchRepository = DefaultHomeSearchRepository(
             apiService: homeSearchAPIService
         )
+        let notificationAPIService = DefaultNotificationAPIService(
+            authenticatedAPIClient: authenticatedAPIClient
+        )
+        let notificationRepository = DefaultNotificationRepository(
+            apiService: notificationAPIService
+        )
         self.authRepository = authRepository
 
         _signOutViewModel = StateObject(wrappedValue: SignOutViewModel(authRepository: authRepository, authSessionStore: sessionStore))
+        _pushNotificationCoordinator = StateObject(
+            wrappedValue: PushNotificationCoordinator(
+                notificationRepository: notificationRepository,
+                authenticationState: sessionStore,
+                tokenStore: KeychainPushNotificationTokenStore(),
+                onNavigate: { destination in
+                    MaplogLaunchRequest.requestNotificationDestination(destination)
+                }
+            )
+        )
 
 
 
@@ -131,6 +150,7 @@ struct MaplogApp: App { // 앱의 조립 담당자
         self.followRepository = followRepository
         self.mapRepository = mapRepository
         self.homeSearchRepository = homeSearchRepository
+        self.notificationRepository = notificationRepository
         self.mapCurrentLocationService = CoreLocationMapCurrentLocationService()
         self.locationPermissionService = CoreLocationPermissionService()
         self.photoLibraryVideoImportService = PhotoLibraryVideoImportService()
@@ -161,6 +181,8 @@ struct MaplogApp: App { // 앱의 조립 담당자
                 followRepository: followRepository,
                 mapRepository: mapRepository,
                 homeSearchRepository: homeSearchRepository,
+                notificationRepository: notificationRepository,
+                pushNotificationCoordinator: pushNotificationCoordinator,
                 mapCurrentLocationService: mapCurrentLocationService,
                 locationPermissionService: locationPermissionService,
                 photoLibraryVideoImportService: photoLibraryVideoImportService,
@@ -169,6 +191,36 @@ struct MaplogApp: App { // 앱의 조립 담당자
             )
             .environmentObject(authSessionStore)
             .environmentObject(signOutViewModel)
+            .task {
+                appDelegate.installHandlers(
+                    onFCMToken: { token in
+                        Task {
+                            await pushNotificationCoordinator
+                                .receiveFCMRegistrationToken(token)
+                        }
+                    },
+                    onRemoteNotification: { userInfo in
+                        pushNotificationCoordinator.handleRemoteNotification(
+                            userInfo: userInfo
+                        )
+                    },
+                    onForegroundNotification: {
+                        pushNotificationCoordinator.handleForegroundNotification()
+                    }
+                )
+
+                await pushNotificationCoordinator.refreshAuthorizationStatus()
+                await pushNotificationCoordinator.syncCachedTokenIfAuthenticated()
+            }
+            .onChange(of: authSessionStore.isAuthenticated) { _, isAuthenticated in
+                guard isAuthenticated else {
+                    return
+                }
+
+                Task {
+                    await pushNotificationCoordinator.syncCachedTokenIfAuthenticated()
+                }
+            }
             .preferredColorScheme(.light)
         }
     }

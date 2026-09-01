@@ -31,6 +31,8 @@ struct HomeView: View {
     let profileRepository: any ProfileRepository
     let followRepository: any FollowRepository
     let homeSearchRepository: any HomeSearchRepository
+    let notificationRepository: any NotificationRepository
+    let pushNotificationCoordinator: PushNotificationCoordinator
     let logReelRepository: any LogReelRepository
     let logMediaRepository: any LogMediaRepository
     let topSafeAreaInset: CGFloat // 전체 화면 높이는 고정하고 홈 콘텐츠만 상태바 아래에서 시작하기 위한 값
@@ -39,6 +41,7 @@ struct HomeView: View {
     let onShowLogDetail: (Int64) -> Void
     /// 작성자 선택만 상위에 알리고, 공개 프로필 화면 생성과 의존성 주입은 Composition Root가 담당한다.
     let onShowAuthorProfile: (HomeReelViewData) -> Void
+    let onShowPublicProfile: (FollowUser) -> Void
     /// 홈은 버튼 탭만 알리고, 클립 선택·편집·발행 화면 전환은 상위 화면이 담당한다.
     let onCreateLog: () -> Void
 
@@ -1161,21 +1164,48 @@ struct HomeView: View {
             }
             Spacer()
             NavigationLink {
-                NotificationsView()
+                NotificationInboxFeatureView(
+                    notificationRepository: notificationRepository,
+                    pushNotificationCoordinator: pushNotificationCoordinator,
+                    onOpenNotification: openNotification
+                )
             } label: {
-                ZStack(alignment: .topTrailing) {
-                    Image(systemName: "bell.fill")
-                        .font(.system(size: 20, weight: .bold))
-                        .foregroundStyle(Color.maplogPrimary)
-                        .frame(width: 46, height: 46)
-                        .contentShape(Rectangle())
-                    Circle()
-                        .fill(.red)
-                        .frame(width: 9, height: 9)
-                        .offset(x: -9, y: 9)
-                }
+                Image(systemName: "bell.fill")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundStyle(Color.maplogPrimary)
+                    .frame(
+                        width: MaplogSize.minimumTapTarget,
+                        height: MaplogSize.minimumTapTarget
+                    )
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("알림")
+        }
+    }
+
+    private func openNotification(_ notification: MaplogNotification) {
+        switch notification.destination {
+        case let .logDetail(logID, _):
+            onShowLogDetail(logID)
+
+        case let .userProfile(userID):
+            guard let nickname = notification.actor?.nickname,
+                  !nickname.isEmpty
+            else {
+                return
+            }
+
+            onShowPublicProfile(
+                FollowUser(
+                    id: userID,
+                    nickname: nickname,
+                    profileImageURL: notification.actor?.profileImageURL
+                )
+            )
+
+        case .inbox:
+            return
         }
     }
 

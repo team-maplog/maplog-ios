@@ -33,6 +33,10 @@ enum MaplogLaunchRequest {
 
     private static let destinationKey = "maplog.launch.destination"
     private static let capturePlaceNameKey = "maplog.launch.capturePlaceName"
+    private static let notificationRouteKey = "maplog.launch.notification.route"
+    private static let notificationLogIDKey = "maplog.launch.notification.logID"
+    private static let notificationCommentIDKey = "maplog.launch.notification.commentID"
+    private static let notificationUserIDKey = "maplog.launch.notification.userID"
 
     static func requestTab(_ tab: MaplogTab) {
         UserDefaults.standard.set(tab.rawValue, forKey: destinationKey)
@@ -50,6 +54,38 @@ enum MaplogLaunchRequest {
         } else {
             UserDefaults.standard.set(trimmedPlaceName, forKey: capturePlaceNameKey)
         }
+        NotificationCenter.default.post(name: didChangeNotification, object: nil)
+    }
+
+    static func requestNotificationDestination(
+        _ destination: MaplogNotificationDestination
+    ) {
+        UserDefaults.standard.set(MaplogTab.home.rawValue, forKey: destinationKey)
+        UserDefaults.standard.removeObject(forKey: capturePlaceNameKey)
+
+        UserDefaults.standard.removeObject(forKey: notificationLogIDKey)
+        UserDefaults.standard.removeObject(forKey: notificationCommentIDKey)
+        UserDefaults.standard.removeObject(forKey: notificationUserIDKey)
+
+        switch destination {
+        case let .logDetail(logID, commentID):
+            UserDefaults.standard.set("LOG_DETAIL", forKey: notificationRouteKey)
+            UserDefaults.standard.set(String(logID), forKey: notificationLogIDKey)
+            if let commentID {
+                UserDefaults.standard.set(
+                    String(commentID),
+                    forKey: notificationCommentIDKey
+                )
+            }
+
+        case let .userProfile(userID):
+            UserDefaults.standard.set("USER_PROFILE", forKey: notificationRouteKey)
+            UserDefaults.standard.set(userID.uuidString, forKey: notificationUserIDKey)
+
+        case .inbox:
+            UserDefaults.standard.set("INBOX", forKey: notificationRouteKey)
+        }
+
         NotificationCenter.default.post(name: didChangeNotification, object: nil)
     }
 
@@ -71,6 +107,43 @@ enum MaplogLaunchRequest {
         let trimmedPlaceName = placeName.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmedPlaceName.isEmpty ? nil : trimmedPlaceName
     }
+
+    static func consumeRequestedNotificationDestination() -> MaplogNotificationDestination? {
+        guard let route = UserDefaults.standard.string(forKey: notificationRouteKey) else {
+            return nil
+        }
+
+        UserDefaults.standard.removeObject(forKey: notificationRouteKey)
+        defer {
+            UserDefaults.standard.removeObject(forKey: notificationLogIDKey)
+            UserDefaults.standard.removeObject(forKey: notificationCommentIDKey)
+            UserDefaults.standard.removeObject(forKey: notificationUserIDKey)
+        }
+
+        switch route {
+        case "LOG_DETAIL":
+            guard let logIDValue = UserDefaults.standard.string(
+                forKey: notificationLogIDKey
+            ), let logID = Int64(logIDValue) else {
+                return .inbox
+            }
+            let commentID = UserDefaults.standard.string(
+                forKey: notificationCommentIDKey
+            ).flatMap(Int64.init)
+            return .logDetail(logID: logID, commentID: commentID)
+
+        case "USER_PROFILE":
+            guard let userIDValue = UserDefaults.standard.string(
+                forKey: notificationUserIDKey
+            ), let userID = UUID(uuidString: userIDValue) else {
+                return .inbox
+            }
+            return .userProfile(userID: userID)
+
+        default:
+            return .inbox
+        }
+    }
 }
 
 struct RootView: View {
@@ -82,6 +155,7 @@ struct RootView: View {
     @State private var phase: LaunchPhase = .login
     @State private var requestedTab: MaplogTab?
     @State private var requestedCapturePlaceName: String?
+    @State private var requestedNotificationDestination: MaplogNotificationDestination?
 
 
    // init이 끝난 뒤에도 body에서 쓸 값을 보관
@@ -106,6 +180,8 @@ struct RootView: View {
     private let followRepository: any FollowRepository
     private let mapRepository: any MapRepository
     private let homeSearchRepository: any HomeSearchRepository
+    private let notificationRepository: any NotificationRepository
+    private let pushNotificationCoordinator: PushNotificationCoordinator
     private let mapCurrentLocationService: any MapCurrentLocationService
     private let locationPermissionService: any LocationPermissionService
     private let photoLibraryVideoImportService: any PhotoLibraryVideoImporting
@@ -134,6 +210,8 @@ struct RootView: View {
         followRepository: any FollowRepository,
         mapRepository: any MapRepository,
         homeSearchRepository: any HomeSearchRepository,
+        notificationRepository: any NotificationRepository,
+        pushNotificationCoordinator: PushNotificationCoordinator,
         mapCurrentLocationService: any MapCurrentLocationService,
         locationPermissionService: any LocationPermissionService,
         photoLibraryVideoImportService: any PhotoLibraryVideoImporting,
@@ -160,6 +238,8 @@ struct RootView: View {
         self.followRepository = followRepository
         self.mapRepository = mapRepository
         self.homeSearchRepository = homeSearchRepository
+        self.notificationRepository = notificationRepository
+        self.pushNotificationCoordinator = pushNotificationCoordinator
         self.mapCurrentLocationService = mapCurrentLocationService
         self.locationPermissionService = locationPermissionService
         self.photoLibraryVideoImportService = photoLibraryVideoImportService
@@ -209,11 +289,14 @@ struct RootView: View {
                     followRepository: followRepository,
                     mapRepository: mapRepository,
                     homeSearchRepository: homeSearchRepository,
+                    notificationRepository: notificationRepository,
+                    pushNotificationCoordinator: pushNotificationCoordinator,
                     mapCurrentLocationService: mapCurrentLocationService,
                     photoLibraryVideoImportService: photoLibraryVideoImportService,
                     photoLibraryVideoSaveService: photoLibraryVideoSaveService,
                     requestedTab: $requestedTab,
-                    requestedCapturePlaceName: $requestedCapturePlaceName
+                    requestedCapturePlaceName: $requestedCapturePlaceName,
+                    requestedNotificationDestination: $requestedNotificationDestination
                 )
             }
         }
@@ -302,11 +385,16 @@ struct RootView: View {
     }
 
     private func consumeLaunchRequest() {
-        guard let tab = MaplogLaunchRequest.consumeRequestedTab() else {
-            return
+        let requestedDestination = MaplogLaunchRequest
+            .consumeRequestedNotificationDestination()
+        if let requestedDestination {
+            requestedNotificationDestination = requestedDestination
         }
 
-        requestedCapturePlaceName = MaplogLaunchRequest.consumeRequestedCapturePlaceName()
-        requestedTab = tab
+        if let tab = MaplogLaunchRequest.consumeRequestedTab() {
+            requestedCapturePlaceName = MaplogLaunchRequest
+                .consumeRequestedCapturePlaceName()
+            requestedTab = tab
+        }
     }
 }
