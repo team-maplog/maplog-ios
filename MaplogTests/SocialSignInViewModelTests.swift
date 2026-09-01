@@ -50,6 +50,28 @@ final class SocialSignInViewModelTests: XCTestCase {
         XCTAssertNil(viewModel.errorMessage)
     }
 
+    func testUnavailablePresentationContextShowsRestartMessage() async throws {
+        let repository = OAuthRepositorySpy()
+        let webSession = OAuthWebAuthenticationSessionSpy(
+            callbackURL: try XCTUnwrap(URL(string: "https://maplog.millenniumrhino.com/auth/ios")),
+            error: OAuthWebAuthenticationSessionError.presentationContextUnavailable
+        )
+        let sessionLifecycle = AuthSessionLifecycleSpy()
+        let viewModel = SocialSignInViewModel(
+            oauthRepository: repository,
+            webAuthenticationSession: webSession,
+            sessionLifecycle: sessionLifecycle
+        )
+
+        await viewModel.signIn(provider: .kakao)
+
+        XCTAssertEqual(
+            viewModel.errorMessage,
+            "로그인 화면을 열지 못했어요. 앱을 다시 연 뒤 시도해 주세요."
+        )
+        XCTAssertTrue(sessionLifecycle.establishedTokens.isEmpty)
+    }
+
     func testExpiredHandoffShowsRestartMessage() async throws {
         let repository = OAuthRepositorySpy(
             exchangeError: APIError.server(
