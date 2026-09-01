@@ -687,6 +687,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Maplog/Maplog.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = ZTTSJ4D5X7;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Maplog/Info.plist;
@@ -768,6 +769,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = Maplog/Maplog.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = ZTTSJ4D5X7;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Maplog/Info.plist;
