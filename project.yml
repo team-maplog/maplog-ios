@@ -2,7 +2,8 @@ name: Maplog
 options:
   bundleIdPrefix: com.chaerim
   deploymentTarget:
-    iOS: "17.0"
+    # HTTPS OAuth callback API가 iOS 17.4부터 제공됨
+    iOS: "17.4"
   developmentLanguage: ko
 packages:
   KakaoMapsSDK:
@@ -29,6 +30,8 @@ targets:
         product: KakaoMapsSDK-SPM
     settings:
       base:
+        # XcodeGen 재생성 후에도 Associated Domains entitlement 연결 유지함
+        CODE_SIGN_ENTITLEMENTS: Maplog/Maplog.entitlements
         PRODUCT_BUNDLE_IDENTIFIER: com.maplog.app
         DEVELOPMENT_TEAM: ZTTSJ4D5X7
         GENERATE_INFOPLIST_FILE: NO
