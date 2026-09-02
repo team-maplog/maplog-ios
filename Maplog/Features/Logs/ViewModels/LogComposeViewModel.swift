@@ -612,6 +612,11 @@ final class LogComposeViewModel: ObservableObject {
              .missingData:
             return true
 
+        case .server(_, let response):
+            // 서버가 같은 키의 발행을 아직 처리 중이라고 알려 준 경우에도
+            // 새 키를 만들면 중복 로그가 생길 수 있으므로 기존 키를 유지한다.
+            return BackendErrorCode(serverCode: response.code) == .logPublishInProgress
+
         default:
             return false
         }

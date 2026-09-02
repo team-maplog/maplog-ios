@@ -36,11 +36,15 @@ enum BackendErrorCode: Equatable {
     case unsupportedFileType
     case missingLogVideo
     case invalidLogVideo
+    case logVideoAccessDenied
     case logVideoTooLong
     case logVideoResolutionTooLarge
     case thumbnailGenerationFailed
+    case logVideoInspectionFailed
     case invalidThumbnailTime
     case invalidClipTimeRange
+    case logPublishInProgress
+    case invalidLogPublishIdempotencyKey
     case locationAddressNotFound
     case locationLookupFailed
 
@@ -120,6 +124,9 @@ enum BackendErrorCode: Equatable {
         case "LOG-004":
             self = .missingLogVideo
 
+        case "LOG-005":
+            self = .logVideoAccessDenied
+
         case "LOG-006":
             self = .invalidLogVideo
 
@@ -132,11 +139,20 @@ enum BackendErrorCode: Equatable {
         case "LOG-009":
             self = .thumbnailGenerationFailed
 
+        case "LOG-011":
+            self = .logVideoInspectionFailed
+
         case "LOG-010":
             self = .invalidThumbnailTime
 
         case "LOG-012":
             self = .invalidClipTimeRange
+
+        case "LOG-013":
+            self = .logPublishInProgress
+
+        case "LOG-014":
+            self = .invalidLogPublishIdempotencyKey
 
         case "LOCATION-002":
             self = .locationAddressNotFound
