@@ -108,15 +108,18 @@ struct ExploreMapFeatureView: View {
             }
         }
         .overlay(alignment: .bottomTrailing) {
-            ExploreMapCurrentLocationButton(
-                isLoading: viewModel.isLoadingCurrentLocation,
-                action: focusCurrentLocation
-            )
-            .padding(.trailing, MaplogSpacing.page)
-            .padding(
-                .bottom,
-                currentLocationButtonBottomInset
-            )
+            if viewModel.selectedMarker == nil {
+                ExploreMapCurrentLocationButton(
+                    isLoading: viewModel.isLoadingCurrentLocation,
+                    action: focusCurrentLocation
+                )
+                .padding(.trailing, MaplogSpacing.page)
+                .padding(
+                    .bottom,
+                    MaplogSize.tabBarHeight + 16
+                )
+                .transition(.opacity)
+            }
         }
         .toolbar(.hidden, for: .navigationBar)
         .maplogTabBarHidden(false)
@@ -179,11 +182,6 @@ struct ExploreMapFeatureView: View {
 
     private func dismissSearchKeyboard() {
         isSearchFieldFocused = false
-    }
-
-    private var currentLocationButtonBottomInset: CGFloat {
-        MaplogSize.tabBarHeight
-        + (viewModel.selectedMarker == nil ? 16 : 164)
     }
 
     private func focusCurrentLocation() {
