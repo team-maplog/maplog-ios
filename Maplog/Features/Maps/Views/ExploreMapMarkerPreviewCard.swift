@@ -17,56 +17,47 @@ struct ExploreMapMarkerPreviewCard: View {
     let onDismiss: () -> Void
 
     var body: some View {
-        ZStack {
+        HStack(alignment: .top, spacing: 12) {
             Button(action: onOpen) {
-                Color.clear
-                    .contentShape(
-                        RoundedRectangle(
-                            cornerRadius: 20,
-                            style: .continuous
-                        )
-                    )
+                HStack(alignment: .top, spacing: 12) {
+                    thumbnail
+
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text(markerTypeTitle)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(Color.maplogOlive)
+
+                        Text(marker.title)
+                            .font(.headline)
+                            .foregroundStyle(Color.maplogInk)
+                            .lineLimit(1)
+
+                        if !marker.subtitle.isEmpty {
+                            Text(marker.subtitle)
+                                .font(.caption)
+                                .foregroundStyle(Color.maplogMuted)
+                                .lineLimit(2)
+                        }
+                    }
+
+                    Spacer(minLength: 0)
+                }
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .accessibilityLabel("\(marker.title) 상세 보기")
             .accessibilityHint("카드를 탭하면 상세 화면으로 이동합니다.")
+            .frame(maxWidth: .infinity, alignment: .leading)
 
-            HStack(alignment: .top, spacing: 12) {
-                thumbnail
-
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(markerTypeTitle)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(Color.maplogOlive)
-
-                    Text(marker.title)
-                        .font(.headline)
-                        .foregroundStyle(Color.maplogInk)
-                        .lineLimit(1)
-
-                    if !marker.subtitle.isEmpty {
-                        Text(marker.subtitle)
-                            .font(.caption)
-                            .foregroundStyle(Color.maplogMuted)
-                            .lineLimit(2)
-                    }
-                }
-
-                Spacer(minLength: 0)
-
-                Button(
-                    action: onDismiss
-                ) {
-                    Image(systemName: "xmark")
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(Color.maplogMuted)
-                        .frame(width: 32, height: 32)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("장소 카드 닫기")
+            Button(action: onDismiss) {
+                Image(systemName: "xmark")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(Color.maplogMuted)
+                    .frame(width: 32, height: 32)
+                    .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel("장소 카드 닫기")
         }
         .padding(12)
         .background(
