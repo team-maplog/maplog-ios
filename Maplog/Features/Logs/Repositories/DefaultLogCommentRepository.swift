@@ -83,7 +83,7 @@ private enum LogCommentResponseMapper {
                 profileImageURL: makeURL(from: dto.author.profileImageURL)
             ),
             parentCommentID: normalizedParentID(dto.parentCommentID),
-            content: dto.content,
+            content: try content(from: dto),
             isDeleted: dto.deleted,
             createdAt: try date(from: dto.createdAt),
             updatedAt: try date(from: dto.updatedAt),
@@ -102,6 +102,21 @@ private enum LogCommentResponseMapper {
         }
 
         return parentCommentID
+    }
+
+    private static func content(
+        from dto: LogCommentResponseDTO
+    ) throws -> String {
+        if dto.deleted {
+            // 삭제 댓글은 본문을 노출하지 않으므로 서버의 null을 빈 값으로만 보관함.
+            return dto.content ?? ""
+        }
+
+        guard let content = dto.content else {
+            throw APIError.invalidResponse
+        }
+
+        return content
     }
 
     private static func makeURL(
@@ -146,8 +161,10 @@ private enum LogCommentResponseMapper {
             return date
         }
 
-        if let date = localDateTimeFormatter.date(from: value) {
-            return date
+        for formatter in localDateTimeFormatters {
+            if let date = formatter.date(from: value) {
+                return date
+            }
         }
 
         throw LogCommentRepositoryError.invalidDate(value: value)
@@ -162,14 +179,23 @@ private enum LogCommentResponseMapper {
         return formatter
     }()
 
-    private static let localDateTimeFormatter: DateFormatter = {
+    private static let localDateTimeFormatters: [DateFormatter] = [
+        localDateTimeFormatter("yyyy-MM-dd'T'HH:mm:ss.SSSSSSSSS"),
+        localDateTimeFormatter("yyyy-MM-dd'T'HH:mm:ss.SSSSSS"),
+        localDateTimeFormatter("yyyy-MM-dd'T'HH:mm:ss.SSS"),
+        localDateTimeFormatter("yyyy-MM-dd'T'HH:mm:ss")
+    ]
+
+    private static func localDateTimeFormatter(
+        _ format: String
+    ) -> DateFormatter {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.calendar = Calendar(identifier: .gregorian)
         formatter.timeZone = TimeZone(identifier: "Asia/Seoul")
-        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSSSS"
+        formatter.dateFormat = format
         return formatter
-    }()
+    }
 }
 
 enum LogCommentRepositoryError: Error, Equatable {

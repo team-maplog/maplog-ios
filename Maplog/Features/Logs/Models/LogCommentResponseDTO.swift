@@ -5,7 +5,8 @@ struct LogCommentResponseDTO: Decodable {
     let commentID: Int64
     let author: LogCommentAuthorDTO
     let parentCommentID: Int64?
-    let content: String
+    /// 삭제 댓글은 서버가 본문을 숨기기 위해 `null`을 반환할 수 있습니다.
+    let content: String?
     let deleted: Bool
     let createdAt: String
     let updatedAt: String

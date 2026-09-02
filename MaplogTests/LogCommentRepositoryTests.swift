@@ -24,6 +24,67 @@ final class LogCommentRepositoryTests: XCTestCase {
         XCTAssertEqual(comments[0].likeCount, 3)
     }
 
+    func testFetchCommentsAcceptsDeletedCommentWithNullContentAndLocalDateTime() async throws {
+        let responseData = Data(
+            """
+            {
+              "successFlag": true,
+              "code": "SUCCESS-002",
+              "message": "Fetched successfully.",
+              "data": [
+                {
+                  "commentId": 31,
+                  "author": {
+                    "userId": "3FA85F64-5717-4562-B3FC-2C963F66AFA6",
+                    "nickname": "maploger",
+                    "profileImageUrl": null
+                  },
+                  "parentCommentId": null,
+                  "content": null,
+                  "deleted": true,
+                  "createdAt": "2026-09-02T14:06:36",
+                  "updatedAt": "2026-09-02T14:06:36",
+                  "likeCount": 0,
+                  "likedByViewer": false
+                }
+              ]
+            }
+            """.utf8
+        )
+        let response = try JSONDecoder().decode(
+            APIResponse<[LogCommentResponseDTO]>.self,
+            from: responseData
+        )
+        let deletedComment = try XCTUnwrap(response.data?.first)
+        let apiService = LogCommentAPIServiceStub(
+            comments: [deletedComment],
+            createResponse: makeCommentResponse(),
+            updateResponse: makeCommentResponse(),
+            likeResponse: LogCommentLikeStateResponseDTO(
+                commentID: 31,
+                liked: false
+            )
+        )
+        let repository = DefaultLogCommentRepository(apiService: apiService)
+
+        let comments = try await repository.fetchComments(logID: 100)
+
+        XCTAssertEqual(comments.count, 1)
+        XCTAssertTrue(comments[0].isDeleted)
+        XCTAssertEqual(comments[0].content, "")
+        XCTAssertEqual(
+            comments[0].createdAt,
+            makeKoreanLocalDate(
+                year: 2026,
+                month: 9,
+                day: 2,
+                hour: 14,
+                minute: 6,
+                second: 36
+            )
+        )
+    }
+
     func testCreateCommentForwardsDraftAndMapsResponse() async throws {
         let response = makeCommentResponse(parentCommentID: 11)
         let apiService = LogCommentAPIServiceStub(
@@ -141,7 +202,9 @@ final class LogCommentRepositoryTests: XCTestCase {
 
     private func makeCommentResponse(
         commentID: Int64 = 31,
-        parentCommentID: Int64? = nil
+        parentCommentID: Int64? = nil,
+        content: String? = "좋은 장소네요",
+        deleted: Bool = false
     ) -> LogCommentResponseDTO {
         LogCommentResponseDTO(
             commentID: commentID,
@@ -151,13 +214,33 @@ final class LogCommentRepositoryTests: XCTestCase {
                 profileImageURL: nil
             ),
             parentCommentID: parentCommentID,
-            content: "좋은 장소네요",
-            deleted: false,
+            content: content,
+            deleted: deleted,
             createdAt: "2026-08-25T16:39:17.005Z",
             updatedAt: "2026-08-25T16:39:17.005Z",
             likeCount: 3,
             likedByViewer: false
         )
+    }
+
+    private func makeKoreanLocalDate(
+        year: Int,
+        month: Int,
+        day: Int,
+        hour: Int,
+        minute: Int,
+        second: Int
+    ) -> Date {
+        var components = DateComponents()
+        components.calendar = Calendar(identifier: .gregorian)
+        components.timeZone = TimeZone(identifier: "Asia/Seoul")
+        components.year = year
+        components.month = month
+        components.day = day
+        components.hour = hour
+        components.minute = minute
+        components.second = second
+        return components.date!
     }
 }
 
