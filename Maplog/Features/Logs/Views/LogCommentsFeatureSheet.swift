@@ -171,7 +171,7 @@ struct LogCommentsFeatureSheet: View {
                 .padding(.top, MaplogSpacing.xSmall)
                 .accessibilityHidden(true)
 
-            Text("댓글 \(viewModel.comments.count)")
+            Text("댓글 \(viewModel.activeCommentCount)")
                 .font(.headline.weight(.semibold))
                 .foregroundStyle(Color.maplogInk)
                 .padding(.bottom, MaplogSpacing.xSmall)
