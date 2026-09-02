@@ -23,6 +23,9 @@ final class LogComposeViewModel: ObservableObject {
     @Published private(set) var publishError: ErrorPresentation?
     @Published private(set) var publicationCompletion: LogPublicationCompletion?
 
+    /// 결과를 확인하지 못한 동일 초안의 재시도에만 유지합니다.
+    private var pendingMaplogPublishAttempt: LogPublishAttempt?
+
     private let input: LogComposeInput // 편집 화면에서 넘겨받은 변하지 않는 재료
     private let videoPlaybackService: any VideoPlaybackService // 재생 약속을 지키는 객체를 받음
     private let videoThumbnailService: any VideoThumbnailService
@@ -181,6 +184,7 @@ final class LogComposeViewModel: ObservableObject {
         guard canPublishToMaplog, let draft = makePublishDraft() else {
             return
         }
+        let attempt = maplogPublishAttempt(for: draft)
 
         isPerformingPublicationAction = true
         isPublishingToMaplog = true
@@ -194,8 +198,11 @@ final class LogComposeViewModel: ObservableObject {
 
         do {
             let publishedLog = try await logPublishingRepository.publish(
-                draft: draft
+                attempt: attempt
             )
+
+            // 서버가 SUCCESS-001 또는 SUCCESS-008로 응답한 확정 성공입니다.
+            pendingMaplogPublishAttempt = nil
 
             guard !Task.isCancelled else {
                 return
@@ -208,6 +215,10 @@ final class LogComposeViewModel: ObservableObject {
         } catch is CancellationError {
             return
         } catch {
+            // 타임아웃·연결 종료처럼 결과를 확정할 수 없을 때만 같은 키를 남깁니다.
+            pendingMaplogPublishAttempt = shouldReusePublishAttempt(after: error)
+                ? attempt
+                : nil
             presentPublicationErrorIfNeeded(error)
         }
     }
@@ -571,6 +582,39 @@ final class LogComposeViewModel: ObservableObject {
         from seconds: TimeInterval
     ) -> Int {
         Int((seconds * 1_000).rounded())
+    }
+
+    private func maplogPublishAttempt(
+        for draft: LogPublishDraft
+    ) -> LogPublishAttempt {
+        if let pendingMaplogPublishAttempt,
+           pendingMaplogPublishAttempt.isForSameDraft(draft)
+        {
+            return pendingMaplogPublishAttempt
+        }
+
+        pendingMaplogPublishAttempt = nil
+        return LogPublishAttempt(draft: draft)
+    }
+
+    /// 이 경우들은 서버가 로그를 만들었는지 앱이 확정할 수 없다.
+    private func shouldReusePublishAttempt(
+        after error: Error
+    ) -> Bool {
+        guard let apiError = error as? APIError else {
+            return false
+        }
+
+        switch apiError {
+        case .network,
+             .invalidResponse,
+             .decoding,
+             .missingData:
+            return true
+
+        default:
+            return false
+        }
     }
 
     private func publicationErrorPresentation(

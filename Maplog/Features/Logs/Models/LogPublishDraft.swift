@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct LogPublishDraft: Sendable {
+struct LogPublishDraft: Equatable, Sendable {
     let videoFileURL: URL // 앱 내부에 저장된 최종 .mov 위치
     let caption: String
     /// 본문에서 `#`을 제외하고 추출한 검색 해시태그입니다.
@@ -18,13 +18,13 @@ struct LogPublishDraft: Sendable {
     let clips: [LogPublishClipDraft] // 편집된 영상의 시간 순서와 각 장소 정보
 }
 
-struct LogPublishClipDraft: Sendable {
+struct LogPublishClipDraft: Equatable, Sendable {
     let location: LogPublishLocationDraft
     let startTimeMillis: Int
     let endTimeMillis: Int
 }
 
-struct LogPublishLocationDraft: Sendable {
+struct LogPublishLocationDraft: Equatable, Sendable {
     let name: String?
     let address: String
     let latitude: Double

@@ -17,8 +17,9 @@ final class DefaultLogPublishingRepository: LogPublishingRepository {
     }
 
     func publish(
-        draft: LogPublishDraft
+        attempt: LogPublishAttempt
     ) async throws -> LogPublishResult {
+        let draft = attempt.draft
         let uploadDTO = try await apiService.uploadLogVideo(
             fileURL: draft.videoFileURL
         )
@@ -29,7 +30,8 @@ final class DefaultLogPublishingRepository: LogPublishingRepository {
         )
 
         let createDTO = try await apiService.createLog(
-            request: requestDTO
+            request: requestDTO,
+            idempotencyKey: attempt.idempotencyKey
         )
 
         return LogPublishResult(

@@ -9,6 +9,6 @@ import Foundation
 
 protocol LogPublishingRepository {
     func publish(
-        draft: LogPublishDraft
+        attempt: LogPublishAttempt
     ) async throws -> LogPublishResult
 }

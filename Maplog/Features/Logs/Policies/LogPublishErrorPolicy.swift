@@ -16,7 +16,12 @@ enum LogPublishErrorPolicy {
         }
 
         switch apiError {
-        case .network:
+        // HTTP 성공 응답을 끝까지 해석하지 못한 경우에는 서버가 이미 로그를 만들었을 수 있습니다.
+        // 같은 Idempotency-Key로 재시도해 중복 발행 여부를 서버에 맡깁니다.
+        case .network,
+             .invalidResponse,
+             .decoding,
+             .missingData:
             return retryPresentation
 
         case .missingAccessToken:

@@ -155,6 +155,76 @@ final class LogComposeViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.publicationCompletion?.savedToPhotoLibrary, false)
     }
 
+    func testNetworkRetryReusesTheSameIdempotencyKey() async {
+        let publishingRepository = LogPublishingRepositorySpy()
+        publishingRepository.results = [
+            .failure(APIError.network(URLError(.timedOut))),
+            .success(LogPublishResult(logID: 2))
+        ]
+        let viewModel = await makePreparedViewModel(
+            logPublishingRepository: publishingRepository
+        )
+
+        await viewModel.publishToMaplog()
+        await viewModel.publishToMaplog()
+
+        XCTAssertEqual(publishingRepository.attempts.count, 2)
+        XCTAssertEqual(
+            publishingRepository.attempts[0].idempotencyKey,
+            publishingRepository.attempts[1].idempotencyKey
+        )
+        XCTAssertEqual(viewModel.publicationCompletion?.publishedLog?.logID, 2)
+    }
+
+    func testKnownServerFailureDiscardsTheIdempotencyKey() async {
+        let publishingRepository = LogPublishingRepositorySpy()
+        publishingRepository.results = [
+            .failure(APIError.server(
+                statusCode: 400,
+                response: APIErrorResponse(
+                    successFlag: false,
+                    code: "LOG-010",
+                    message: "대표 프레임 시점이 잘못되었습니다.",
+                    data: nil
+                )
+            )),
+            .success(LogPublishResult(logID: 3))
+        ]
+        let viewModel = await makePreparedViewModel(
+            logPublishingRepository: publishingRepository
+        )
+
+        await viewModel.publishToMaplog()
+        await viewModel.publishToMaplog()
+
+        XCTAssertEqual(publishingRepository.attempts.count, 2)
+        XCTAssertNotEqual(
+            publishingRepository.attempts[0].idempotencyKey,
+            publishingRepository.attempts[1].idempotencyKey
+        )
+    }
+
+    func testChangedDraftAfterNetworkFailureCreatesANewIdempotencyKey() async {
+        let publishingRepository = LogPublishingRepositorySpy()
+        publishingRepository.results = [
+            .failure(APIError.network(URLError(.networkConnectionLost))),
+            .success(LogPublishResult(logID: 4))
+        ]
+        let viewModel = await makePreparedViewModel(
+            logPublishingRepository: publishingRepository
+        )
+
+        await viewModel.publishToMaplog()
+        viewModel.caption = "수정한 새 로그"
+        await viewModel.publishToMaplog()
+
+        XCTAssertEqual(publishingRepository.attempts.count, 2)
+        XCTAssertNotEqual(
+            publishingRepository.attempts[0].idempotencyKey,
+            publishingRepository.attempts[1].idempotencyKey
+        )
+    }
+
     func testPhotoLibrarySaveCreatesOnlySaveCompletion() async {
         let viewModel = LogComposeViewModel(
             input: makeInput(),
@@ -224,6 +294,22 @@ final class LogComposeViewModelTests: XCTestCase {
             clips: clips,
             compositionConfiguration: compositionConfiguration
         )
+    }
+
+    private func makePreparedViewModel(
+        logPublishingRepository: any LogPublishingRepository
+    ) async -> LogComposeViewModel {
+        let viewModel = LogComposeViewModel(
+            input: makeInput(),
+            videoPlaybackService: VideoPlaybackServiceStub(),
+            videoThumbnailService: VideoThumbnailServiceStub(),
+            logLocationRepository: LogLocationRepositoryStub(),
+            logPublishingRepository: logPublishingRepository,
+            photoLibraryVideoSaveService: PhotoLibraryVideoSaveServiceStub()
+        )
+
+        await viewModel.prepare()
+        return viewModel
     }
 }
 
@@ -297,8 +383,21 @@ private struct VideoThumbnailServiceStub: VideoThumbnailService {
 }
 
 private struct LogPublishingRepositoryStub: LogPublishingRepository {
-    func publish(draft: LogPublishDraft) async throws -> LogPublishResult {
+    func publish(attempt: LogPublishAttempt) async throws -> LogPublishResult {
         LogPublishResult(logID: 1)
+    }
+}
+
+private final class LogPublishingRepositorySpy: LogPublishingRepository {
+    private(set) var attempts: [LogPublishAttempt] = []
+    var results: [Result<LogPublishResult, Error>] = []
+
+    func publish(attempt: LogPublishAttempt) async throws -> LogPublishResult {
+        attempts.append(attempt)
+        guard !results.isEmpty else {
+            return LogPublishResult(logID: 1)
+        }
+        return try results.removeFirst().get()
     }
 }
 
