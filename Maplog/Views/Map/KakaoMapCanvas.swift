@@ -39,6 +39,8 @@ private struct KakaoMapRepresentable: UIViewRepresentable {
     func makeUIView(context: Context) -> KMViewContainer {
         let view = KMViewContainer()
         view.sizeToFit()
+        // 관광 상세 지도는 기기 다크 모드와 관계없이 라이트 지도를 사용함.
+        view.overrideUserInterfaceStyle = .light
         context.coordinator.createController(with: view)
         context.coordinator.prepareEngineIfNeeded()
         return view
@@ -172,9 +174,7 @@ private struct KakaoMapRepresentable: UIViewRepresentable {
 
             let labelManager = mapView.getLabelManager()
 
-            let pinImage = UIImage(named: "MaplogPinGlyph")?.withRenderingMode(
-                .alwaysOriginal
-            )
+            let pinImage = makeTourismPinImage()
 
             let iconStyle = PoiIconStyle(symbol: pinImage, anchorPoint: CGPoint(x: 0.5,  y: 1.0)) // 가운데 아래쪽이 실제 관광지 좌표를 가리키게 함. 그래서 핀 끝이 위치를 정확히 찍음
 
@@ -182,7 +182,13 @@ private struct KakaoMapRepresentable: UIViewRepresentable {
 
             labelManager.addPoiStyle(poiStyle)
 
-            let layerOption = LabelLayerOptions(layerID: tourismPinLayerID, competitionType: .none, competitionUnit: .symbolFirst, orderType: .rank, zOrder: 0)
+            let layerOption = LabelLayerOptions(
+                layerID: tourismPinLayerID,
+                competitionType: .none,
+                competitionUnit: .symbolFirst,
+                orderType: .rank,
+                zOrder: 1
+            )
 
             guard let layer = labelManager.addLabelLayer(option: layerOption) else {
                 return
@@ -194,6 +200,25 @@ private struct KakaoMapRepresentable: UIViewRepresentable {
 
             pin?.show()
             hasAddedTourismPin = true
+        }
+
+        private func makeTourismPinImage() -> UIImage? {
+            guard let sourceImage = UIImage(named: "MaplogPinGlyph") else {
+                return nil
+            }
+
+            let size = CGSize(width: 42, height: 42)
+            let tintedImage = sourceImage.withTintColor(
+                UIColor(Color.maplogPrimary),
+                renderingMode: .alwaysOriginal
+            )
+            let renderer = UIGraphicsImageRenderer(size: size)
+
+            return renderer.image { _ in
+                tintedImage.draw(
+                    in: CGRect(origin: .zero, size: size)
+                )
+            }
         }
 
 

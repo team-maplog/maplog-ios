@@ -110,7 +110,30 @@ private struct TourismDetailBasicContent: View {
     let onBack: () -> Void
 
     private var quickInformationSection: TourismDetailInformationSectionViewData? {
-        detail.informationSections.first { $0.id == "quick" }
+        guard let section = detail.informationSections.first(
+            where: { $0.id == "quick" }
+        ) else {
+            return nil
+        }
+
+        let rows = section.rows.filter { $0.id != "openingHours" }
+
+        guard !rows.isEmpty else {
+            return nil
+        }
+
+        return TourismDetailInformationSectionViewData(
+            id: section.id,
+            title: section.title,
+            rows: rows
+        )
+    }
+
+    private var openingHours: String? {
+        detail.informationSections
+            .flatMap(\.rows)
+            .first { $0.id == "openingHours" }?
+            .value
     }
 
     private var organizerInformationSection: TourismDetailInformationSectionViewData? {
@@ -143,6 +166,12 @@ private struct TourismDetailBasicContent: View {
                         phoneURL: detail.phoneURL,
                         homepageURL: detail.homepageURL
                     )
+
+                    if let openingHours {
+                        TourismDetailOperatingHoursSection(
+                            openingHours: openingHours
+                        )
+                    }
 
                     if let overviewText = detail.overviewText {
                         TourismDetailOverviewSection(text: overviewText)
@@ -275,8 +304,13 @@ private struct TourismDetailPrimaryMetaRow: View {
             Text(text)
                 .fixedSize(horizontal: false, vertical: true)
         } icon: {
-            Image(systemName: systemImage)
-                .frame(width: 20)
+            if systemImage == "mappin.and.ellipse" {
+                MaplogPinGlyphIcon(size: 16)
+                    .frame(width: 20)
+            } else {
+                Image(systemName: systemImage)
+                    .frame(width: 20)
+            }
         }
         .font(.system(size: 15))
         .foregroundStyle(Color.maplogTextPrimary)
@@ -304,6 +338,58 @@ private struct TourismDetailOverviewSection: View {
     }
 }
 
+/// 음식점처럼 운영 시간이 중요한 장소는 제목 아래에서 바로 확인하게 함.
+private struct TourismDetailOperatingHoursSection: View {
+    let openingHours: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: MaplogSpacing.small) {
+            Image(systemName: "clock.fill")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(Color.maplogPrimary)
+                .frame(
+                    width: MaplogSize.minimumTapTarget,
+                    height: MaplogSize.minimumTapTarget
+                )
+                .background(
+                    Color.maplogPrimary.opacity(0.16),
+                    in: Circle()
+                )
+
+            VStack(alignment: .leading, spacing: MaplogSpacing.xxSmall) {
+                Text("운영 시간")
+                    .font(MaplogFont.calloutStrong)
+                    .foregroundStyle(Color.maplogTextPrimary)
+
+                Text(openingHours)
+                    .font(MaplogFont.callout)
+                    .foregroundStyle(Color.maplogTextSecondary)
+                    .lineSpacing(MaplogSpacing.xxSmall)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(MaplogSpacing.medium)
+        .background(
+            Color.maplogPrimary.opacity(0.08),
+            in: RoundedRectangle(
+                cornerRadius: MaplogRadius.xLarge,
+                style: .continuous
+            )
+        )
+        .overlay {
+            RoundedRectangle(
+                cornerRadius: MaplogRadius.xLarge,
+                style: .continuous
+            )
+            .stroke(Color.maplogPrimary.opacity(0.26), lineWidth: 1)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("운영 시간, \(openingHours)")
+    }
+}
+
 private struct TourismDetailQuickInfoSection: View {
     let rows: [TourismDetailInfoRowViewData]
 
@@ -311,9 +397,7 @@ private struct TourismDetailQuickInfoSection: View {
         VStack(spacing: 0) {
             ForEach(rows) { row in
                 HStack(alignment: .top, spacing: MaplogSpacing.small) {
-                    Image(systemName: iconName(for: row.id))
-                        .font(.system(size: 17, weight: .medium))
-                        .foregroundStyle(Color.maplogTextPrimary)
+                    rowIcon(for: row.id)
                         .frame(width: 26)
 
                     Text(row.title)
@@ -340,12 +424,22 @@ private struct TourismDetailQuickInfoSection: View {
         .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.xLarge, style: .continuous))
     }
 
+    @ViewBuilder
+    private func rowIcon(for rowID: String) -> some View {
+        if ["address", "location", "place"].contains(rowID) {
+            MaplogPinGlyphIcon(size: 17)
+                .foregroundStyle(Color.maplogTextPrimary)
+        } else {
+            Image(systemName: iconName(for: rowID))
+                .font(.system(size: 17, weight: .medium))
+                .foregroundStyle(Color.maplogTextPrimary)
+        }
+    }
+
     private func iconName(for rowID: String) -> String {
         switch rowID {
         case "period", "date", "useTime", "openingHours":
             return "calendar"
-        case "address", "location", "place":
-            return "mappin.and.ellipse"
         case "fee", "price", "usageFee":
             return "ticket"
         default:

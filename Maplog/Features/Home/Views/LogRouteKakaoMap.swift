@@ -54,6 +54,8 @@ private struct LogRouteKakaoMapRepresentable: UIViewRepresentable {
     ) -> KMViewContainer {
         let view = KMViewContainer()
         view.sizeToFit()
+        // 릴스 지도도 시스템 다크 모드 영향을 받지 않고 라이트 타일로 표시함.
+        view.overrideUserInterfaceStyle = .light
 
         context.coordinator.createController(
             with: view
@@ -333,14 +335,11 @@ private struct LogRouteKakaoMapRepresentable: UIViewRepresentable {
                 let lineStyle = PolylineStyle(
                     styles: [
                         PerLevelPolylineStyle(
-                            bodyColor: UIColor(
-                                red: 0.72,
-                                green: 0.95,
-                                blue: 0.0,
-                                alpha: 1
-                            ),
+                            bodyColor: UIColor(Color.maplogLime),
                             bodyWidth: 7,
-                            strokeColor: UIColor.black.withAlphaComponent(0.18),
+                            strokeColor: UIColor(
+                                Color.maplogMapLightTextSecondary
+                            ).withAlphaComponent(0.24),
                             strokeWidth: 2,
                             level: 0
                         )
@@ -573,8 +572,8 @@ private struct LogRouteKakaoMapRepresentable: UIViewRepresentable {
             }
 
             let size = CGSize(
-                width: 38,
-                height: 38
+                width: 44,
+                height: 44
             )
 
             let renderer = UIGraphicsImageRenderer(
@@ -592,7 +591,7 @@ private struct LogRouteKakaoMapRepresentable: UIViewRepresentable {
 
                 let markerPath = UIBezierPath(
                     roundedRect: markerRect,
-                    cornerRadius: 9
+                    cornerRadius: 11
                 )
 
                 context.cgContext.saveGState()
@@ -606,30 +605,20 @@ private struct LogRouteKakaoMapRepresentable: UIViewRepresentable {
                 context.cgContext.restoreGState()
 
                 context.cgContext.setStrokeColor(
-                    UIColor(
-                        red: 0.72,
-                        green: 0.95,
-                        blue: 0.0,
-                        alpha: 1
-                    ).cgColor
+                    UIColor(Color.maplogLime).cgColor
                 )
-                context.cgContext.setLineWidth(2)
+                context.cgContext.setLineWidth(2.5)
                 markerPath.stroke()
 
                 let badgeRect = CGRect(
-                    x: 21,
+                    x: 24,
                     y: 0,
-                    width: 16,
-                    height: 16
+                    width: 18,
+                    height: 18
                 )
 
                 context.cgContext.setFillColor(
-                    UIColor(
-                        red: 0.72,
-                        green: 0.95,
-                        blue: 0.0,
-                        alpha: 1
-                    ).cgColor
+                    UIColor(Color.maplogLime).cgColor
                 )
                 context.cgContext.fillEllipse(
                     in: badgeRect
@@ -663,8 +652,8 @@ private struct LogRouteKakaoMapRepresentable: UIViewRepresentable {
             sequence: Int
         ) -> UIImage {
             let size = CGSize(
-                width: 38,
-                height: 38
+                width: 44,
+                height: 44
             )
 
             let renderer = UIGraphicsImageRenderer(
@@ -681,20 +670,17 @@ private struct LogRouteKakaoMapRepresentable: UIViewRepresentable {
                 )
 
                 context.cgContext.setFillColor(
-                    UIColor(
-                        red: 0.72,
-                        green: 0.95,
-                        blue: 0.0,
-                        alpha: 1
-                    ).cgColor
+                    UIColor(Color.maplogLime).cgColor
                 )
                 context.cgContext.fillEllipse(
                     in: circleRect
                 )
 
                 context.cgContext.setStrokeColor(
-                    UIColor.black
-                        .withAlphaComponent(0.22)
+                    UIColor(
+                        Color.maplogMapLightTextSecondary
+                    )
+                        .withAlphaComponent(0.28)
                         .cgColor
                 )
                 context.cgContext.setLineWidth(2)
@@ -707,7 +693,7 @@ private struct LogRouteKakaoMapRepresentable: UIViewRepresentable {
 
                 let attributes: [NSAttributedString.Key: Any] = [
                     .font: UIFont.systemFont(
-                        ofSize: 15,
+                        ofSize: 16,
                         weight: .bold
                     ),
                     .foregroundColor: UIColor.black,
@@ -717,7 +703,7 @@ private struct LogRouteKakaoMapRepresentable: UIViewRepresentable {
                 String(sequence).draw(
                     in: CGRect(
                         x: 0,
-                    y: 9,
+                        y: 10,
                         width: size.width,
                         height: 24
                     ),
@@ -871,24 +857,20 @@ private struct LogRouteKakaoMapRepresentable: UIViewRepresentable {
 
 private struct LogRouteKakaoMapSetupPlaceholder: View {
     var body: some View {
-        Color(
-            red: 0.16,
-            green: 0.24,
-            blue: 0.22
-        )
+        Color.maplogMapLightCanvas
         .overlay {
             VStack(spacing: 10) {
                 Image(systemName: "map")
                     .font(.system(size: 34, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color.maplogMapLightTextPrimary)
 
                 Text("카카오 지도 앱 키가 필요해요")
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color.maplogMapLightTextPrimary)
 
                 Text("Secrets.xcconfig의 KAKAO_NATIVE_APP_KEY를 확인해 주세요.")
                     .font(.caption)
-                    .foregroundStyle(.white.opacity(0.72))
+                    .foregroundStyle(Color.maplogMapLightTextSecondary)
                     .multilineTextAlignment(.center)
             }
             .padding(24)

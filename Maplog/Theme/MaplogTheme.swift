@@ -28,6 +28,35 @@ extension Color {
     static let maplogTextTertiary = maplogSubtle
     static let maplogBorder = maplogLine
     static let maplogBackground = maplogCanvas
+
+    // 지도 타일 위 정보는 기기 색상 모드와 무관하게 라이트 톤을 유지함.
+    // 도로·지명과 겹쳐도 카드와 텍스트 대비를 일정하게 만드는 전용 토큰임.
+    static let maplogMapLightCanvas = Color(
+        red: 0.965,
+        green: 0.970,
+        blue: 0.960
+    )
+    static let maplogMapLightSurface = Color.white
+    static let maplogMapLightSurfaceRaised = Color(
+        red: 0.985,
+        green: 0.987,
+        blue: 0.982
+    )
+    static let maplogMapLightTextPrimary = Color(
+        red: 0.070,
+        green: 0.080,
+        blue: 0.080
+    )
+    static let maplogMapLightTextSecondary = Color(
+        red: 0.390,
+        green: 0.410,
+        blue: 0.420
+    )
+    static let maplogMapLightBorder = Color(
+        red: 0.890,
+        green: 0.900,
+        blue: 0.890
+    )
 }
 
 // MARK: - Spacing and geometry tokens
