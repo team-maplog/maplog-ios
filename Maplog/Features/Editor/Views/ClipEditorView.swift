@@ -305,17 +305,19 @@ struct ClipEditorView: View {
                 activeTool: viewModel.activeTool,
                 isTextEditing: viewModel.isTextEditing,
                 isMuted: viewModel.isPreviewMuted,
+                canUndoTextOverlayEdit: viewModel.canUndoTextOverlayEdit,
                 onClose: {
                     dismiss()
+                },
+                onUndoTap: {
+                    isLocationTemplateHintVisible = false
+                    viewModel.undoLastTextOverlayEdit()
                 },
                 onTextTap: {
                     viewModel.addTextOverlayToCurrentClip()
                 },
                 onLocationTap: {
                     viewModel.addLocationTimestampOverlayToCurrentClip()
-                },
-                onStickerTap: {
-                    viewModel.toggleActiveTool(.sticker)
                 },
                 onMuteTap: {
                     viewModel.togglePreviewMute()

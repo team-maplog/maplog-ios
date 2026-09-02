@@ -459,8 +459,7 @@ private struct HomeSearchThumbnailCard: View {
                 .padding(7)
 
         case .tourism:
-            Image(systemName: "mappin.circle.fill")
-                .font(.system(size: 17, weight: .semibold))
+            MaplogPinGlyphIcon(size: 17)
                 .foregroundStyle(Color.maplogPrimary)
                 .background(Circle().fill(.white.opacity(0.94)).padding(1.5))
                 .padding(7)

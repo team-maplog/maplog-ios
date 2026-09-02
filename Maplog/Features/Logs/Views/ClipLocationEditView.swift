@@ -143,9 +143,9 @@ struct ClipLocationEditView: View {
                 .font(MaplogFont.sectionTitle)
                 .foregroundStyle(Color.maplogTextPrimary)
 
-            Label(
-                viewModel.locationText,
-                systemImage: "mappin.circle.fill"
+            MaplogLocationLabel(
+                title: viewModel.locationText,
+                pinSize: 16
             )
             .font(MaplogFont.bodyStrong)
             .foregroundStyle(Color.maplogTextPrimary)

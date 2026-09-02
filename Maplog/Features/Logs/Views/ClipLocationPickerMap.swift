@@ -42,8 +42,7 @@ struct ClipLocationPickerMap: View {
     }
 
     private var fixedCenterPin: some View {
-        Image(systemName: "mappin.circle.fill")
-                .font(.system(size: 30, weight: .semibold))
+        MaplogPinGlyphIcon(size: 30)
                 .foregroundStyle(Color.maplogInk)
                 .shadow(
                     color: .black.opacity(0.24),

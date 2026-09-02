@@ -28,6 +28,21 @@ struct MaplogPinGlyphIcon: View {
     }
 }
 
+/// 원형 SF Symbol 대신 프로젝트의 위치 핀 글리프와 문구를 함께 표시한다.
+/// 위치를 뜻하는 보조 문구에서 같은 아이콘 비율을 유지하는 용도다.
+struct MaplogLocationLabel: View {
+    let title: String
+    var pinSize: CGFloat = MaplogSize.iconSmall
+
+    var body: some View {
+        HStack(spacing: MaplogSpacing.xxxSmall) {
+            MaplogPinGlyphIcon(size: pinSize)
+            Text(title)
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
 struct MaplogSectionHeader<Action: View>: View {
     let title: String
     var systemImage: String?

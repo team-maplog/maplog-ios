@@ -25,7 +25,10 @@ struct LogComposeClipLocationCard: View {
                         .monospacedDigit()
                         .foregroundStyle(Color.maplogTextSecondary)
 
-                    Label(locationText, systemImage: "mappin.circle.fill")
+                    MaplogLocationLabel(
+                        title: locationText,
+                        pinSize: 14
+                    )
                         .font(MaplogFont.bodyStrong)
                         .foregroundStyle(Color.maplogTextPrimary)
                         .lineLimit(1)

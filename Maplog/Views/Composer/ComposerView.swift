@@ -67,7 +67,7 @@ struct ComposerView: View {
                 }
             } label: {
                 HStack {
-                    Image(systemName: "mappin.circle.fill")
+                    MaplogPinGlyphIcon(size: MaplogSize.iconMedium)
                         .foregroundStyle(Color.maplogLime)
                     Text(viewModel.selectedSpot?.name ?? "장소 선택")
                         .font(MaplogFont.bodyStrong)

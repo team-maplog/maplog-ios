@@ -420,8 +420,7 @@ struct LogFeedView: View {
                 selectedPlaceForSheet = post.place
             } label: {
                 HStack(spacing: 9) {
-                    Image(systemName: "mappin.circle.fill")
-                        .font(.title3)
+                    MaplogPinGlyphIcon(size: MaplogSize.iconLarge)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(post.place.name)
                             .font(.subheadline.weight(.semibold))
@@ -1107,7 +1106,10 @@ struct VlogPlaceInfoSheet: View {
             NavigationLink {
                 SpotDetailView(spot: spot)
             } label: {
-                Label("장소 상세 정보 보기", systemImage: "mappin.circle.fill")
+                MaplogLocationLabel(
+                    title: "장소 상세 정보 보기",
+                    pinSize: 16
+                )
                     .font(.system(size: 16, weight: .black))
                     .foregroundStyle(Color.maplogInk)
                     .frame(maxWidth: .infinity)

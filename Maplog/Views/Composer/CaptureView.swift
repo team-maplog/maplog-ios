@@ -1926,7 +1926,7 @@ struct UploadView: View {
     private var locationTagSection: some View {
         VStack(alignment: .leading, spacing: MaplogSpacing.small) {
             HStack {
-                Label("위치 태그", systemImage: "mappin.circle.fill")
+                MaplogLocationLabel(title: "위치 태그", pinSize: 16)
                     .font(MaplogFont.sectionTitle)
                     .foregroundStyle(Color.maplogOlive)
                 Spacer()

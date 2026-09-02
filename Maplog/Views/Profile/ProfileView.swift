@@ -218,7 +218,10 @@ struct ProfileView: View {
                         TravelLogImageView(log: log, cornerRadius: 14)
                             .frame(height: 174)
                             .overlay(alignment: .bottomLeading) {
-                                Label("\(Self.cityName(for: log)) · \(Self.durationText(for: log))", systemImage: "mappin.circle.fill")
+                                MaplogLocationLabel(
+                                    title: "\(Self.cityName(for: log)) · \(Self.durationText(for: log))",
+                                    pinSize: 11
+                                )
                                     .font(.caption2.weight(.semibold))
                                     .foregroundStyle(.white)
                                     .padding(.horizontal, 9)
@@ -435,7 +438,10 @@ private struct DraftActionRow: View {
                             .font(MaplogFont.cardTitle)
                             .foregroundStyle(Color.maplogInk)
                             .lineLimit(1)
-                        Label(draft.placeName, systemImage: "mappin.circle.fill")
+                        MaplogLocationLabel(
+                            title: draft.placeName,
+                            pinSize: 12
+                        )
                             .font(.system(size: 12, weight: .bold))
                             .foregroundStyle(Color.maplogMuted)
                             .lineLimit(1)
