@@ -53,6 +53,11 @@ final class LogCommentsViewModel: ObservableObject {
         return comments
     }
 
+    /// 삭제된 부모 댓글은 답글의 문맥을 위해 남겨둘 수 있지만 댓글 수에는 포함하지 않습니다.
+    var activeCommentCount: Int {
+        comments.filter { !$0.isDeleted }.count
+    }
+
     func loadInitialComments() async {
         guard case .idle = state else {
             return
@@ -274,7 +279,7 @@ final class LogCommentsViewModel: ObservableObject {
                 return
             }
 
-            markDeleted(commentID: commentID)
+            applyDeletedComment(commentID: commentID)
             onCommentCountChange(-1)
             lastAction = nil
 
@@ -314,7 +319,7 @@ final class LogCommentsViewModel: ObservableObject {
                 return
             }
 
-            state = comments.isEmpty ? .empty : .content(comments)
+            updateContentState(with: visibleComments(from: comments))
             lastAction = nil
 
             // 댓글 조회 실패와 내 프로필 조회 실패를 분리합니다.
@@ -425,12 +430,50 @@ final class LogCommentsViewModel: ObservableObject {
         }
     }
 
-    private func markDeleted(
+    private func applyDeletedComment(
         commentID: Int64
     ) {
-        replace(commentID: commentID) { comment in
-            comment.markingDeleted()
+        guard case let .content(comments) = state else {
+            return
         }
+
+        let updatedComments = comments.map { comment in
+            comment.id == commentID ? comment.markingDeleted() : comment
+        }
+        updateContentState(with: visibleComments(from: updatedComments))
+    }
+
+    /// 삭제된 답글은 바로 제거하고, 삭제된 부모 댓글은 활성 답글이 있을 때만 남깁니다.
+    /// 답글의 작성 맥락을 보존하면서 삭제된 독립 댓글은 목록을 깔끔하게 정리합니다.
+    private func visibleComments(
+        from comments: [LogComment]
+    ) -> [LogComment] {
+        let parentIDsWithActiveReplies = Set<Int64>(
+            comments.compactMap { comment in
+                guard !comment.isDeleted,
+                      let parentCommentID = comment.parentCommentID
+                else {
+                    return nil
+                }
+
+                return parentCommentID
+            }
+        )
+
+        return comments.filter { comment in
+            guard comment.isDeleted else {
+                return true
+            }
+
+            return comment.parentCommentID == nil
+                && parentIDsWithActiveReplies.contains(comment.id)
+        }
+    }
+
+    private func updateContentState(
+        with comments: [LogComment]
+    ) {
+        state = comments.isEmpty ? .empty : .content(comments)
     }
 
     private func replace(
