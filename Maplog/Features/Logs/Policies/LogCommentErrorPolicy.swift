@@ -71,7 +71,7 @@ enum LogCommentErrorPolicy {
         actionName: String
     ) -> ErrorPresentation {
         ErrorPresentation(
-            message: "(actionName)을 완료하지 못했어요. 잠시 후 다시 시도해 주세요.",
+            message: "\(actionName)\(objectParticle(for: actionName)) 완료하지 못했어요. 잠시 후 다시 시도해 주세요.",
             recoveryAction: .retry
         )
     }
@@ -80,8 +80,27 @@ enum LogCommentErrorPolicy {
         actionName: String
     ) -> ErrorPresentation {
         ErrorPresentation(
-            message: "(actionName)을 완료하지 못했어요.",
+            message: "\(actionName)\(objectParticle(for: actionName)) 완료하지 못했어요.",
             recoveryAction: .none
         )
+    }
+
+    private static func objectParticle(
+        for text: String
+    ) -> String {
+        guard let unicodeScalar = text.unicodeScalars.last else {
+            return "을"
+        }
+
+        let value = unicodeScalar.value
+        let hangulStart: UInt32 = 0xAC00
+        let hangulEnd: UInt32 = 0xD7A3
+
+        guard (hangulStart...hangulEnd).contains(value) else {
+            return "을"
+        }
+
+        // 한글 종성 유무에 따라 을/를을 고름. 사용자 문구가 자연스럽게 보이게 함.
+        return (value - hangulStart) % 28 == 0 ? "를" : "을"
     }
 }
