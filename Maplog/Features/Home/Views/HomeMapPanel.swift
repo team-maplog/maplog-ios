@@ -67,7 +67,9 @@ struct HomeMapPanel: View {
             maxWidth: .infinity,
             maxHeight: .infinity
         )
-        .background(Color.black)
+        // 릴스 위에서 열려도 지도 패널은 라이트 톤을 유지함.
+        .background(Color.maplogMapLightCanvas)
+        .preferredColorScheme(.light)
         .ignoresSafeArea()
     }
 
@@ -176,7 +178,7 @@ struct HomeMapPanel: View {
             HStack(spacing: 8) {
                 Text("\(point.sequence)번째 장소")
                     .font(.caption2.weight(.bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color.maplogOnPrimary)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
                     .background(
@@ -188,7 +190,7 @@ struct HomeMapPanel: View {
 
                 Image(systemName: "play.fill")
                     .font(.caption2.weight(.bold))
-                    .foregroundStyle(Color.maplogInk)
+                    .foregroundStyle(Color.maplogMapLightTextPrimary)
 
                 Text(
                     videoTimeText(
@@ -196,7 +198,7 @@ struct HomeMapPanel: View {
                     )
                 )
                 .font(.caption2.weight(.bold))
-                .foregroundStyle(Color.maplogInk)
+                .foregroundStyle(Color.maplogMapLightTextPrimary)
             }
 
             HStack(alignment: .top, spacing: 8) {
@@ -208,15 +210,15 @@ struct HomeMapPanel: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(point.placeName)
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Color.maplogInk)
+                        .foregroundStyle(Color.maplogMapLightTextPrimary)
                         .lineLimit(1)
 
-                    Label(
-                        point.address,
-                        systemImage: "mappin.and.ellipse"
+                    MaplogLocationLabel(
+                        title: point.address,
+                        pinSize: 14
                     )
                     .font(.caption)
-                    .foregroundStyle(Color.maplogMuted)
+                    .foregroundStyle(Color.maplogMapLightTextSecondary)
                     .lineLimit(1)
                 }
 
@@ -236,7 +238,7 @@ struct HomeMapPanel: View {
                     systemImage: "play.fill"
                 )
                 .font(.caption.weight(.bold))
-                .foregroundStyle(.white)
+                .foregroundStyle(Color.maplogOnPrimary)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 8)
                 .background(
@@ -249,7 +251,7 @@ struct HomeMapPanel: View {
         }
         .padding(12)
         .background(
-            Color.white.opacity(0.96),
+            Color.maplogMapLightSurface,
             in: RoundedRectangle(
                 cornerRadius: 20,
                 style: .continuous
@@ -273,18 +275,18 @@ struct HomeMapPanel: View {
 
             } else if isLoading {
                 ZStack {
-                    Color(uiColor: .secondarySystemFill)
+                    Color.maplogMapLightSurfaceRaised
 
                     ProgressView()
-                        .tint(Color.maplogInk)
+                        .tint(Color.maplogPrimary)
                 }
 
             } else {
                 ZStack {
-                    Color(uiColor: .secondarySystemFill)
+                    Color.maplogMapLightSurfaceRaised
 
                     Image(systemName: "photo")
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Color.maplogMapLightTextSecondary)
                 }
             }
         }
@@ -318,21 +320,21 @@ struct HomeMapPanel: View {
         VStack(spacing: 14) {
             if showsProgress {
                 ProgressView()
-                    .tint(.white)
+                    .tint(Color.maplogPrimary)
             } else {
                 Image(systemName: systemImage)
                     .font(.system(size: 34, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color.maplogMapLightTextPrimary)
             }
 
             Text(title)
                 .font(.headline)
-                .foregroundStyle(.white)
+                .foregroundStyle(Color.maplogMapLightTextPrimary)
 
             if let message {
                 Text(message)
                     .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.72))
+                    .foregroundStyle(Color.maplogMapLightTextSecondary)
                     .multilineTextAlignment(.center)
             }
 
@@ -341,7 +343,7 @@ struct HomeMapPanel: View {
                 Button(actionTitle, action: action)
                     .buttonStyle(.borderedProminent)
                     .tint(Color.maplogLime)
-                    .foregroundStyle(Color.maplogInk)
+                    .foregroundStyle(Color.maplogMapLightTextPrimary)
                     .padding(.top, 4)
             }
         }
@@ -413,28 +415,28 @@ private struct HomeMapRoutePointChip: View {
                 .font(.caption.weight(.bold))
                 .foregroundStyle(
                     isSelected
-                        ? Color.maplogInk
-                        : .white
+                        ? Color.maplogMapLightTextPrimary
+                        : Color.maplogMapLightTextSecondary
                 )
                 .frame(width: 24, height: 24)
                 .background(
                     isSelected
                         ? Color.maplogLime
-                        : .white.opacity(0.18),
+                        : Color.maplogMapLightSurfaceRaised,
                     in: Circle()
                 )
 
             Text(point.placeName)
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(.white)
+                .foregroundStyle(Color.maplogMapLightTextPrimary)
                 .lineLimit(1)
         }
         .padding(.horizontal, 12)
         .frame(height: 40)
         .background(
             isSelected
-                ? .black.opacity(0.82)
-                : .black.opacity(0.48),
+                ? Color.maplogLime.opacity(0.24)
+                : Color.maplogMapLightSurface,
             in: Capsule()
         )
         .overlay {
@@ -442,7 +444,7 @@ private struct HomeMapRoutePointChip: View {
                 .strokeBorder(
                     isSelected
                         ? Color.maplogLime
-                        : .white.opacity(0.22),
+                        : Color.maplogMapLightBorder,
                     lineWidth: 1
                 )
         }

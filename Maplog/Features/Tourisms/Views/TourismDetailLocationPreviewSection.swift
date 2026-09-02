@@ -21,57 +21,62 @@ struct TourismDetailLocationPreviewSection: View {
                 .foregroundStyle(Color.maplogTextPrimary)
 
             NavigationLink {
-                            TourismLocationMapView(
-                                title: title,
-                                coordinate: coordinate
-                            )
+                TourismLocationMapView(
+                    title: title,
+                    coordinate: coordinate
+                )
             } label: {
                 ZStack(alignment: .bottomLeading) {
-                                    KakaoMapCanvas(
-                                        latitude: coordinate.latitude,
-                                        longitude: coordinate.longitude
-                                    )
-                                    .allowsHitTesting(false)
+                    KakaoMapCanvas(
+                        latitude: coordinate.latitude,
+                        longitude: coordinate.longitude
+                    )
+                    .allowsHitTesting(false)
 
                     LinearGradient(
-                                            colors: [
-                                                .clear,
-                                                Color.black.opacity(0.55)
-                                            ],
-                                            startPoint: .center,
-                                            endPoint: .bottom
-                                        )
+                        colors: [
+                            .clear,
+                            Color.maplogMapLightSurface.opacity(0.94)
+                        ],
+                        startPoint: .center,
+                        endPoint: .bottom
+                    )
 
-                    Label("지도 크게 보기", systemImage: "arrow.up.right")
-                                            .font(MaplogFont.calloutStrong)
-                                            .foregroundStyle(.white)
-                                            .padding(
-                                                MaplogSpacing.small
-                                            )
-                                    }
-                                    .frame(maxWidth: .infinity)
-                                    .frame(height: mapHeight)
-                                    .clipShape(
-                                        RoundedRectangle(
-                                            cornerRadius: MaplogRadius.large,
-                                            style: .continuous
-                                        )
-                                    )
-                                    .contentShape(
-                                        RoundedRectangle(
-                                            cornerRadius: MaplogRadius.large,
-                                            style: .continuous
-                                        )
-                                    )
-                                }
-                                .buttonStyle(.plain)
-                                .accessibilityLabel("\(title) 위치 지도 보기")
-                                .accessibilityHint("두 번 탭하면 전체 지도 화면을 엽니다")
+                    HStack(spacing: MaplogSpacing.xSmall) {
+                        MaplogPinGlyphIcon(size: MaplogSize.iconSmall)
+                        Text("지도 크게 보기")
+                        Image(systemName: "arrow.up.right")
+                    }
+                    .font(MaplogFont.calloutStrong)
+                    .foregroundStyle(Color.maplogMapLightTextPrimary)
+                    .padding(MaplogSpacing.small)
+                }
+                .frame(maxWidth: .infinity)
+                .frame(height: mapHeight)
+                .clipShape(
+                    RoundedRectangle(
+                        cornerRadius: MaplogRadius.large,
+                        style: .continuous
+                    )
+                )
+                .contentShape(
+                    RoundedRectangle(
+                        cornerRadius: MaplogRadius.large,
+                        style: .continuous
+                    )
+                )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("\(title) 위치 지도 보기")
+            .accessibilityHint("두 번 탭하면 전체 지도 화면을 엽니다")
 
-                                if let addressText {
-                                    Label(addressText, systemImage: "mappin.and.ellipse")
-                                        .font(MaplogFont.callout)
-                                        .foregroundStyle(Color.maplogTextSecondary)
+            if let addressText {
+                MaplogLocationLabel(
+                    title: addressText,
+                    pinSize: MaplogSize.iconSmall
+                )
+                .font(MaplogFont.callout)
+                .foregroundStyle(Color.maplogTextSecondary)
             }
         }
     }
