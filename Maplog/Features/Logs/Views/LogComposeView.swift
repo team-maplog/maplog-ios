@@ -11,7 +11,7 @@ import SwiftUI
 
 struct LogComposeView: View {
     @ObservedObject var viewModel: LogComposeViewModel
-    @FocusState private var isCaptionFocused: Bool
+    @State private var isCaptionFocused = false
     @Environment(\.maplogSelectTab) private var selectTab
 
     let previewPlayer: AVPlayer
@@ -57,6 +57,7 @@ struct LogComposeView: View {
                 : "paperplane.fill",
                 isEnabled: !viewModel.isPerformingPublicationAction
             ) {
+                isCaptionFocused = false
                 isPublicationDestinationPresented = true
             }
             .padding(.horizontal, MaplogSpacing.page)
@@ -259,7 +260,6 @@ struct LogComposeView: View {
                         ? "해시태그 없음"
                         : "해시태그 \(viewModel.hashtagPreviewText)"
                     )
-                    .focused($isCaptionFocused)
             }
             .maplogCard()
 

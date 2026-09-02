@@ -49,6 +49,27 @@ final class LogComposeViewModelTests: XCTestCase {
         XCTAssertEqual(draft?.tags, ["성수카페", "한강산책"])
     }
 
+    func testPausingPreviewKeepsTheLoadedVideoForBackNavigation() async {
+        let playbackService = VideoPlaybackServiceStub()
+        let viewModel = LogComposeViewModel(
+            input: makeInput(),
+            videoPlaybackService: playbackService,
+            videoThumbnailService: VideoThumbnailServiceStub(),
+            logLocationRepository: LogLocationRepositoryStub(),
+            logPublishingRepository: LogPublishingRepositoryStub(),
+            photoLibraryVideoSaveService: PhotoLibraryVideoSaveServiceStub()
+        )
+
+        await viewModel.prepare()
+        viewModel.togglePreviewPlayback()
+        viewModel.pausePreview()
+
+        XCTAssertEqual(playbackService.loadedVideoURLs, [viewModel.video.fileURL])
+        XCTAssertEqual(playbackService.pauseCallCount, 1)
+        XCTAssertEqual(playbackService.stopCallCount, 0)
+        XCTAssertFalse(viewModel.isPreviewPlaying)
+    }
+
     func testMoreThanTenHashtagsBlocksMaplogPublication() async {
         let viewModel = LogComposeViewModel(
             input: makeInput(),
@@ -368,8 +389,13 @@ private final class LogLocationRepositoryStub: LogLocationRepository {
 private final class VideoPlaybackServiceStub: VideoPlaybackService {
     let player = AVPlayer()
     var isMuted = false
+    private(set) var loadedVideoURLs: [URL] = []
+    private(set) var pauseCallCount = 0
+    private(set) var stopCallCount = 0
 
-    func loadVideo(at url: URL) {}
+    func loadVideo(at url: URL) {
+        loadedVideoURLs.append(url)
+    }
 
     func loadVideoSequence(from urls: [URL]) async throws {}
 
@@ -392,8 +418,13 @@ private final class VideoPlaybackServiceStub: VideoPlaybackService {
     }
 
     func play() {}
-    func pause() {}
-    func stop() {}
+    func pause() {
+        pauseCallCount += 1
+    }
+
+    func stop() {
+        stopCallCount += 1
+    }
     func observeProgress(_ handler: @escaping (Double) -> Void) {}
 }
 
