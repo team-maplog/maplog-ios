@@ -12,7 +12,7 @@ import UIKit
 /// 실제 입력은 `UITextView`가 맡고 ViewModel에는 순수한 String만 전달합니다.
 struct LogHashtagTextEditor: UIViewRepresentable {
     @Binding var text: String
-    let isFocused: FocusState<Bool>.Binding
+    @Binding var isFocused: Bool
 
     func makeCoordinator() -> Coordinator {
         Coordinator(parent: self)
@@ -56,9 +56,9 @@ struct LogHashtagTextEditor: UIViewRepresentable {
             )
         }
 
-        if isFocused.wrappedValue, !textView.isFirstResponder {
+        if isFocused, !textView.isFirstResponder {
             textView.becomeFirstResponder()
-        } else if !isFocused.wrappedValue, textView.isFirstResponder {
+        } else if !isFocused, textView.isFirstResponder {
             textView.resignFirstResponder()
         }
     }
@@ -76,13 +76,13 @@ struct LogHashtagTextEditor: UIViewRepresentable {
         func textViewDidBeginEditing(
             _ textView: UITextView
         ) {
-            parent.isFocused.wrappedValue = true
+            parent.isFocused = true
         }
 
         func textViewDidEndEditing(
             _ textView: UITextView
         ) {
-            parent.isFocused.wrappedValue = false
+            parent.isFocused = false
         }
 
         func textViewDidChange(

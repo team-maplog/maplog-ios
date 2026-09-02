@@ -406,6 +406,13 @@ final class LogComposeViewModel: ObservableObject {
         isPreviewPlaying.toggle()
     }
 
+    /// 네비게이션 전환에서는 재생 항목을 버리지 않고 일시정지만 합니다.
+    /// 뒤로 돌아온 화면이 같은 AVPlayer 항목을 계속 보여 줄 수 있습니다.
+    func pausePreview() {
+        videoPlaybackService.pause()
+        isPreviewPlaying = false
+    }
+
     func stopPreview() {
         videoPlaybackService.stop()
         isPreviewPlaying = false

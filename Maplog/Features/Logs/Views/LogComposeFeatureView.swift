@@ -49,7 +49,7 @@ struct LogComposeFeatureView: View {
                 viewModel: viewModel,
                 previewPlayer: videoPlaybackService.player,
                 onCoverChangeTap: {
-                    viewModel.stopPreview() // 커버를 고르는 동안 뒤 화면의 재생 상태가 남지 않게 하기 위해
+                    viewModel.pausePreview() // 커버를 고르는 동안 뒤 화면 재생만 멈춥니다.
 
                     coverSelectionInput = viewModel.makeCoverSelectionInput()
                 },
@@ -63,7 +63,8 @@ struct LogComposeFeatureView: View {
                 await viewModel.prepare()
             }
             .onDisappear {
-                viewModel.stopPreview()
+                // navigationDestination 전환에도 호출될 수 있으므로 재생 항목은 유지합니다.
+                viewModel.pausePreview()
             }
             .navigationDestination(
                 item: $selectedClipLocation

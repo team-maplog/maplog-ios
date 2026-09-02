@@ -43,11 +43,11 @@ struct LogPublicationOptionsView: View {
         }
         .animation(.easeOut(duration: 0.2), value: viewModel.publicationCompletion)
         .onAppear {
-            viewModel.stopPreview()
+            viewModel.pausePreview()
         }
         .onDisappear {
             completionTask?.cancel()
-            viewModel.stopPreview()
+            viewModel.pausePreview()
         }
         .onChange(of: viewModel.publicationCompletion) { _, completion in
             scheduleCompletionHandling(for: completion)
