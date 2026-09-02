@@ -119,7 +119,10 @@ struct LogPreviewView: View {
                     .foregroundStyle(Color.maplogInk)
 
                 if draft.displayTitle != draft.displayPlace {
-                    Label(draft.displayPlace, systemImage: "mappin.circle.fill")
+                    MaplogLocationLabel(
+                        title: draft.displayPlace,
+                        pinSize: 14
+                    )
                         .font(.system(size: 14, weight: .bold))
                         .foregroundStyle(Color.maplogMuted)
                 }

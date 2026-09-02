@@ -1884,7 +1884,7 @@ private struct HomeMaplogClipCard: View {
             PopularMaplogDetailView(post: post, trip: trip)
         } label: {
             HStack(spacing: 10) {
-                Image(systemName: "mappin.circle.fill")
+                MaplogPinGlyphIcon(size: 16)
                 Text(post.place.name)
                 Spacer(minLength: 8)
                 Text("루트 보기")

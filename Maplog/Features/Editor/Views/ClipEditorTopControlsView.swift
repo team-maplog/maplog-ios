@@ -11,11 +11,12 @@ struct ClipEditorTopControlsView: View {
     let activeTool: ClipEditorActiveTool
     let isTextEditing: Bool
     let isMuted: Bool
+    let canUndoTextOverlayEdit: Bool
 
     let onClose: () -> Void
+    let onUndoTap: () -> Void
     let onTextTap: () -> Void
     let onLocationTap: () -> Void
-    let onStickerTap: () -> Void
     let onMuteTap: () -> Void
 
     var body: some View {
@@ -30,8 +31,11 @@ struct ClipEditorTopControlsView: View {
                 Spacer(minLength: 0)
 
                 HStack(spacing: MaplogSpacing.xxSmall) {
-                    passiveControl(
-                        symbol: "arrow.uturn.backward"
+                    glassButton(
+                        symbol: "arrow.uturn.backward",
+                        accessibilityLabel: "텍스트 편집 되돌리기",
+                        isEnabled: canUndoTextOverlayEdit,
+                        action: onUndoTap
                     )
 
                     glassButton(
@@ -41,18 +45,9 @@ struct ClipEditorTopControlsView: View {
                         action: onTextTap
                     )
 
-                    glassButton(
-                        symbol: "mappin.and.ellipse",
-                        accessibilityLabel: "위치와 시간 도구",
+                    locationButton(
                         isSelected: activeTool == .location,
                         action: onLocationTap
-                    )
-
-                    glassButton(
-                        symbol: "face.smiling",
-                        accessibilityLabel: "스티커 도구",
-                        isSelected: activeTool == .sticker,
-                        action: onStickerTap
                     )
 
                     glassButton(
@@ -74,6 +69,7 @@ struct ClipEditorTopControlsView: View {
         symbol: String,
         accessibilityLabel: String,
         isSelected: Bool = false,
+        isEnabled: Bool = true,
         action: @escaping () -> Void
     ) -> some View {
         Button(action: action) {
@@ -107,30 +103,47 @@ struct ClipEditorTopControlsView: View {
                 )
         }
         .buttonStyle(MaplogPressFeedbackStyle())
+        .disabled(!isEnabled)
+        .opacity(isEnabled ? 1 : 0.42)
         .accessibilityLabel(accessibilityLabel)
     }
 
-    private func passiveControl(
-        symbol: String
+    private func locationButton(
+        isSelected: Bool,
+        action: @escaping () -> Void
     ) -> some View {
-        Image(systemName: symbol)
-            .font(.headline.weight(.semibold))
-            .foregroundStyle(.white.opacity(0.7))
+        Button(action: action) {
+            MaplogPinGlyphIcon(
+                size: ClipEditorLayout.topControlSize * 0.48
+            )
             .frame(
                 width: ClipEditorLayout.topControlSize,
                 height: ClipEditorLayout.topControlSize
             )
-            .background(
-                .ultraThinMaterial,
-                in: Circle()
-            )
-            .overlay {
-                Circle()
-                    .stroke(
-                        .white.opacity(0.5),
-                        lineWidth: 1
-                    )
-            }
-            .accessibilityHidden(true)
+        }
+        .foregroundStyle(
+            isSelected
+            ? Color.maplogInk
+            : Color.white
+        )
+        .background(
+            .ultraThinMaterial,
+            in: Circle()
+        )
+        .background(
+            isSelected
+            ? Color.maplogLime
+            : Color.clear,
+            in: Circle()
+        )
+        .overlay {
+            Circle()
+                .stroke(
+                    .white.opacity(0.5),
+                    lineWidth: 1
+                )
+        }
+        .buttonStyle(MaplogPressFeedbackStyle())
+        .accessibilityLabel("위치와 시간 도구")
     }
 }

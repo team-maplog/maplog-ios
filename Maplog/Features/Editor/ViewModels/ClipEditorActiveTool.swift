@@ -9,5 +9,4 @@ enum ClipEditorActiveTool: Equatable {
     case none
     case text
     case location
-    case sticker
 }

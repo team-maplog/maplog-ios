@@ -26,6 +26,12 @@ final class ClipEditorViewModel: ObservableObject {
     @Published private(set) var textInputRequestID: UUID? // 입력 시작 요청 상태
     @Published private(set) var editingTextOverlayID: UUID? // 지금 실제로 입력 중인지 상태
 
+    private struct TextOverlayHistoryEntry {
+        let overlays: [ClipTextOverlay]
+        let selectedOverlayID: UUID?
+        let activeTool: ClipEditorActiveTool
+    }
+
     private var ignoresPlaybackProgress = false // 드래그 중에는 재생 시간 갱신을 무시
     private let input: ClipEditorInput // Clip Picker에서 넘겨준 선택 결과, 실제 CaptureDraftClip들이 있고, 각 클립의 파일 URL·촬영 날짜·길이가 들어있음
     private let videoThumbnailService: any VideoThumbnailService // 영상 파일 URL로부터 썸네일 Data를 만드는 기술 담당
@@ -35,6 +41,12 @@ final class ClipEditorViewModel: ObservableObject {
     private let videoPlaybackService: any VideoPlaybackService
     private let videoExportService: any VideoExportService
     private var sequenceReloadTask: Task<Void, Never>? // 빠르게 여러 번 드래그했을 때, 이전 순서로 만드는 작업을 취소하고 가장 마지막 순서만 반영하기 위한 프로퍼티
+    /// 자막 편집 전 상태만 쌓아 둠. 영상 파일을 다시 만들 필요 없이 즉시 되돌릴 수 있음.
+    private var textOverlayUndoHistory: [TextOverlayHistoryEntry] = []
+    /// 텍스트 입력은 글자마다 기록하지 않고, 편집을 끝낼 때 한 번만 실행 취소 목록에 넣음.
+    private var textEditingHistoryEntry: TextOverlayHistoryEntry?
+    /// 새 자막은 생성 전 상태가 이미 기록되어 있으므로, 첫 키보드 입력에서 중복 기록하지 않음.
+    private var newlyAddedTextOverlayID: UUID?
 
     init(
         input: ClipEditorInput,
@@ -79,6 +91,10 @@ final class ClipEditorViewModel: ObservableObject {
 
     var isTextEditing: Bool {
         editingTextOverlayID != nil
+    }
+
+    var canUndoTextOverlayEdit: Bool {
+        !textOverlayUndoHistory.isEmpty
     }
 
     private func playbackTimeText(
@@ -175,6 +191,17 @@ final class ClipEditorViewModel: ObservableObject {
             return
         }
 
+        guard editingTextOverlayID != id else {
+            return
+        }
+
+        if newlyAddedTextOverlayID == id {
+            newlyAddedTextOverlayID = nil
+            textEditingHistoryEntry = nil
+        } else {
+            textEditingHistoryEntry = makeTextOverlayHistoryEntry()
+        }
+
         editingTextOverlayID = id
         activeTool = .text
     }
@@ -184,6 +211,13 @@ final class ClipEditorViewModel: ObservableObject {
             return
         }
 
+        if let textEditingHistoryEntry,
+           textEditingHistoryEntry.overlays != textOverlays
+        {
+            textOverlayUndoHistory.append(textEditingHistoryEntry)
+        }
+
+        textEditingHistoryEntry = nil
         editingTextOverlayID = nil
     }
 
@@ -483,6 +517,7 @@ final class ClipEditorViewModel: ObservableObject {
             return
         }
 
+        recordTextOverlayHistory()
         textOverlays.removeAll {
             $0.locationTimestampGroupID == groupID
         }
@@ -577,6 +612,7 @@ final class ClipEditorViewModel: ObservableObject {
             return
         }
 
+        recordTextOverlayHistory()
         textOverlays.append(contentsOf: overlays)
         selectedTextOverlayID = overlays.first?.id
         activeTool = .location
@@ -614,9 +650,11 @@ final class ClipEditorViewModel: ObservableObject {
             endTime: duration
         )
 
+        recordTextOverlayHistory()
         textOverlays.append(overlay)
         selectedTextOverlayID = overlay.id
         textInputRequestID = overlay.id
+        newlyAddedTextOverlayID = overlay.id
         activeTool = .text
     }
 
@@ -638,6 +676,11 @@ final class ClipEditorViewModel: ObservableObject {
             return
         }
 
+        guard textOverlays[index].position != position else {
+            return
+        }
+
+        recordTextOverlayHistory()
         textOverlays[index].position = position
     }
 
@@ -674,7 +717,14 @@ final class ClipEditorViewModel: ObservableObject {
             )
 
         if trimmedText.isEmpty {
-            deleteTextOverlay(id: id)
+            if let textEditingHistoryEntry,
+               textEditingHistoryEntry.overlays != textOverlays
+            {
+                textOverlayUndoHistory.append(textEditingHistoryEntry)
+            }
+
+            textEditingHistoryEntry = nil
+            deleteTextOverlay(id: id, recordsHistory: false)
             return
         }
 
@@ -767,11 +817,40 @@ final class ClipEditorViewModel: ObservableObject {
             return
         }
 
-        update(&textOverlays[index])
+        var updatedOverlay = textOverlays[index]
+        update(&updatedOverlay)
+
+        guard updatedOverlay != textOverlays[index] else {
+            return
+        }
+
+        recordTextOverlayHistory()
+        textOverlays[index] = updatedOverlay
     }
 
     func deleteTextOverlay(
         id: UUID
+    ) {
+        deleteTextOverlay(id: id, recordsHistory: true)
+    }
+
+    func undoLastTextOverlayEdit() {
+        guard let entry = textOverlayUndoHistory.popLast() else {
+            return
+        }
+
+        textOverlays = entry.overlays
+        selectedTextOverlayID = entry.selectedOverlayID
+        activeTool = entry.activeTool
+        textInputRequestID = nil
+        editingTextOverlayID = nil
+        textEditingHistoryEntry = nil
+        newlyAddedTextOverlayID = nil
+    }
+
+    private func deleteTextOverlay(
+        id: UUID,
+        recordsHistory: Bool
     ) {
         guard textOverlays.contains(where: { $0.id == id }) else {
             return
@@ -779,6 +858,10 @@ final class ClipEditorViewModel: ObservableObject {
 
         // 위치·시간 템플릿도 각각 독립적인 자막이다.
         // 따라서 선택한 자막의 ID만 지우고, 같은 템플릿의 나머지 문구는 유지한다.
+        if recordsHistory {
+            recordTextOverlayHistory()
+        }
+
         textOverlays.removeAll { $0.id == id }
 
         if selectedTextOverlayID == id {
@@ -792,6 +875,25 @@ final class ClipEditorViewModel: ObservableObject {
 
         if editingTextOverlayID == id {
             editingTextOverlayID = nil
+        }
+    }
+
+    private func makeTextOverlayHistoryEntry() -> TextOverlayHistoryEntry {
+        TextOverlayHistoryEntry(
+            overlays: textOverlays,
+            selectedOverlayID: selectedTextOverlayID,
+            activeTool: activeTool
+        )
+    }
+
+    private func recordTextOverlayHistory() {
+        textOverlayUndoHistory.append(makeTextOverlayHistoryEntry())
+
+        // 최근 편집만 보관해 메모리가 계속 늘어나지 않게 제한함.
+        if textOverlayUndoHistory.count > 50 {
+            textOverlayUndoHistory.removeFirst(
+                textOverlayUndoHistory.count - 50
+            )
         }
     }
 

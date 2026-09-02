@@ -490,7 +490,7 @@ struct ExploreMapView: View {
             NavigationLink {
                 SpotDetailView(spot: selectedSpot)
             } label: {
-                Label("장소 상세", systemImage: "mappin.circle.fill")
+                MaplogLocationLabel(title: "장소 상세", pinSize: 15)
                     .font(.callout.weight(.semibold))
                     .foregroundStyle(Color.maplogTextPrimary)
                     .frame(maxWidth: .infinity)

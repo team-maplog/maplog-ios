@@ -172,9 +172,9 @@ private struct KakaoMapRepresentable: UIViewRepresentable {
 
             let labelManager = mapView.getLabelManager()
 
-            let configuration = UIImage.SymbolConfiguration(pointSize: 40, weight: .bold)
-
-            let pinImage = UIImage(systemName: "mappin.circle.fill", withConfiguration: configuration)?.withTintColor(.systemRed, renderingMode: .alwaysOriginal)
+            let pinImage = UIImage(named: "MaplogPinGlyph")?.withRenderingMode(
+                .alwaysOriginal
+            )
 
             let iconStyle = PoiIconStyle(symbol: pinImage, anchorPoint: CGPoint(x: 0.5,  y: 1.0)) // 가운데 아래쪽이 실제 관광지 좌표를 가리키게 함. 그래서 핀 끝이 위치를 정확히 찍음
 
