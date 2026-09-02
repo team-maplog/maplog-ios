@@ -1,6 +1,9 @@
 import Foundation
 
 final class DefaultLogCommentAPIService: LogCommentAPIService {
+    /// 삭제 성공 응답은 `data: null`이므로, 본문 값을 요구하지 않는 전용 payload다.
+    private struct EmptyPayload: Decodable {}
+
     private let authenticatedAPIClient: AuthenticatedAPIClient
 
     init(
@@ -72,13 +75,13 @@ final class DefaultLogCommentAPIService: LogCommentAPIService {
         request.httpMethod = "DELETE"
         request.setValue("application/json", forHTTPHeaderField: "Accept")
 
-        let response: APIResponse<String> =
+        let response: APIResponse<EmptyPayload> =
             try await authenticatedAPIClient.request(
                 request,
-                responseType: APIResponse<String>.self
+                responseType: APIResponse<EmptyPayload>.self
             )
 
-        _ = try validatedData(from: response)
+        try validateSuccess(response)
     }
 
     func setLike(
@@ -149,6 +152,19 @@ final class DefaultLogCommentAPIService: LogCommentAPIService {
     private func validatedData<Payload: Decodable>(
         from response: APIResponse<Payload>
     ) throws -> Payload {
+        try validateSuccess(response)
+
+        guard let data = response.data else {
+            throw APIError.missingData
+        }
+
+        return data
+    }
+
+    /// 조회·생성처럼 본문이 필요한 요청과 달리, 삭제는 `data`가 비어도 성공으로 처리한다.
+    private func validateSuccess<Payload: Decodable>(
+        _ response: APIResponse<Payload>
+    ) throws {
         // Swagger는 댓글 API의 HTTP 상태는 제공하지만 application code 예시는
         // "string"으로만 표시합니다. 공통 응답 규칙인 successFlag와 SUCCESS 계열
         // code를 함께 확인해 예상 밖의 성공 응답을 걸러냅니다.
@@ -160,11 +176,5 @@ final class DefaultLogCommentAPIService: LogCommentAPIService {
                 message: response.message
             )
         }
-
-        guard let data = response.data else {
-            throw APIError.missingData
-        }
-
-        return data
     }
 }

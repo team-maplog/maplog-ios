@@ -105,6 +105,40 @@ final class LogCommentRepositoryTests: XCTestCase {
         )
     }
 
+    func testDeleteSuccessResponseAllowsEmptyData() throws {
+        let responseData = Data(
+            """
+            {
+              "successFlag": true,
+              "code": "SUCCESS-004",
+              "message": "Deleted successfully.",
+              "data": null
+            }
+            """.utf8
+        )
+
+        let response = try JSONDecoder().decode(
+            APIResponse<EmptyCommentDeletePayload>.self,
+            from: responseData
+        )
+
+        XCTAssertTrue(response.successFlag)
+        XCTAssertEqual(response.code, "SUCCESS-004")
+        XCTAssertNil(response.data)
+    }
+
+    func testCommentActionErrorIncludesTheActualActionName() {
+        let presentation = LogCommentErrorPolicy.actionPresentation(
+            for: APIError.network(URLError(.notConnectedToInternet)),
+            actionName: "댓글 삭제"
+        )
+
+        XCTAssertEqual(
+            presentation.message,
+            "댓글 삭제를 완료하지 못했어요. 잠시 후 다시 시도해 주세요."
+        )
+    }
+
     private func makeCommentResponse(
         commentID: Int64 = 31,
         parentCommentID: Int64? = nil
@@ -126,6 +160,8 @@ final class LogCommentRepositoryTests: XCTestCase {
         )
     }
 }
+
+private struct EmptyCommentDeletePayload: Decodable {}
 
 private final class LogCommentAPIServiceStub: LogCommentAPIService {
     struct CreateRequest {
