@@ -100,13 +100,9 @@ struct HomeReelPage: View {
                     )
 
                 HStack(alignment: .bottom, spacing: 16) {
+                    // 정보가 적으면 하단 기준이 유지되고, 본문이 길어질 때만 위로 자랍니다.
+                    // 그래서 작성자마다 위치·본문이 없어도 액션 영역과 같은 높이에 놓입니다.
                     reelInformation
-                        // 캡션이 3줄이어도 장소가 하단 네비게이션과 겹치지 않도록
-                        // 정보 묶음만 트레이에서 한 단계 위로 올린다.
-                        .padding(
-                            .bottom,
-                            MaplogSpacing.xLarge + MaplogSpacing.large
-                        )
                         .frame(
                             maxWidth: .infinity,
                             alignment: .leading
@@ -117,7 +113,9 @@ struct HomeReelPage: View {
                 .padding(.horizontal, MaplogSpacing.page)
                 .padding(
                     .bottom,
-                    reelBottomBlurHeight + MaplogSpacing.small
+                    // 전체 릴스에서는 재생 바와 정보 사이에 아주 작은 숨 쉴 여백만 둡니다.
+                    // 홈 미리보기의 위치는 바꾸지 않습니다.
+                    bottomTrayHeight + MaplogSpacing.xSmall
                 )
             }
         }
@@ -298,22 +296,24 @@ struct HomeReelPage: View {
         VStack(alignment: .leading, spacing: 10) {
             authorProfileButton
 
-            if !reel.caption.isEmpty {
-                Text(reel.caption)
+            if let caption = nonEmptyText(reel.caption) {
+                Text(caption)
                     .font(.subheadline)
                     .foregroundStyle(.white.opacity(0.86))
                     .lineLimit(3)
             }
 
-            HStack(spacing: MaplogSpacing.xxSmall) {
-                MaplogPinGlyphIcon(size: 13)
+            if let address = nonEmptyText(reel.address) {
+                HStack(spacing: MaplogSpacing.xxSmall) {
+                    MaplogPinGlyphIcon(size: 13)
 
-                Text(reel.address)
+                    Text(address)
+                }
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.white.opacity(0.82))
+                    .lineLimit(1)
+                    .accessibilityElement(children: .combine)
             }
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.white.opacity(0.82))
-                .lineLimit(1)
-                .accessibilityElement(children: .combine)
         }
         .foregroundStyle(.white)
         .opacity(usesExternalReelInfoOverlay ? 0 : 1)
@@ -416,6 +416,11 @@ struct HomeReelPage: View {
         return "\(text.replacingOccurrences(of: ".0", with: ""))K"
     }
     
+    private func nonEmptyText(_ text: String) -> String? {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
     private func reelPlaybackBar(
         progress: Double
     ) -> some View {

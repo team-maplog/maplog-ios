@@ -215,7 +215,8 @@ final class LogComposeViewModel: ObservableObject {
         } catch is CancellationError {
             return
         } catch {
-            // 타임아웃·연결 종료처럼 결과를 확정할 수 없을 때만 같은 키를 남깁니다.
+            // 네트워크 오류와 서버 5xx, 처리 중(409)은 같은 발행 시도입니다.
+            // 백엔드가 같은 Idempotency-Key의 결과를 돌려주므로 중복 발행을 막을 수 있습니다.
             pendingMaplogPublishAttempt = shouldReusePublishAttempt(after: error)
                 ? attempt
                 : nil
@@ -597,7 +598,8 @@ final class LogComposeViewModel: ObservableObject {
         return LogPublishAttempt(draft: draft)
     }
 
-    /// 이 경우들은 서버가 로그를 만들었는지 앱이 확정할 수 없다.
+    /// 백엔드 계약상 네트워크 오류·서버 5xx·처리 중 응답은 같은 키로 재시도한다.
+    /// 입력·인증처럼 사용자가 수정해야 하는 확정 실패에는 새 발행 시도를 만든다.
     private func shouldReusePublishAttempt(
         after error: Error
     ) -> Bool {
@@ -612,10 +614,11 @@ final class LogComposeViewModel: ObservableObject {
              .missingData:
             return true
 
-        case .server(_, let response):
-            // 서버가 같은 키의 발행을 아직 처리 중이라고 알려 준 경우에도
-            // 새 키를 만들면 중복 로그가 생길 수 있으므로 기존 키를 유지한다.
-            return BackendErrorCode(serverCode: response.code) == .logPublishInProgress
+        case .server(let statusCode, let response):
+            // 5xx는 서버가 최종 결과를 확정해 주지 못한 경우입니다.
+            // 처리 중(409)도 같은 요청이 계속 실행 중이므로 기존 키를 유지합니다.
+            return (500...599).contains(statusCode)
+                || BackendErrorCode(serverCode: response.code) == .logPublishInProgress
 
         default:
             return false

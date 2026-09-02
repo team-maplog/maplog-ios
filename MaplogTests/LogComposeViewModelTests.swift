@@ -232,6 +232,35 @@ final class LogComposeViewModelTests: XCTestCase {
         )
     }
 
+    func testServerFailureRetryReusesTheSameIdempotencyKey() async {
+        let publishingRepository = LogPublishingRepositorySpy()
+        publishingRepository.results = [
+            .failure(APIError.server(
+                statusCode: 500,
+                response: APIErrorResponse(
+                    successFlag: false,
+                    code: "LOG-009",
+                    message: "로그 썸네일 이미지 생성에 실패했습니다.",
+                    data: nil
+                )
+            )),
+            .success(LogPublishResult(logID: 6))
+        ]
+        let viewModel = await makePreparedViewModel(
+            logPublishingRepository: publishingRepository
+        )
+
+        await viewModel.publishToMaplog()
+        await viewModel.publishToMaplog()
+
+        XCTAssertEqual(publishingRepository.attempts.count, 2)
+        XCTAssertEqual(
+            publishingRepository.attempts[0].idempotencyKey,
+            publishingRepository.attempts[1].idempotencyKey
+        )
+        XCTAssertEqual(viewModel.publicationCompletion?.publishedLog?.logID, 6)
+    }
+
     func testChangedDraftAfterNetworkFailureCreatesANewIdempotencyKey() async {
         let publishingRepository = LogPublishingRepositorySpy()
         publishingRepository.results = [

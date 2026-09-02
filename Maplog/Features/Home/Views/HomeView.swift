@@ -8,6 +8,9 @@ struct HomeView: View {
     private static let viewportCoordinateSpace = "home-viewport"
     private static let panelSwipeEdgeWidth: CGFloat = 28
     private static let panelSwipeMinimumDistance: CGFloat = 56
+    /// 홈 미리보기는 전체 릴스보다 하단 내비게이션에 16pt 더 가깝게 둡니다.
+    private static let homePreviewMetadataBottomClearance: CGFloat =
+        MaplogSpacing.reelTabBarClearance - MaplogSpacing.medium
 
     private struct FirstReelTopOffsetPreferenceKey: PreferenceKey {
         static var defaultValue: CGFloat?
@@ -19,6 +22,17 @@ struct HomeView: View {
             if let nextValue = nextValue() {
                 value = nextValue
             }
+        }
+    }
+
+    private struct FirstReelMetadataHeightPreferenceKey: PreferenceKey {
+        static var defaultValue: CGFloat = 0
+
+        static func reduce(
+            value: inout CGFloat,
+            nextValue: () -> CGFloat
+        ) {
+            value = nextValue()
         }
     }
 
@@ -65,6 +79,8 @@ struct HomeView: View {
     @State private var shareReel: HomeReelViewData?
     @State private var saveToastText: String?
     @State private var firstReelTopOffset: CGFloat?
+    /// 홈 미리보기의 메타데이터는 로그마다 선택 입력이 달라 실제 높이를 따로 기억합니다.
+    @State private var reelMetadataHeightByID: [Int64: CGFloat] = [:]
 
     private var reelInteractionErrorPresented: Binding<Bool> {
         Binding(
@@ -213,22 +229,24 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: 10) {
                 authorProfileButton
 
-                if !reel.caption.isEmpty {
-                    Text(reel.caption)
+                if let caption = nonEmptyText(reel.caption) {
+                    Text(caption)
                         .font(.subheadline)
                         .foregroundStyle(.white.opacity(0.86))
                         .lineLimit(3)
                 }
 
-                HStack(spacing: MaplogSpacing.xxSmall) {
-                    MaplogPinGlyphIcon(size: 13)
+                if let address = nonEmptyText(reel.address) {
+                    HStack(spacing: MaplogSpacing.xxSmall) {
+                        MaplogPinGlyphIcon(size: 13)
 
-                    Text(reel.address)
+                        Text(address)
+                    }
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.white.opacity(0.82))
+                        .lineLimit(1)
+                        .accessibilityElement(children: .combine)
                 }
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(.white.opacity(0.82))
-                    .lineLimit(1)
-                    .accessibilityElement(children: .combine)
             }
         }
 
@@ -269,6 +287,11 @@ struct HomeView: View {
             let text = String(format: "%.1f", value)
 
             return "\(text.replacingOccurrences(of: ".0", with: ""))K"
+        }
+
+        private func nonEmptyText(_ text: String) -> String? {
+            let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed.isEmpty ? nil : trimmed
         }
     }
 
@@ -743,16 +766,13 @@ struct HomeView: View {
             let destinationX = authorFrame.minX
             let destinationY = authorFrame.minY - firstReelTopOffset
             let sourceX = MaplogSpacing.page
-            // 홈에서는 정보 블록의 아래쪽이 네비게이션 바 위에 머물도록 둔다.
-            // 캡션이 있는 릴스는 최대 3줄 높이를 미리 확보한다.
-            let sourceMetadataHeight: CGFloat = firstReel.caption.isEmpty
-                ? 72
-                : 144
+            // 최초 한 프레임에는 예상 높이를 쓰고, 이후에는 실제 렌더링 높이를 사용합니다.
+            // 선택 정보가 비어도 블록의 아래쪽은 항상 하단 내비게이션 바로 위에 고정됩니다.
+            let sourceMetadataHeight = reelMetadataHeightByID[firstReel.id]
+                ?? estimatedMetadataHeight(for: firstReel)
             let sourceY = viewportSize.height
-                - MaplogSpacing.reelTabBarClearance
+                - Self.homePreviewMetadataBottomClearance
                 - sourceMetadataHeight
-                - MaplogSpacing.small
-                - MaplogSpacing.large
             // 홈 미리보기의 하트는 릴스와 같은 불투명한 포인트색으로
             // 유지하고, 전체 릴스에 도착한 순간 실제 오른쪽 레일에 넘긴다.
             let engagementOpacity: CGFloat = revealProgress < 1 ? 1 : 0
@@ -775,6 +795,21 @@ struct HomeView: View {
                     commentsReel = firstReel
                 }
             )
+            .background {
+                GeometryReader { proxy in
+                    Color.clear.preference(
+                        key: FirstReelMetadataHeightPreferenceKey.self,
+                        value: proxy.size.height
+                    )
+                }
+            }
+            .onPreferenceChange(FirstReelMetadataHeightPreferenceKey.self) { height in
+                guard height > 0, height != reelMetadataHeightByID[firstReel.id] else {
+                    return
+                }
+
+                reelMetadataHeightByID[firstReel.id] = height
+            }
             .offset(
                 x: interpolatedValue(
                     from: sourceX,
@@ -789,6 +824,18 @@ struct HomeView: View {
             )
             .zIndex(2)
         }
+    }
+
+    private func estimatedMetadataHeight(
+        for reel: HomeReelViewData
+    ) -> CGFloat {
+        let caption = reel.caption.trimmingCharacters(in: .whitespacesAndNewlines)
+        let address = reel.address.trimmingCharacters(in: .whitespacesAndNewlines)
+        let captionHeight: CGFloat = caption.isEmpty ? 0 : 54
+        let addressHeight: CGFloat = address.isEmpty ? 0 : 16
+        let spacingCount = (caption.isEmpty ? 0 : 1) + (address.isEmpty ? 0 : 1)
+
+        return 44 + captionHeight + addressHeight + (CGFloat(spacingCount) * 10)
     }
 
     @ViewBuilder
