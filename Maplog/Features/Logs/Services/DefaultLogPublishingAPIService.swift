@@ -87,7 +87,8 @@ final class DefaultLogPublishingAPIService: LogPublishingAPIService {
     }
 
     func createLog( // fileId와 로그 메타데이터를 JSON으로 전송함
-        request: LogCreateRequestDTO
+        request: LogCreateRequestDTO,
+        idempotencyKey: String
     ) async throws -> LogCreateResponseDTO {
         let endpoint = APIConfiguration.baseURL
             .appendingPathComponent("api")
@@ -104,6 +105,11 @@ final class DefaultLogPublishingAPIService: LogPublishingAPIService {
             "application/json",
             forHTTPHeaderField: "Content-Type"
         )
+        // 같은 발행 시도의 자동·사용자 재시도에는 반드시 같은 UUID를 사용합니다.
+        urlRequest.setValue(
+            idempotencyKey,
+            forHTTPHeaderField: "Idempotency-Key"
+        )
         urlRequest.httpBody = try JSONEncoder().encode(request)
 
         let response: APIResponse<LogCreateResponseDTO> =
@@ -119,7 +125,8 @@ final class DefaultLogPublishingAPIService: LogPublishingAPIService {
             )
         }
 
-        guard response.code == "SUCCESS-001" else {
+        // SUCCESS-008은 같은 Idempotency-Key의 이전 성공 결과를 다시 준 응답입니다.
+        guard ["SUCCESS-001", "SUCCESS-008"].contains(response.code) else {
             throw APIError.unexpectedResponse(
                 code: response.code,
                 message: response.message
