@@ -284,9 +284,16 @@ struct LogCommentsFeatureSheet: View {
                         .font((isReply ? Font.subheadline : Font.body).weight(.semibold))
                         .foregroundStyle(Color.maplogInk)
 
-                    Text(comment.createdAt, style: .relative)
-                        .font(.caption)
-                        .foregroundStyle(Color.maplogMuted)
+                    TimelineView(.periodic(from: .now, by: 1)) { context in
+                        Text(
+                            LogCommentRelativeTimeFormatter.text(
+                                for: comment.createdAt,
+                                relativeTo: context.date
+                            )
+                        )
+                    }
+                    .font(.caption)
+                    .foregroundStyle(Color.maplogMuted)
 
                     Spacer(minLength: 0)
 
