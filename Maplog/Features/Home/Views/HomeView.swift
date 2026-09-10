@@ -3,7 +3,7 @@ import SwiftUI
 private enum HomeFestivalCarouselLayout {
     static let cornerRadius: CGFloat = 18
     static let posterCornerRadius: CGFloat = 10
-    static let cardWidth: CGFloat = 150
+    static let posterHeight: CGFloat = 240
     static let cardSpacing: CGFloat = 12
 }
 
@@ -1485,13 +1485,17 @@ struct HomeTourismCarouselCard: View {
     let card: HomeTourismCardViewData
 
     @ScaledMetric(relativeTo: .subheadline)
-    private var cardWidth = HomeFestivalCarouselLayout.cardWidth
+    private var posterHeight = HomeFestivalCarouselLayout.posterHeight
+
+    private var cardWidth: CGFloat {
+        posterHeight * card.poster.aspectRatio
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
             tourismThumbnail
-                // 폭만 정하고 높이는 이미지 비율을 따른다. 고정 높이로 확대하면 포스터 글자가 잘린다.
-                .frame(width: cardWidth, height: cardWidth / card.poster.aspectRatio)
+                // 높이를 맞추고 폭은 원본 비율을 따라 포스터 전체를 같은 높이에 배치한다.
+                .frame(width: cardWidth, height: posterHeight)
                 .background(Color.maplogCanvas)
                 .clipShape(
                     RoundedRectangle(
@@ -1504,7 +1508,8 @@ struct HomeTourismCarouselCard: View {
             Text(card.title)
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(Color.maplogInk)
-                .lineLimit(2, reservesSpace: true)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             VStack(alignment: .leading, spacing: MaplogSpacing.xxSmall) {

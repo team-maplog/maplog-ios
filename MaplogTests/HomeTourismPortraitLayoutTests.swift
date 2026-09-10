@@ -4,7 +4,7 @@ import XCTest
 
 @MainActor
 final class HomeTourismPortraitLayoutTests: XCTestCase {
-    func testLoadedImagesKeepTheirOwnAspectRatioWithoutFixedHeight() async throws {
+    func testPostersShareHeightAndShortTitlesDoNotReserveSecondLine() async throws {
         let measurements = CardMeasurements()
         let fixture = try XCTUnwrap(UIImage(named: "event_gangneung_dano_hero"))
         let images = [
@@ -16,12 +16,12 @@ final class HomeTourismPortraitLayoutTests: XCTestCase {
         let view = VStack(alignment: .leading, spacing: 16) {
             Text("세로 카드 확인 · 샘플").font(.headline)
             HStack(alignment: .top, spacing: 12) {
-                ForEach(0..<2) { index in
+                ForEach(0..<3) { index in
                     HomeTourismCarouselCard(
                         card: HomeTourismCardViewData(
-                            id: Int64(index), title: ["세로형 원본", "긴 세로형 원본"][index],
-                            locationText: "서울", periodText: "09.09 – 09.10", dDayText: nil,
-                            poster: images[index]
+                            id: Int64(index), title: ["축제", "축제", "두 줄 제목\n둘째 줄"][index],
+                            locationText: "서울", periodText: "09.09", dDayText: nil,
+                            poster: images[index == 2 ? 0 : index]
                         )
                     )
                     .onGeometryChange(for: CGSize.self) { $0.size } action: { measurements.sizes[index] = $0 }
@@ -30,6 +30,20 @@ final class HomeTourismPortraitLayoutTests: XCTestCase {
             Spacer()
         }
         .padding(16)
+        .overlay {
+            Text("축제")
+                .font(.subheadline.weight(.semibold))
+                .fixedSize()
+                .onGeometryChange(for: CGSize.self) { $0.size } action: { measurements.sizes[3] = $0 }
+                .hidden()
+        }
+        .overlay {
+            Text("축제\n축제")
+                .font(.subheadline.weight(.semibold))
+                .fixedSize()
+                .onGeometryChange(for: CGSize.self) { $0.size } action: { measurements.sizes[4] = $0 }
+                .hidden()
+        }
         .environment(\.dynamicTypeSize, .large)
         let host = UIHostingController(rootView: view)
         let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.first as? UIWindowScene)
@@ -48,16 +62,22 @@ final class HomeTourismPortraitLayoutTests: XCTestCase {
 
         let portrait = try XCTUnwrap(measurements.sizes[0])
         let tallPortrait = try XCTUnwrap(measurements.sizes[1])
-        XCTAssertEqual(portrait.width, 150, accuracy: 0.5)
-        XCTAssertEqual(tallPortrait.width, 150, accuracy: 0.5)
-        let expectedDifference = 150 / images[1].aspectRatio - 150 / images[0].aspectRatio
-        XCTAssertEqual(tallPortrait.height - portrait.height, expectedDifference, accuracy: 1)
+        let twoLineTitle = try XCTUnwrap(measurements.sizes[2])
+        XCTAssertEqual(portrait.width, 240 * images[0].aspectRatio, accuracy: 0.5)
+        XCTAssertEqual(tallPortrait.width, 240 * images[1].aspectRatio, accuracy: 0.5)
+        XCTAssertEqual(portrait.height, tallPortrait.height, accuracy: 1)
+        XCTAssertEqual(twoLineTitle.width, portrait.width, accuracy: 0.5)
+        // 이미지와 메타데이터가 같아도 두 줄 제목만 실제 한 줄 높이만큼 더 차지해야 한다.
+        let titleLine = try XCTUnwrap(measurements.sizes[3])
+        let twoTitleLines = try XCTUnwrap(measurements.sizes[4])
+        XCTAssertEqual(twoLineTitle.height - portrait.height,
+                       twoTitleLines.height - titleLine.height, accuracy: 1)
 
         let screenshot = UIGraphicsImageRenderer(size: window.bounds.size).image { _ in
             window.drawHierarchy(in: window.bounds, afterScreenUpdates: true)
         }
         let attachment = XCTAttachment(image: screenshot)
-        attachment.name = "Home festival original image proportions"
+        attachment.name = "Home festival equal image heights and natural titles"
         attachment.lifetime = .keepAlways
         add(attachment)
     }
