@@ -7,6 +7,7 @@ struct MaplogApp: App { // 앱의 조립 담당자
     @StateObject private var signOutViewModel: SignOutViewModel
     @StateObject private var pushNotificationCoordinator: PushNotificationCoordinator
     private let authRepository: any AuthRepository
+    private let socialConnectionRepository: any SocialConnectionRepository
     private let oauthRepository: any OAuthRepository
     private let webAuthenticationSession: any OAuthWebAuthenticationSession
     private let sessionLifecycle: any AuthSessionLifecycleManaging
@@ -57,6 +58,8 @@ struct MaplogApp: App { // 앱의 조립 담당자
         let webAuthenticationSession = SystemOAuthWebAuthenticationSession()
         let tokenRefresher = DefaultAccessTokenRefresher(authRepository: authRepository, authSession: sessionStore)
         let authenticatedAPIClient = AuthenticatedAPIClient(apiClient: apiClient, authSession: sessionStore, tokenRefresher: tokenRefresher)
+        let socialConnectionAPIService = DefaultSocialConnectionAPIService(authenticatedAPIClient: authenticatedAPIClient)
+        self.socialConnectionRepository = DefaultSocialConnectionRepository(apiService: socialConnectionAPIService)
         let apiService = DefaultTourismAPIService(authenticatedAPIClient: authenticatedAPIClient)
         let logLocationAPIService = DefaultLogLocationAPIService(authenticatedAPIClient: authenticatedAPIClient)
         let logLocationRepository = DefaultLogLocationRepository(apiService: logLocationAPIService)
@@ -181,6 +184,7 @@ struct MaplogApp: App { // 앱의 조립 담당자
             RootView(
                 authRepository: authRepository,
                 oauthRepository: oauthRepository,
+                socialConnectionRepository: socialConnectionRepository,
                 webAuthenticationSession: webAuthenticationSession,
                 sessionLifecycle: sessionLifecycle,
                 tourismRepository: tourismRepository, // Composition Root

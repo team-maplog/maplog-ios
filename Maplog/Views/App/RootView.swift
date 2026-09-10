@@ -160,6 +160,7 @@ struct RootView: View {
 
     // init이 끝난 뒤에도 body에서 쓸 값을 보관
     private let authRepository: any AuthRepository
+    private let socialConnectionRepository: any SocialConnectionRepository
     private let oauthRepository: any OAuthRepository
     private let webAuthenticationSession: any OAuthWebAuthenticationSession
     private let sessionLifecycle: any AuthSessionLifecycleManaging
@@ -194,6 +195,7 @@ struct RootView: View {
     init(
         authRepository: any AuthRepository,
         oauthRepository: any OAuthRepository,
+        socialConnectionRepository: any SocialConnectionRepository,
         webAuthenticationSession: any OAuthWebAuthenticationSession,
         sessionLifecycle: any AuthSessionLifecycleManaging,
         tourismRepository: any TourismRepository,
@@ -225,6 +227,7 @@ struct RootView: View {
     ) {
         self.authRepository = authRepository
         self.oauthRepository = oauthRepository
+        self.socialConnectionRepository = socialConnectionRepository
         self.webAuthenticationSession = webAuthenticationSession
         self.sessionLifecycle = sessionLifecycle
         self.tourismRepository = tourismRepository
@@ -296,6 +299,7 @@ struct RootView: View {
                     logRouteRepository: logRouteRepository,
                     logDetailRepository: logDetailRepository,
                     profileRepository: profileRepository,
+                    socialConnectionRepository: socialConnectionRepository,
                     followRepository: followRepository,
                     mapRepository: mapRepository,
                     homeSearchRepository: homeSearchRepository,

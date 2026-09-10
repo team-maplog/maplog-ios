@@ -20,6 +20,7 @@ struct ProfileTabView: View {
     @Environment(\.maplogSelectTab) private var selectTab
 
     let profileRepository: any ProfileRepository
+    let socialConnectionRepository: any SocialConnectionRepository
     let followRepository: any FollowRepository
     let logDetailRepository: any LogDetailRepository
     let logMediaRepository: any LogMediaRepository
@@ -68,6 +69,7 @@ struct ProfileTabView: View {
                         profile: profile,
                         avatarImageData: viewModel.avatarImageData,
                         profileRepository: profileRepository,
+                        socialConnectionRepository: socialConnectionRepository,
                         onProfileSaved: reloadProfile
                     )
                 } label: {

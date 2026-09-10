@@ -46,6 +46,7 @@ struct MainTabView: View {
     private let logMediaRepository: any LogMediaRepository
     private let logRouteRepository: any LogRouteRepository
     private let logDetailRepository: any LogDetailRepository
+    private let socialConnectionRepository: any SocialConnectionRepository
     private let profileRepository: any ProfileRepository
     private let followRepository: any FollowRepository
     private let mapRepository: any MapRepository
@@ -76,6 +77,7 @@ struct MainTabView: View {
         logRouteRepository: any LogRouteRepository,
         logDetailRepository: any LogDetailRepository,
         profileRepository: any ProfileRepository,
+        socialConnectionRepository: any SocialConnectionRepository,
         followRepository: any FollowRepository,
         mapRepository: any MapRepository,
         homeSearchRepository: any HomeSearchRepository,
@@ -104,6 +106,7 @@ struct MainTabView: View {
         self.logRouteRepository = logRouteRepository
         self.logDetailRepository = logDetailRepository
         self.profileRepository = profileRepository
+        self.socialConnectionRepository = socialConnectionRepository
         self.followRepository = followRepository
         self.mapRepository = mapRepository
         self.homeSearchRepository = homeSearchRepository
@@ -342,6 +345,7 @@ struct MainTabView: View {
                 NavigationStack {
                     ProfileTabView(
                         profileRepository: profileRepository,
+                        socialConnectionRepository: socialConnectionRepository,
                         followRepository: followRepository,
                         logDetailRepository: logDetailRepository,
                         logMediaRepository: logMediaRepository,
