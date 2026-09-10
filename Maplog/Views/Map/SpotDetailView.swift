@@ -509,7 +509,7 @@ struct SpotDetailView: View {
             Button {
                 activeSheet = .route
             } label: {
-                Label("길찾기", systemImage: MaplogSymbol.directions)
+                Text("길찾기")
                     .font(MaplogFont.calloutStrong)
                 .foregroundStyle(Color.maplogInk)
                 .frame(minWidth: 82, minHeight: MaplogSize.primaryButtonHeight)

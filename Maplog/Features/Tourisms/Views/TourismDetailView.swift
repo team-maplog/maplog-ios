@@ -420,13 +420,23 @@ private struct TourismDetailQuickInfoSection: View {
             }
         }
         .padding(.horizontal, MaplogSpacing.medium)
-        .background(Color(uiColor: .systemGray6))
-        .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.xLarge, style: .continuous))
+        .background(Color.white)
+        .overlay {
+            RoundedRectangle(cornerRadius: MaplogRadius.large, style: .continuous)
+                .stroke(Color.maplogLine.opacity(0.6), lineWidth: 1)
+        }
     }
 
     @ViewBuilder
     private func rowIcon(for rowID: String) -> some View {
-        if ["address", "location", "place"].contains(rowID) {
+        if rowID == "place" || ["fee", "price", "usageFee"].contains(rowID) {
+            Image(rowID == "place" ? "TourismPlaceGlyph" : "TourismFeeGlyph")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 18, height: 18)
+                .foregroundStyle(Color.maplogInk)
+                .accessibilityHidden(true)
+        } else if ["address", "location"].contains(rowID) {
             MaplogPinGlyphIcon(size: 17)
                 .foregroundStyle(Color.maplogTextPrimary)
         } else {
@@ -899,7 +909,7 @@ private struct TourismDetailDirectionsBar: View {
         NavigationLink {
             TourismLocationMapView(title: title, coordinate: coordinate)
         } label: {
-            Label("길찾기", systemImage: MaplogSymbol.directions)
+            Text("길찾기")
                 .font(.system(size: 18, weight: .bold))
                 .foregroundStyle(Color.maplogOnPrimary)
                 .frame(maxWidth: .infinity)

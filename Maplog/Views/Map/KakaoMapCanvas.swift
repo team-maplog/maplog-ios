@@ -207,7 +207,7 @@ private struct KakaoMapRepresentable: UIViewRepresentable {
                 return nil
             }
 
-            let size = CGSize(width: 42, height: 42)
+            let size = CGSize(width: 28, height: 28)
             let tintedImage = sourceImage.withTintColor(
                 UIColor(Color.maplogPrimary),
                 renderingMode: .alwaysOriginal

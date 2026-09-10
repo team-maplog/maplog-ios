@@ -1057,9 +1057,9 @@ private struct ExploreKakaoMapRepresentable: UIViewRepresentable {
             )
             let bubbleColor = UIColor.white
             let textColor = UIColor(red: 0.11, green: 0.13, blue: 0.17, alpha: 1)
-            let iconBackgroundColor = visualStyle.color.withAlphaComponent(0.14)
+            let iconBackgroundColor = visualStyle.color.withAlphaComponent(0.22)
             let iconColor = visualStyle.color
-            let borderColor = visualStyle.color.withAlphaComponent(isSelected ? 1 : 0.28)
+            let borderColor = visualStyle.color.withAlphaComponent(isSelected ? 1 : 0.55)
 
             let titleAttributes: [NSAttributedString.Key: Any] = [
                 .font: font,
