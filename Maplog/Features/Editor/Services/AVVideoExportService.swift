@@ -140,6 +140,11 @@ actor AVVideoExportService: VideoExportService {
             timeline: timeline
         )
 
+        // 소리가 없는 원본의 빈 오디오 트랙은 export에서 지원하지 않는 미디어 오류를 일으킨다.
+        if let compositionAudioTrack, compositionAudioTrack.segments.isEmpty {
+            composition.removeTrack(compositionAudioTrack)
+        }
+
         return VideoExportPlan(
             composition: composition,
             videoComposition: videoComposition,
@@ -219,7 +224,8 @@ actor AVVideoExportService: VideoExportService {
                 sourceVideoTrack: source.videoTrack,
                 destinationFrame: frames[index],
                 at: .zero,
-                contentMode: .fill
+                contentMode: .fill,
+                crop: configuration.clipCrops[visibleClips[index].id] ?? VideoClipCrop()
             )
             layerInstructions.append(layerInstruction)
         }
@@ -238,6 +244,11 @@ actor AVVideoExportService: VideoExportService {
             textOverlays: request.textOverlays,
             timeline: timeline
         )
+
+        // 소리가 없는 원본의 빈 오디오 트랙은 export에서 지원하지 않는 미디어 오류를 일으킨다.
+        if let compositionAudioTrack, compositionAudioTrack.segments.isEmpty {
+            composition.removeTrack(compositionAudioTrack)
+        }
 
         return VideoExportPlan(
             composition: composition,
@@ -315,12 +326,14 @@ actor AVVideoExportService: VideoExportService {
         sourceVideoTrack: AVAssetTrack,
         destinationFrame: CGRect,
         at time: CMTime,
-        contentMode: VideoSlotContentMode
+        contentMode: VideoSlotContentMode,
+        crop: VideoClipCrop = VideoClipCrop()
     ) async throws -> AVMutableVideoCompositionLayerInstruction {
         let placement = try await VideoCompositionPlacement.make(
             for: sourceVideoTrack,
             in: destinationFrame,
-            contentMode: contentMode
+            contentMode: contentMode,
+            crop: crop
         )
         let layerInstruction = AVMutableVideoCompositionLayerInstruction(
             assetTrack: compositionTrack

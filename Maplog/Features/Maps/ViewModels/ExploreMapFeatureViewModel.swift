@@ -21,6 +21,22 @@ final class ExploreMapFeatureViewModel: ObservableObject {
     @Published private(set) var currentLocationFocusRequestID: UUID?
     @Published private(set) var isLoadingCurrentLocation = false
 
+    @Published private(set) var searchResults: [MapMarkerSummary] = []
+    @Published private(set) var isSearching = false
+    @Published private(set) var searchError: ErrorPresentation?
+    @Published private(set) var isTourismSearchAvailable = true
+    @Published private(set) var showsSearchResults = false
+    @Published private(set) var searchFocusRequest: MapCameraFocusRequest?
+    private var searchTask: Task<Void, Never>?
+    private var searchGeneration = UUID()
+    private var selectedSearchMarker: MapMarker?
+
+    @Published private(set) var selectedMarkerSummary: MapMarkerSummary?
+    @Published private(set) var isLoadingPreview = false
+    @Published private(set) var previewError: ErrorPresentation?
+    private var previewTask: Task<Void, Never>?
+    private var previewGeneration = UUID()
+
     private let mapRepository: any MapRepository
     private let logMediaRepository: any LogMediaRepository // 썸네일 내려받음
     private let currentLocationService: any MapCurrentLocationService
@@ -132,22 +148,33 @@ final class ExploreMapFeatureViewModel: ObservableObject {
             return
         }
 
+        selectedMarkerSummary = nil
+        selectedSearchMarker = nil
         selectedMarkerID = id
 
-        loadThumbnail(
-            for: marker
-        )
+        loadThumbnail(for: marker)
+        loadPreview(for: marker)
     }
 
     func clearSelection() {
+        previewTask?.cancel()
+        previewGeneration = UUID()
+        selectedMarkerSummary = nil
+        previewError = nil
+        isLoadingPreview = false
+
         selectedMarkerThumbnailTask?.cancel()
 
+        selectedSearchMarker = nil
         selectedMarkerID = nil
         selectedMarkerThumbnailData = nil
         isLoadingSelectedMarkerThumbnail = false
     }
 
     var selectedMarker: MapMarker? {
+        if let selectedMarkerSummary { return selectedMarkerSummary.marker }
+        if let selectedSearchMarker { return selectedSearchMarker }
+
         guard let selectedMarkerID,
               let content = state.content
         else {
@@ -160,15 +187,96 @@ final class ExploreMapFeatureViewModel: ObservableObject {
     }
 
     var filteredMarkers: [MapMarker] {
-        markers(
-            matching: selectedFilter
-        )
+        let visible = markers(matching: selectedFilter)
+        guard let selectedSearchMarker, !visible.contains(where: { $0.id == selectedSearchMarker.id }) else {
+            return visible
+        }
+        return visible + [selectedSearchMarker]
+    }
+
+    func selectSearchResult(_ item: MapMarkerSummary) {
+        clearSelection()
+        selectedSearchMarker = item.marker
+        selectedMarkerID = item.id
+        showsSearchResults = false
+        searchFocusRequest = MapCameraFocusRequest(coordinate: item.marker.coordinate)
+        loadThumbnail(for: item.marker)
+        selectedMarkerSummary = item
+        loadPreview(for: item.marker)
+    }
+
+    func retryPreview() {
+        guard let marker = selectedMarker else { return }
+        loadPreview(for: marker)
+    }
+
+    private func loadPreview(for marker: MapMarker) {
+        previewTask?.cancel()
+        let generation = UUID()
+        previewGeneration = generation
+        previewError = nil
+        isLoadingPreview = true
+        previewTask = Task { [weak self] in
+            guard let self else { return }
+            defer { if previewGeneration == generation { isLoadingPreview = false } }
+            do {
+                let summary = try await mapRepository.fetchPreview(for: marker)
+                // 빠르게 핀을 바꾸거나 카드를 닫은 경우 이전 요청 결과는 버린다.
+                guard !Task.isCancelled, previewGeneration == generation, selectedMarkerID == marker.id else { return }
+                selectedMarkerSummary = summary
+                if summary.marker.thumbnailURL != marker.thumbnailURL {
+                    loadThumbnail(for: summary.marker)
+                }
+            } catch {
+                guard !Task.isCancelled, previewGeneration == generation else { return }
+                previewError = ExploreMapErrorPolicy.presentation(for: error)
+            }
+        }
+    }
+
+    func retrySearch() { scheduleSearch() }
+
+    private func scheduleSearch() {
+        searchTask?.cancel()
+        // 취소가 늦게 전달되는 네트워크 응답도 이전 검색 결과를 덮어쓰지 못하게 한다.
+        let generation = UUID()
+        searchGeneration = generation
+        searchResults = []
+        searchError = nil
+        isTourismSearchAvailable = true
+        let query = normalizedSearchQuery
+        showsSearchResults = !query.isEmpty
+        isSearching = false
+        guard !query.isEmpty else { return }
+        guard query.count <= 50 else {
+            searchError = ErrorPresentation(message: "검색어는 50자까지 입력해 주세요.", recoveryAction: .none)
+            return
+        }
+        let scope = selectedFilter == .all ? "ALL" : (selectedFilter == .maplog ? "LOG" : "TOURISM")
+        let category = selectedFilter.tourismRequestCategory
+        isSearching = true
+        searchTask = Task { [weak self] in
+            guard let self else { return }
+            defer { if searchGeneration == generation { isSearching = false } }
+            do {
+                try await Task.sleep(nanoseconds: 350_000_000)
+                let result = try await mapRepository.search(query: query, scope: scope, category: category)
+                guard !Task.isCancelled, searchGeneration == generation else { return }
+                searchResults = result.items
+                isTourismSearchAvailable = result.isTourismAvailable
+            } catch {
+                guard !Task.isCancelled, searchGeneration == generation else { return }
+                searchError = ExploreMapErrorPolicy.presentation(for: error)
+            }
+        }
     }
 
     func updateSearchQuery(
         _ query: String
     ) {
         searchQuery = query
+        selectedSearchMarker = nil
+        scheduleSearch()
         clearSelectionIfFilteredOut()
     }
 
@@ -180,6 +288,8 @@ final class ExploreMapFeatureViewModel: ObservableObject {
         }
 
         selectedFilter = filter
+        selectedSearchMarker = nil
+        scheduleSearch()
         clearSelectionIfFilteredOut()
 
         guard let latestObservedViewport else {
@@ -200,6 +310,8 @@ final class ExploreMapFeatureViewModel: ObservableObject {
 
     func clearSearch() {
         searchQuery = ""
+        selectedSearchMarker = nil
+        scheduleSearch()
 
         if selectedFilter == .all {
             clearSelectionIfFilteredOut()
@@ -235,7 +347,7 @@ final class ExploreMapFeatureViewModel: ObservableObject {
 
             if content.markers.isEmpty {
                 state = .empty
-                clearSelection()
+                if selectedSearchMarker == nil { clearSelection() }
                 mapMarkerThumbnailLoadTask?.cancel()
             } else {
                 state = .content(content)
@@ -454,6 +566,8 @@ final class ExploreMapFeatureViewModel: ObservableObject {
     }
 
     deinit {
+        previewTask?.cancel()
+        searchTask?.cancel()
         scheduledLoadTask?.cancel()
         selectedMarkerThumbnailTask?.cancel()
         mapMarkerThumbnailLoadTask?.cancel()

@@ -9,6 +9,9 @@ import Foundation
 
 @MainActor
 final class ClipEditorViewModel: ObservableObject {
+    @Published private(set) var compositionConfiguration: VideoCompositionConfiguration
+    @Published private(set) var isUpdatingCrop = false
+    @Published private(set) var cropError: ErrorPresentation?
     @Published private(set) var state: ClipEditorState = .loading
     @Published private(set) var timelineItems: [ClipEditorTimelineItemViewData] = [] // View가 그릴 타임라인 카드 목록
     @Published private(set) var selectedPreview: ClipEditorTimelineItemViewData? // 상단 미리보기에 현재 보여 줄 클립 카드 데이터
@@ -55,6 +58,7 @@ final class ClipEditorViewModel: ObservableObject {
         videoExportService: any VideoExportService
     ) {
         self.input = input
+        self.compositionConfiguration = input.compositionConfiguration
         self.videoThumbnailService = videoThumbnailService
         self.videoPlaybackService = videoPlaybackService
         self.videoExportService = videoExportService
@@ -69,8 +73,35 @@ final class ClipEditorViewModel: ObservableObject {
         editorTimeline.totalDuration
     }
 
-    var compositionConfiguration: VideoCompositionConfiguration {
-        input.compositionConfiguration
+    func crop(for clipID: UUID) -> VideoClipCrop {
+        compositionConfiguration.clipCrops[clipID] ?? VideoClipCrop()
+    }
+
+    func updateCrop(_ crop: VideoClipCrop, for clipID: UUID) async {
+        guard compositionConfiguration.layout != .single,
+              orderedClips.contains(where: { $0.id == clipID }),
+              !isUpdatingCrop, !isExporting,
+              self.crop(for: clipID) != crop else { return }
+
+        cropError = nil
+        let previousCrop = self.crop(for: clipID)
+        let previousTime = currentPlaybackTime
+        pausePreviewForEditing()
+        isUpdatingCrop = true
+        defer { isUpdatingCrop = false }
+        sequenceReloadTask?.cancel()
+        compositionConfiguration.clipCrops[clipID] = crop
+        do {
+            try await loadSequencePreview()
+            try Task.checkCancellation()
+            movePlayback(to: previousTime)
+        } catch {
+            compositionConfiguration.clipCrops[clipID] = previousCrop
+            cropError = ClipEditorErrorPolicy.playbackPresentation(for: error)
+            // 새 구도 적용에 실패하면 마지막으로 확인한 구도로 복구한다.
+            try? await loadSequencePreview()
+            movePlayback(to: previousTime)
+        }
     }
 
     var previewAspectRatio: CGFloat {
@@ -95,6 +126,7 @@ final class ClipEditorViewModel: ObservableObject {
 
     var canUndoTextOverlayEdit: Bool {
         !textOverlayUndoHistory.isEmpty
+            || (textEditingHistoryEntry.map { $0.overlays != textOverlays } ?? false)
     }
 
     private func playbackTimeText(
@@ -362,7 +394,7 @@ final class ClipEditorViewModel: ObservableObject {
     }
 
     func exportVideo() async {
-        guard !orderedClips.isEmpty, !isExporting else {
+        guard !orderedClips.isEmpty, !isExporting, !isUpdatingCrop else {
             return
         }
 

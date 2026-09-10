@@ -45,7 +45,7 @@ enum ClipLocationTimestampOverlayFactory {
                         font: .standard,
                         weight: .medium,
                         color: .white,
-                        fontSize: 10
+                        fontSize: 12
                     )
                 ),
                 overlay(
@@ -63,7 +63,7 @@ enum ClipLocationTimestampOverlayFactory {
                         font: .standard,
                         weight: .medium,
                         color: .white,
-                        fontSize: 10
+                        fontSize: 12
                     )
                 ),
                 overlay(
@@ -78,7 +78,7 @@ enum ClipLocationTimestampOverlayFactory {
                         font: .rounded,
                         weight: .semibold,
                         color: .white,
-                        fontSize: 10
+                        fontSize: 12
                     )
                 )
             ]

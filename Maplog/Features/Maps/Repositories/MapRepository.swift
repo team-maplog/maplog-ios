@@ -8,6 +8,10 @@
 import Foundation
 
 protocol MapRepository {
+    func fetchPreview(for marker: MapMarker) async throws -> MapMarkerSummary
+
+    func search(query: String, scope: String, category: TourismMapCategory) async throws -> MapSearchResult
+
     func fetchViewportContent(
         in viewport: MapViewport,
         tourismCategory: TourismMapCategory

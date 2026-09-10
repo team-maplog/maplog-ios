@@ -49,6 +49,58 @@ final class DefaultMapRepository: MapRepository {
         )
     }
 
+    func fetchPreview(for marker: MapMarker) async throws -> MapMarkerSummary {
+        let type: String
+        let markerID: Int64
+        switch marker {
+        case let .log(log):
+            // 로그 ID로 요청하면 다른 클립을 조회할 수 있으므로 반드시 clipID를 사용한다.
+            type = "LOG"
+            markerID = log.clipID
+        case let .tourism(tourism):
+            type = "TOURISM"
+            markerID = tourism.tourismID
+        }
+        let dto = try await apiService.fetchPreview(type: type, markerID: markerID)
+        guard let summary = makeSummary(from: dto), summary.id == marker.id else {
+            throw APIError.invalidResponse
+        }
+        return summary
+    }
+
+    func search(query: String, scope: String, category: TourismMapCategory) async throws -> MapSearchResult {
+        let response = try await apiService.search(query: query, scope: scope, category: category)
+        return MapSearchResult(
+            items: response.items.compactMap(makeSummary),
+            isTourismAvailable: response.tourismAvailable
+        )
+    }
+
+    func makeSummary(from dto: MapMarkerSummaryDTO) -> MapMarkerSummary? {
+        guard dto.markerID > 0, dto.detailID > 0,
+              isValidCoordinate(latitude: dto.latitude, longitude: dto.longitude) else { return nil }
+        let coordinate = MapCoordinate(latitude: dto.latitude, longitude: dto.longitude)
+        let marker: MapMarker
+        switch dto.type {
+        case "LOG":
+            marker = .log(MapLogMarker(
+                logID: dto.detailID, clipID: dto.markerID, sequence: 1,
+                startTimeMillis: dto.startTimeMillis ?? 0, endTimeMillis: dto.endTimeMillis ?? 0,
+                caption: dto.summary, placeName: dto.title, address: dto.subtitle,
+                thumbnailURL: makeURL(from: dto.thumbnailURL), coordinate: coordinate
+            ))
+        case "TOURISM":
+            marker = .tourism(TourismMapMarker(
+                tourismID: dto.detailID, name: dto.title, thumbnailURL: makeURL(from: dto.thumbnailURL),
+                startDateText: dto.startDate, endDateText: dto.endDate,
+                category: TourismMapCategory(apiValue: dto.category), coordinate: coordinate
+            ))
+        default:
+            return nil
+        }
+        return MapMarkerSummary(marker: marker, title: marker.title, subtitle: dto.subtitle ?? "", summary: dto.summary)
+    }
+
     private func makeLogMarker(
         from dto: LogMapMarkerResponseDTO
     ) -> MapLogMarker? {

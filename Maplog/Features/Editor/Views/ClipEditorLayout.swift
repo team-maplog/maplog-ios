@@ -25,14 +25,16 @@ enum ClipEditorLayout {
     static let timelineSectionSpacing: CGFloat = 12
     // 카드끼리는 이전처럼 조금 더 촘촘하게 배치한다.
     static let timelineCardSpacing: CGFloat = 8
-    static let timelineActionHeight: CGFloat = 36
+    static let timelineActionHeight: CGFloat = MaplogSize.primaryButtonHeight
 
+    // 접힌 목록 행 + 공통 버튼 + 위·아래 여백. 펼친 목록은 영상 위에 겹친다.
     static let timelineControlsHeight: CGFloat =
-        timelineSectionSpacing
-        + timelineStripHeight
-        + timelineSectionSpacing
+        MaplogSpacing.xSmall
+        + MaplogSize.minimumTapTarget
+        + MaplogSpacing.small
         + timelineActionHeight
-    
+        + MaplogSpacing.medium
+
     static let timelineBadgeSize: CGFloat = 18
     static let timelineOverlayInset: CGFloat = 3
     

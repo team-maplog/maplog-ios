@@ -50,8 +50,14 @@ final class ClipLocationEditViewModel: ObservableObject {
         originalClipLocation.location != nil
     }
 
+    /// 위치가 없는 클립은 서울 중심을 탐색 시작점으로만 사용한다. 저장할 위치로 자동 선택하지 않는다.
+    var mapLocation: LogLocationDraft {
+        selectedLocation ?? LogLocationDraft(latitude: 37.5665, longitude: 126.9780)
+    }
+
     var canSave: Bool {
-        selectedLocation != nil
+        guard let address = selectedLocation?.address else { return false }
+        return !isResolvingLocation && !address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     func resolveInitialLocationIfNeeded() {

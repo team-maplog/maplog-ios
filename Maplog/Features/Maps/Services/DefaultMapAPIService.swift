@@ -108,6 +108,55 @@ final class DefaultMapAPIService: MapAPIService {
         return data
     }
 
+    func fetchPreview(type: String, markerID: Int64) async throws -> MapMarkerSummaryDTO {
+        guard ["LOG", "TOURISM"].contains(type), markerID > 0 else {
+            throw APIError.invalidRequest(reason: "장소 식별자가 올바르지 않습니다.")
+        }
+        let url = APIConfiguration.baseURL
+            .appendingPathComponent("api/v1/maps/markers")
+            .appendingPathComponent(type)
+            .appendingPathComponent(String(markerID))
+            .appendingPathComponent("preview")
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        let response: APIResponse<MapMarkerSummaryDTO> = try await authenticatedAPIClient.request(
+            request, responseType: APIResponse<MapMarkerSummaryDTO>.self
+        )
+        guard response.successFlag, response.code == "SUCCESS-002" else {
+            throw APIError.unexpectedResponse(code: response.code, message: response.message)
+        }
+        guard let data = response.data else { throw APIError.missingData }
+        return data
+    }
+
+    func search(query: String, scope: String, category: TourismMapCategory) async throws -> MapSearchResponseDTO {
+        let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard (1...50).contains(query.count), ["ALL", "LOG", "TOURISM"].contains(scope) else {
+            throw APIError.invalidRequest(reason: "검색어는 1~50자로 입력해 주세요.")
+        }
+        let endpoint = APIConfiguration.baseURL.appendingPathComponent("api/v1/maps/search")
+        var components = URLComponents(url: endpoint, resolvingAgainstBaseURL: false)
+        components?.queryItems = [
+            URLQueryItem(name: "q", value: query),
+            URLQueryItem(name: "scope", value: scope),
+            URLQueryItem(name: "category", value: category.requestValue),
+            URLQueryItem(name: "size", value: "20")
+        ]
+        guard let url = components?.url else { throw APIError.invalidURL }
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        let response: APIResponse<MapSearchResponseDTO> = try await authenticatedAPIClient.request(
+            request, responseType: APIResponse<MapSearchResponseDTO>.self
+        )
+        guard response.successFlag, response.code == "SUCCESS-002" else {
+            throw APIError.unexpectedResponse(code: response.code, message: response.message)
+        }
+        guard let data = response.data else { throw APIError.missingData }
+        return data
+    }
+
     private func isValid(
         _ viewport: MapViewport
     ) -> Bool {

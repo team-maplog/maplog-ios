@@ -5,6 +5,32 @@ import XCTest
 
 @MainActor
 final class LogComposeViewModelTests: XCTestCase {
+    func testPublicationRoundTripPreservesPlayerItemAndCaption() async {
+        let playback = VideoPlaybackServiceStub()
+        let viewModel = LogComposeViewModel(
+            input: makeInput(), videoPlaybackService: playback,
+            videoThumbnailService: VideoThumbnailServiceStub(),
+            logLocationRepository: LogLocationRepositoryStub(),
+            logPublishingRepository: LogPublishingRepositoryStub(),
+            photoLibraryVideoSaveService: PhotoLibraryVideoSaveServiceStub()
+        )
+        await viewModel.prepare()
+        viewModel.caption = "작성 중인 본문 #제주"
+        viewModel.togglePreviewPlayback()
+        viewModel.stopPreview() // 작성 화면에서 나감
+        viewModel.stopPreview() // 발행 옵션 진입
+        viewModel.togglePreviewPlayback()
+        XCTAssertTrue(playback.hasLoadedVideo)
+        XCTAssertTrue(viewModel.isPreviewPlaying)
+        viewModel.stopPreview() // 뒤로 가기
+        await viewModel.prepare()
+        XCTAssertEqual(playback.loadCount, 1)
+        XCTAssertEqual(playback.stopCount, 0)
+        XCTAssertEqual(viewModel.caption, "작성 중인 본문 #제주")
+        viewModel.togglePreviewPlayback()
+        XCTAssertTrue(playback.hasLoadedVideo)
+    }
+
     func testPrepareResolvesLocationAndAllowsPublicationWithEmptyCaption() async {
         let locationRepository = LogLocationRepositoryStub()
         let viewModel = LogComposeViewModel(
@@ -398,7 +424,10 @@ private final class VideoPlaybackServiceStub: VideoPlaybackService {
     let player = AVPlayer()
     var isMuted = false
 
-    func loadVideo(at url: URL) {}
+    var hasLoadedVideo = false
+    var loadCount = 0
+    var stopCount = 0
+    func loadVideo(at url: URL) { hasLoadedVideo = true; loadCount += 1 }
 
     func loadVideoSequence(from urls: [URL]) async throws {}
 
@@ -422,7 +451,7 @@ private final class VideoPlaybackServiceStub: VideoPlaybackService {
 
     func play() {}
     func pause() {}
-    func stop() {}
+    func stop() { hasLoadedVideo = false; stopCount += 1 }
     func observeProgress(_ handler: @escaping (Double) -> Void) {}
 }
 
