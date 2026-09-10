@@ -9,9 +9,6 @@
 /* Begin PBXBuildFile section */
 		0BDB4C1D30FCD6A8E747770C /* LogPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65ABBA241CCE59F34DF290A0 /* LogPreviewView.swift */; };
 		0F38CC8E9CFCBB2E9982A900 /* KakaoMapsSDK-SPM in Frameworks */ = {isa = PBXBuildFile; productRef = 6B18CAE8F036967CBD6A5FD0 /* KakaoMapsSDK-SPM */; };
-		FCA100000000000000000001 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = FCA100000000000000000006 /* FirebaseCore */; };
-		FCA100000000000000000002 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = FCA100000000000000000007 /* FirebaseMessaging */; };
-		FCA100000000000000000003 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = FCA100000000000000000004 /* GoogleService-Info.plist */; };
 		1F799557AF09B31CA1D664EF /* MaplogModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 717E1AC786880C4F9F3E0447 /* MaplogModels.swift */; };
 		28E82DEB362C514D0763D2DC /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0C944E2B4B65B383EDBD76C /* ProfileView.swift */; };
 		2F5692305C0C1CB4922668FB /* MaplogApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2672356266064D88A9AB90F5 /* MaplogApp.swift */; };
@@ -51,6 +48,9 @@
 		E64345BB3CE1454CD256FE69 /* Cards.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82FCBC8A1A1F73D5ABD6442D /* Cards.swift */; };
 		EDDF28EA911571C5A90929B3 /* CaptureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 691D6E56B0806BACA016DE02 /* CaptureView.swift */; };
 		FB89B8F9095093D254CFC7CE /* ProfileViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 030655D170DFF7F7C85ED748 /* ProfileViewModel.swift */; };
+		FCA100000000000000000001 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = FCA100000000000000000006 /* FirebaseCore */; };
+		FCA100000000000000000002 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = FCA100000000000000000007 /* FirebaseMessaging */; };
+		FCA100000000000000000003 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = FCA100000000000000000004 /* GoogleService-Info.plist */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -71,7 +71,6 @@
 		2672356266064D88A9AB90F5 /* MaplogApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MaplogApp.swift; sourceTree = "<group>"; };
 		301951B5ED69D1CB3A145958 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		466D4CDACC71C57EB22009EB /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
-		FCA100000000000000000004 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		65ABBA241CCE59F34DF290A0 /* LogPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogPreviewView.swift; sourceTree = "<group>"; };
 		691D6E56B0806BACA016DE02 /* CaptureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptureView.swift; sourceTree = "<group>"; };
 		717E1AC786880C4F9F3E0447 /* MaplogModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MaplogModels.swift; sourceTree = "<group>"; };
@@ -108,6 +107,7 @@
 		E2AC0FBF3000354E0005D226 /* PracticeKakaoMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PracticeKakaoMapView.swift; sourceTree = "<group>"; };
 		E616D005446E65E2A4478814 /* MaplogTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MaplogTheme.swift; sourceTree = "<group>"; };
 		F2B4AB164A4CD66EF46DB763 /* QuickMaplogIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickMaplogIntent.swift; sourceTree = "<group>"; };
+		FCA100000000000000000004 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
