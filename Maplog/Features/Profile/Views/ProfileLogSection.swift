@@ -118,8 +118,8 @@ struct ProfileLogSection: View {
 }
 
 private struct ProfileLogCard: View {
-    /// 2열 그리드의 폭이 기기마다 달라져도 세로형 썸네일 비율을 유지합니다.
-    private static let thumbnailAspectRatio: CGFloat = 4 / 5
+    /// 2열 그리드의 폭이 기기마다 달라도, 살짝 낮춘 세로형 썸네일 비율을 유지합니다.
+    private static let thumbnailAspectRatio: CGFloat = 5 / 6
 
     let log: ProfileLogCardViewData
     let thumbnailData: Data?
