@@ -63,8 +63,8 @@ final class HomeTourismPortraitLayoutTests: XCTestCase {
         let portrait = try XCTUnwrap(measurements.sizes[0])
         let tallPortrait = try XCTUnwrap(measurements.sizes[1])
         let twoLineTitle = try XCTUnwrap(measurements.sizes[2])
-        XCTAssertEqual(portrait.width, 240 * images[0].aspectRatio, accuracy: 0.5)
-        XCTAssertEqual(tallPortrait.width, 240 * images[1].aspectRatio, accuracy: 0.5)
+        XCTAssertEqual(portrait.width, 200 * images[0].aspectRatio, accuracy: 0.5)
+        XCTAssertEqual(tallPortrait.width, 200 * images[1].aspectRatio, accuracy: 0.5)
         XCTAssertEqual(portrait.height, tallPortrait.height, accuracy: 1)
         XCTAssertEqual(twoLineTitle.width, portrait.width, accuracy: 0.5)
         // 이미지와 메타데이터가 같아도 두 줄 제목만 실제 한 줄 높이만큼 더 차지해야 한다.

@@ -3,7 +3,7 @@ import SwiftUI
 private enum HomeFestivalCarouselLayout {
     static let cornerRadius: CGFloat = 18
     static let posterCornerRadius: CGFloat = 10
-    static let posterHeight: CGFloat = 240
+    static let posterHeight: CGFloat = 200
     static let cardSpacing: CGFloat = 12
 }
 
@@ -184,7 +184,8 @@ struct HomeView: View {
         let onShowComments: () -> Void
 
         var body: some View {
-            HStack(alignment: .bottom, spacing: MaplogSpacing.medium) {
+            // 이동 목적지는 작성자 행의 시작점이다. 숨긴 액션 레일 높이가 작성자를 아래로 밀지 않게 한다.
+            HStack(alignment: .top, spacing: MaplogSpacing.medium) {
                 information
                     .frame(
                         width: informationWidth,
@@ -1117,7 +1118,7 @@ struct HomeView: View {
                 .padding(.horizontal, MaplogSpacing.page)
             weekendTourismCarousel
         }
-        .padding(.bottom, 24)
+        .padding(.bottom, 16)
     }
 
     private var homeHeader: some View {
@@ -1292,7 +1293,7 @@ struct HomeView: View {
         switch viewModel.tourismState {
         case .idle, .loading:
             ProgressView("축제 정보를 불러오는 중이에요")
-                .frame(maxWidth: .infinity, minHeight: 172)
+                .frame(maxWidth: .infinity, minHeight: 120)
                 .padding(.horizontal, MaplogSpacing.page)
         case .content(let cards):
 
