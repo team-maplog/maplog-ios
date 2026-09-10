@@ -358,6 +358,11 @@ struct ClipEditorView: View {
         }
         .clipped()
         .overlay(alignment: .bottom) {
+            if isClipListExpanded && !viewModel.isTextEditing {
+                expandedClipList
+            }
+        }
+        .overlay(alignment: .bottom) {
             if !viewModel.isTextEditing {
                 ClipEditorPlaybackScrubberView(
                     progress: viewModel.playbackProgress,
@@ -388,6 +393,7 @@ struct ClipEditorView: View {
                     }
                     .font(MaplogFont.calloutStrong)
                     .frame(minHeight: MaplogSize.minimumTapTarget)
+                    .contentShape(Rectangle())
                 }
                 .accessibilityLabel(isClipListExpanded ? "클립 목록 접기" : "클립 목록 펼치기")
 
@@ -396,6 +402,7 @@ struct ClipEditorView: View {
                 Button(action: togglePreviewPlaybackFromCanvas) {
                     Image(systemName: viewModel.isPreviewPlaying ? "pause.fill" : "play.fill")
                         .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
                 }
                 .accessibilityLabel(viewModel.isPreviewPlaying ? "일시정지" : "재생")
                 Text("\(viewModel.currentPlaybackTimeText) / \(viewModel.totalDurationText)")
@@ -412,32 +419,29 @@ struct ClipEditorView: View {
         .padding(.bottom, MaplogSpacing.medium)
         .frame(height: ClipEditorLayout.timelineControlsHeight)
         .background(Color.maplogSurface)
-        .overlay(alignment: .top) {
-            if isClipListExpanded {
-                VStack(spacing: MaplogSpacing.small) {
-                    if viewModel.compositionConfiguration.layout != .single {
-                        Button {
-                            showsCropEditor = true
-                        } label: {
-                            Label("분할 영역 조정", systemImage: "crop")
-                                .frame(maxWidth: .infinity, alignment: .trailing)
-                                .frame(minHeight: MaplogSize.minimumTapTarget)
-                        }
-                        .font(MaplogFont.calloutStrong)
-                        .foregroundStyle(Color.maplogInk)
-                    }
-                    timelineSection
-                }
-                .padding(MaplogSpacing.small)
-                .background(Color.maplogSurface, in: UnevenRoundedRectangle(
-                    topLeadingRadius: MaplogRadius.xLarge,
-                    topTrailingRadius: MaplogRadius.xLarge
-                ))
-                .fixedSize(horizontal: false, vertical: true)
-                .alignmentGuide(.top) { dimensions in dimensions[.bottom] }
-            }
-        }
         .zIndex(2)
+    }
+
+    private var expandedClipList: some View {
+        VStack(spacing: MaplogSpacing.small) {
+            if viewModel.compositionConfiguration.layout != .single {
+                Button {
+                    showsCropEditor = true
+                } label: {
+                    Label("분할 영역 조정", systemImage: "crop")
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                        .frame(minHeight: MaplogSize.minimumTapTarget)
+                }
+                .font(MaplogFont.calloutStrong)
+                .foregroundStyle(Color.maplogInk)
+            }
+            timelineSection
+        }
+        .padding(MaplogSpacing.small)
+        .background(Color.maplogSurface, in: UnevenRoundedRectangle(
+            topLeadingRadius: MaplogRadius.xLarge,
+            topTrailingRadius: MaplogRadius.xLarge
+        ))
     }
 
     private func finishKeyboardEditing() {

@@ -315,7 +315,7 @@ final class LogComposeViewModel: ObservableObject {
             return "촬영 위치를 찾는 중이에요"
         }
 
-        return location.name ?? "촬영 위치"
+        return location.name ?? location.address ?? "촬영 위치"
     }
 
     private static func makeClipLocationDrafts(

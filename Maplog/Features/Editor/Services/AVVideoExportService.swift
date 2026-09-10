@@ -140,6 +140,11 @@ actor AVVideoExportService: VideoExportService {
             timeline: timeline
         )
 
+        // 소리가 없는 원본의 빈 오디오 트랙은 export에서 지원하지 않는 미디어 오류를 일으킨다.
+        if let compositionAudioTrack, compositionAudioTrack.segments.isEmpty {
+            composition.removeTrack(compositionAudioTrack)
+        }
+
         return VideoExportPlan(
             composition: composition,
             videoComposition: videoComposition,
@@ -239,6 +244,11 @@ actor AVVideoExportService: VideoExportService {
             textOverlays: request.textOverlays,
             timeline: timeline
         )
+
+        // 소리가 없는 원본의 빈 오디오 트랙은 export에서 지원하지 않는 미디어 오류를 일으킨다.
+        if let compositionAudioTrack, compositionAudioTrack.segments.isEmpty {
+            composition.removeTrack(compositionAudioTrack)
+        }
 
         return VideoExportPlan(
             composition: composition,

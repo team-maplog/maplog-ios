@@ -52,6 +52,7 @@ struct ClipEditorCropView: View {
                                     zoom = 1
                                     applyCrop()
                                 }
+                                .foregroundStyle(Color.maplogInk)
                             }
                         }
                         .padding(.horizontal, MaplogSpacing.page)
@@ -61,6 +62,7 @@ struct ClipEditorCropView: View {
             }
             .navigationTitle("분할 영역 조정")
             .navigationBarTitleDisplayMode(.inline)
+            .maplogNavigationAppearance()
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("완료") { dismiss() }
