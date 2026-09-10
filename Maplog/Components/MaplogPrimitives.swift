@@ -28,6 +28,20 @@ struct MaplogPinGlyphIcon: View {
     }
 }
 
+/// 사용자 제공 달력 글리프를 기간 메타데이터에 사용한다.
+struct MaplogCalendarGlyphIcon: View {
+    var size: CGFloat = MaplogSize.iconSmall
+
+    var body: some View {
+        Image("MaplogCalendarGlyph")
+            .renderingMode(.template)
+            .resizable()
+            .scaledToFit()
+            .frame(width: size, height: size)
+            .accessibilityHidden(true)
+    }
+}
+
 /// 원형 SF Symbol 대신 프로젝트의 위치 핀 글리프와 문구를 함께 표시한다.
 /// 위치를 뜻하는 보조 문구에서 같은 아이콘 비율을 유지하는 용도다.
 struct MaplogLocationLabel: View {

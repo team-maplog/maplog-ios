@@ -1544,8 +1544,11 @@ private struct HomeTourismCarouselCard: View {
     }
 
     private var periodLabel: some View {
-        Label(card.periodText, systemImage: "calendar")
-            .fixedSize(horizontal: false, vertical: true)
+        HStack(spacing: MaplogSpacing.xxxSmall) {
+            MaplogCalendarGlyphIcon(size: 12)
+            Text(card.periodText)
+        }
+        .fixedSize(horizontal: false, vertical: true)
     }
 
     @ViewBuilder
