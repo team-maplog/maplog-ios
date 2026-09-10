@@ -4,55 +4,68 @@ import XCTest
 
 @MainActor
 final class HomeTourismPosterTests: XCTestCase {
-    func testHomeUsesSameOriginalAsDetailAndReusesResolvedURL() async {
+    func testHomeExcludesUnverifiedImageAndUsesRegisteredPoster() async {
         let repository = PosterRepositoryStub()
-        let viewModel = makeViewModel(repository)
-        let card = makeCard()
-        XCTAssertNil(viewModel.tourismPosterURL(for: card))
-
-        await viewModel.loadTourismPoster(for: card)
-        await viewModel.loadTourismPoster(for: card)
-
-        XCTAssertEqual(viewModel.tourismPosterURL(for: card), repository.detail.representativeImageURL)
-        XCTAssertNotEqual(viewModel.tourismPosterURL(for: card), card.thumbnailURL)
-        XCTAssertEqual(repository.detailRequests, 1)
-    }
-
-    func testDetailFailureKeepsListAndFallsBackThenRetries() async {
-        let repository = PosterRepositoryStub()
-        repository.error = URLError(.notConnectedToInternet)
+        let posterURL = URL(string: "https://example.invalid/verified-poster.jpg")!
+        repository.tourisms = [makeTourism(id: 1, posterURL: posterURL), makeTourism(id: 2)]
         let viewModel = makeViewModel(repository)
         await viewModel.loadInitialTourisms()
-        let stateBefore = viewModel.tourismState
-        let card = makeCard()
-
-        await viewModel.loadTourismPoster(for: card)
-        XCTAssertEqual(viewModel.tourismPosterURL(for: card), card.thumbnailURL)
-        XCTAssertEqual(viewModel.tourismState, stateBefore)
-
-        repository.error = nil
-        await viewModel.loadTourismPoster(for: card)
-        XCTAssertEqual(viewModel.tourismPosterURL(for: card), repository.detail.representativeImageURL)
-        XCTAssertEqual(repository.detailRequests, 2)
+        guard case let .content(cards) = viewModel.tourismState else {
+            return XCTFail("Expected verified poster card")
+        }
+        XCTAssertEqual(cards.map(\.id), [1])
+        XCTAssertEqual(cards.first?.thumbnailURL, posterURL)
+        XCTAssertEqual(repository.detailRequests, 0)
     }
 
-    func testCancelledResolutionCanRetryWithoutMarkingFallback() async {
+    func testNoVerifiedPosterProducesEmptyHome() async {
         let repository = PosterRepositoryStub()
-        repository.error = CancellationError()
+        repository.tourisms = [makeTourism(id: 1)]
         let viewModel = makeViewModel(repository)
-        let card = makeCard()
-        await viewModel.loadTourismPoster(for: card)
-        XCTAssertNil(viewModel.tourismPosterURL(for: card))
-        repository.error = nil
-        await viewModel.loadTourismPoster(for: card)
-        XCTAssertEqual(viewModel.tourismPosterURL(for: card), repository.detail.representativeImageURL)
+        await viewModel.loadInitialTourisms()
+        XCTAssertEqual(viewModel.tourismState, .empty)
     }
 
-    func testRepresentativeImageFallsBackToAdditionalImageThenThumbnail() {
-        let original = URL(string: "https://example.invalid/additional-original.jpg")!
-        let image = TourismDetailImage(originalURL: original, smallURL: nil, name: nil, copyrightCode: nil, serialNumber: nil)
-        XCTAssertEqual(makeDetail(original: nil, images: [image]).representativeImageURL, original)
-        XCTAssertEqual(makeDetail(original: nil).representativeImageURL, URL(string: "https://example.invalid/detail-thumbnail.jpg"))
+    func testFailedPosterRemovesCardWithoutUsingOrdinaryPhoto() async {
+        let repository = PosterRepositoryStub()
+        repository.tourisms = [makeTourism(id: 1, posterURL: URL(string: "https://example.invalid/poster.jpg"))]
+        let viewModel = makeViewModel(repository)
+        await viewModel.loadInitialTourisms()
+        guard case let .content(cards) = viewModel.tourismState, let card = cards.first else {
+            return XCTFail("Expected poster card")
+        }
+        viewModel.hideFailedTourismPoster(card)
+        XCTAssertEqual(viewModel.tourismState, .empty)
+    }
+
+    func testDetailShowsVerifiedPosterFirstThenUniqueRelatedPhotos() async {
+        let poster = URL(string: "https://example.invalid/verified-poster.jpg")!
+        let related = URL(string: "https://example.invalid/related.jpg")!
+        let original = URL(string: "https://example.invalid/original.jpg")!
+        let repository = PosterRepositoryStub()
+        repository.detail = makeDetail(original: original, images: [poster, related, related].map {
+            TourismDetailImage(originalURL: $0, smallURL: nil, name: nil, copyrightCode: nil, serialNumber: nil)
+        })
+        repository.detail.verifiedPosterURL = poster
+        let viewModel = TourismDetailViewModel(tourismID: 1, tourismRepository: repository)
+        await viewModel.load()
+        guard case let .content(data) = viewModel.state else { return XCTFail("Expected detail") }
+        XCTAssertEqual(data.heroImageURL, poster)
+        XCTAssertEqual(data.images.map(\.imageURL), [original, related])
+    }
+
+    func testUnverifiedDetailStillShowsRelatedPhotosFromFullList() async {
+        let repository = PosterRepositoryStub()
+        let viewModel = TourismDetailViewModel(tourismID: 1, tourismRepository: repository)
+        await viewModel.load()
+        guard case let .content(data) = viewModel.state else { return XCTFail("Expected detail") }
+        XCTAssertEqual(data.heroImageURL, repository.detail.common.originalImageURL)
+    }
+
+    private func makeTourism(id: Int64, posterURL: URL? = nil) -> Tourism {
+        Tourism(id: id, name: "축제", region: "서울", address: nil,
+                thumbnailURL: URL(string: "https://example.invalid/ordinary-photo.jpg"),
+                startDate: nil, endDate: nil, category: .events, verifiedPosterURL: posterURL)
     }
 
     private func makeViewModel(_ repository: PosterRepositoryStub) -> HomeViewModel {
@@ -62,11 +75,7 @@ final class HomeTourismPosterTests: XCTestCase {
                              profileRepository: unused, playbackService: unused)
     }
 
-    private func makeCard() -> HomeTourismCardViewData {
-        HomeTourismCardViewData(id: 1, title: "포스터", locationText: "서울",
-                               periodText: "09.09 – 09.10", dDayText: nil,
-                               thumbnailURL: URL(string: "https://example.invalid/list-thumbnail.jpg"))
-    }
+
 }
 
 private func makeDetail(original: URL? = URL(string: "https://example.invalid/original.jpg"), images: [TourismDetailImage] = []) -> TourismDetail {
@@ -81,6 +90,11 @@ private func makeDetail(original: URL? = URL(string: "https://example.invalid/or
 
 private final class PosterRepositoryStub: TourismRepository {
     var detail = makeDetail()
+    var tourisms: [Tourism] = []
+    func fetchTourismsWithVerifiedPosters(size: Int) async throws -> [Tourism] {
+        if let error { throw error }
+        return tourisms
+    }
     var error: Error?
     var detailRequests = 0
     func fetchTourisms(category: TourismCategory, cursor: String?, size: Int) async throws -> TourismPage {

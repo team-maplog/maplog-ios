@@ -25,10 +25,12 @@ struct TourismDetail: Equatable {
     let repeatInfo: [TourismDetailRepeatInfo]
     let images: [TourismDetailImage]
     let petTour: TourismPetTour?
+    var verifiedPosterURL: URL? = nil
 
-    /// 홈과 상세에서 동일한 대표 원본을 선택한다.
+    /// 상세의 대표 이미지. 홈 노출 여부는 verifiedPosterURL로만 판단한다.
     var representativeImageURL: URL? {
-        common.originalImageURL
+        verifiedPosterURL
+            ?? common.originalImageURL
             ?? images.lazy.compactMap { $0.originalURL ?? $0.smallURL }.first
             ?? common.thumbnailURL
     }

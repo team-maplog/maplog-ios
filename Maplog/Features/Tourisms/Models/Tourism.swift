@@ -18,6 +18,7 @@ struct Tourism: Identifiable, Equatable {
     let startDate: Date?
     let endDate: Date?
     let category: TourismCategory
+    var verifiedPosterURL: URL? = nil
 }
 
 //tourismId가 아니라 id: 서버 세부사항을 앱 전체로 퍼뜨리지 않기 위해서

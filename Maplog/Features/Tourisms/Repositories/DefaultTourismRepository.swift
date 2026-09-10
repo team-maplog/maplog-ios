@@ -35,9 +35,38 @@ import Foundation
 
 final class DefaultTourismRepository: TourismRepository {
     private let apiService: any TourismAPIService
+    private let posterCatalog: any VerifiedTourismPosterProviding
 
-    init(apiService: any TourismAPIService) {
+    init(apiService: any TourismAPIService, posterCatalog: any VerifiedTourismPosterProviding) {
         self.apiService = apiService
+        self.posterCatalog = posterCatalog
+    }
+
+    func fetchTourismsWithVerifiedPosters(size: Int) async throws -> [Tourism] {
+        guard (1...100).contains(size) else {
+            throw APIError.invalidRequest(reason: "size는 1부터 100 사이여야 합니다.")
+        }
+        var remainingIDs = posterCatalog.tourismIDs
+        guard !remainingIDs.isEmpty else { return [] }
+
+        var result: [Tourism] = []
+        var cursor: String?
+        var visitedCursors = Set<String>()
+        while result.count < size {
+            try Task.checkCancellation()
+            let page = try await fetchTourisms(category: .events, cursor: cursor, size: 100)
+            for tourism in page.tourisms where remainingIDs.remove(tourism.id) != nil {
+                if tourism.verifiedPosterURL != nil { result.append(tourism) }
+                if result.count == size { break }
+            }
+            guard result.count < size, !remainingIDs.isEmpty, page.hasNext else { break }
+            guard let nextCursor = page.nextCursor,
+                  visitedCursors.insert(nextCursor).inserted else {
+                throw TourismRepositoryError.invalidPagination
+            }
+            cursor = nextCursor
+        }
+        return result
     }
 
     func fetchTourisms(category: TourismCategory, cursor: String?, size: Int) async throws -> TourismPage {
@@ -72,7 +101,10 @@ final class DefaultTourismRepository: TourismRepository {
             thumbnailURL: dto.thumbnailURL.flatMap { URL(string: $0) },
             startDate: startDate,
             endDate: endDate,
-            category: dto.category
+            category: dto.category,
+            verifiedPosterURL: posterCatalog.posterURL(
+                tourismID: dto.tourismId, startDate: startDate, endDate: endDate
+            )
             )
     }
 
@@ -88,7 +120,12 @@ final class DefaultTourismRepository: TourismRepository {
                 introduction: introduction,
                 repeatInfo: dto.repeatInfo.map(makeTourismDetailRepeatInfo),
                 images: dto.images.map(makeTourismDetailImage), // 서버 배열의 DTO 하나씩을 앱 배열의 Domain Model 하나씩으로 바꿈, 서버가 []를 보내면 앱도 빈 배열을 받고,이미지 섹션을 숨겨야 하는 정상 상태가 됨
-                petTour: dto.petTour.map(makeTourismPetTour)  // petTour가 nil이면 변환하지 않고 그대로 nil을 유지
+                petTour: dto.petTour.map(makeTourismPetTour),
+                verifiedPosterURL: posterCatalog.posterURL(
+                    tourismID: dto.tourismId,
+                    startDate: introduction?.startDate,
+                    endDate: introduction?.endDate
+                )
             )
     }
 
