@@ -76,9 +76,7 @@ final class TourismDetailViewModel: ObservableObject {
 
     private func makeViewData(from detail: TourismDetail) -> TourismDetailViewData {
         let imageItems = makeImageItems(from: detail.images)
-        let heroImageURL = detail.common.originalImageURL // 원본 대표 이미지
-            ?? imageItems.first?.imageURL // 상세 이미지 원본
-            ?? detail.common.thumbnailURL // 썸네일
+        let heroImageURL = detail.representativeImageURL
         let phoneNumber = nonEmpty(detail.common.tel)
         let overviewText = nonEmpty(detail.common.overview)
         let informationRows = makeInformationRows(from: detail.introduction)

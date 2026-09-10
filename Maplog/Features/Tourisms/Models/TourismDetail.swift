@@ -25,6 +25,13 @@ struct TourismDetail: Equatable {
     let repeatInfo: [TourismDetailRepeatInfo]
     let images: [TourismDetailImage]
     let petTour: TourismPetTour?
+
+    /// 홈과 상세에서 동일한 대표 원본을 선택한다.
+    var representativeImageURL: URL? {
+        common.originalImageURL
+            ?? images.lazy.compactMap { $0.originalURL ?? $0.smallURL }.first
+            ?? common.thumbnailURL
+    }
 }
 
 struct TourismDetailCommonInfo: Equatable {

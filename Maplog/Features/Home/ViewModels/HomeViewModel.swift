@@ -57,6 +57,9 @@ import Foundation
 @MainActor
 final class HomeViewModel: ObservableObject {
     @Published private(set) var tourismState: HomeTourismSectionState = .idle
+    @Published private var tourismPosterURLs: [Int64: URL] = [:]
+    @Published private var resolvedTourismPosterIDs: Set<Int64> = []
+    private var loadingTourismPosterIDs: Set<Int64> = []
     @Published private(set) var reelState: HomeReelSectionState = .idle
     @Published private var thumbnailDataByReelID: [Int64: Data] = [:] // [로그 ID: 해당 썸네일 이미지 원본 Data]
     @Published private var thumbnailLoadingIDs: Set<Int64> = [] //현재 네트워크 요청 중인 로그 ID 모음
@@ -116,6 +119,32 @@ final class HomeViewModel: ObservableObject {
             return
         } catch {
             tourismState = .failed(TourismErrorPolicy.presentation(for: error))
+        }
+    }
+
+    func tourismPosterURL(for card: HomeTourismCardViewData) -> URL? {
+        tourismPosterURLs[card.id]
+            ?? (resolvedTourismPosterIDs.contains(card.id) ? card.thumbnailURL : nil)
+    }
+
+    /// 보이는 카드만 상세 원본을 조회한다. 목록 로딩은 추가 요청을 기다리지 않는다.
+    func loadTourismPoster(for card: HomeTourismCardViewData) async {
+        guard tourismPosterURLs[card.id] == nil,
+              loadingTourismPosterIDs.insert(card.id).inserted else {
+            return
+        }
+        defer { loadingTourismPosterIDs.remove(card.id) }
+
+        do {
+            let detail = try await tourismRepository.fetchTourismDetail(tourismID: card.id)
+            try Task.checkCancellation()
+            tourismPosterURLs[card.id] = detail.representativeImageURL
+            resolvedTourismPosterIDs.insert(card.id)
+        } catch {
+            guard !Task.isCancelled, !(error is CancellationError) else { return }
+            // 이미지 보강 실패는 목록을 지우지 않고 기존 썸네일로 대체한다.
+            // 성공한 URL만 재사용하므로 화면에 다시 나타나면 재시도할 수 있다.
+            resolvedTourismPosterIDs.insert(card.id)
         }
     }
 

@@ -4,7 +4,7 @@ private enum HomeFestivalCarouselLayout {
     static let cornerRadius: CGFloat = 18
     static let posterCornerRadius: CGFloat = 10
     static let cardWidth: CGFloat = 150
-    static let posterHeight: CGFloat = 246
+    static let posterHeight: CGFloat = 212
     static let cardSpacing: CGFloat = 12
 }
 
@@ -1349,9 +1349,15 @@ struct HomeView: View {
                     Button {
                         onShowTourismDetail(card.id)
                     } label: {
-                        HomeTourismCarouselCard(card: card)
+                        HomeTourismCarouselCard(
+                            card: card,
+                            posterURL: viewModel.tourismPosterURL(for: card)
+                        )
                     }
                     .buttonStyle(.plain)
+                    .task(id: card.id) {
+                        await viewModel.loadTourismPoster(for: card)
+                    }
                     .accessibilityHint("관광 상세 정보 보기")
                 }
             }
@@ -1484,6 +1490,7 @@ struct HomeView: View {
 
 private struct HomeTourismCarouselCard: View {
     let card: HomeTourismCardViewData
+    let posterURL: URL?
 
     @ScaledMetric(relativeTo: .subheadline)
     private var cardWidth = HomeFestivalCarouselLayout.cardWidth
@@ -1496,7 +1503,8 @@ private struct HomeTourismCarouselCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
             tourismThumbnail
-                .frame(width: cardWidth, height: posterHeight)
+                .frame(width: cardWidth)
+                .fixedSize(horizontal: false, vertical: true)
                 .background(Color.maplogCanvas)
                 .clipShape(
                     RoundedRectangle(
@@ -1561,16 +1569,17 @@ private struct HomeTourismCarouselCard: View {
 
     @ViewBuilder
     private var tourismThumbnail: some View {
-        if let thumbnailURL = card.thumbnailURL {
-            // 세로 포스터 프레임을 빈틈없이 채우고 넘치는 부분은 바깥에서 자른다.
+        if let posterURL {
+            // 상세와 같은 원본을 사용하고 표시 높이도 원본 비율에 맞춘다.
             MaplogCachedRemoteImage(
-                url: thumbnailURL,
-                cacheKey: "tourism-thumbnail-\(card.id)",
+                url: posterURL,
+                cacheKey: "tourism-hero-\(MaplogImageCacheKey.stableURL(posterURL))",
                 targetSize: CGSize(width: cardWidth, height: posterHeight),
-                contentMode: .fill
+                contentMode: .fit
             ) {
                 thumbnailPlaceholder
             }
+            .id(posterURL)
         } else {
             thumbnailPlaceholder
         }
