@@ -9,6 +9,7 @@ import SwiftUI
 import UIKit
 
 struct HomeMapPanel: View {
+    @ScaledMetric(relativeTo: .body) private var placeCardHeight: CGFloat = 142
     @ObservedObject var viewModel: HomeMapPanelViewModel
     let onRequestSignIn: () -> Void
     let onPlayRoutePoint: (HomeMapRoutePlaybackRequest) -> Void
@@ -133,21 +134,23 @@ struct HomeMapPanel: View {
             )
         ) {
             ForEach(route.points) { point in
-                selectedPlaceCard(
-                    point,
+                HomeMapRoutePlaceCard(
+                    point: point,
                     logID: route.logID,
                     thumbnailData: viewModel.thumbnailDataByPointID[
                         point.id
                     ],
                     isLoadingThumbnail: viewModel.isLoadingThumbnail(
                         for: point.id
-                    )
+                    ),
+                    onPlay: onPlayRoutePoint
                 )
+                .padding(.horizontal, 20)
                 .tag(point.id)
             }
         }
         .tabViewStyle(.page(indexDisplayMode: .never))
-        .frame(height: 142)
+        .frame(height: placeCardHeight)
         .accessibilityLabel("장소 카드")
     }
 
@@ -166,147 +169,6 @@ struct HomeMapPanel: View {
                 )
             }
         )
-    }
-
-    private func selectedPlaceCard(
-        _ point: HomeMapRoutePointViewData,
-        logID: Int64,
-        thumbnailData: Data?,
-        isLoadingThumbnail: Bool
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 8) {
-                Text("\(point.sequence)번째 장소")
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(Color.maplogOnPrimary)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(
-                        Color.maplogLime,
-                        in: Capsule()
-                    )
-
-                Spacer()
-
-                Image(systemName: "play.fill")
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(Color.maplogMapLightTextPrimary)
-
-                Text(
-                    videoTimeText(
-                        milliseconds: point.startTimeMillis
-                    )
-                )
-                .font(.caption2.weight(.bold))
-                .foregroundStyle(Color.maplogMapLightTextPrimary)
-            }
-
-            HStack(alignment: .top, spacing: 8) {
-                routePointThumbnail(
-                    data: thumbnailData,
-                    isLoading: isLoadingThumbnail
-                )
-
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(point.placeName)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Color.maplogMapLightTextPrimary)
-                        .lineLimit(1)
-
-                    MaplogLocationLabel(
-                        title: point.address,
-                        pinSize: 14
-                    )
-                    .font(.caption)
-                    .foregroundStyle(Color.maplogMapLightTextSecondary)
-                    .lineLimit(1)
-                }
-
-                Spacer(minLength: 0)
-            }
-
-            Button {
-                onPlayRoutePoint(
-                    HomeMapRoutePlaybackRequest(
-                        logID: logID,
-                        startTimeMillis: point.startTimeMillis
-                    )
-                )
-            } label: {
-                Label(
-                    "\(videoTimeText(milliseconds: point.startTimeMillis))부터 영상에서 보기",
-                    systemImage: "play.fill"
-                )
-                .font(.caption.weight(.bold))
-                .foregroundStyle(Color.maplogOnPrimary)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 8)
-                .background(
-                    Color.maplogLime,
-                    in: Capsule()
-                )
-            }
-            .buttonStyle(.plain)
-            .accessibilityHint("릴스 영상의 해당 장소가 시작되는 시점부터 재생합니다")
-        }
-        .padding(12)
-        .background(
-            Color.maplogMapLightSurface,
-            in: RoundedRectangle(
-                cornerRadius: 20,
-                style: .continuous
-            )
-        )
-        .padding(.horizontal, 24)
-        .accessibilityElement(children: .contain)
-    }
-
-    @ViewBuilder
-    private func routePointThumbnail(
-        data: Data?,
-        isLoading: Bool
-    ) -> some View {
-        Group {
-            if let data,
-               let image = UIImage(data: data) {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFill()
-
-            } else if isLoading {
-                ZStack {
-                    Color.maplogMapLightSurfaceRaised
-
-                    ProgressView()
-                        .tint(Color.maplogPrimary)
-                }
-
-            } else {
-                ZStack {
-                    Color.maplogMapLightSurfaceRaised
-
-                    Image(systemName: "photo")
-                        .foregroundStyle(Color.maplogMapLightTextSecondary)
-                }
-            }
-        }
-        .frame(width: 48, height: 48)
-        .clipShape(
-            RoundedRectangle(
-                cornerRadius: 10,
-                style: .continuous
-            )
-        )
-        .overlay {
-            RoundedRectangle(
-                cornerRadius: 10,
-                style: .continuous
-            )
-            .stroke(
-                Color.maplogLime,
-                lineWidth: 1
-            )
-        }
     }
 
     private func statusView(
@@ -384,24 +246,6 @@ struct HomeMapPanel: View {
         case .none:
             break
         }
-    }
-
-    private func videoTimeText(
-        milliseconds: Int64
-    ) -> String {
-        let totalSeconds = max(
-            0,
-            milliseconds / 1_000
-        )
-
-        let minutes = totalSeconds / 60
-        let seconds = totalSeconds % 60
-
-        return String(
-            format: "%02lld:%02lld",
-            minutes,
-            seconds
-        )
     }
 }
 
