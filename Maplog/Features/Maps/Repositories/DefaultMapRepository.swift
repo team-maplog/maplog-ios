@@ -49,6 +49,25 @@ final class DefaultMapRepository: MapRepository {
         )
     }
 
+    func fetchPreview(for marker: MapMarker) async throws -> MapMarkerSummary {
+        let type: String
+        let markerID: Int64
+        switch marker {
+        case let .log(log):
+            // 로그 ID로 요청하면 다른 클립을 조회할 수 있으므로 반드시 clipID를 사용한다.
+            type = "LOG"
+            markerID = log.clipID
+        case let .tourism(tourism):
+            type = "TOURISM"
+            markerID = tourism.tourismID
+        }
+        let dto = try await apiService.fetchPreview(type: type, markerID: markerID)
+        guard let summary = makeSummary(from: dto), summary.id == marker.id else {
+            throw APIError.invalidResponse
+        }
+        return summary
+    }
+
     func search(query: String, scope: String, category: TourismMapCategory) async throws -> MapSearchResult {
         let response = try await apiService.search(query: query, scope: scope, category: category)
         return MapSearchResult(

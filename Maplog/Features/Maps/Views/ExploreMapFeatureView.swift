@@ -97,6 +97,10 @@ struct ExploreMapFeatureView: View {
                     marker: marker,
                     thumbnailData: viewModel.selectedMarkerThumbnailData,
                     isLoadingThumbnail: viewModel.isLoadingSelectedMarkerThumbnail,
+                    summary: viewModel.selectedMarkerSummary,
+                    isLoadingPreview: viewModel.isLoadingPreview,
+                    previewError: viewModel.previewError,
+                    onRetry: viewModel.retryPreview,
                     onOpen: openSelectedMarker,
                     onDismiss: viewModel.clearSelection
                 )

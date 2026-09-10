@@ -4,6 +4,26 @@ import XCTest
 
 @MainActor
 final class ExploreMapFeatureViewModelTests: XCTestCase {
+    func testClosingCardDiscardsPendingPreview() async throws {
+        let viewModel = makeViewModel()
+        await loadContent(into: viewModel)
+        viewModel.selectMarker(id: "log-1-11")
+        viewModel.clearSelection()
+        await Task.yield()
+        XCTAssertNil(viewModel.selectedMarkerSummary)
+        XCTAssertNil(viewModel.selectedMarkerID)
+        XCTAssertFalse(viewModel.isLoadingPreview)
+    }
+
+    func testSelectedMarkerLoadsPreview() async throws {
+        let viewModel = makeViewModel()
+        await loadContent(into: viewModel)
+        viewModel.selectMarker(id: "log-1-11")
+        try await Task.sleep(nanoseconds: 50_000_000)
+        XCTAssertEqual(viewModel.selectedMarkerSummary?.id, "log-1-11")
+        XCTAssertNil(viewModel.previewError)
+    }
+
     func testSelectingRemoteResultMovesCameraWithoutChangingCurrentLocation() async {
         let viewModel = makeViewModel()
         await viewModel.loadCurrentLocationIfNeeded()
@@ -248,6 +268,10 @@ final class ExploreMapFeatureViewModelTests: XCTestCase {
 }
 
 private final class MapRepositoryStub: MapRepository {
+    func fetchPreview(for marker: MapMarker) async throws -> MapMarkerSummary {
+        MapMarkerSummary(marker: marker, title: marker.title, subtitle: marker.subtitle, summary: nil)
+    }
+
     func search(query: String, scope: String, category: TourismMapCategory) async throws -> MapSearchResult {
         MapSearchResult(items: [], isTourismAvailable: true)
     }
