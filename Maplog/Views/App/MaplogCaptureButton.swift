@@ -16,6 +16,7 @@ struct MaplogCaptureButton: View {
     var body: some View {
         Button(action: action) {
             captureSurface
+                .environment(\.colorScheme, .light)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("새 로그 촬영")
@@ -30,10 +31,12 @@ struct MaplogCaptureButton: View {
     private var captureSurface: some View {
         if #available(iOS 26, *) {
             captureIcon
+                .background(.white.opacity(0.62), in: Circle())
                 .glassEffect(.regular.interactive(),
                              in: .circle)
         } else {
             captureIcon
+                .background(.white.opacity(0.62), in: Circle())
                 .background(.ultraThinMaterial, in: Circle())
                 .overlay {
                     Circle()
