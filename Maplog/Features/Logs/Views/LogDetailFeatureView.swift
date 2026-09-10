@@ -4,6 +4,11 @@ struct LogDetailFeatureView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.maplogLogout) private var performLogout
 
+    private let initialCommentID: Int64?
+    private let commentRepository: (any LogCommentRepository)?
+    @State private var showsNotificationComment = false
+    @State private var didOpenNotificationComment = false
+
     private let allowsManagement: Bool
     private let onLogRemoved: () async -> Void
     private let followRepository: any FollowRepository
@@ -28,8 +33,12 @@ struct LogDetailFeatureView: View {
         followRepository: any FollowRepository,
         profileRepository: any ProfileRepository,
         playbackService: any VideoPlaybackService,
-        onLogRemoved: @escaping () async -> Void
+        onLogRemoved: @escaping () async -> Void,
+        initialCommentID: Int64? = nil,
+        commentRepository: (any LogCommentRepository)? = nil
     ) {
+        self.initialCommentID = initialCommentID
+        self.commentRepository = commentRepository
         self.allowsManagement = allowsManagement
         self.onLogRemoved = onLogRemoved
         self.followRepository = followRepository
@@ -40,7 +49,8 @@ struct LogDetailFeatureView: View {
                 logID: logID,
                 logDetailRepository: logDetailRepository,
                 logMediaRepository: logMediaRepository,
-                playbackService: playbackService
+                playbackService: playbackService,
+                automaticallyPlays: initialCommentID == nil
             )
         )
     }
@@ -118,6 +128,25 @@ struct LogDetailFeatureView: View {
         }
         .task {
             await loadDetail()
+        }
+        .onChange(of: viewModel.detail != nil) { _, isLoaded in
+            guard isLoaded, initialCommentID != nil, commentRepository != nil,
+                  !didOpenNotificationComment else { return }
+            didOpenNotificationComment = true
+            showsNotificationComment = true
+            viewModel.pausePlayback()
+        }
+        .sheet(isPresented: $showsNotificationComment) {
+            if let detail = viewModel.detail, let commentRepository {
+                LogCommentsFeatureSheet(
+                    logID: detail.id,
+                    commentRepository: commentRepository,
+                    profileRepository: profileRepository,
+                    followRepository: followRepository,
+                    onCommentCountChange: { _ in },
+                    initialCommentID: initialCommentID
+                )
+            }
         }
         .onDisappear {
             guard !showsCaptionEditor else {

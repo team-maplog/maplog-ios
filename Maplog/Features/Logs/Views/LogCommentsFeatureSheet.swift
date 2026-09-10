@@ -11,6 +11,8 @@ struct LogCommentsFeatureSheet: View {
     @State private var composerMode: ComposerMode = .new
     @State private var commentPendingDeletion: LogComment?
     @State private var selectedAuthor: FollowUser?
+    private let initialCommentID: Int64?
+    @State private var didScrollToComment = false
     private let followRepository: any FollowRepository
     private let profileRepository: any ProfileRepository
 
@@ -19,8 +21,10 @@ struct LogCommentsFeatureSheet: View {
         commentRepository: any LogCommentRepository,
         profileRepository: any ProfileRepository,
         followRepository: any FollowRepository,
-        onCommentCountChange: @escaping (Int64) -> Void
+        onCommentCountChange: @escaping (Int64) -> Void,
+        initialCommentID: Int64? = nil
     ) {
+        self.initialCommentID = initialCommentID
         self.followRepository = followRepository
         self.profileRepository = profileRepository
         _viewModel = StateObject(
@@ -101,6 +105,12 @@ struct LogCommentsFeatureSheet: View {
         NavigationStack {
             VStack(spacing: 0) {
                 header
+                if viewModel.isRequestedCommentUnavailable(initialCommentID) {
+                    Text("알림의 댓글이 삭제되었거나 더 이상 표시되지 않아요.")
+                        .font(.subheadline)
+                        .foregroundStyle(Color.maplogMuted)
+                        .padding(MaplogSpacing.medium)
+                }
                 commentsContent
             }
             .safeAreaInset(edge: .bottom, spacing: 0) {
@@ -225,17 +235,40 @@ struct LogCommentsFeatureSheet: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
         case .content:
-            ScrollView(showsIndicators: false) {
-                LazyVStack(alignment: .leading, spacing: MaplogSpacing.large) {
-                    ForEach(topLevelComments) { comment in
-                        commentThread(comment)
+            ScrollViewReader { proxy in
+                ScrollView(showsIndicators: false) {
+                    Group {
+                        if initialCommentID != nil {
+                            // 알림의 답글이 화면 밖에 있어도 정확한 위치를 계산하도록 배치합니다.
+                            VStack(alignment: .leading, spacing: MaplogSpacing.large) {
+                                commentThreads
+                            }
+                        } else {
+                            LazyVStack(alignment: .leading, spacing: MaplogSpacing.large) {
+                                commentThreads
+                            }
+                        }
                     }
+                    .padding(.horizontal, MaplogSpacing.page)
+                    .padding(.top, MaplogSpacing.small)
+                    .padding(.bottom, MaplogSpacing.xLarge)
                 }
-                .padding(.horizontal, MaplogSpacing.page)
-                .padding(.top, MaplogSpacing.small)
-                .padding(.bottom, MaplogSpacing.xLarge)
+                .scrollDismissesKeyboard(.interactively)
+                .task(id: viewModel.comments.map(\.id)) {
+                    guard !didScrollToComment,
+                          let target = viewModel.notificationScrollTarget(initialCommentID) else { return }
+                    await Task.yield()
+                    guard !Task.isCancelled else { return }
+                    proxy.scrollTo(target, anchor: .center)
+                    didScrollToComment = true
+                }
             }
-            .scrollDismissesKeyboard(.interactively)
+        }
+    }
+
+    private var commentThreads: some View {
+        ForEach(topLevelComments) { comment in
+            commentThread(comment)
         }
     }
 
@@ -332,6 +365,14 @@ struct LogCommentsFeatureSheet: View {
                 }
             }
         }
+        .padding(.vertical, comment.id == initialCommentID ? MaplogSpacing.xSmall : 0)
+        .background {
+            if comment.id == initialCommentID {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.maplogLime.opacity(0.18))
+            }
+        }
+        .id(comment.id)
         .opacity(viewModel.isUpdating(commentID: comment.id) ? 0.58 : 1)
         .animation(
             reduceMotion ? nil : .easeOut(duration: 0.18),

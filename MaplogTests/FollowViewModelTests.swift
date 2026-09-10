@@ -74,6 +74,19 @@ final class FollowViewModelTests: XCTestCase {
         )
     }
 
+    func testPublicProfileRejectsNicknameThatNowBelongsToAnotherUser() async {
+        let user = makeUser(nickname: "여행자")
+        let viewModel = PublicProfileViewModel(
+            user: user,
+            followRepository: FollowRepositoryStub(),
+            profileRepository: FollowProfileRepositoryStub(publicUserID: UUID())
+        )
+        await viewModel.loadIfNeeded()
+        guard case .failed = viewModel.state else { return XCTFail("Expected identity mismatch") }
+        XCTAssertNil(viewModel.profile)
+        XCTAssertTrue(viewModel.logs.isEmpty)
+    }
+
     func testUnfollowingRemovesUserFromFollowingList() async {
         let user = makeUser(nickname: "제주여행자")
         let viewModel = FollowUserListViewModel(

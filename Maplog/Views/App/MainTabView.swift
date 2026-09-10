@@ -152,6 +152,8 @@ struct MainTabView: View {
         case tourismDetail(tourismID: Int64)
         case logDetail(logID: Int64)
         case publicProfile(user: FollowUser)
+        case notificationInbox
+        case notification(MaplogNotificationDestination)
     }
 
     private var tabSelection: Binding<MaplogTab> {
@@ -214,8 +216,6 @@ struct MainTabView: View {
                             profileRepository: profileRepository,
                             followRepository: followRepository,
                             homeSearchRepository: homeSearchRepository,
-                            notificationRepository: notificationRepository,
-                            pushNotificationCoordinator: pushNotificationCoordinator,
                             logReelRepository: logReelRepository,
                             logMediaRepository: logMediaRepository,
                             topSafeAreaInset: rootProxy.safeAreaInsets.top,
@@ -231,6 +231,9 @@ struct MainTabView: View {
                                 homeNavigationPath.append(
                                     .logDetail(logID: logID)
                                 )
+                            },
+                            onShowNotifications: {
+                                homeNavigationPath.append(.notificationInbox)
                             },
                             onShowAuthorProfile: { reel in
                                 homeNavigationPath.append(
@@ -293,6 +296,21 @@ struct MainTabView: View {
                                     playbackService: videoPlaybackService,
                                     onLogRemoved: {}
                                 )
+
+                            case .notificationInbox:
+                                NotificationInboxFeatureView(
+                                    notificationRepository: notificationRepository,
+                                    pushNotificationCoordinator: pushNotificationCoordinator,
+                                    onOpenNotification: { notification in
+                                        guard notification.destination != .inbox else { return }
+                                        homeNavigationPath.append(.notification(notification.destination))
+                                    }
+                                )
+                                .toolbar(.visible, for: .navigationBar)
+                                .maplogTabBarHidden()
+
+                            case .notification(let destination):
+                                notificationDestinationView(destination)
 
                             case .publicProfile(let user):
                                 PublicProfileFeatureView(
@@ -446,22 +464,44 @@ struct MainTabView: View {
         selectedTab = tab
     }
 
+    @ViewBuilder
+    private func notificationDestinationView(_ destination: MaplogNotificationDestination) -> some View {
+        switch destination {
+        case let .logDetail(logID, commentID):
+            LogDetailFeatureView(
+                logID: logID,
+                allowsManagement: false,
+                logDetailRepository: logDetailRepository,
+                logMediaRepository: logMediaRepository,
+                followRepository: followRepository,
+                profileRepository: profileRepository,
+                playbackService: videoPlaybackService,
+                onLogRemoved: {},
+                initialCommentID: commentID,
+                commentRepository: logCommentRepository
+            )
+        case let .userProfile(userID):
+            NotificationProfileFeatureView(
+                userID: userID,
+                notificationRepository: notificationRepository,
+                profileRepository: profileRepository,
+                followRepository: followRepository
+            )
+        case .inbox:
+            EmptyView()
+        }
+    }
+
     private func openNotificationDestination(
         _ destination: MaplogNotificationDestination
     ) {
         applyRequestedTab(.home)
         homeNavigationPath.removeAll()
 
-        switch destination {
-        case let .logDetail(logID, _):
-            // 댓글 ID는 서버의 딥링크 계약에 포함되지만, 현재 상세 화면은 logID로
-            // 댓글 시트를 여는 구조입니다. 우선 해당 로그 상세로 안전하게 진입합니다.
-            homeNavigationPath.append(.logDetail(logID: logID))
-
-        case .userProfile, .inbox:
-            // 공개 프로필은 현재 nickname 기반 API이므로 UUID만 온 푸시는 홈으로 안전하게 복귀합니다.
-            // 알림 목록에서 actor 닉네임이 함께 온 경우에는 목록 탭 경로로 정상 진입합니다.
-            break
+        // 푸시 진입도 알림함을 부모 화면으로 둬 대상이 삭제됐을 때 돌아갈 곳을 보장합니다.
+        homeNavigationPath.append(.notificationInbox)
+        if destination != .inbox {
+            homeNavigationPath.append(.notification(destination))
         }
     }
 }

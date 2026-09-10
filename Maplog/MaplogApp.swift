@@ -2,6 +2,7 @@ import SwiftUI
 
 @main
 struct MaplogApp: App { // 앱의 조립 담당자
+    @Environment(\.scenePhase) private var scenePhase
     @UIApplicationDelegateAdaptor(MaplogAppDelegate.self) private var appDelegate
     @StateObject private var authSessionStore:  AuthSessionStore
     @StateObject private var signOutViewModel: SignOutViewModel
@@ -133,17 +134,20 @@ struct MaplogApp: App { // 앱의 조립 담당자
         self.webAuthenticationSession = webAuthenticationSession
         self.sessionLifecycle = sessionLifecycle
 
-        _signOutViewModel = StateObject(wrappedValue: SignOutViewModel(authRepository: authRepository, authSessionStore: sessionStore))
-        _pushNotificationCoordinator = StateObject(
-            wrappedValue: PushNotificationCoordinator(
-                notificationRepository: notificationRepository,
-                authenticationState: sessionStore,
-                tokenStore: KeychainPushNotificationTokenStore(),
-                onNavigate: { destination in
-                    MaplogLaunchRequest.requestNotificationDestination(destination)
-                }
-            )
+        let pushCoordinator = PushNotificationCoordinator(
+            notificationRepository: notificationRepository,
+            authenticationState: sessionStore,
+            tokenStore: KeychainPushNotificationTokenStore(),
+            onNavigate: { destination in
+                MaplogLaunchRequest.requestNotificationDestination(destination)
+            }
         )
+        _pushNotificationCoordinator = StateObject(wrappedValue: pushCoordinator)
+        _signOutViewModel = StateObject(wrappedValue: SignOutViewModel(
+            authRepository: authRepository,
+            authSessionStore: sessionStore,
+            pushSession: pushCoordinator
+        ))
 
 
 
@@ -240,6 +244,13 @@ struct MaplogApp: App { // 앱의 조립 담당자
 
                 await pushNotificationCoordinator.refreshAuthorizationStatus()
                 await pushNotificationCoordinator.syncCachedTokenIfAuthenticated()
+            }
+            .onChange(of: scenePhase) { _, phase in
+                guard phase == .active else { return }
+                Task {
+                    await pushNotificationCoordinator.refreshAuthorizationStatus()
+                    await pushNotificationCoordinator.syncCachedTokenIfAuthenticated()
+                }
             }
             .onChange(of: authSessionStore.isAuthenticated) { _, isAuthenticated in
                 guard isAuthenticated else {
