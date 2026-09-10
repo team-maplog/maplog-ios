@@ -12,6 +12,10 @@ struct ExploreMapMarkerPreviewCard: View {
     let marker: MapMarker
     let thumbnailData: Data?
     let isLoadingThumbnail: Bool
+    var summary: MapMarkerSummary? = nil
+    var isLoadingPreview = false
+    var previewError: ErrorPresentation? = nil
+    var onRetry: () -> Void = {}
 
     let onOpen: () -> Void
     let onDismiss: () -> Void
@@ -23,17 +27,26 @@ struct ExploreMapMarkerPreviewCard: View {
                     thumbnail
 
                     VStack(alignment: .leading, spacing: 5) {
+                        if isLoadingPreview {
+                            ProgressView().controlSize(.small)
+                        }
                         Text(markerTypeTitle)
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(Color.maplogOlive)
 
-                        Text(marker.title)
+                        Text(summary?.title ?? marker.title)
                             .font(.headline)
                             .foregroundStyle(Color.maplogInk)
                             .lineLimit(1)
 
-                        if !marker.subtitle.isEmpty {
-                            Text(marker.subtitle)
+                        if let previewError {
+                            Text(previewError.message).font(.caption).foregroundStyle(.secondary)
+                        }
+                        if let text = summary?.summary, !text.isEmpty {
+                            Text(text).font(.caption).lineLimit(2)
+                        }
+                        if !(summary?.subtitle ?? marker.subtitle).isEmpty {
+                            Text(summary?.subtitle ?? marker.subtitle)
                                 .font(.caption)
                                 .foregroundStyle(Color.maplogMuted)
                                 .lineLimit(2)
@@ -49,15 +62,21 @@ struct ExploreMapMarkerPreviewCard: View {
             .accessibilityHint("카드를 탭하면 상세 화면으로 이동합니다.")
             .frame(maxWidth: .infinity, alignment: .leading)
 
-            Button(action: onDismiss) {
-                Image(systemName: "xmark")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(Color.maplogMuted)
-                    .frame(width: 32, height: 32)
-                    .contentShape(Rectangle())
+            VStack {
+                if previewError?.recoveryAction == .retry {
+                    Button("재시도", action: onRetry).font(.caption)
+                        .accessibilityLabel("장소 정보 다시 불러오기")
+                }
+                Button(action: onDismiss) {
+                    Image(systemName: "xmark")
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(Color.maplogMuted)
+                        .frame(width: 32, height: 32)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("장소 카드 닫기")
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("장소 카드 닫기")
         }
         .padding(12)
         .background(

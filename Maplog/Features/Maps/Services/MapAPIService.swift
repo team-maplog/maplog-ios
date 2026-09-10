@@ -8,6 +8,8 @@
 import Foundation
 
 protocol MapAPIService {
+    func fetchPreview(type: String, markerID: Int64) async throws -> MapMarkerSummaryDTO
+
     func search(query: String, scope: String, category: TourismMapCategory) async throws -> MapSearchResponseDTO
 
     func fetchViewportContent(
