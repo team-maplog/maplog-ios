@@ -44,7 +44,7 @@ struct HomeReelPage: View {
     var topCornerRadius: CGFloat = 0
     /// 홈 첫 릴스 진입 중에는 HomeView가 정보 블록 전체를 이동시킨다.
     var usesExternalReelInfoOverlay = false
-    /// 홈 미리보기는 영상만 보여 주고 전체 릴스 진입 후 상세 정보를 노출한다.
+    /// 홈에서는 상단 작성자만 표시하고, 전체 릴스 진입 후 본문·위치·액션을 노출한다.
     var showsMetadata = true
 
     @State private var isScrubbing = false
@@ -118,10 +118,17 @@ struct HomeReelPage: View {
                 .padding(.horizontal, MaplogSpacing.page)
                 .padding(
                     .bottom,
-                    // 전체 릴스에서는 재생 바와 정보 사이에 아주 작은 숨 쉴 여백만 둡니다.
-                    // 홈 미리보기의 위치는 바꾸지 않습니다.
-                    bottomTrayHeight + MaplogSpacing.xSmall
+                    // 장소의 아래쪽을 재생 바와 분리하고 첫 릴스의 외부 정보 오버레이에도 같은 기준점을 전달한다.
+                    bottomTrayHeight + MaplogSpacing.large
                 )
+
+                if !showsMetadata {
+                    authorProfileButton
+                        .foregroundStyle(.white)
+                        .shadow(color: .black.opacity(0.65), radius: 4, y: 1)
+                        .padding(MaplogSpacing.page)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                }
             }
         }
         .background(Color.black)
@@ -302,6 +309,10 @@ struct HomeReelPage: View {
     private var reelInformation: some View {
         VStack(alignment: .leading, spacing: 10) {
             authorProfileButton
+                .anchorPreference(
+                    key: HomeReelAuthorAnchorPreferenceKey.self,
+                    value: .bounds
+                ) { [reel.id: $0] }
 
             if let caption = nonEmptyText(reel.caption) {
                 Text(caption)
@@ -353,10 +364,6 @@ struct HomeReelPage: View {
         .buttonStyle(.plain)
         .accessibilityLabel("\(reel.authorName)의 프로필")
         .accessibilityHint("탭하면 작성자의 공개 프로필을 봅니다")
-        .anchorPreference(
-            key: HomeReelAuthorAnchorPreferenceKey.self,
-            value: .bounds
-        ) { [reel.id: $0] }
     }
 
     private var actionRail: some View {
