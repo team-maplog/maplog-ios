@@ -16,7 +16,7 @@ struct HomeTourismCardViewData: Identifiable, Equatable {
     let locationText: String
     let periodText: String
     let dDayText: String?
-    let thumbnailURL: URL?
+    let poster: TourismPortraitImage
 }
 
 /// 좁은 홈 카드에서는 같은 연도의 기간을 간결하게 표시한다.

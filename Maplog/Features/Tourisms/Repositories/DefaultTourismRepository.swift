@@ -32,12 +32,47 @@
 //Repository는 서버 형식의 차이와 불완전한 데이터를 앱 내부에 퍼뜨리지 않도록 막는 경계
 
 import Foundation
+import ImageIO
 
 final class DefaultTourismRepository: TourismRepository {
     private let apiService: any TourismAPIService
+    private let imageDataLoader: any ImageDataLoading
 
-    init(apiService: any TourismAPIService) {
+    init(apiService: any TourismAPIService, imageDataLoader: any ImageDataLoading) {
         self.apiService = apiService
+        self.imageDataLoader = imageDataLoader
+    }
+
+    func fetchPortraitImage(tourismID: Int64) async throws -> TourismPortraitImage? {
+        let detail = try await fetchTourismDetail(tourismID: tourismID)
+        // 상세 첫 장과 같은 원본만 검사한다. 썸네일이나 관련 사진으로 대체하지 않는다.
+        guard let url = detail.common.originalImageURL,
+              ["https", "http"].contains(url.scheme?.lowercased() ?? ""),
+              url.host != nil else { return nil }
+
+        let data: Data
+        do {
+            data = try await imageDataLoader.imageData(
+                from: url,
+                cacheKey: "tourism-original-\(MaplogImageCacheKey.stableURL(url))",
+                targetSize: MaplogImageTargetSize(width: 900, height: 1_500)
+            )
+        } catch APIError.server(let statusCode, _) where statusCode == 404 || statusCode == 410 {
+            return nil
+        }
+        try Task.checkCancellation()
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+              CGImageSourceCreateImageAtIndex(source, 0, nil) != nil,
+              let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+              let width = properties[kCGImagePropertyPixelWidth] as? Int,
+              let height = properties[kCGImagePropertyPixelHeight] as? Int else { return nil }
+        let orientation = properties[kCGImagePropertyOrientation] as? Int ?? 1
+        let swapsAxes = (5...8).contains(orientation)
+        return TourismPortraitImage(
+            url: url, data: data,
+            width: swapsAxes ? height : width,
+            height: swapsAxes ? width : height
+        )
     }
 
     func fetchTourisms(category: TourismCategory, cursor: String?, size: Int) async throws -> TourismPage {
