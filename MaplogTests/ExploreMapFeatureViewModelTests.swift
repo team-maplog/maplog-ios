@@ -4,6 +4,40 @@ import XCTest
 
 @MainActor
 final class ExploreMapFeatureViewModelTests: XCTestCase {
+    func testSelectingRemoteResultMovesCameraWithoutChangingCurrentLocation() async {
+        let viewModel = makeViewModel()
+        await viewModel.loadCurrentLocationIfNeeded()
+        let originalLocation = viewModel.currentLocation
+        let marker = MapMarker.tourism(TourismMapMarker(
+            tourismID: 99, name: "부산", thumbnailURL: nil, startDateText: nil, endDateText: nil,
+            category: .natureTourism, coordinate: MapCoordinate(latitude: 35.1, longitude: 129.0)
+        ))
+        viewModel.selectSearchResult(MapMarkerSummary(marker: marker, title: "부산", subtitle: "", summary: nil))
+        XCTAssertEqual(viewModel.selectedMarker, marker)
+        XCTAssertEqual(viewModel.searchFocusRequest?.coordinate, marker.coordinate)
+        XCTAssertEqual(viewModel.currentLocation, originalLocation)
+        XCTAssertTrue(viewModel.filteredMarkers.contains(marker))
+        XCTAssertFalse(viewModel.showsSearchResults)
+    }
+
+    func testClearingSearchCancelsPendingResults() async throws {
+        let viewModel = makeViewModel()
+        viewModel.updateSearchQuery("서울")
+        XCTAssertTrue(viewModel.isSearching)
+        viewModel.clearSearch()
+        try await Task.sleep(nanoseconds: 400_000_000)
+        XCTAssertFalse(viewModel.isSearching)
+        XCTAssertFalse(viewModel.showsSearchResults)
+        XCTAssertTrue(viewModel.searchResults.isEmpty)
+    }
+
+    func testOverlongSearchDoesNotStartRequest() {
+        let viewModel = makeViewModel()
+        viewModel.updateSearchQuery(String(repeating: "가", count: 51))
+        XCTAssertNotNil(viewModel.searchError)
+        XCTAssertFalse(viewModel.isSearching)
+    }
+
     func testSearchFiltersCurrentViewportMarkersByKeywordAndScope() async throws {
         let viewModel = makeViewModel()
 
@@ -214,6 +248,10 @@ final class ExploreMapFeatureViewModelTests: XCTestCase {
 }
 
 private final class MapRepositoryStub: MapRepository {
+    func search(query: String, scope: String, category: TourismMapCategory) async throws -> MapSearchResult {
+        MapSearchResult(items: [], isTourismAvailable: true)
+    }
+
     let content: MapViewportContent
 
     init(
