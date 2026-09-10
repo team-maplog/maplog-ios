@@ -18,3 +18,31 @@ struct HomeTourismCardViewData: Identifiable, Equatable {
     let dDayText: String?
     let thumbnailURL: URL?
 }
+
+/// 좁은 홈 카드에서는 같은 연도의 기간을 간결하게 표시한다.
+/// 연도가 바뀌는 행사는 양쪽 연도를 남겨 기간이 거꾸로 보이지 않게 한다.
+enum HomeTourismPeriodFormatter {
+    static func string(startDate: Date?, endDate: Date?) -> String {
+        guard let startDate, let endDate else {
+            return "기간 정보 없음"
+        }
+
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "Asia/Seoul")!
+
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "ko_KR")
+        formatter.calendar = calendar
+        formatter.timeZone = calendar.timeZone
+        formatter.dateFormat = calendar.component(.year, from: startDate)
+            == calendar.component(.year, from: endDate)
+            ? "MM.dd"
+            : "yyyy.MM.dd"
+
+        if calendar.isDate(startDate, inSameDayAs: endDate) {
+            return formatter.string(from: startDate)
+        }
+
+        return "\(formatter.string(from: startDate)) – \(formatter.string(from: endDate))"
+    }
+}

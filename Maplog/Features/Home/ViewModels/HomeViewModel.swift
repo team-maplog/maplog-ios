@@ -815,29 +815,17 @@ final class HomeViewModel: ObservableObject {
     }
 
     private func makeCardViewData(from tourism: Tourism) -> HomeTourismCardViewData {
-        HomeTourismCardViewData(id: tourism.id,
-                                title: tourism.name,
-                                locationText: tourism.region ?? "지역 정보 없음",
-                                periodText: periodText(startDate: tourism.startDate, endDate: tourism.endDate),
-                                dDayText: dDayText(startDate: tourism.startDate, endDate: tourism.endDate),
-                                thumbnailURL: tourism.thumbnailURL)
-    }
-
-    private let periodDateFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ko_KR")
-        formatter.calendar = Calendar(identifier: .gregorian)
-        formatter.timeZone = TimeZone(identifier: "Asia/Seoul")
-        formatter.dateFormat = "yyyy. MM. dd."
-        return formatter
-    }()
-
-    private func periodText(startDate: Date?, endDate: Date?) -> String {
-        guard let startDate, let endDate else {
-                return "기간 정보 없음"
-            }
-
-            return "\(periodDateFormatter.string(from: startDate)) ~ \(periodDateFormatter.string(from: endDate))"
+        HomeTourismCardViewData(
+            id: tourism.id,
+            title: tourism.name,
+            locationText: tourism.region ?? tourism.address ?? "지역 정보 없음",
+            periodText: HomeTourismPeriodFormatter.string(
+                startDate: tourism.startDate,
+                endDate: tourism.endDate
+            ),
+            dDayText: dDayText(startDate: tourism.startDate, endDate: tourism.endDate),
+            thumbnailURL: tourism.thumbnailURL
+        )
     }
 
     private func dDayText(startDate: Date?, endDate: Date?) -> String? {

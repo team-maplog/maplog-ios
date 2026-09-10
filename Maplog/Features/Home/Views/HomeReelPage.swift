@@ -44,6 +44,8 @@ struct HomeReelPage: View {
     var topCornerRadius: CGFloat = 0
     /// 홈 첫 릴스 진입 중에는 HomeView가 정보 블록 전체를 이동시킨다.
     var usesExternalReelInfoOverlay = false
+    /// 홈 미리보기는 영상만 보여 주고 전체 릴스 진입 후 상세 정보를 노출한다.
+    var showsMetadata = true
 
     @State private var isScrubbing = false
     @State private var scrubbingProgress = 0.0
@@ -110,6 +112,9 @@ struct HomeReelPage: View {
 
                     actionRail
                 }
+                .opacity(showsMetadata ? 1 : 0)
+                .allowsHitTesting(showsMetadata)
+                .accessibilityHidden(!showsMetadata)
                 .padding(.horizontal, MaplogSpacing.page)
                 .padding(
                     .bottom,
@@ -133,7 +138,9 @@ struct HomeReelPage: View {
         )
         .accessibilityElement(children: .contain)
         .accessibilityLabel(
-            "\(reel.authorName)의 로그, \(reel.address)"
+            showsMetadata
+                ? "\(reel.authorName)의 로그, \(reel.address)"
+                : "여행 로그 미리보기"
         )
         .onChange(of: player == nil) { _, _ in
             resetPlayerFrameReadiness()

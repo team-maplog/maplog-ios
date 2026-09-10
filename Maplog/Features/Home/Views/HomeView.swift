@@ -2,6 +2,10 @@ import SwiftUI
 
 private enum HomeFestivalCarouselLayout {
     static let cornerRadius: CGFloat = 18
+    static let posterCornerRadius: CGFloat = 10
+    static let cardWidth: CGFloat = 150
+    static let posterHeight: CGFloat = 246
+    static let cardSpacing: CGFloat = 12
 }
 
 struct HomeView: View {
@@ -751,7 +755,8 @@ struct HomeView: View {
         overlayProxy: GeometryProxy,
         viewportSize: CGSize
     ) -> some View {
-        if let firstReel,
+        if isHomeReelActive,
+           let firstReel,
            let authorAnchor = anchors[firstReel.id],
            let firstReelTopOffset {
             let revealProgress = firstReelRevealProgress(
@@ -903,7 +908,8 @@ struct HomeView: View {
                     shareReel = reel
                 },
                 topCornerRadius: topCornerRadius,
-                usesExternalReelInfoOverlay: usesExternalReelInfoOverlay
+                usesExternalReelInfoOverlay: usesExternalReelInfoOverlay,
+                showsMetadata: isHomeReelActive
             )
             .task(id: reel.id) {
                 await viewModel.loadThumbnail(for: reel.id)
@@ -957,7 +963,8 @@ struct HomeView: View {
                     shareReel = reel
                 },
                 topCornerRadius: topCornerRadius,
-                usesExternalReelInfoOverlay: usesExternalReelInfoOverlay
+                usesExternalReelInfoOverlay: usesExternalReelInfoOverlay,
+                showsMetadata: isHomeReelActive
             )
             .task(id: reel.id) {
                 await viewModel.loadThumbnail(for: reel.id)
@@ -1277,8 +1284,6 @@ struct HomeView: View {
             .padding(.horizontal, MaplogSpacing.page)
 
             tourismSectionContent
-            .contentMargins(.horizontal, MaplogSpacing.page, for: .scrollContent)
-            .scrollTargetBehavior(.viewAligned)
         }
     }
 
@@ -1299,7 +1304,7 @@ struct HomeView: View {
                     .font(.title2)
                     .foregroundStyle(.secondary)
 
-                Text("현재 포시할 축제가 없어요.")
+                Text("현재 표시할 축제가 없어요.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
@@ -1339,7 +1344,7 @@ struct HomeView: View {
     // content일 때 카드들을 어떤 모양으로 그릴지 담당
     private func tourismCards(_ cards: [HomeTourismCardViewData]) -> some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            LazyHStack(spacing: 14) {
+            LazyHStack(alignment: .top, spacing: HomeFestivalCarouselLayout.cardSpacing) {
                 ForEach(cards) { card in
                     Button {
                         onShowTourismDetail(card.id)
@@ -1480,101 +1485,87 @@ struct HomeView: View {
 private struct HomeTourismCarouselCard: View {
     let card: HomeTourismCardViewData
 
+    @ScaledMetric(relativeTo: .subheadline)
+    private var cardWidth = HomeFestivalCarouselLayout.cardWidth
+
+    private var posterHeight: CGFloat {
+        cardWidth * HomeFestivalCarouselLayout.posterHeight
+            / HomeFestivalCarouselLayout.cardWidth
+    }
+
     var body: some View {
-        ZStack(alignment: .bottomLeading) {
+        VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
             tourismThumbnail
-                .frame(width: 264, height: 172)
-                .clipped()
-
-            LinearGradient(
-                colors: [.black.opacity(0.04), .clear, .black.opacity(0.82)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-
-            VStack(alignment: .leading, spacing: 7) {
-                Text("축제")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(Color.maplogOnPrimary)
-                    .padding(.horizontal, 10)
-                    .frame(minHeight: 26)
-                    .background(Color.maplogLime, in: Capsule())
-
-                Spacer()
-
-                Text(card.title)
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                    .lineLimit(2)
-
-                HStack(spacing: 10) {
-                    HStack(spacing: MaplogSpacing.xxSmall) {
-                        MaplogPinGlyphIcon(size: 12)
-                        Text(card.locationText)
-                    }
-                        .lineLimit(1)
-
-                    Label(card.periodText, systemImage: "calendar")
-                        .lineLimit(1)
-                }
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.white.opacity(0.84))
-            }
-            .padding(14)
-        }
-        .frame(width: 264, height: 172)
-        .clipShape(
-            RoundedRectangle(
-                cornerRadius: HomeFestivalCarouselLayout.cornerRadius,
-                style: .continuous
-            )
-        )
-        .overlay {
-            RoundedRectangle(
-                cornerRadius: HomeFestivalCarouselLayout.cornerRadius,
-                style: .continuous
-            )
-                .stroke(.white.opacity(0.16), lineWidth: 1)
-        }
-        .overlay(alignment: .topTrailing) {
-            if let dDayText = card.dDayText {
-                Text(dDayText)
-                    .font(MaplogFont.callout.weight(.bold))
-                    .foregroundStyle(.white)
-                    .shadow(
-                        color: .black.opacity(0.65),
-                        radius: 2,
-                        x: 0,
-                        y: 1
+                .frame(width: cardWidth, height: posterHeight)
+                .background(Color.maplogCanvas)
+                .clipShape(
+                    RoundedRectangle(
+                        cornerRadius: HomeFestivalCarouselLayout.posterCornerRadius,
+                        style: .continuous
                     )
-                    .padding(.top, MaplogSpacing.medium)
-                    .padding(.trailing, MaplogSpacing.medium)
+                )
+                .accessibilityHidden(true)
+
+            Text(card.title)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(Color.maplogInk)
+                .lineLimit(2, reservesSpace: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            VStack(alignment: .leading, spacing: MaplogSpacing.xxSmall) {
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .firstTextBaseline, spacing: MaplogSpacing.xSmall) {
+                        periodLabel
+                        scheduleStatus
+                    }
+
+                    VStack(alignment: .leading, spacing: MaplogSpacing.xxSmall) {
+                        periodLabel
+                        scheduleStatus
+                    }
+                }
+
+                Label(card.locationText, systemImage: "mappin.and.ellipse")
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
+            .font(MaplogFont.caption)
+            .foregroundStyle(Color.maplogMuted)
         }
-        .shadow(color: .black.opacity(0.09), radius: 10, x: 0, y: 5)
+        .frame(width: cardWidth, alignment: .topLeading)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(
-            "\(card.title), \(card.locationText), \(card.periodText)"
+            [card.title, card.periodText, card.dDayText, card.locationText]
+                .compactMap { $0 }
+                .joined(separator: ", ")
         )
     }
 
+    private var periodLabel: some View {
+        Label(card.periodText, systemImage: "calendar")
+            .fixedSize(horizontal: false, vertical: true)
+    }
 
-//    축제 목록 API 성공”과 별개로 각 썸네일을 내려받아. 즉 목록은 먼저 카드로 나타나고, 이미지가 조금 뒤에 표시되는 것은 자연스러운 동작
-//    다른 View들을 SwiftUI가 하나의 화면으로 조립할 수 있게 해줌
+    @ViewBuilder
+    private var scheduleStatus: some View {
+        if let dDayText = card.dDayText {
+            Text(dDayText)
+                .fontWeight(.semibold)
+                .foregroundStyle(Color.maplogOlive)
+                .fixedSize()
+        }
+    }
+
     @ViewBuilder
     private var tourismThumbnail: some View {
         if let thumbnailURL = card.thumbnailURL {
             MaplogCachedRemoteImage(
                 url: thumbnailURL,
                 cacheKey: "tourism-thumbnail-\(card.id)",
-                targetSize: CGSize(width: 264, height: 172),
-                contentMode: .fill
+                targetSize: CGSize(width: cardWidth, height: posterHeight),
+                contentMode: .fit
             ) {
                 thumbnailPlaceholder
-                    .overlay {
-                        ProgressView()
-                            .tint(.secondary)
-                    }
             }
         } else {
             thumbnailPlaceholder
@@ -1582,12 +1573,12 @@ private struct HomeTourismCarouselCard: View {
     }
 
     private var thumbnailPlaceholder: some View {
-        Color(uiColor: .secondarySystemFill)
-                    .overlay {
-                        Image(systemName: "photo")
-                            .font(.title2)
-                            .foregroundStyle(.secondary)
-                    }
+        Color.maplogCanvas
+            .overlay {
+                Image(systemName: "photo")
+                    .font(.title2)
+                    .foregroundStyle(Color.maplogMuted)
+            }
     }
 }
 
