@@ -8,5 +8,4 @@
 
 enum TourismRepositoryError: Error {
     case invalidDate(field: String, value: String)
-    case invalidPagination
 }

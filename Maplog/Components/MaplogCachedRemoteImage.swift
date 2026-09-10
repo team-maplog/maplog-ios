@@ -16,7 +16,6 @@ struct MaplogCachedRemoteImage<Placeholder: View>: View {
     let targetSize: CGSize
     let contentMode: SwiftUI.ContentMode
     let placeholder: () -> Placeholder
-    let onFailure: (() -> Void)?
 
     @Environment(\.displayScale) private var displayScale
     @EnvironmentObject private var authSessionStore: AuthSessionStore
@@ -27,7 +26,6 @@ struct MaplogCachedRemoteImage<Placeholder: View>: View {
         cacheKey: String,
         targetSize: CGSize,
         contentMode: SwiftUI.ContentMode,
-        onFailure: (() -> Void)? = nil,
         @ViewBuilder placeholder: @escaping () -> Placeholder
     ) {
         self.url = url
@@ -35,7 +33,6 @@ struct MaplogCachedRemoteImage<Placeholder: View>: View {
         self.targetSize = targetSize
         self.contentMode = contentMode
         self.placeholder = placeholder
-        self.onFailure = onFailure
     }
 
     var body: some View {
@@ -61,7 +58,6 @@ struct MaplogCachedRemoteImage<Placeholder: View>: View {
             )
             .onFailure { _ in
                 didFail = true
-                onFailure?()
             }
             .resizable()
             .aspectRatio(contentMode: contentMode)

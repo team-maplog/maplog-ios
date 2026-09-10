@@ -119,14 +119,6 @@ final class HomeViewModel: ObservableObject {
         }
     }
 
-    func hideFailedTourismPoster(_ failedCard: HomeTourismCardViewData) {
-        guard case let .content(cards) = tourismState else { return }
-        let remaining = cards.filter {
-            $0.id != failedCard.id || $0.thumbnailURL != failedCard.thumbnailURL
-        }
-        tourismState = remaining.isEmpty ? .empty : .content(remaining)
-    }
-
     func retryInitialTourisms() async {
         guard tourismState != .loading else {
             return
@@ -568,8 +560,15 @@ final class HomeViewModel: ObservableObject {
     // API 요청 + Domain Model을 ViewData로 변환
     private func fetchTourismCards() async throws
         -> [HomeTourismCardViewData] {
-        let tourisms = try await tourismRepository.fetchTourismsWithVerifiedPosters(size: 10)
-        return tourisms.filter { $0.verifiedPosterURL != nil }.map(makeCardViewData)
+        let page = try await tourismRepository.fetchTourisms(
+            category: .events,
+            cursor: nil,
+            size: 10
+        )
+
+        return page.tourisms.map { tourism in
+            makeCardViewData(from: tourism)
+        }
     }
 
     private func fetchReelViewData() async throws
@@ -825,7 +824,7 @@ final class HomeViewModel: ObservableObject {
                 endDate: tourism.endDate
             ),
             dDayText: dDayText(startDate: tourism.startDate, endDate: tourism.endDate),
-            thumbnailURL: tourism.verifiedPosterURL
+            thumbnailURL: tourism.thumbnailURL
         )
     }
 

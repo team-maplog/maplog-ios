@@ -1304,7 +1304,7 @@ struct HomeView: View {
                     .font(.title2)
                     .foregroundStyle(.secondary)
 
-                Text("지금 소개할 축제를 준비하고 있어요.")
+                Text("현재 표시할 축제가 없어요.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
@@ -1351,8 +1351,7 @@ struct HomeView: View {
                     } label: {
                         HomeTourismCarouselCard(
                             card: card,
-                            posterURL: card.thumbnailURL,
-                            onImageFailure: { viewModel.hideFailedTourismPoster(card) }
+                            posterURL: card.thumbnailURL
                         )
                     }
                     .buttonStyle(.plain)
@@ -1489,7 +1488,6 @@ struct HomeView: View {
 private struct HomeTourismCarouselCard: View {
     let card: HomeTourismCardViewData
     let posterURL: URL?
-    let onImageFailure: () -> Void
 
     @ScaledMetric(relativeTo: .subheadline)
     private var cardWidth = HomeFestivalCarouselLayout.cardWidth
@@ -1569,13 +1567,12 @@ private struct HomeTourismCarouselCard: View {
     @ViewBuilder
     private var tourismThumbnail: some View {
         if let posterURL {
-            // 상세와 같은 원본을 사용하고 표시 높이도 원본 비율에 맞춘다.
+            // 목록 썸네일의 비율을 유지해 양옆이 잘리지 않도록 표시한다.
             MaplogCachedRemoteImage(
                 url: posterURL,
-                cacheKey: "tourism-hero-\(MaplogImageCacheKey.stableURL(posterURL))",
+                cacheKey: "tourism-thumbnail-\(MaplogImageCacheKey.stableURL(posterURL))",
                 targetSize: CGSize(width: cardWidth, height: posterHeight),
-                contentMode: .fit,
-                onFailure: onImageFailure
+                contentMode: .fit
             ) {
                 thumbnailPlaceholder
             }

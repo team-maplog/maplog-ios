@@ -75,8 +75,10 @@ final class TourismDetailViewModel: ObservableObject {
     }
 
     private func makeViewData(from detail: TourismDetail) -> TourismDetailViewData {
-        let heroImageURL = detail.representativeImageURL
-        let imageItems = makeImageItems(from: detail, excluding: heroImageURL)
+        let imageItems = makeImageItems(from: detail.images)
+        let heroImageURL = detail.common.originalImageURL // 원본 대표 이미지
+            ?? imageItems.first?.imageURL // 상세 이미지 원본
+            ?? detail.common.thumbnailURL // 썸네일
         let phoneNumber = nonEmpty(detail.common.tel)
         let overviewText = nonEmpty(detail.common.overview)
         let informationRows = makeInformationRows(from: detail.introduction)
@@ -381,21 +383,10 @@ final class TourismDetailViewModel: ObservableObject {
     }
 
     private func makeImageItems(
-        from detail: TourismDetail,
-        excluding heroImageURL: URL?
+        from images: [TourismDetailImage]
     ) -> [TourismDetailImageViewData] {
-        var images = detail.images
-        if let originalURL = detail.common.originalImageURL {
-            images.insert(TourismDetailImage(
-                originalURL: originalURL, smallURL: detail.common.thumbnailURL,
-                name: nil, copyrightCode: detail.common.copyrightCode, serialNumber: nil
-            ), at: 0)
-        }
-        var addedURLs = Set<URL>()
-        if let heroImageURL { addedURLs.insert(heroImageURL) }
-        return images.enumerated().compactMap { index, image in
-            guard let imageURL = image.originalURL ?? image.smallURL,
-                  addedURLs.insert(imageURL).inserted else {
+        images.enumerated().compactMap { index, image in
+            guard let imageURL = image.originalURL ?? image.smallURL else {
                 return nil
             }
 
