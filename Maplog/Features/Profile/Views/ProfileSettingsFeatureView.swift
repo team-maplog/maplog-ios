@@ -6,6 +6,7 @@ struct ProfileSettingsFeatureView: View {
 
     private let profile: ProfileHeaderViewData
     private let avatarImageData: Data?
+    private let socialConnectionRepository: any SocialConnectionRepository
     private let profileRepository: any ProfileRepository
     private let onProfileSaved: () async -> Void
 
@@ -17,11 +18,13 @@ struct ProfileSettingsFeatureView: View {
         profile: ProfileHeaderViewData,
         avatarImageData: Data?,
         profileRepository: any ProfileRepository,
+        socialConnectionRepository: any SocialConnectionRepository,
         onProfileSaved: @escaping () async -> Void
     ) {
         self.profile = profile
         self.avatarImageData = avatarImageData
         self.profileRepository = profileRepository
+        self.socialConnectionRepository = socialConnectionRepository
         self.onProfileSaved = onProfileSaved
         _viewModel = StateObject(
             wrappedValue: ProfileSettingsViewModel(
@@ -47,6 +50,14 @@ struct ProfileSettingsFeatureView: View {
                         )
                     }
                     .buttonStyle(.plain)
+                }
+
+                ProfileSettingsSection(title: "로그인 방법") {
+                    NavigationLink {
+                        SocialConnectionsView(repository: socialConnectionRepository)
+                    } label: {
+                        ProfileSettingsNavigationRow(title: "소셜 계정 관리")
+                    }
                 }
 
                 ProfileSettingsSection(title: "서비스 정보") {
