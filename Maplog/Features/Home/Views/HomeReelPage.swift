@@ -40,8 +40,11 @@ struct HomeReelPage: View {
     let onShowComments: () -> Void
     let onShowAuthorProfile: () -> Void
     let onShare: () -> Void
-    /// 홈 소개 영역에서 첫 릴스가 올라올 때만 상단 모서리를 살짝 둥글게 보인다.
-    var topCornerRadius: CGFloat = 0
+    /// 홈 미리보기의 네 모서리를 둥글게 표시하고 전체 릴스에서는 0으로 편다.
+    var cornerRadius: CGFloat = 0
+    /// 스크롤 페이지 크기는 유지하면서 홈에 보이는 영상 부분만 카드 모양으로 잘라낸다.
+    var previewHorizontalInset: CGFloat = 0
+    var previewBottomInset: CGFloat = 0
     /// 홈 첫 릴스 진입 중에는 HomeView가 정보 블록 전체를 이동시킨다.
     var usesExternalReelInfoOverlay = false
     /// 홈에서는 상단 작성자만 표시하고, 전체 릴스 진입 후 본문·위치·액션을 노출한다.
@@ -127,22 +130,28 @@ struct HomeReelPage: View {
                         .foregroundStyle(.white)
                         .shadow(color: .black.opacity(0.65), radius: 4, y: 1)
                         .padding(MaplogSpacing.page)
+                        .padding(.leading, previewHorizontalInset)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 }
             }
-        }
-        .background(Color.black)
-        .clipShape(
-            UnevenRoundedRectangle(
-                cornerRadii: .init(
-                    topLeading: topCornerRadius,
-                    bottomLeading: 0,
-                    bottomTrailing: 0,
-                    topTrailing: topCornerRadius
-                ),
-                style: .continuous
+            .mask {
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .frame(
+                        width: max(0, proxy.size.width - previewHorizontalInset * 2),
+                        height: max(0, proxy.size.height - previewBottomInset)
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            }
+            .contentShape(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .path(in: CGRect(
+                        x: previewHorizontalInset, y: 0,
+                        width: max(0, proxy.size.width - previewHorizontalInset * 2),
+                        height: max(0, proxy.size.height - previewBottomInset)
+                    ))
             )
-        )
+        }
+        .background(previewBottomInset > 0 ? Color(uiColor: .systemBackground) : Color.black)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(
             showsMetadata
@@ -393,12 +402,6 @@ struct HomeReelPage: View {
                 text: "공유",
                 accessibilityLabel: "공유",
                 action: onShare
-            )
-
-            HomeReelMetric(
-                systemImage: "eye.fill",
-                text: countText(reel.viewCount),
-                accessibilityLabel: "조회 \(reel.viewCount)회"
             )
 
             HomeReelMetric(
