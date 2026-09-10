@@ -860,7 +860,9 @@ struct HomeView: View {
     private func homeReelPage(
         for reel: HomeReelViewData,
         usesExternalReelInfoOverlay: Bool,
-        topCornerRadius: CGFloat
+        cornerRadius: CGFloat,
+        previewHorizontalInset: CGFloat,
+        previewBottomInset: CGFloat
     ) -> some View {
         if reduceMotion {
             HomeReelPage(
@@ -907,7 +909,9 @@ struct HomeView: View {
                 onShare: {
                     shareReel = reel
                 },
-                topCornerRadius: topCornerRadius,
+                cornerRadius: cornerRadius,
+                previewHorizontalInset: previewHorizontalInset,
+                previewBottomInset: previewBottomInset,
                 usesExternalReelInfoOverlay: usesExternalReelInfoOverlay,
                 showsMetadata: isHomeReelActive
             )
@@ -962,7 +966,9 @@ struct HomeView: View {
                 onShare: {
                     shareReel = reel
                 },
-                topCornerRadius: topCornerRadius,
+                cornerRadius: cornerRadius,
+                previewHorizontalInset: previewHorizontalInset,
+                previewBottomInset: previewBottomInset,
                 usesExternalReelInfoOverlay: usesExternalReelInfoOverlay,
                 showsMetadata: isHomeReelActive
             )
@@ -1007,8 +1013,8 @@ struct HomeView: View {
             let revealProgress = firstReelRevealProgress(
                 viewportHeight: viewportSize.height
             )
-            // 릴스가 홈 미리보기로 보이는 동안에는 축제 카드와 같은
-            // 18pt 모서리를 유지한 뒤, 전체 화면 진입 직전에만 편다.
+            // 홈에서는 내비게이션 위까지 보이는 카드만 둥글게 표시하고,
+            // 첫 페이지가 올라오면 여백과 라운드를 함께 없애 전체 릴스로 연결한다.
             let roundedCornerProgress = min(
                 max((revealProgress - 0.62) / 0.38, 0),
                 1
@@ -1016,15 +1022,25 @@ struct HomeView: View {
 
             ForEach(reels) { reel in
                 let usesExternalReelInfoOverlay = reel.id == firstReelID
-                let topCornerRadius = usesExternalReelInfoOverlay
+                let cornerRadius = usesExternalReelInfoOverlay
                     ? HomeFestivalCarouselLayout.cornerRadius
                         * (1 - roundedCornerProgress)
+                    : 0
+                let previewHorizontalInset = usesExternalReelInfoOverlay
+                    ? MaplogSpacing.page * (1 - roundedCornerProgress)
+                    : 0
+                let previewBottomInset = usesExternalReelInfoOverlay
+                    ? min(viewportSize.height,
+                          max(0, firstReelTopOffset ?? 0)
+                            + MaplogSpacing.reelTabBarClearance * (1 - roundedCornerProgress))
                     : 0
 
                 homeReelPage(
                     for: reel,
                     usesExternalReelInfoOverlay: usesExternalReelInfoOverlay,
-                    topCornerRadius: topCornerRadius
+                    cornerRadius: cornerRadius,
+                    previewHorizontalInset: previewHorizontalInset,
+                    previewBottomInset: previewBottomInset
                 )
                     .frame(
                         width: viewportSize.width,
