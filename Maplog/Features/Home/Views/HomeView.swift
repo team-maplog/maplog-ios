@@ -1496,7 +1496,9 @@ private struct HomeTourismCarouselCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
             tourismThumbnail
-                .frame(width: cardWidth, height: posterHeight)
+                // 폭만 고정하고 높이는 원본 비율에 맡겨 포스터를 자르지 않는다.
+                .frame(width: cardWidth)
+                .fixedSize(horizontal: false, vertical: true)
                 .background(Color.maplogCanvas)
                 .clipShape(
                     RoundedRectangle(
@@ -1563,7 +1565,7 @@ private struct HomeTourismCarouselCard: View {
                 url: thumbnailURL,
                 cacheKey: "tourism-thumbnail-\(card.id)",
                 targetSize: CGSize(width: cardWidth, height: posterHeight),
-                contentMode: .fill
+                contentMode: .fit
             ) {
                 thumbnailPlaceholder
             }
@@ -1574,6 +1576,7 @@ private struct HomeTourismCarouselCard: View {
 
     private var thumbnailPlaceholder: some View {
         Color.maplogCanvas
+            .frame(width: cardWidth, height: posterHeight)
             .overlay {
                 Image(systemName: "photo")
                     .font(.title2)
