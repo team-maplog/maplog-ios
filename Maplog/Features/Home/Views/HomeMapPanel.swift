@@ -418,7 +418,7 @@ private struct HomeMapRoutePointChip: View {
                         ? Color.maplogMapLightTextPrimary
                         : Color.maplogMapLightTextSecondary
                 )
-                .frame(width: 24, height: 24)
+                .frame(width: 20, height: 20)
                 .background(
                     isSelected
                         ? Color.maplogLime
@@ -431,8 +431,8 @@ private struct HomeMapRoutePointChip: View {
                 .foregroundStyle(Color.maplogMapLightTextPrimary)
                 .lineLimit(1)
         }
-        .padding(.horizontal, 12)
-        .frame(height: 40)
+        .padding(.horizontal, 10)
+        .frame(height: 32)
         .background(
             isSelected
                 ? Color.maplogLime.opacity(0.24)
@@ -448,6 +448,8 @@ private struct HomeMapRoutePointChip: View {
                     lineWidth: 1
                 )
         }
+        .frame(minHeight: MaplogSize.minimumTapTarget)
+        .contentShape(Rectangle())
         .accessibilityLabel(
             "\(point.sequence)번째 장소, \(point.placeName)"
         )

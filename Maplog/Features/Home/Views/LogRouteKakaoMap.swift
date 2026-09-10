@@ -180,6 +180,7 @@ private struct LogRouteKakaoMapRepresentable: UIViewRepresentable {
             thumbnailDataByPointID: [Int64: Data],
             selectedPointID: Int64?
         ) {
+            let selectionChanged = self.selectedPointID != selectedPointID
             let routeChanged = self.points != points
             let thumbnailsChanged =
                 self.thumbnailDataByPointID != thumbnailDataByPointID
@@ -188,7 +189,7 @@ private struct LogRouteKakaoMapRepresentable: UIViewRepresentable {
             self.thumbnailDataByPointID = thumbnailDataByPointID
             self.selectedPointID = selectedPointID
 
-            if routeChanged || thumbnailsChanged {
+            if routeChanged || thumbnailsChanged || selectionChanged {
                 needsRouteRender = true
             }
 
@@ -469,6 +470,7 @@ private struct LogRouteKakaoMapRepresentable: UIViewRepresentable {
                     styleID: styleID,
                     sequence: point.sequence,
                     thumbnailData: thumbnailData,
+                    isSelected: selectedPointID == point.id,
                     on: labelManager
                 )
 
@@ -508,6 +510,7 @@ private struct LogRouteKakaoMapRepresentable: UIViewRepresentable {
             styleID: String,
             sequence: Int,
             thumbnailData: Data?,
+            isSelected: Bool,
             on labelManager: LabelManager
         ) {
             guard !registeredMarkerStyleIDs.contains(
@@ -516,16 +519,17 @@ private struct LogRouteKakaoMapRepresentable: UIViewRepresentable {
                 return
             }
 
-            let markerImage = makeMarkerImage(
-                sequence: sequence,
-                thumbnailData: thumbnailData
+            let markerImage = MaplogLogMarkerImage.image(
+                thumbnailData: thumbnailData,
+                isSelected: isSelected,
+                sequence: sequence
             )
 
             let iconStyle = PoiIconStyle(
                 symbol: markerImage,
                 anchorPoint: CGPoint(
                     x: 0.5,
-                    y: 0.5
+                    y: 1
                 )
             )
 
@@ -556,195 +560,8 @@ private struct LogRouteKakaoMapRepresentable: UIViewRepresentable {
                 ? "thumbnail"
                 : "fallback"
 
-            return "home-log-route-marker-\(point.id)-\(point.sequence)-\(imageState)"
-        }
-
-        private func makeMarkerImage(
-            sequence: Int,
-            thumbnailData: Data?
-        ) -> UIImage {
-            guard let thumbnailData,
-                  let thumbnailImage = UIImage(data: thumbnailData)
-            else {
-                return makeNumberMarkerImage(
-                    sequence: sequence
-                )
-            }
-
-            let size = CGSize(
-                width: 44,
-                height: 44
-            )
-
-            let renderer = UIGraphicsImageRenderer(
-                size: size
-            )
-
-            return renderer.image { context in
-                let markerRect = CGRect(
-                    origin: .zero,
-                    size: size
-                ).insetBy(
-                    dx: 2,
-                    dy: 2
-                )
-
-                let markerPath = UIBezierPath(
-                    roundedRect: markerRect,
-                    cornerRadius: 11
-                )
-
-                context.cgContext.saveGState()
-                markerPath.addClip()
-
-                drawAspectFill(
-                    thumbnailImage,
-                    in: markerRect
-                )
-
-                context.cgContext.restoreGState()
-
-                context.cgContext.setStrokeColor(
-                    UIColor(Color.maplogLime).cgColor
-                )
-                context.cgContext.setLineWidth(2.5)
-                markerPath.stroke()
-
-                let badgeRect = CGRect(
-                    x: 24,
-                    y: 0,
-                    width: 18,
-                    height: 18
-                )
-
-                context.cgContext.setFillColor(
-                    UIColor(Color.maplogLime).cgColor
-                )
-                context.cgContext.fillEllipse(
-                    in: badgeRect
-                )
-
-                let paragraphStyle = NSMutableParagraphStyle()
-                paragraphStyle.alignment = .center
-
-                let attributes: [NSAttributedString.Key: Any] = [
-                    .font: UIFont.systemFont(
-                        ofSize: 10,
-                        weight: .bold
-                    ),
-                    .foregroundColor: UIColor.black,
-                    .paragraphStyle: paragraphStyle
-                ]
-
-                String(sequence).draw(
-                    in: CGRect(
-                        x: badgeRect.minX,
-                        y: badgeRect.minY + 3,
-                        width: badgeRect.width,
-                        height: badgeRect.height
-                    ),
-                    withAttributes: attributes
-                )
-            }
-        }
-
-        private func makeNumberMarkerImage(
-            sequence: Int
-        ) -> UIImage {
-            let size = CGSize(
-                width: 44,
-                height: 44
-            )
-
-            let renderer = UIGraphicsImageRenderer(
-                size: size
-            )
-
-            return renderer.image { context in
-                let circleRect = CGRect(
-                    origin: .zero,
-                    size: size
-                ).insetBy(
-                    dx: 2,
-                    dy: 2
-                )
-
-                context.cgContext.setFillColor(
-                    UIColor(Color.maplogLime).cgColor
-                )
-                context.cgContext.fillEllipse(
-                    in: circleRect
-                )
-
-                context.cgContext.setStrokeColor(
-                    UIColor(
-                        Color.maplogMapLightTextSecondary
-                    )
-                        .withAlphaComponent(0.28)
-                        .cgColor
-                )
-                context.cgContext.setLineWidth(2)
-                context.cgContext.strokeEllipse(
-                    in: circleRect
-                )
-
-                let paragraphStyle = NSMutableParagraphStyle()
-                paragraphStyle.alignment = .center
-
-                let attributes: [NSAttributedString.Key: Any] = [
-                    .font: UIFont.systemFont(
-                        ofSize: 16,
-                        weight: .bold
-                    ),
-                    .foregroundColor: UIColor.black,
-                    .paragraphStyle: paragraphStyle
-                ]
-
-                String(sequence).draw(
-                    in: CGRect(
-                        x: 0,
-                        y: 10,
-                        width: size.width,
-                        height: 24
-                    ),
-                    withAttributes: attributes
-                )
-            }
-        }
-
-        private func drawAspectFill(
-            _ image: UIImage,
-            in rect: CGRect
-        ) {
-            let sourceSize = image.size
-
-            guard sourceSize.width > 0,
-                  sourceSize.height > 0
-            else {
-                return
-            }
-
-            let scale = max(
-                rect.width / sourceSize.width,
-                rect.height / sourceSize.height
-            )
-
-            let drawSize = CGSize(
-                width: sourceSize.width * scale,
-                height: sourceSize.height * scale
-            )
-
-            let drawOrigin = CGPoint(
-                x: rect.midX - drawSize.width / 2,
-                y: rect.midY - drawSize.height / 2
-            )
-
-            image.draw(
-                in: CGRect(
-                    origin: drawOrigin,
-                    size: drawSize
-                )
-            )
+            let selectionState = selectedPointID == point.id ? "selected" : "normal"
+            return "home-log-route-marker-\(point.id)-\(point.sequence)-\(imageState)-\(selectionState)"
         }
 
         private func fitCameraToRoute(

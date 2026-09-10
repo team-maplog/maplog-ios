@@ -311,13 +311,13 @@ struct HomeView: View {
                         .foregroundStyle(
                             selection == .reels
                                 ? Color.maplogInk
-                                : .white
+                                : Color.maplogMapLightTextSecondary
                         )
                         .frame(width: 42, height: 32)
                         .background(
                             selection == .reels
                                 ? Color.maplogLime
-                                : .black.opacity(0.46),
+                                : Color.white.opacity(0.40),
                             in: Capsule()
                         )
                 }
@@ -329,22 +329,23 @@ struct HomeView: View {
                         .foregroundStyle(
                             selection == .map
                                 ? Color.maplogInk
-                                : .white
+                                : Color.maplogMapLightTextSecondary
                         )
                         .frame(width: 42, height: 32)
                         .background(
                             selection == .map
                                 ? Color.maplogLime
-                                : .black.opacity(0.46),
+                                : Color.white.opacity(0.40),
                             in: Capsule()
                         )
                 }
             }
             .padding(4)
             .background(
-                .black.opacity(0.30),
+                .white.opacity(0.82),
                 in: Capsule()
             )
+            .environment(\.colorScheme, .light)
             .accessibilityElement(children: .contain)
         }
     }
