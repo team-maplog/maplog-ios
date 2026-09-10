@@ -1562,30 +1562,16 @@ private struct HomeTourismCarouselCard: View {
     @ViewBuilder
     private var tourismThumbnail: some View {
         if let thumbnailURL = card.thumbnailURL {
-            ZStack {
-                // 원본과 카드 비율이 달라도 세로 프레임을 유지한다.
-                // 배경만 확대하고, 앞쪽 이미지는 전체가 보이도록 표시한다.
-                thumbnailImage(url: thumbnailURL, contentMode: .fill)
-                    .frame(width: cardWidth, height: posterHeight)
-                    .clipped()
-                    .blur(radius: 18)
-                    .overlay(Color.maplogCanvas.opacity(0.25))
-
-                thumbnailImage(url: thumbnailURL, contentMode: .fit)
-                    .frame(width: cardWidth, height: posterHeight)
+            // 세로 포스터 프레임을 빈틈없이 채우고 넘치는 부분은 바깥에서 자른다.
+            MaplogCachedRemoteImage(
+                url: thumbnailURL,
+                cacheKey: "tourism-thumbnail-\(card.id)",
+                targetSize: CGSize(width: cardWidth, height: posterHeight),
+                contentMode: .fill
+            ) {
+                thumbnailPlaceholder
             }
         } else {
-            thumbnailPlaceholder
-        }
-    }
-
-    private func thumbnailImage(url: URL, contentMode: ContentMode) -> some View {
-        MaplogCachedRemoteImage(
-            url: url,
-            cacheKey: "tourism-thumbnail-\(card.id)",
-            targetSize: CGSize(width: cardWidth, height: posterHeight),
-            contentMode: contentMode
-        ) {
             thumbnailPlaceholder
         }
     }
