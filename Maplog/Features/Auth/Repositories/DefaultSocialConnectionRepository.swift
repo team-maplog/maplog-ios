@@ -7,6 +7,13 @@ final class DefaultSocialConnectionRepository: SocialConnectionRepository {
         self.apiService = apiService
     }
 
+    func disconnect(provider: String) async throws {
+        let response = try await apiService.disconnect(provider: provider)
+        guard response.provider.lowercased() == provider, !response.connected else {
+            throw APIError.invalidResponse
+        }
+    }
+
     func fetchConnections() async throws -> [SocialConnection] {
         let response = try await apiService.fetchConnections()
         return response.map {

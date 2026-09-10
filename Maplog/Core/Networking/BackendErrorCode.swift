@@ -25,6 +25,9 @@ enum BackendErrorCode: Equatable {
     case commonInvalidRequest
     case tourismNotFound
 
+    case oauthConnectionNotFound
+    case oauthRevokeFailed
+    case oauthPrimaryConnectionRequired
     case oauthEmailPermissionRequired
     case oauthStateExpired
     case oauthEmailAlreadyInUse
@@ -105,6 +108,13 @@ enum BackendErrorCode: Equatable {
 
         case "OAUTH-010":
             self = .oauthEmailAlreadyInUse
+
+        case "OAUTH-005":
+            self = .oauthConnectionNotFound
+        case "OAUTH-007":
+            self = .oauthRevokeFailed
+        case "OAUTH-008":
+            self = .oauthPrimaryConnectionRequired
 
         case "OAUTH-014":
             self = .oauthHandoffInvalid
