@@ -43,10 +43,8 @@ struct HomeSearchFeatureView: View {
                 searchHeader
                     .padding(.top, 12)
 
-                if !viewModel.trimmedQuery.isEmpty || viewModel.state != .idle {
-                    scopeChips
-                        .padding(.top, 22)
-                }
+                scopeTabs
+                    .padding(.top, 16)
 
                 if let validationMessage = viewModel.inputValidationMessage {
                     Text(validationMessage)
@@ -61,132 +59,104 @@ struct HomeSearchFeatureView: View {
             .padding(.horizontal, MaplogSpacing.page)
             .padding(.bottom, 112)
         }
-        .background(Color.maplogCanvas.ignoresSafeArea())
+        .background(Color.white.ignoresSafeArea())
         .navigationBarBackButtonHidden()
         .toolbar(.hidden, for: .navigationBar)
-        .simultaneousGesture(
-            TapGesture().onEnded {
-                isSearchFieldFocused = false
-            }
-        )
+        .scrollDismissesKeyboard(.interactively)
         .task {
             await viewModel.loadRecentLogsIfNeeded()
         }
     }
 
     private var searchHeader: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 4) {
             Button(action: dismiss.callAsFunction) {
                 Image(systemName: "chevron.left")
-                    .font(.system(size: 21, weight: .semibold))
+                    .font(.system(size: 20, weight: .medium))
                     .foregroundStyle(Color.maplogInk)
-                    .frame(
-                        width: MaplogSize.minimumTapTarget,
-                        height: MaplogSize.minimumTapTarget
-                    )
+                    .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityLabel("뒤로 가기")
 
-            HStack(spacing: 10) {
-                TextField("장소나 맵로그를 검색하세요", text: queryBinding)
-                    .font(.system(size: 18, weight: .medium))
-                    .foregroundStyle(Color.maplogInk)
-                    .focused($isSearchFieldFocused)
-                    .submitLabel(.search)
-                    .onSubmit {
-                        Task {
-                            await viewModel.submitSearch()
-                        }
-                    }
-
+            HStack(spacing: 0) {
                 Button {
-                    Task {
-                        await viewModel.submitSearch()
-                    }
+                    isSearchFieldFocused = false
+                    Task { await viewModel.submitSearch() }
                 } label: {
                     Image(systemName: "magnifyingglass")
-                        .font(.system(size: 20, weight: .semibold))
-                        .foregroundStyle(
-                            viewModel.canSubmit
-                                ? Color.maplogInk
-                                : Color.maplogMuted
-                        )
-                        .frame(width: 32, height: 32)
+                        .font(.system(size: 17, weight: .regular))
+                        .foregroundStyle(Color.maplogMuted)
+                        .frame(width: 44, height: 44)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .disabled(!viewModel.canSubmit)
                 .accessibilityLabel("검색")
 
+                TextField("장소나 맵로그 검색", text: queryBinding)
+                    .font(.system(size: 15))
+                    .foregroundStyle(Color.maplogInk)
+                    .focused($isSearchFieldFocused)
+                    .submitLabel(.search)
+                    .onSubmit {
+                        isSearchFieldFocused = false
+                        Task { await viewModel.submitSearch() }
+                    }
+                    .accessibilityLabel("장소나 맵로그 검색")
+
                 if !viewModel.query.isEmpty {
                     Button {
                         viewModel.updateQuery("")
+                        isSearchFieldFocused = true
                     } label: {
                         Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 18, weight: .medium))
-                            .foregroundStyle(Color.maplogMuted.opacity(0.72))
-                            .frame(width: 28, height: 28)
+                            .font(.system(size: 16))
+                            .foregroundStyle(Color.maplogMuted.opacity(0.65))
+                            .frame(width: 44, height: 44)
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("검색어 지우기")
                 }
             }
-            .padding(.leading, 16)
-            .padding(.trailing, 8)
-            .frame(height: 52)
-            .background(Color.white, in: Capsule())
-            .overlay {
-                Capsule()
-                    .stroke(Color.maplogBorder, lineWidth: 1)
-            }
+            .padding(.trailing, viewModel.query.isEmpty ? 12 : 0)
+            .frame(height: 44)
+            .background(Color(uiColor: .systemGray6), in: RoundedRectangle(cornerRadius: 12))
         }
     }
 
-    private var scopeChips: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 10) {
-                ForEach(HomeSearchScope.allCases) { scope in
-                    Button {
-                        Task {
-                            await viewModel.selectScope(scope)
-                        }
-                    } label: {
-                        Text(scopeTitle(scope))
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(
-                                viewModel.selectedScope == scope
-                                    ? Color.maplogOnPrimary
-                                    : Color.maplogInk
-                            )
-                            .padding(.horizontal, 17)
-                            .frame(height: 42)
-                            .background(
-                                viewModel.selectedScope == scope
-                                    ? Color.maplogPrimary
-                                    : Color.white,
-                                in: Capsule()
-                            )
-                            .overlay {
-                                Capsule()
-                                    .stroke(
-                                        viewModel.selectedScope == scope
-                                            ? .clear
-                                            : Color.maplogBorder,
-                                        lineWidth: 1
-                                    )
+    private var scopeTabs: some View {
+        HStack(spacing: 0) {
+            ForEach([HomeSearchScope.all, .tourism, .log]) { scope in
+                Button {
+                    isSearchFieldFocused = false
+                    Task { await viewModel.selectScope(scope) }
+                } label: {
+                    Text(scopeTitle(scope))
+                        .font(.system(size: 15, weight: viewModel.selectedScope == scope ? .semibold : .regular))
+                        .foregroundStyle(viewModel.selectedScope == scope ? Color.maplogInk : Color.maplogMuted)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .padding(.bottom, 4)
+                        .contentShape(Rectangle())
+                        .overlay(alignment: .bottom) {
+                            if viewModel.selectedScope == scope {
+                                Rectangle()
+                                    .fill(Color.maplogLime)
+                                    .frame(height: 3)
+                                    .padding(.horizontal, 16)
                             }
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityAddTraits(
-                        viewModel.selectedScope == scope
-                            ? .isSelected
-                            : []
-                    )
+                        }
                 }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(viewModel.selectedScope == scope ? .isSelected : [])
             }
+        }
+        .background(alignment: .bottom) {
+            Rectangle()
+                .fill(Color.maplogLine.opacity(0.5))
+                .frame(height: 1)
         }
     }
 
@@ -255,19 +225,29 @@ struct HomeSearchFeatureView: View {
     private var resultGrid: some View {
         LazyVGrid(
             columns: Array(
-                repeating: GridItem(.flexible(), spacing: 4),
-                count: 3
+                repeating: GridItem(.flexible(), spacing: 12, alignment: .top),
+                count: 2
             ),
-            spacing: 4
+            spacing: 20
         ) {
             ForEach(viewModel.visibleItems) { item in
                 Button {
                     open(item)
                 } label: {
-                    HomeSearchThumbnailCard(
-                        item: item,
-                        thumbnailData: viewModel.thumbnailData(for: item)
-                    )
+                    VStack(alignment: .leading, spacing: 8) {
+                        HomeSearchThumbnailCard(
+                            item: item,
+                            thumbnailData: viewModel.thumbnailData(for: item)
+                        )
+                        Text(item.title)
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundStyle(Color.maplogInk)
+                            .lineLimit(2)
+                        Text(item.author?.nickname ?? item.subtitle)
+                            .font(.system(size: 12))
+                            .foregroundStyle(Color.maplogMuted)
+                            .lineLimit(1)
+                    }
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(accessibilityLabel(for: item))
@@ -335,20 +315,30 @@ struct HomeSearchFeatureView: View {
     private var recentLogGrid: some View {
         LazyVGrid(
             columns: Array(
-                repeating: GridItem(.flexible(), spacing: 4),
-                count: 3
+                repeating: GridItem(.flexible(), spacing: 12, alignment: .top),
+                count: 2
             ),
-            spacing: 4
+            spacing: 20
         ) {
             ForEach(viewModel.visibleRecentLogs) { log in
                 Button {
                     isSearchFieldFocused = false
                     onShowLogDetail(log.id)
                 } label: {
-                    HomeSearchThumbnailCard(
-                        itemKind: .log,
-                        thumbnailData: viewModel.recentThumbnailData(for: log)
-                    )
+                    VStack(alignment: .leading, spacing: 8) {
+                        HomeSearchThumbnailCard(
+                            itemKind: .log,
+                            thumbnailData: viewModel.recentThumbnailData(for: log)
+                        )
+                        Text(log.caption)
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundStyle(Color.maplogInk)
+                            .lineLimit(2)
+                        Text(log.author.nickname)
+                            .font(.system(size: 12))
+                            .foregroundStyle(Color.maplogMuted)
+                            .lineLimit(1)
+                    }
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("최근 맵로그 \(log.caption)")
@@ -365,11 +355,9 @@ struct HomeSearchFeatureView: View {
     }
 
     private func scopeTitle(_ scope: HomeSearchScope) -> String {
-        guard let count = viewModel.scopeCounts[scope] else {
-            return scope.title
-        }
-
-        return "\(scope.title) \(count)"
+        let title = scope == .tourism ? "장소" : scope.title
+        guard let count = viewModel.scopeCounts[scope] else { return title }
+        return "\(title) \(count)"
     }
 
     private func open(_ item: HomeSearchItem) {
