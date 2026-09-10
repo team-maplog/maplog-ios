@@ -70,6 +70,9 @@ final class HomeViewModel: ObservableObject {
     @Published private(set) var saveUpdatingReelIDs = Set<Int64>()
     @Published private(set) var interactionError: ErrorPresentation?
     private var pendingPlaybackStartTimeMillis: Int64 = 0 /// 현재 하나만 존재하는 플레이어가 준비된 뒤 이동할 목표 시점
+    // 같은 로그를 닫았다 다시 열어도 이전 다운로드·seek 완료가 새 요청을 덮어쓰지 않게 한다.
+    private var playbackLoadID: UUID?
+    private var playbackSeekID: UUID?
 
     private let tourismRepository: any TourismRepository // TourismRepository protocol을 만족하는 어떤 실제 객체 하나(DefaultTourismRepository 객체가 들어감)
     private let logReelRepository: any LogReelRepository
@@ -283,7 +286,8 @@ final class HomeViewModel: ObservableObject {
         /// 이미 같은 영상이 준비돼 있으면 다운로드를 다시 하지 않고 즉시 이동·재생
         if activePlaybackReelID == reelID,
            playbackLoadingReelID == nil,
-           playbackFailedReelID != reelID {
+           playbackFailedReelID != reelID,
+           playbackService.player.currentItem != nil {
             seekAndPlay(
                 for: reelID,
                 from: safeStartTimeMillis
@@ -299,6 +303,9 @@ final class HomeViewModel: ObservableObject {
         }
 
         playbackService.stop()
+        let loadID = UUID()
+        playbackLoadID = loadID
+        playbackSeekID = nil
 
         activePlaybackReelID = reelID
         reelPlaybackProgress = 0
@@ -310,7 +317,8 @@ final class HomeViewModel: ObservableObject {
                 logID: reelID
             )
 
-            guard !Task.isCancelled,
+            try Task.checkCancellation()
+            guard playbackLoadID == loadID,
                   activePlaybackReelID == reelID
             else {
                 return
@@ -322,7 +330,8 @@ final class HomeViewModel: ObservableObject {
 
             playbackService.observeProgress { [weak self] progress in
                 guard let self,
-                      self.activePlaybackReelID == reelID
+                      self.activePlaybackReelID == reelID,
+                      self.playbackLoadID == loadID
                 else {
                     return
                 }
@@ -338,14 +347,16 @@ final class HomeViewModel: ObservableObject {
             playbackLoadingReelID = nil
 
         } catch is CancellationError {
-            guard activePlaybackReelID == reelID else {
+            guard playbackLoadID == loadID,
+                  activePlaybackReelID == reelID else {
                 return
             }
 
-            playbackLoadingReelID = nil
+            stopPlayback()
 
         } catch {
-            guard activePlaybackReelID == reelID else {
+            guard playbackLoadID == loadID,
+                  activePlaybackReelID == reelID else {
                 return
             }
 
@@ -367,6 +378,8 @@ final class HomeViewModel: ObservableObject {
         let targetSeconds = TimeInterval(
             safeStartTimeMillis
         ) / 1_000
+        let seekID = UUID()
+        playbackSeekID = seekID
 
         if let duration = playbackService.player.currentItem?
             .duration.seconds,
@@ -382,12 +395,20 @@ final class HomeViewModel: ObservableObject {
             to: targetSeconds
         ) { [weak self] finished in
             Task { @MainActor [weak self] in
-                guard finished,
-                      let self,
+                guard let self,
+                      self.playbackSeekID == seekID,
                       self.activePlaybackReelID == reelID,
                       self.pendingPlaybackStartTimeMillis
                         == safeStartTimeMillis
                 else {
+                    return
+                }
+
+                self.playbackSeekID = nil
+                guard finished else {
+                    self.playbackService.stop()
+                    self.playbackLoadingReelID = nil
+                    self.playbackFailedReelID = reelID
                     return
                 }
 
@@ -397,6 +418,7 @@ final class HomeViewModel: ObservableObject {
     }
 
     func pausePlayback() {
+        playbackSeekID = nil
         guard activePlaybackReelID != nil,
               playbackLoadingReelID == nil,
               playbackFailedReelID == nil else {
@@ -407,6 +429,8 @@ final class HomeViewModel: ObservableObject {
     }
 
     func stopPlayback() {
+        playbackLoadID = nil
+        playbackSeekID = nil
         playbackService.stop()
 
         activePlaybackReelID = nil
@@ -554,6 +578,8 @@ final class HomeViewModel: ObservableObject {
         let safeProgress = min(max(progress, 0), 1)
         let targetSeconds = duration * safeProgress
 
+        // 사용자가 재생 바를 옮겼다면 이전 자동 이동의 취소 응답은 오류가 아니다.
+        playbackSeekID = nil
         playbackService.seek(to: targetSeconds)
         reelPlaybackProgress = safeProgress
     }
