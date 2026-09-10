@@ -111,7 +111,7 @@ final class EditorTextOverlayCanvasUIView: UIView, UIGestureRecognizerDelegate {
         private let activeGuideView = EditorTextOverlayActiveGuideUIView()
         private let snapFeedback = UISelectionFeedbackGenerator()
         private var activeSnapState = TextOverlaySnapState.none
-        private let snapThreshold: CGFloat = 12
+        private let snapThreshold: CGFloat = 6
 
         override init(frame: CGRect) {
             super.init(frame: frame)
@@ -572,6 +572,7 @@ final class EditorTextOverlayItemUIView: UIView, UIGestureRecognizerDelegate, UI
 
     private let panGesture = UIPanGestureRecognizer()
     private let tapGesture = UITapGestureRecognizer()
+    private let editGesture = UITapGestureRecognizer()
     private let selectionBorderView = UIView()
     private let deleteButton = UIButton(type: .system)
 
@@ -587,6 +588,7 @@ final class EditorTextOverlayItemUIView: UIView, UIGestureRecognizerDelegate, UI
 
   // UITextView 설정
         textView.delegate = self
+        textView.isUserInteractionEnabled = false
         textView.backgroundColor = .clear
         textView.textAlignment = .center
         textView.isScrollEnabled = false
@@ -595,6 +597,8 @@ final class EditorTextOverlayItemUIView: UIView, UIGestureRecognizerDelegate, UI
         textView.textContainer.maximumNumberOfLines = 3
         textView.keyboardAppearance = .dark
         textView.accessibilityLabel = "영상 위 텍스트"
+        accessibilityLabel = "영상 위 텍스트"
+        accessibilityHint = "드래그로 이동하고 두 번 탭해 내용을 수정합니다"
 
         textView.translatesAutoresizingMaskIntoConstraints = false
         addSubview(textView)
@@ -701,6 +705,11 @@ final class EditorTextOverlayItemUIView: UIView, UIGestureRecognizerDelegate, UI
 
         panGesture.delegate = self
         tapGesture.delegate = self
+        editGesture.delegate = self
+        editGesture.numberOfTapsRequired = 2
+        editGesture.addTarget(self, action: #selector(handleEditTap))
+        tapGesture.require(toFail: editGesture)
+        addGestureRecognizer(editGesture)
 
         panGesture.addTarget(
             self,
@@ -728,7 +737,9 @@ final class EditorTextOverlayItemUIView: UIView, UIGestureRecognizerDelegate, UI
     func beginTextEditing(
         shouldSelectAll: Bool
     ) -> Bool {
+        textView.isUserInteractionEnabled = true
         guard textView.becomeFirstResponder() else { // becomeFirstResponder()는 UIKit에서 이 UITextView가 지금 키보드 입력을 받을 주인공이다라고 지정하는 함수
+            textView.isUserInteractionEnabled = false
             return false
         }
 
@@ -860,6 +871,16 @@ final class EditorTextOverlayItemUIView: UIView, UIGestureRecognizerDelegate, UI
         onTap?(itemID)
     }
 
+    @objc private func handleEditTap() {
+        beginTextEditing(shouldSelectAll: false)
+    }
+
+    // 입력 중에는 커서 이동이 우선이다. 완료 후 드래그하면 키보드로 인한 좌표 이동 없이 배치할 수 있다.
+    override func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        if gestureRecognizer === panGesture { return !textView.isFirstResponder }
+        return true
+    }
+
     @objc // 삭제 함수와 버튼 터치 분리
     private func handleDelete() {
         guard let itemID else {
@@ -956,6 +977,7 @@ final class EditorTextOverlayItemUIView: UIView, UIGestureRecognizerDelegate, UI
             return
         }
 
+        textView.isUserInteractionEnabled = false
         onTextEditingFinished?(itemID)
     }
 

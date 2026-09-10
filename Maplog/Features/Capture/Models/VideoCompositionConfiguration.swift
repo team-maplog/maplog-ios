@@ -141,6 +141,7 @@ enum VideoSceneOrientation: String, CaseIterable, Equatable, Sendable, Identifia
 struct VideoCompositionConfiguration: Equatable, Sendable {
     var layout: VideoCompositionLayout
     var sceneOrientation: VideoSceneOrientation
+    var clipCrops: [UUID: VideoClipCrop] = [:]
 
     init(
         layout: VideoCompositionLayout = .single,
@@ -215,5 +216,30 @@ struct VideoCompositionConfiguration: Equatable, Sendable {
         case (.horizontal, .splitThree):
             return "16:27"
         }
+    }
+}
+
+/// 원본에서 보일 영역의 위치(0...1)와 확대 배율. 클립 ID를 키로 써 순서를 바꿔도 구도가 따라간다.
+struct VideoClipCrop: Equatable, Sendable {
+    let horizontalPosition: Double
+    let verticalPosition: Double
+    let zoom: Double
+
+    init(horizontalPosition: Double = 0.5, verticalPosition: Double = 0.5, zoom: Double = 1) {
+        self.horizontalPosition = horizontalPosition.isFinite ? min(max(horizontalPosition, 0), 1) : 0.5
+        self.verticalPosition = verticalPosition.isFinite ? min(max(verticalPosition, 0), 1) : 0.5
+        self.zoom = zoom.isFinite ? min(max(zoom, 1), 3) : 1
+    }
+
+    func sourceRect(in bounds: CGRect, destinationAspectRatio: CGFloat) -> CGRect {
+        guard bounds.width > 0, bounds.height > 0, destinationAspectRatio > 0 else { return .zero }
+        let width = min(bounds.width, bounds.height * destinationAspectRatio) / zoom
+        let height = width / destinationAspectRatio
+        return CGRect(
+            x: bounds.minX + (bounds.width - width) * horizontalPosition,
+            y: bounds.minY + (bounds.height - height) * verticalPosition,
+            width: width,
+            height: height
+        )
     }
 }

@@ -56,16 +56,33 @@ struct LogHashtagTextEditor: UIViewRepresentable {
             )
         }
 
-        if isFocused.wrappedValue, !textView.isFirstResponder {
-            textView.becomeFirstResponder()
-        } else if !isFocused.wrappedValue, textView.isFirstResponder {
-            textView.resignFirstResponder()
-        }
+        context.coordinator.synchronizeFocus(in: textView)
+    }
+
+    static func dismantleUIView(_ textView: UITextView, coordinator: Coordinator) {
+        coordinator.focusTask?.cancel()
+        textView.delegate = nil
+        textView.resignFirstResponder()
     }
 
     final class Coordinator: NSObject, UITextViewDelegate {
         var parent: LogHashtagTextEditor
         private var isApplyingStyle = false
+        var focusTask: Task<Void, Never>?
+
+        func synchronizeFocus(in textView: UITextView) {
+            focusTask?.cancel()
+            focusTask = Task { @MainActor [weak self, weak textView] in
+                await Task.yield()
+                guard !Task.isCancelled, let self, let textView else { return }
+                if parent.isFocused.wrappedValue {
+                    guard textView.window != nil else { return }
+                    if !textView.isFirstResponder { textView.becomeFirstResponder() }
+                } else if textView.isFirstResponder {
+                    textView.resignFirstResponder()
+                }
+            }
+        }
 
         init(
             parent: LogHashtagTextEditor

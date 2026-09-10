@@ -98,6 +98,7 @@ final class AVVideoPlaybackService: VideoPlaybackService {
             configuration: configuration
         )
 
+        try Task.checkCancellation()
         playerLooper = AVPlayerLooper(
             player: queuePlayer,
             templateItem: templateItem
@@ -515,7 +516,8 @@ final class AVVideoPlaybackService: VideoPlaybackService {
             let placement = try await VideoCompositionPlacement.make(
                 for: source.videoTrack,
                 in: destinationFrames[index],
-                contentMode: .fill
+                contentMode: .fill,
+                crop: configuration.clipCrops[visibleClips[index].id] ?? VideoClipCrop()
             )
             let layerInstruction = AVMutableVideoCompositionLayerInstruction(
                 assetTrack: compositionVideoTrack

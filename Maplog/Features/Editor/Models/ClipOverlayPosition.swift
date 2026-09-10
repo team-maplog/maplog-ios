@@ -25,9 +25,8 @@ struct ClipOverlayPosition: Equatable, Sendable {
 }
 
 // 편집 미리보기와 최종 세로 영상에서 공통으로 쓰는 텍스트 안전 영역이다.
-// 홈 릴스가 화면을 꽉 채울 때 생길 수 있는 좌우 crop에도 텍스트가 남도록
-// 가장자리에서 10% 안쪽을 기본 기준선으로 둔다.
+// 가장자리 4%를 정렬선과 드래그 제한에 함께 사용해 화면 양끝까지 배치할 수 있게 한다.
 enum ClipTextOverlaySafeArea {
-    static let horizontalInset: Double = 0.10
-    static let verticalInset: Double = 0.10
+    static let horizontalInset: Double = 0.04
+    static let verticalInset: Double = 0.04
 }

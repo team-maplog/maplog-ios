@@ -3,6 +3,36 @@ import XCTest
 @testable import Maplog
 
 final class VideoCompositionConfigurationTests: XCTestCase {
+    func testCropCanReachBothEdgesWithoutLeavingSourceBounds() {
+        let bounds = CGRect(x: 10, y: 20, width: 1920, height: 1080)
+        let left = VideoClipCrop(horizontalPosition: 0).sourceRect(in: bounds, destinationAspectRatio: 0.5)
+        let right = VideoClipCrop(horizontalPosition: 1).sourceRect(in: bounds, destinationAspectRatio: 0.5)
+        XCTAssertEqual(left.minX, bounds.minX)
+        XCTAssertEqual(right.maxX, bounds.maxX)
+        XCTAssertEqual(left.width / left.height, 0.5, accuracy: 0.0001)
+        XCTAssertTrue(bounds.contains(left))
+        XCTAssertTrue(bounds.contains(right))
+    }
+
+    func testZoomedCropCanReachTopAndBottomOfPortraitSource() {
+        let bounds = CGRect(x: 0, y: 0, width: 1080, height: 1920)
+        let top = VideoClipCrop(verticalPosition: 0, zoom: 2).sourceRect(in: bounds, destinationAspectRatio: 1.5)
+        let bottom = VideoClipCrop(verticalPosition: 1, zoom: 2).sourceRect(in: bounds, destinationAspectRatio: 1.5)
+        XCTAssertEqual(top.minY, 0)
+        XCTAssertEqual(bottom.maxY, 1920)
+        XCTAssertEqual(top.width, 540)
+        XCTAssertEqual(top.height, 360)
+        XCTAssertTrue(bounds.contains(bottom))
+    }
+
+    func testInvalidCropValuesAreClamped() {
+        let crop = VideoClipCrop(horizontalPosition: -1, verticalPosition: 4, zoom: 0)
+        XCTAssertEqual(crop.horizontalPosition, 0)
+        XCTAssertEqual(crop.verticalPosition, 1)
+        XCTAssertEqual(crop.zoom, 1)
+        XCTAssertEqual(VideoClipCrop(zoom: .nan).zoom, 1)
+    }
+
     func testThreeSplitInVerticalSceneUsesThreeStackedSlots() {
         let frames = VideoCompositionLayout.splitThree.normalizedFrames(
             for: .vertical

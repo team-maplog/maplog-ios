@@ -13,6 +13,7 @@ struct ClipEditorTopControlsView: View {
     let isMuted: Bool
     let canUndoTextOverlayEdit: Bool
 
+    let onFinishTextEditing: () -> Void
     let onClose: () -> Void
     let onUndoTap: () -> Void
     let onTextTap: () -> Void
@@ -22,20 +23,26 @@ struct ClipEditorTopControlsView: View {
     var body: some View {
         HStack(spacing: MaplogSpacing.xxSmall) {
             glassButton(
-                symbol: "xmark",
-                accessibilityLabel: "클립 편집 닫기",
-                action: onClose
+                symbol: "arrow.uturn.backward",
+                accessibilityLabel: "편집 실행 취소",
+                isEnabled: canUndoTextOverlayEdit,
+                action: onUndoTap
             )
 
-            if !isTextEditing {
-                Spacer(minLength: 0)
+            Spacer(minLength: 0)
 
+            if isTextEditing {
+                glassButton(
+                    symbol: "checkmark",
+                    accessibilityLabel: "글자 입력 완료",
+                    action: onFinishTextEditing
+                )
+            } else {
                 HStack(spacing: MaplogSpacing.xxSmall) {
                     glassButton(
-                        symbol: "arrow.uturn.backward",
-                        accessibilityLabel: "텍스트 편집 되돌리기",
-                        isEnabled: canUndoTextOverlayEdit,
-                        action: onUndoTap
+                        symbol: "chevron.left",
+                        accessibilityLabel: "클립 선택으로 돌아가기",
+                        action: onClose
                     )
 
                     glassButton(

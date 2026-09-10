@@ -43,6 +43,7 @@ struct LogComposeView: View {
             },
             including: .gesture
         )
+        .onDisappear { isCaptionFocused = false }
         .navigationTitle("로그 작성")
         .navigationBarTitleDisplayMode(.inline)
         .maplogScreenSurface()
@@ -57,6 +58,8 @@ struct LogComposeView: View {
                 : "paperplane.fill",
                 isEnabled: !viewModel.isPerformingPublicationAction
             ) {
+                isCaptionFocused = false
+                viewModel.stopPreview()
                 isPublicationDestinationPresented = true
             }
             .padding(.horizontal, MaplogSpacing.page)
@@ -259,7 +262,7 @@ struct LogComposeView: View {
                         ? "해시태그 없음"
                         : "해시태그 \(viewModel.hashtagPreviewText)"
                     )
-                    .focused($isCaptionFocused)
+
             }
             .maplogCard()
 
@@ -324,7 +327,7 @@ struct LogComposeView: View {
             Text(
                 viewModel.isResolvingClipLocations
                 ? "촬영 위치를 자동으로 확인하고 있어요."
-                : "촬영 위치는 자동으로 기록돼요. 필요할 때만 수정하세요."
+                : "장소가 없으면 직접 선택하고, 기록된 장소도 수정할 수 있어요."
             )
             .font(MaplogFont.caption)
             .foregroundStyle(Color.maplogTextSecondary)
