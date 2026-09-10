@@ -1496,9 +1496,7 @@ private struct HomeTourismCarouselCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
             tourismThumbnail
-                // 폭만 고정하고 높이는 원본 비율에 맡겨 포스터를 자르지 않는다.
-                .frame(width: cardWidth)
-                .fixedSize(horizontal: false, vertical: true)
+                .frame(width: cardWidth, height: posterHeight)
                 .background(Color.maplogCanvas)
                 .clipShape(
                     RoundedRectangle(
@@ -1564,15 +1562,30 @@ private struct HomeTourismCarouselCard: View {
     @ViewBuilder
     private var tourismThumbnail: some View {
         if let thumbnailURL = card.thumbnailURL {
-            MaplogCachedRemoteImage(
-                url: thumbnailURL,
-                cacheKey: "tourism-thumbnail-\(card.id)",
-                targetSize: CGSize(width: cardWidth, height: posterHeight),
-                contentMode: .fit
-            ) {
-                thumbnailPlaceholder
+            ZStack {
+                // 원본과 카드 비율이 달라도 세로 프레임을 유지한다.
+                // 배경만 확대하고, 앞쪽 이미지는 전체가 보이도록 표시한다.
+                thumbnailImage(url: thumbnailURL, contentMode: .fill)
+                    .frame(width: cardWidth, height: posterHeight)
+                    .clipped()
+                    .blur(radius: 18)
+                    .overlay(Color.maplogCanvas.opacity(0.25))
+
+                thumbnailImage(url: thumbnailURL, contentMode: .fit)
+                    .frame(width: cardWidth, height: posterHeight)
             }
         } else {
+            thumbnailPlaceholder
+        }
+    }
+
+    private func thumbnailImage(url: URL, contentMode: ContentMode) -> some View {
+        MaplogCachedRemoteImage(
+            url: url,
+            cacheKey: "tourism-thumbnail-\(card.id)",
+            targetSize: CGSize(width: cardWidth, height: posterHeight),
+            contentMode: contentMode
+        ) {
             thumbnailPlaceholder
         }
     }
