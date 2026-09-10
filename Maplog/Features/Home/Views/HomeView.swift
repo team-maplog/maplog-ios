@@ -1525,7 +1525,7 @@ private struct HomeTourismCarouselCard: View {
                     }
                 }
 
-                Label(card.locationText, systemImage: "mappin.and.ellipse")
+                MaplogLocationLabel(title: card.locationText, pinSize: 12)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -1563,7 +1563,7 @@ private struct HomeTourismCarouselCard: View {
                 url: thumbnailURL,
                 cacheKey: "tourism-thumbnail-\(card.id)",
                 targetSize: CGSize(width: cardWidth, height: posterHeight),
-                contentMode: .fit
+                contentMode: .fill
             ) {
                 thumbnailPlaceholder
             }
