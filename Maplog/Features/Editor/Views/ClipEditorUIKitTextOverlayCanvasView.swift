@@ -572,7 +572,6 @@ final class EditorTextOverlayItemUIView: UIView, UIGestureRecognizerDelegate, UI
 
     private let panGesture = UIPanGestureRecognizer()
     private let tapGesture = UITapGestureRecognizer()
-    private let editGesture = UITapGestureRecognizer()
     private let selectionBorderView = UIView()
     private let deleteButton = UIButton(type: .system)
 
@@ -598,7 +597,7 @@ final class EditorTextOverlayItemUIView: UIView, UIGestureRecognizerDelegate, UI
         textView.keyboardAppearance = .dark
         textView.accessibilityLabel = "영상 위 텍스트"
         accessibilityLabel = "영상 위 텍스트"
-        accessibilityHint = "드래그로 이동하고 두 번 탭해 내용을 수정합니다"
+        accessibilityHint = "탭하여 내용을 수정하고 입력 완료 후 드래그로 이동합니다"
 
         textView.translatesAutoresizingMaskIntoConstraints = false
         addSubview(textView)
@@ -705,11 +704,6 @@ final class EditorTextOverlayItemUIView: UIView, UIGestureRecognizerDelegate, UI
 
         panGesture.delegate = self
         tapGesture.delegate = self
-        editGesture.delegate = self
-        editGesture.numberOfTapsRequired = 2
-        editGesture.addTarget(self, action: #selector(handleEditTap))
-        tapGesture.require(toFail: editGesture)
-        addGestureRecognizer(editGesture)
 
         panGesture.addTarget(
             self,
@@ -801,7 +795,7 @@ final class EditorTextOverlayItemUIView: UIView, UIGestureRecognizerDelegate, UI
 
         bounds.size = CGSize(
             width: max(44, ceil(textSize.width) + 16),
-            height: max(44, ceil(textSize.height) + 12)
+            height: ceil(textSize.height) + 12
         )
 
         let halfWidth = bounds.width / 2
@@ -832,6 +826,12 @@ final class EditorTextOverlayItemUIView: UIView, UIGestureRecognizerDelegate, UI
                 canvasSize.height - halfHeight
             )
         )
+    }
+
+    override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
+        // 작은 글자도 잡기 쉽도록 터치 영역만 늘리고 선택 테두리는 글자 높이를 따른다.
+        let verticalExpansion = max(0, (44 - bounds.height) / 2)
+        return bounds.insetBy(dx: 0, dy: -verticalExpansion).contains(point)
     }
 
     // 드래그 중인 View의 중심 좌표를 모델이 저장하는 기준점으로 되돌린다.
@@ -869,15 +869,15 @@ final class EditorTextOverlayItemUIView: UIView, UIGestureRecognizerDelegate, UI
         }
 
         onTap?(itemID)
-    }
-
-    @objc private func handleEditTap() {
         beginTextEditing(shouldSelectAll: false)
     }
 
     // 입력 중에는 커서 이동이 우선이다. 완료 후 드래그하면 키보드로 인한 좌표 이동 없이 배치할 수 있다.
     override func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
-        if gestureRecognizer === panGesture { return !textView.isFirstResponder }
+        // 입력 중에는 UITextView가 커서 탭과 선택 제스처를 직접 처리한다.
+        if gestureRecognizer === panGesture || gestureRecognizer === tapGesture {
+            return !textView.isFirstResponder
+        }
         return true
     }
 
