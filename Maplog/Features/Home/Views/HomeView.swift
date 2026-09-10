@@ -4,7 +4,7 @@ private enum HomeFestivalCarouselLayout {
     static let cornerRadius: CGFloat = 18
     static let posterCornerRadius: CGFloat = 10
     static let cardWidth: CGFloat = 150
-    static let posterHeight: CGFloat = 212
+    static let posterHeight: CGFloat = 246
     static let cardSpacing: CGFloat = 12
 }
 
@@ -1485,7 +1485,7 @@ struct HomeView: View {
 
 }
 
-private struct HomeTourismCarouselCard: View {
+struct HomeTourismCarouselCard: View {
     let card: HomeTourismCardViewData
     let posterURL: URL?
 
@@ -1500,8 +1500,8 @@ private struct HomeTourismCarouselCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
             tourismThumbnail
-                .frame(width: cardWidth)
-                .fixedSize(horizontal: false, vertical: true)
+                // 썸네일 원본 비율과 관계없이 승인된 세로 카드 비율을 유지한다.
+                .frame(width: cardWidth, height: posterHeight)
                 .background(Color.maplogCanvas)
                 .clipShape(
                     RoundedRectangle(
@@ -1567,12 +1567,12 @@ private struct HomeTourismCarouselCard: View {
     @ViewBuilder
     private var tourismThumbnail: some View {
         if let posterURL {
-            // 목록 썸네일의 비율을 유지해 양옆이 잘리지 않도록 표시한다.
+            // 이미지 한 장으로 프레임을 채우고 넘치는 영역은 카드 경계에서 자른다.
             MaplogCachedRemoteImage(
                 url: posterURL,
                 cacheKey: "tourism-thumbnail-\(MaplogImageCacheKey.stableURL(posterURL))",
                 targetSize: CGSize(width: cardWidth, height: posterHeight),
-                contentMode: .fit
+                contentMode: .fill
             ) {
                 thumbnailPlaceholder
             }
