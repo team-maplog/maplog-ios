@@ -26,6 +26,8 @@ final class LogComposeViewModel: ObservableObject {
     /// 결과를 확인하지 못한 동일 초안의 재시도에만 유지합니다.
     private var pendingMaplogPublishAttempt: LogPublishAttempt?
 
+    private var hasPreparedPreview = false
+
     private let input: LogComposeInput // 편집 화면에서 넘겨받은 변하지 않는 재료
     private let videoPlaybackService: any VideoPlaybackService // 재생 약속을 지키는 객체를 받음
     private let videoThumbnailService: any VideoThumbnailService
@@ -306,7 +308,7 @@ final class LogComposeViewModel: ObservableObject {
         for clipLocation: LogComposeClipLocationDraft
     ) -> String {
         guard let location = clipLocation.location else {
-            return "촬영 위치 정보 없음"
+            return "장소 직접 선택"
         }
 
         if location.address == nil, isResolvingClipLocations {
@@ -374,7 +376,10 @@ final class LogComposeViewModel: ObservableObject {
     }
 
     func prepare() async {
-        preparePreview()
+        if !hasPreparedPreview {
+            preparePreview()
+            hasPreparedPreview = true
+        }
         async let thumbnails: Void = loadClipLocationThumbnails()
         async let locations: Void = resolveCapturedClipLocations()
 
@@ -407,8 +412,9 @@ final class LogComposeViewModel: ObservableObject {
         isPreviewPlaying.toggle()
     }
 
+    /// 작성 흐름 안의 화면 이동은 재생 항목을 유지한다. 최종 해제는 편집 흐름의 소유자가 맡는다.
     func stopPreview() {
-        videoPlaybackService.stop()
+        videoPlaybackService.pause()
         isPreviewPlaying = false
     }
 

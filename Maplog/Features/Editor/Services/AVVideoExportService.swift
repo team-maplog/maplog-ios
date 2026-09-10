@@ -219,7 +219,8 @@ actor AVVideoExportService: VideoExportService {
                 sourceVideoTrack: source.videoTrack,
                 destinationFrame: frames[index],
                 at: .zero,
-                contentMode: .fill
+                contentMode: .fill,
+                crop: configuration.clipCrops[visibleClips[index].id] ?? VideoClipCrop()
             )
             layerInstructions.append(layerInstruction)
         }
@@ -315,12 +316,14 @@ actor AVVideoExportService: VideoExportService {
         sourceVideoTrack: AVAssetTrack,
         destinationFrame: CGRect,
         at time: CMTime,
-        contentMode: VideoSlotContentMode
+        contentMode: VideoSlotContentMode,
+        crop: VideoClipCrop = VideoClipCrop()
     ) async throws -> AVMutableVideoCompositionLayerInstruction {
         let placement = try await VideoCompositionPlacement.make(
             for: sourceVideoTrack,
             in: destinationFrame,
-            contentMode: contentMode
+            contentMode: contentMode,
+            crop: crop
         )
         let layerInstruction = AVMutableVideoCompositionLayerInstruction(
             assetTrack: compositionTrack

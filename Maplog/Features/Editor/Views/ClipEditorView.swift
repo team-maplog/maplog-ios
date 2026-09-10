@@ -12,6 +12,8 @@ struct ClipEditorView: View {
     @ObservedObject var viewModel: ClipEditorViewModel
     @State private var exportPreviewResult: VideoExportResult?
     @State private var isOverlayDragging = false
+    @State private var isClipListExpanded = false
+    @State private var showsCropEditor = false
     @State private var hasShownLocationTemplateHint = false
     @State private var isLocationTemplateHintVisible = false
     @State private var playbackFeedbackSymbol: String?
@@ -143,6 +145,12 @@ struct ClipEditorView: View {
                 )
             }
         }
+        .sheet(isPresented: $showsCropEditor) {
+            ClipEditorCropView(viewModel: viewModel, player: previewPlayer)
+        }
+        .onChange(of: viewModel.isTextEditing) { _, isEditing in
+            if isEditing { isClipListExpanded = false }
+        }
         .onChange(
             of: viewModel.selectedLocationTimestampTemplate
         ) { template in
@@ -210,6 +218,7 @@ struct ClipEditorView: View {
             selectedTextOverlayID: viewModel.selectedTextOverlayID,
             playbackFeedbackSymbol: playbackFeedbackSymbol,
             onTextOverlayTap: { id in
+                isClipListExpanded = false
                 isLocationTemplateHintVisible = false
                 viewModel.selectTextOverlay(id: id)
             },
@@ -306,11 +315,13 @@ struct ClipEditorView: View {
                 isTextEditing: viewModel.isTextEditing,
                 isMuted: viewModel.isPreviewMuted,
                 canUndoTextOverlayEdit: viewModel.canUndoTextOverlayEdit,
+                onFinishTextEditing: finishKeyboardEditing,
                 onClose: {
                     dismiss()
                 },
                 onUndoTap: {
                     isLocationTemplateHintVisible = false
+                    finishKeyboardEditing()
                     viewModel.undoLastTextOverlayEdit()
                 },
                 onTextTap: {
@@ -361,22 +372,78 @@ struct ClipEditorView: View {
         }
     }
 
-    /// 접고 펼치는 시트 대신, 편집에 필요한 타임라인과 완료 버튼을 항상 같은 위치에 둠
-    /// 따라서 패널 확장 시 남는 높이가 부족해 카드나 버튼이 잘리는 문제가 없음
+    /// 목록은 영상 위로 펼쳐서 미리보기의 크기와 글자 좌표를 유지한다.
     private var editorTimelineControls: some View {
-        VStack(spacing: ClipEditorLayout.timelineSectionSpacing) {
-            timelineSection
+        VStack(spacing: MaplogSpacing.small) {
+            HStack(spacing: MaplogSpacing.small) {
+                Button {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isClipListExpanded.toggle()
+                    }
+                } label: {
+                    HStack(spacing: MaplogSpacing.xxSmall) {
+                        Image(systemName: "rectangle.stack")
+                        Text("클립 \(viewModel.timelineItems.count)개")
+                        Image(systemName: isClipListExpanded ? "chevron.down" : "chevron.up")
+                    }
+                    .font(MaplogFont.calloutStrong)
+                    .frame(minHeight: MaplogSize.minimumTapTarget)
+                }
+                .accessibilityLabel(isClipListExpanded ? "클립 목록 접기" : "클립 목록 펼치기")
+
+                Spacer(minLength: 0)
+
+                Button(action: togglePreviewPlaybackFromCanvas) {
+                    Image(systemName: viewModel.isPreviewPlaying ? "pause.fill" : "play.fill")
+                        .frame(width: 44, height: 44)
+                }
+                .accessibilityLabel(viewModel.isPreviewPlaying ? "일시정지" : "재생")
+                Text("\(viewModel.currentPlaybackTimeText) / \(viewModel.totalDurationText)")
+                    .font(MaplogFont.caption)
+                    .monospacedDigit()
+            }
+            .foregroundStyle(Color.maplogInk)
+            .buttonStyle(.plain)
 
             exportActionButton
-                .frame(height: ClipEditorLayout.timelineActionHeight)
         }
         .padding(.horizontal, MaplogSpacing.page)
-        .padding(.top, ClipEditorLayout.timelineSectionSpacing)
-        .frame(
-            height: ClipEditorLayout.timelineControlsHeight,
-            alignment: .top
-        )
+        .padding(.top, MaplogSpacing.xSmall)
+        .padding(.bottom, MaplogSpacing.medium)
+        .frame(height: ClipEditorLayout.timelineControlsHeight)
         .background(Color.maplogSurface)
+        .overlay(alignment: .top) {
+            if isClipListExpanded {
+                VStack(spacing: MaplogSpacing.small) {
+                    if viewModel.compositionConfiguration.layout != .single {
+                        Button {
+                            showsCropEditor = true
+                        } label: {
+                            Label("분할 영역 조정", systemImage: "crop")
+                                .frame(maxWidth: .infinity, alignment: .trailing)
+                                .frame(minHeight: MaplogSize.minimumTapTarget)
+                        }
+                        .font(MaplogFont.calloutStrong)
+                        .foregroundStyle(Color.maplogInk)
+                    }
+                    timelineSection
+                }
+                .padding(MaplogSpacing.small)
+                .background(Color.maplogSurface, in: UnevenRoundedRectangle(
+                    topLeadingRadius: MaplogRadius.xLarge,
+                    topTrailingRadius: MaplogRadius.xLarge
+                ))
+                .fixedSize(horizontal: false, vertical: true)
+                .alignmentGuide(.top) { dimensions in dimensions[.bottom] }
+            }
+        }
+        .zIndex(2)
+    }
+
+    private func finishKeyboardEditing() {
+        UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil
+        )
     }
 
     private var timelineSection: some View {
@@ -457,12 +524,13 @@ struct ClipEditorView: View {
                     background: .maplogLime,
                     foreground: .maplogOnPrimary
                 ),
-                size: .compact,
+                size: .large,
                 fullWidth: true
             )
         )
         .disabled(
             viewModel.isExporting
+            || viewModel.isUpdatingCrop
             || viewModel.timelineItems.isEmpty
         )
         .accessibilityLabel(

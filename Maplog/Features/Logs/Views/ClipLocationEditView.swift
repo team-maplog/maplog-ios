@@ -17,18 +17,19 @@ struct ClipLocationEditView: View {
 
     var body: some View {
 
-        VStack(
-            alignment: .leading,
-            spacing: MaplogSpacing.section
-        ) {
-            clipSummary
-            locationMap
-            locationInformation
+        ScrollView {
+            VStack(
+                alignment: .leading,
+                spacing: MaplogSpacing.section
+            ) {
+                clipSummary
+                locationMap
+                locationInformation
+            }
+            .maplogPagePadding()
+            .padding(.top, MaplogSpacing.pageTop)
+            .padding(.bottom, MaplogSpacing.section)
         }
-        .maplogPagePadding()
-        .padding(.top, MaplogSpacing.pageTop)
-        .padding(.bottom, MaplogSpacing.section)
-
         .navigationTitle("클립 장소 수정")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
@@ -43,24 +44,24 @@ struct ClipLocationEditView: View {
             }
         }
         .maplogScreenSurface()
-            .maplogNavigationAppearance()
-            .safeAreaInset(edge: .bottom) {
-                PrimaryActionButton(
-                    "이 위치로 저장",
-                    systemImage: "checkmark",
-                    isEnabled: viewModel.canSave,
-                    action: onSave
-                )
-                .padding(.horizontal, MaplogSpacing.page)
-                .padding(.vertical, MaplogSpacing.small)
-                .background(Color.maplogSurface)
-            }
-            .task {
-                viewModel.resolveInitialLocationIfNeeded()
-            }
-            .onDisappear {
-                viewModel.cancelLocationResolution()
-            }
+        .maplogNavigationAppearance()
+        .safeAreaInset(edge: .bottom) {
+            PrimaryActionButton(
+                "이 위치로 저장",
+                systemImage: "checkmark",
+                isEnabled: viewModel.canSave,
+                action: onSave
+            )
+            .padding(.horizontal, MaplogSpacing.page)
+            .padding(.vertical, MaplogSpacing.small)
+            .background(Color.maplogSurface)
+        }
+        .task {
+            viewModel.resolveInitialLocationIfNeeded()
+        }
+        .onDisappear {
+            viewModel.cancelLocationResolution()
+        }
     }
 
     private var clipSummary: some View {
@@ -89,51 +90,40 @@ struct ClipLocationEditView: View {
         .maplogCard()
     }
 
-    @ViewBuilder
     private var locationMap: some View {
-        if let location = viewModel.selectedLocation {
-            ClipLocationPickerMap(location: location) { latitude, longitude in
-                viewModel.selectLocation(
-                    latitude: latitude,
-                    longitude: longitude
-                )
+        VStack(spacing: MaplogSpacing.small) {
+            ClipLocationPickerMap(location: viewModel.mapLocation) { latitude, longitude in
+                viewModel.selectLocation(latitude: latitude, longitude: longitude)
             }
             .frame(height: 300)
             .overlay(alignment: .topLeading) {
                 Text("지도를 움직여 핀 아래 위치를 맞춰주세요")
                     .font(MaplogFont.caption)
-                    .foregroundStyle(Color.maplogTextPrimary)
-                    .padding(.horizontal, MaplogSpacing.small)
-                    .padding(.vertical, MaplogSpacing.xSmall)
+                    .padding(MaplogSpacing.small)
                     .background(.ultraThinMaterial, in: Capsule())
                     .padding(MaplogSpacing.small)
                     .allowsHitTesting(false)
             }
-            .clipShape(
-                RoundedRectangle(
-                    cornerRadius: MaplogRadius.xLarge,
-                    style: .continuous
-                )
-            )
+            .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.xLarge))
             .accessibilityLabel("클립 장소 선택 지도")
-        } else {
-            VStack(spacing: MaplogSpacing.small) {
-                Image(systemName: "mappin.slash")
-                    .font(.system(size: 30, weight: .semibold))
-                    .foregroundStyle(Color.maplogTextTertiary)
 
-                Text("촬영 위치가 없어요")
-                    .font(MaplogFont.bodyStrong)
-                    .foregroundStyle(Color.maplogTextPrimary)
-
-                Text("다음 단계에서 지도에서 직접 위치를 선택할 수 있어요.")
+            if viewModel.selectedLocation == nil {
+                Text("촬영 위치가 없어요. 지도에서 장소를 직접 선택해 주세요.")
                     .font(MaplogFont.callout)
-                    .foregroundStyle(Color.maplogTextSecondary)
-                    .multilineTextAlignment(.center)
+                Button("현재 핀 위치 선택") {
+                    viewModel.selectLocation(
+                        latitude: viewModel.mapLocation.latitude,
+                        longitude: viewModel.mapLocation.longitude
+                    )
+                }
+                .buttonStyle(MaplogButtonStyle(variant: .secondary))
             }
-            .frame(maxWidth: .infinity)
-            .frame(height: 300)
-            .maplogCard()
+            if let error = viewModel.locationResolutionError {
+                Text(error.message)
+                    .font(MaplogFont.caption)
+                    .foregroundStyle(Color.maplogDanger)
+                Button("주소 다시 확인") { viewModel.retryLocationResolution() }
+            }
         }
     }
 

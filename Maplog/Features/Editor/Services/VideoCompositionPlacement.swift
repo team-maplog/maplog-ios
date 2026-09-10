@@ -22,7 +22,8 @@ enum VideoCompositionPlacement {
     static func make(
         for sourceVideoTrack: AVAssetTrack,
         in destinationFrame: CGRect,
-        contentMode: VideoSlotContentMode
+        contentMode: VideoSlotContentMode,
+        crop: VideoClipCrop = VideoClipCrop()
     ) async throws -> VideoPlacement {
         let naturalSize = try await sourceVideoTrack.load(.naturalSize)
         let preferredTransform = try await sourceVideoTrack.load(
@@ -44,7 +45,6 @@ enum VideoCompositionPlacement {
             throw VideoExportServiceError.sourceVideoUnavailable
         }
 
-        let sourceAspectRatio = orientedWidth / orientedHeight
         let destinationAspectRatio = destinationFrame.width
             / destinationFrame.height
 
@@ -57,24 +57,9 @@ enum VideoCompositionPlacement {
             sourceCropRect = nil
 
         case .fill:
-            let orientedCropSize: CGSize
-            if sourceAspectRatio > destinationAspectRatio {
-                orientedCropSize = CGSize(
-                    width: orientedHeight * destinationAspectRatio,
-                    height: orientedHeight
-                )
-            } else {
-                orientedCropSize = CGSize(
-                    width: orientedWidth,
-                    height: orientedWidth / destinationAspectRatio
-                )
-            }
-
-            orientedSourceRect = CGRect(
-                x: transformedBounds.midX - orientedCropSize.width / 2,
-                y: transformedBounds.midY - orientedCropSize.height / 2,
-                width: orientedCropSize.width,
-                height: orientedCropSize.height
+            orientedSourceRect = crop.sourceRect(
+                in: transformedBounds,
+                destinationAspectRatio: destinationAspectRatio
             )
 
             let sourceBounds = CGRect(origin: .zero, size: naturalSize)
