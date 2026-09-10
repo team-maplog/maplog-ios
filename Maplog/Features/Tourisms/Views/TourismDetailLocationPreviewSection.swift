@@ -43,7 +43,7 @@ struct TourismDetailLocationPreviewSection: View {
                     )
 
                     HStack(spacing: MaplogSpacing.xSmall) {
-                        MaplogPinGlyphIcon(size: MaplogSize.iconSmall)
+                        MaplogPinGlyphIcon(size: 14)
                         Text("지도 크게 보기")
                         Image(systemName: "arrow.up.right")
                     }
@@ -73,7 +73,7 @@ struct TourismDetailLocationPreviewSection: View {
             if let addressText {
                 MaplogLocationLabel(
                     title: addressText,
-                    pinSize: MaplogSize.iconSmall
+                    pinSize: 14
                 )
                 .font(MaplogFont.callout)
                 .foregroundStyle(Color.maplogTextSecondary)

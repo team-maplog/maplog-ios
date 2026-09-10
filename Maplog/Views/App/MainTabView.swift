@@ -587,17 +587,17 @@ struct MaplogTabBar: View {
         Group {
             if #available(iOS 26, *) {
                 compactTabBarContent
-                    .background(.white.opacity(0.62), in: Capsule())
+                    .background(.white.opacity(0.28), in: Capsule())
                     .glassEffect( // .regular → 조금 더 안정적·읽기 쉬운 기본 유리 .clear   → 배경이 더 비치는 맑은 유리
                         .regular.interactive(),
                         in: Capsule())
             } else {
                 compactTabBarContent
-                    .background(.white.opacity(0.62), in: Capsule())
+                    .background(.white.opacity(0.28), in: Capsule())
                     .background(.ultraThinMaterial, in: Capsule())
                     .overlay {
                         Capsule()
-                            .strokeBorder(Color.white.opacity(0.62), lineWidth: 1)
+                            .strokeBorder(Color.white.opacity(0.28), lineWidth: 1)
                     }
                     .clipShape(Capsule())
                     .shadow(

@@ -13,91 +13,92 @@ struct TourismMapMarkerVisualStyle {
 }
 
 enum TourismMapMarkerAppearance {
+    // 카테고리는 색상으로 구분하되 시그니처 라임과 어울리는 선명한 채도를 사용합니다.
     static func style(
         for category: TourismMapCategory
     ) -> TourismMapMarkerVisualStyle {
         switch category {
         case .all:
             return TourismMapMarkerVisualStyle(
-                color: color(0x718BAA),
+                color: color(0x2878F0),
                 symbolName: "sparkles"
             )
 
         case .events:
             return TourismMapMarkerVisualStyle(
-                color: color(0x9387B6),
+                color: color(0x794DFF),
                 symbolName: "calendar"
             )
 
         case .festival:
             return TourismMapMarkerVisualStyle(
-                color: color(0x9387B6),
+                color: color(0x794DFF),
                 symbolName: "sparkles"
             )
 
         case .performance:
             return TourismMapMarkerVisualStyle(
-                color: color(0xA18CAF),
+                color: color(0xB737F0),
                 symbolName: "music.note"
             )
 
         case .event:
             return TourismMapMarkerVisualStyle(
-                color: color(0x7F8FB7),
+                color: color(0x4964F5),
                 symbolName: "calendar.badge.star"
             )
 
         case .accommodation:
             return TourismMapMarkerVisualStyle(
-                color: color(0x718BAA),
+                color: color(0x2878F0),
                 symbolName: "bed.double.fill"
             )
 
         case .food:
             return TourismMapMarkerVisualStyle(
-                color: color(0xBC826C),
+                color: color(0xF56A24),
                 symbolName: "fork.knife"
             )
 
         case .shopping:
             return TourismMapMarkerVisualStyle(
-                color: color(0xB78298),
+                color: color(0xF03C86),
                 symbolName: "bag.fill"
             )
 
         case .recommendedCourse:
             return TourismMapMarkerVisualStyle(
-                color: color(0x749B9D),
+                color: color(0x00ACA7),
                 symbolName: "signpost.right.and.left.fill"
             )
 
         case .experienceTourism:
             return TourismMapMarkerVisualStyle(
-                color: color(0xAF9069),
+                color: color(0xEFA900),
                 symbolName: "figure.hiking"
             )
 
         case .historyTourism:
             return TourismMapMarkerVisualStyle(
-                color: color(0x978472),
+                color: color(0xC77B15),
                 symbolName: "building.columns.fill"
             )
 
         case .leisureSports:
             return TourismMapMarkerVisualStyle(
-                color: color(0x68958B),
+                color: color(0x00AD7B),
                 symbolName: "figure.run"
             )
 
         case .natureTourism:
             return TourismMapMarkerVisualStyle(
-                color: color(0x7D9A7C),
+                color: color(0x75C900),
                 symbolName: "leaf.fill"
             )
 
         case .culturalTourism:
             return TourismMapMarkerVisualStyle(
-                color: color(0xA783A2),
+                color: color(0xDB39BD),
                 symbolName: "paintpalette.fill"
             )
 
