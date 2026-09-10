@@ -228,11 +228,11 @@ final class HomeMapPanelViewModel: ObservableObject {
     }
 
     private func displayPlaceName(
-        from placeName: String
+        from placeName: String?
     ) -> String {
-        let trimmedName = placeName.trimmingCharacters(
+        let trimmedName = placeName?.trimmingCharacters(
             in: .whitespacesAndNewlines
-        )
+        ) ?? ""
 
         return trimmedName.isEmpty
             ? "이름 없는 장소"

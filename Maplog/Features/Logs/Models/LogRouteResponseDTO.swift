@@ -25,7 +25,8 @@ struct RoutePointResponseDTO: Decodable {
     let startTimeMillis: Int64
     let endTimeMillis: Int64
 
-    let placeName: String
+    // 수동으로 좌표와 주소만 지정한 클립은 장소명이 없을 수 있다.
+    let placeName: String?
     let address: String
     let latitude: Double
     let longitude: Double
