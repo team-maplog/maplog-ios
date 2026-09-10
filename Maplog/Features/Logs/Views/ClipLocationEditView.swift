@@ -17,18 +17,23 @@ struct ClipLocationEditView: View {
 
     var body: some View {
 
-        ScrollView {
-            VStack(
-                alignment: .leading,
-                spacing: MaplogSpacing.section
-            ) {
-                clipSummary
+        GeometryReader { geometry in
+            VStack(spacing: MaplogSpacing.medium) {
+                // 지도는 바깥 ScrollView에 넣지 않아 이동·핀치가 화면 스크롤과 경쟁하지 않는다.
                 locationMap
-                locationInformation
+                    .frame(height: min(360, max(180, geometry.size.height * 0.48)))
+
+                ScrollView {
+                    VStack(alignment: .leading, spacing: MaplogSpacing.section) {
+                        clipSummary
+                        locationSelectionStatus
+                        locationInformation
+                    }
+                    .padding(.bottom, MaplogSpacing.section)
+                }
             }
             .maplogPagePadding()
-            .padding(.top, MaplogSpacing.pageTop)
-            .padding(.bottom, MaplogSpacing.section)
+            .padding(.top, MaplogSpacing.small)
         }
         .navigationTitle("클립 장소 수정")
         .navigationBarTitleDisplayMode(.inline)
@@ -91,22 +96,23 @@ struct ClipLocationEditView: View {
     }
 
     private var locationMap: some View {
-        VStack(spacing: MaplogSpacing.small) {
-            ClipLocationPickerMap(location: viewModel.mapLocation) { latitude, longitude in
-                viewModel.selectLocation(latitude: latitude, longitude: longitude)
-            }
-            .frame(height: 300)
-            .overlay(alignment: .topLeading) {
-                Text("지도를 움직여 핀 아래 위치를 맞춰주세요")
-                    .font(MaplogFont.caption)
-                    .padding(MaplogSpacing.small)
-                    .background(.ultraThinMaterial, in: Capsule())
-                    .padding(MaplogSpacing.small)
-                    .allowsHitTesting(false)
-            }
-            .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.xLarge))
-            .accessibilityLabel("클립 장소 선택 지도")
+        ClipLocationPickerMap(location: viewModel.mapLocation) { latitude, longitude in
+            viewModel.selectLocation(latitude: latitude, longitude: longitude)
+        }
+        .overlay(alignment: .topLeading) {
+            Text("두 손가락으로 확대·축소하고 지도를 움직여 선택하세요")
+                .font(MaplogFont.caption)
+                .padding(MaplogSpacing.small)
+                .background(.ultraThinMaterial, in: Capsule())
+                .padding(MaplogSpacing.small)
+                .allowsHitTesting(false)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: MaplogRadius.xLarge))
+        .accessibilityLabel("클립 장소 선택 지도")
+    }
 
+    private var locationSelectionStatus: some View {
+        VStack(alignment: .leading, spacing: MaplogSpacing.small) {
             if viewModel.selectedLocation == nil {
                 Text("촬영 위치가 없어요. 지도에서 장소를 직접 선택해 주세요.")
                     .font(MaplogFont.callout)

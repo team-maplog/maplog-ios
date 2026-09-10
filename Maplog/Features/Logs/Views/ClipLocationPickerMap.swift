@@ -209,6 +209,10 @@ private struct ClipLocationPickerMapRepresentable: UIViewRepresentable {
                 }
 
                 mapView.eventDelegate = self
+                mapView.setGestureEnable(type: .pan, enable: true)
+                mapView.setGestureEnable(type: .zoom, enable: true)
+                mapView.setGestureEnable(type: .doubleTapZoomIn, enable: true)
+                mapView.setGestureEnable(type: .twoFingerTapZoomOut, enable: true)
 
                 if let size = viewContainer?.bounds.size {
                     applyMapLayoutIfReady(size)
@@ -284,7 +288,7 @@ private struct ClipLocationPickerMapRepresentable: UIViewRepresentable {
 
             let cameraUpdate = CameraUpdate.make(
                 target: position,
-                zoomLevel: 15,
+                zoomLevel: mapView.zoomLevel,
                 mapView: mapView
             )
 
