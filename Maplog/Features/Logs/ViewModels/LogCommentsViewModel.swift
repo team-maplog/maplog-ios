@@ -53,6 +53,22 @@ final class LogCommentsViewModel: ObservableObject {
         return comments
     }
 
+    func notificationScrollTarget(_ commentID: Int64?) -> Int64? {
+        guard let commentID, let comment = comments.first(where: { $0.id == commentID }),
+              !comment.isDeleted else { return nil }
+        return comment.id
+    }
+
+    func isRequestedCommentUnavailable(_ commentID: Int64?) -> Bool {
+        guard commentID != nil else { return false }
+        switch state {
+        case .content, .empty:
+            return notificationScrollTarget(commentID) == nil
+        default:
+            return false
+        }
+    }
+
     /// 삭제된 부모 댓글은 답글의 문맥을 위해 남겨둘 수 있지만 댓글 수에는 포함하지 않습니다.
     var activeCommentCount: Int {
         comments.filter { !$0.isDeleted }.count

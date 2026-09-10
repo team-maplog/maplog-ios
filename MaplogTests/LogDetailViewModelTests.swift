@@ -34,6 +34,24 @@ final class LogDetailViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.detail?.caption, "수정한 캡션")
     }
 
+    func testCommentNotificationDoesNotAutoplayButAllowsManualPlayback() async {
+        let playback = VideoPlaybackServiceStub()
+        let model = LogDetailViewModel(
+            logID: 501,
+            logDetailRepository: LogDetailRepositoryStub(detail: makeDetail()),
+            logMediaRepository: LogMediaRepositoryStub(),
+            playbackService: playback,
+            automaticallyPlays: false
+        )
+        await model.loadIfNeeded()
+        XCTAssertEqual(model.state, .content)
+        XCTAssertEqual(playback.playCallCount, 0)
+        XCTAssertFalse(model.isPlaying)
+        model.togglePlayback()
+        XCTAssertEqual(playback.playCallCount, 1)
+        XCTAssertTrue(model.isPlaying)
+    }
+
     func testSaveCaptionRejectsWhitespaceOnlyInput() async {
         let repository = LogDetailRepositoryStub(detail: makeDetail())
         let viewModel = LogDetailViewModel(

@@ -56,7 +56,7 @@ enum MaplogNotificationKind: Equatable, Sendable {
     }
 }
 
-enum MaplogNotificationDestination: Equatable, Sendable {
+enum MaplogNotificationDestination: Hashable, Sendable {
     case logDetail(logID: Int64, commentID: Int64?)
     case userProfile(userID: UUID)
     case inbox

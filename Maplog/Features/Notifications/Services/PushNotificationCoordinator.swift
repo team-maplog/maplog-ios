@@ -3,12 +3,22 @@ import UIKit
 import UserNotifications
 
 @MainActor
-final class PushNotificationCoordinator: ObservableObject {
+protocol PushNotificationSessionManaging {
+    func prepareForSignOut() async throws
+    func resumeAfterSignOutAttempt() async
+}
+
+@MainActor
+final class PushNotificationCoordinator: ObservableObject, PushNotificationSessionManaging {
     @Published private(set) var authorizationStatus: UNAuthorizationStatus = .notDetermined
 
     private let notificationRepository: any NotificationRepository
     private let authenticationState: any AuthenticationStateProviding
     private let tokenStore: any PushNotificationTokenStoring
+    private var isSigningOut = false
+    private var registrationTask: Task<Void, Error>?
+    private var registrationID: UUID?
+
     private let onNavigate: (MaplogNotificationDestination) -> Void
 
     init(
@@ -27,6 +37,10 @@ final class PushNotificationCoordinator: ObservableObject {
         authorizationStatus = await UNUserNotificationCenter.current()
             .notificationSettings()
             .authorizationStatus
+        // 이미 허용한 기기는 재실행·설정 복귀 때도 APNs에 등록해 새 기기 토큰을 받습니다.
+        if authorizationStatus == .authorized || authorizationStatus == .provisional {
+            UIApplication.shared.registerForRemoteNotifications()
+        }
     }
 
     /// 권한은 앱 실행 직후가 아니라 사용자가 알림 목록을 열었을 때 요청합니다.
@@ -34,20 +48,14 @@ final class PushNotificationCoordinator: ObservableObject {
         await refreshAuthorizationStatus()
 
         guard authorizationStatus == .notDetermined else {
-            if authorizationStatus == .authorized || authorizationStatus == .provisional {
-                UIApplication.shared.registerForRemoteNotifications()
-            }
             return
         }
 
         do {
-            let granted = try await UNUserNotificationCenter.current()
+            _ = try await UNUserNotificationCenter.current()
                 .requestAuthorization(options: [.alert, .badge, .sound])
             await refreshAuthorizationStatus()
 
-            if granted {
-                UIApplication.shared.registerForRemoteNotifications()
-            }
         } catch {
             await refreshAuthorizationStatus()
         }
@@ -68,47 +76,52 @@ final class PushNotificationCoordinator: ObservableObject {
     }
 
     func syncCachedTokenIfAuthenticated() async {
-        guard authenticationState.isAuthenticated else {
-            return
-        }
-
-        do {
-            guard let fcmToken = try tokenStore.fcmToken(), !fcmToken.isEmpty else {
-                return
-            }
-
-            let registration = FCMTokenRegistration(
+        guard authenticationState.isAuthenticated, !isSigningOut else { return }
+        let previousTask = registrationTask
+        let requestID = UUID()
+        // 각 등록을 앞 요청 뒤에 연결해 빠른 토큰 갱신과 로그아웃도 같은 순서를 따릅니다.
+        let task = Task { [self] in
+            if let previousTask { _ = try? await previousTask.value }
+            guard authenticationState.isAuthenticated, !isSigningOut else { return }
+            guard let token = try tokenStore.fcmToken(), !token.isEmpty else { return }
+            try await notificationRepository.registerFCMToken(FCMTokenRegistration(
                 deviceID: try tokenStore.deviceID(),
-                fcmToken: fcmToken
-            )
-            try await notificationRepository.registerFCMToken(registration)
-        } catch {
-            // 네트워크 실패 시 Keychain의 token을 남겨 두고 다음 로그인·foreground에서 재시도합니다.
+                fcmToken: token
+            ))
         }
+        registrationTask = task
+        registrationID = requestID
+        defer {
+            if registrationID == requestID {
+                registrationTask = nil
+                registrationID = nil
+            }
+        }
+        // 실패한 토큰은 Keychain에 남겨 다음 로그인·foreground에서 재시도합니다.
+        _ = try? await task.value
     }
 
-    func unregisterCurrentDevice() async {
-        guard authenticationState.isAuthenticated else {
-            return
+    func prepareForSignOut() async throws {
+        isSigningOut = true
+        // 등록이 삭제보다 늦게 끝나면 로그아웃한 기기가 다시 등록될 수 있어 먼저 기다립니다.
+        if let registrationTask {
+            _ = try? await registrationTask.value
         }
+        guard authenticationState.isAuthenticated else { return }
+        try await notificationRepository.unregisterFCMToken(deviceID: tokenStore.deviceID())
+        // FCM 토큰은 로그인 토큰이 아닙니다. 같은 기기의 다음 로그인에 재등록하도록 보관합니다.
+    }
 
-        do {
-            let deviceID = try tokenStore.deviceID()
-            try await notificationRepository.unregisterFCMToken(deviceID: deviceID)
-            try tokenStore.removeFCMToken()
-        } catch {
-            // 로컬 token은 다음 로그인에서 다시 동기화할 수 있도록 유지합니다.
-        }
+    func resumeAfterSignOutAttempt() async {
+        isSigningOut = false
+        // 서버 로그아웃에 실패해 세션이 남았다면 앞서 해제한 기기를 다시 연결합니다.
+        await syncCachedTokenIfAuthenticated()
     }
 
     func handleRemoteNotification(userInfo: [AnyHashable: Any]) {
         handleForegroundNotification()
 
-        guard let destination = destination(from: userInfo) else {
-            return
-        }
-
-        onNavigate(destination)
+        onNavigate(destination(from: userInfo) ?? .inbox)
     }
 
     /// 앱이 열려 있을 때는 화면을 갑자기 전환하지 않고,
@@ -123,18 +136,22 @@ final class PushNotificationCoordinator: ObservableObject {
     private func destination(
         from userInfo: [AnyHashable: Any]
     ) -> MaplogNotificationDestination? {
+        if let version = stringValue(for: "schemaVersion", in: userInfo), version != "1" {
+            return nil
+        }
         let route = stringValue(for: "route", in: userInfo)
 
         switch route {
         case "LOG_DETAIL":
             guard let logIDString = stringValue(for: "logId", in: userInfo),
-                  let logID = Int64(logIDString)
+                  let logID = Int64(logIDString), logID > 0
             else {
                 return nil
             }
 
-            let commentID = stringValue(for: "commentId", in: userInfo)
-                .flatMap(Int64.init)
+            let commentValue = stringValue(for: "commentId", in: userInfo)
+            let commentID = commentValue.flatMap(Int64.init)
+            if commentValue != nil, commentID == nil || (commentID ?? 0) <= 0 { return nil }
             return .logDetail(logID: logID, commentID: commentID)
 
         case "USER_PROFILE":

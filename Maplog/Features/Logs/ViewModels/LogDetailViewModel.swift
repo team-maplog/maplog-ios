@@ -31,6 +31,7 @@ final class LogDetailViewModel: ObservableObject {
 
     let player: AVPlayer
 
+    private let automaticallyPlays: Bool
     private let logID: Int64
     private let logDetailRepository: any LogDetailRepository
     private let logMediaRepository: any LogMediaRepository
@@ -40,8 +41,10 @@ final class LogDetailViewModel: ObservableObject {
         logID: Int64,
         logDetailRepository: any LogDetailRepository,
         logMediaRepository: any LogMediaRepository,
-        playbackService: any VideoPlaybackService
+        playbackService: any VideoPlaybackService,
+        automaticallyPlays: Bool = true
     ) {
+        self.automaticallyPlays = automaticallyPlays
         self.logID = logID
         self.logDetailRepository = logDetailRepository
         self.logMediaRepository = logMediaRepository
@@ -145,8 +148,10 @@ final class LogDetailViewModel: ObservableObject {
             }
             // AVPlayerLooper는 "반복"만 담당합니다. 실제 재생 시작은 별도로
             // 요청해야 하므로, 상세 진입 직후에도 영상이 자동으로 재생됩니다.
-            playbackService.play()
-            isPlaying = true
+            if automaticallyPlays {
+                playbackService.play()
+                isPlaying = true
+            }
         } catch is CancellationError {
             return
         } catch {

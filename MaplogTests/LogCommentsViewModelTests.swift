@@ -69,6 +69,20 @@ final class LogCommentsViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.comments.map(\.id), [1])
     }
 
+    func testNotificationTargetsReplyAndReportsMissingOrDeletedComment() async {
+        let model = makeViewModel(comments: [
+            makeComment(id: 1), makeComment(id: 2, parentCommentID: 1),
+            makeComment(id: 3, isDeleted: true)
+        ])
+        XCTAssertFalse(model.isRequestedCommentUnavailable(2))
+        await model.loadInitialComments()
+        XCTAssertEqual(model.notificationScrollTarget(2), 2)
+        XCTAssertFalse(model.isRequestedCommentUnavailable(2))
+        XCTAssertTrue(model.isRequestedCommentUnavailable(3))
+        XCTAssertTrue(model.isRequestedCommentUnavailable(99))
+        XCTAssertFalse(model.isRequestedCommentUnavailable(nil))
+    }
+
     private func makeViewModel(
         comments: [LogComment],
         onCommentCountChange: @escaping (Int64) -> Void = { _ in }

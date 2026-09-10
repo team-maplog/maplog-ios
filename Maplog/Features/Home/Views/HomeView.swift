@@ -48,14 +48,13 @@ struct HomeView: View {
     let profileRepository: any ProfileRepository
     let followRepository: any FollowRepository
     let homeSearchRepository: any HomeSearchRepository
-    let notificationRepository: any NotificationRepository
-    let pushNotificationCoordinator: PushNotificationCoordinator
     let logReelRepository: any LogReelRepository
     let logMediaRepository: any LogMediaRepository
     let topSafeAreaInset: CGFloat // 전체 화면 높이는 고정하고 홈 콘텐츠만 상태바 아래에서 시작하기 위한 값
     let onShowAllTourisms: () -> Void
     let onShowTourismDetail: (Int64) -> Void
     let onShowLogDetail: (Int64) -> Void
+    let onShowNotifications: () -> Void
     /// 작성자 선택만 상위에 알리고, 공개 프로필 화면 생성과 의존성 주입은 Composition Root가 담당한다.
     let onShowAuthorProfile: (HomeReelViewData) -> Void
     let onShowPublicProfile: (FollowUser) -> Void
@@ -1174,6 +1173,18 @@ struct HomeView: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("검색")
+
+            Button(action: onShowNotifications) {
+                Image(systemName: "bell")
+                    .font(.system(size: 19, weight: .semibold))
+                    .foregroundStyle(Color.maplogInk)
+                    .frame(width: MaplogSize.minimumTapTarget, height: MaplogSize.minimumTapTarget)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("알림")
+            .accessibilityHint("서버에 저장된 알림 목록을 엽니다")
+            .accessibilityIdentifier("home.notifications")
         }
     }
 
@@ -1207,75 +1218,6 @@ struct HomeView: View {
             withAnimation(.easeOut(duration: 0.20)) {
                 saveToastText = nil
             }
-        }
-    }
-
-    private var greetingHeader: some View {
-        HStack(alignment: .center) {
-            VStack(alignment: .leading, spacing: 7) {
-                Button {
-                    if !sessionStore.locationPermissionStatus.isAllowed {
-                        showsLocationPermissionPrompt = true
-                    }
-                } label: {
-                    HStack(spacing: 4) {
-                        Text(sessionStore.locationPermissionStatus.isAllowed ? "서울 성수동" : "위치 설정 필요")
-                            .font(.system(size: 17, weight: .semibold))
-                        Image(systemName: sessionStore.locationPermissionStatus.isAllowed ? "chevron.down" : "location.slash.fill")
-                            .font(.system(size: 11, weight: .bold))
-                    }
-                    .foregroundStyle(sessionStore.locationPermissionStatus.isAllowed ? Color.maplogMuted : Color.maplogOlive)
-                }
-                .buttonStyle(.plain)
-
-                Text("좋은 저녁이에요!")
-                    .font(.system(size: 24, weight: .bold))
-                    .foregroundStyle(Color.maplogInk)
-            }
-            Spacer()
-            NavigationLink {
-                NotificationInboxFeatureView(
-                    notificationRepository: notificationRepository,
-                    pushNotificationCoordinator: pushNotificationCoordinator,
-                    onOpenNotification: openNotification
-                )
-            } label: {
-                Image(systemName: "bell.fill")
-                    .font(.system(size: 20, weight: .bold))
-                    .foregroundStyle(Color.maplogPrimary)
-                    .frame(
-                        width: MaplogSize.minimumTapTarget,
-                        height: MaplogSize.minimumTapTarget
-                    )
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("알림")
-        }
-    }
-
-    private func openNotification(_ notification: MaplogNotification) {
-        switch notification.destination {
-        case let .logDetail(logID, _):
-            onShowLogDetail(logID)
-
-        case let .userProfile(userID):
-            guard let nickname = notification.actor?.nickname,
-                  !nickname.isEmpty
-            else {
-                return
-            }
-
-            onShowPublicProfile(
-                FollowUser(
-                    id: userID,
-                    nickname: nickname,
-                    profileImageURL: notification.actor?.profileImageURL
-                )
-            )
-
-        case .inbox:
-            return
         }
     }
 

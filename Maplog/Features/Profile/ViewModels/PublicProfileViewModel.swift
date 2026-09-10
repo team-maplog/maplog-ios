@@ -114,6 +114,14 @@ final class PublicProfileViewModel: ObservableObject {
                 return
             }
 
+            // 알림을 받은 뒤 닉네임의 소유자가 바뀌었어도 다른 사람의 프로필을 열지 않습니다.
+            guard publicProfile.id == routeUser.id else {
+                state = .failed(ErrorPresentation(
+                    message: "사용자 정보가 변경되었어요. 알림 목록이나 검색에서 다시 확인해 주세요.",
+                    recoveryAction: .none
+                ))
+                return
+            }
             loadedProfile = publicProfile
             profile = makeHeaderViewData(from: publicProfile)
             isFollowing = publicProfile.isFollowedByViewer
