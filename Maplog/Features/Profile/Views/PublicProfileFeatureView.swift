@@ -372,7 +372,10 @@ private struct PublicProfileLogCard: View {
                     )
                 )
                 .overlay(alignment: .bottomLeading) {
-                    Label(log.viewCountText, systemImage: "eye.fill")
+                    HStack(spacing: MaplogSpacing.xxxSmall) {
+                        MaplogViewCountGlyphIcon(size: 14)
+                        Text(log.viewCountText)
+                    }
                         .font(.caption2.weight(.medium))
                         .foregroundStyle(.white)
                         .shadow(color: .black.opacity(0.64), radius: 2, x: 0, y: 1)
