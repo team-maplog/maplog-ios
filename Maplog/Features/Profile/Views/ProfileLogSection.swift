@@ -118,6 +118,9 @@ struct ProfileLogSection: View {
 }
 
 private struct ProfileLogCard: View {
+    /// 2열 그리드의 폭이 기기마다 달라져도 세로형 썸네일 비율을 유지합니다.
+    private static let thumbnailAspectRatio: CGFloat = 4 / 5
+
     let log: ProfileLogCardViewData
     let thumbnailData: Data?
     let isLoadingThumbnail: Bool
@@ -125,32 +128,32 @@ private struct ProfileLogCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             thumbnail
-            .frame(height: 164)
-            .clipShape(
-                RoundedRectangle(
-                    cornerRadius: 16,
-                    style: .continuous
+                .aspectRatio(Self.thumbnailAspectRatio, contentMode: .fit)
+                .clipShape(
+                    RoundedRectangle(
+                        cornerRadius: 16,
+                        style: .continuous
+                    )
                 )
-            )
-            .overlay(alignment: .bottomLeading) {
-                Label(log.viewCountText, systemImage: "eye.fill")
-                    .font(.caption2.weight(.medium))
-                    .foregroundStyle(.white)
-                    .shadow(color: .black.opacity(0.64), radius: 2, x: 0, y: 1)
-                    .padding(8)
-            }
-            .overlay(alignment: .bottomTrailing) {
-                Text(log.durationText)
-                    .font(.caption2.weight(.medium))
-                    .foregroundStyle(.white)
-                    .shadow(color: .black.opacity(0.64), radius: 2, x: 0, y: 1)
-                    .padding(8)
-            }
+                .overlay(alignment: .bottomLeading) {
+                    Label(log.viewCountText, systemImage: "eye.fill")
+                        .font(.caption2.weight(.medium))
+                        .foregroundStyle(.white)
+                        .shadow(color: .black.opacity(0.64), radius: 2, x: 0, y: 1)
+                        .padding(8)
+                }
+                .overlay(alignment: .bottomTrailing) {
+                    Text(log.durationText)
+                        .font(.caption2.weight(.medium))
+                        .foregroundStyle(.white)
+                        .shadow(color: .black.opacity(0.64), radius: 2, x: 0, y: 1)
+                        .padding(8)
+                }
 
             Text(log.addressText)
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(Color.maplogInk)
-                .lineLimit(2)
+                .lineLimit(2, reservesSpace: true)
 
             Text(log.createdAtText)
             .font(.caption2)
