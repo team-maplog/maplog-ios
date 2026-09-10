@@ -152,7 +152,10 @@ struct MaplogApp: App { // 앱의 조립 담당자
         //        → apiClient를 보관
         //        실제 객체는 사라지지 않음. Repository가 그 API Service를 가지고 있기 때문
         //        MaplogApp이 원래 가지고 있기로 선언한 저장 프로퍼티를 초기화하는 코드
-        self.tourismRepository = DefaultTourismRepository(apiService: apiService)
+        self.tourismRepository = DefaultTourismRepository(
+            apiService: apiService,
+            imageDataLoader: imageDataLoader
+        )
         self.cameraCaptureService = AVCameraCaptureService()
         self.mediaDraftRepository = FileMediaDraftRepository()
         self.videoThumbnailService = AVVideoThumbnailService()

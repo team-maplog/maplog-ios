@@ -4,7 +4,6 @@ private enum HomeFestivalCarouselLayout {
     static let cornerRadius: CGFloat = 18
     static let posterCornerRadius: CGFloat = 10
     static let cardWidth: CGFloat = 150
-    static let posterHeight: CGFloat = 246
     static let cardSpacing: CGFloat = 12
 }
 
@@ -1349,10 +1348,7 @@ struct HomeView: View {
                     Button {
                         onShowTourismDetail(card.id)
                     } label: {
-                        HomeTourismCarouselCard(
-                            card: card,
-                            posterURL: card.thumbnailURL
-                        )
+                        HomeTourismCarouselCard(card: card)
                     }
                     .buttonStyle(.plain)
                     .accessibilityHint("관광 상세 정보 보기")
@@ -1487,21 +1483,15 @@ struct HomeView: View {
 
 struct HomeTourismCarouselCard: View {
     let card: HomeTourismCardViewData
-    let posterURL: URL?
 
     @ScaledMetric(relativeTo: .subheadline)
     private var cardWidth = HomeFestivalCarouselLayout.cardWidth
 
-    private var posterHeight: CGFloat {
-        cardWidth * HomeFestivalCarouselLayout.posterHeight
-            / HomeFestivalCarouselLayout.cardWidth
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
             tourismThumbnail
-                // 썸네일 원본 비율과 관계없이 승인된 세로 카드 비율을 유지한다.
-                .frame(width: cardWidth, height: posterHeight)
+                // 폭만 정하고 높이는 이미지 비율을 따른다. 고정 높이로 확대하면 포스터 글자가 잘린다.
+                .frame(width: cardWidth, height: cardWidth / card.poster.aspectRatio)
                 .background(Color.maplogCanvas)
                 .clipShape(
                     RoundedRectangle(
@@ -1566,30 +1556,11 @@ struct HomeTourismCarouselCard: View {
 
     @ViewBuilder
     private var tourismThumbnail: some View {
-        if let posterURL {
-            // 이미지 한 장으로 프레임을 채우고 넘치는 영역은 카드 경계에서 자른다.
-            MaplogCachedRemoteImage(
-                url: posterURL,
-                cacheKey: "tourism-thumbnail-\(MaplogImageCacheKey.stableURL(posterURL))",
-                targetSize: CGSize(width: cardWidth, height: posterHeight),
-                contentMode: .fill
-            ) {
-                thumbnailPlaceholder
-            }
-            .id(posterURL)
-        } else {
-            thumbnailPlaceholder
+        if let image = UIImage(data: card.poster.data) {
+            Image(uiImage: image)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
         }
-    }
-
-    private var thumbnailPlaceholder: some View {
-        Color.maplogCanvas
-            .frame(width: cardWidth, height: posterHeight)
-            .overlay {
-                Image(systemName: "photo")
-                    .font(.title2)
-                    .foregroundStyle(Color.maplogMuted)
-            }
     }
 }
 

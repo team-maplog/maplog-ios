@@ -4,36 +4,80 @@ import XCTest
 
 @MainActor
 final class HomeTourismThumbnailTests: XCTestCase {
-    func testHomeUsesListThumbnailWithoutFetchingDetail() async {
+    func testHomeUsesApprovedOriginalInsteadOfListThumbnail() async throws {
         let repository = ThumbnailRepositoryStub()
         let viewModel = makeViewModel(repository)
         await viewModel.loadInitialTourisms()
-        guard case let .content(cards) = viewModel.tourismState else {
-            return XCTFail("Expected thumbnail card")
-        }
-        XCTAssertEqual(cards.first?.thumbnailURL, repository.thumbnailURL)
-        XCTAssertEqual(cards.first?.id, 1)
-        XCTAssertEqual(repository.detailRequests, 0)
+        guard case let .content(cards) = viewModel.tourismState else { return XCTFail("Expected original card") }
+        XCTAssertEqual(cards.map(\.id), [1])
+        XCTAssertEqual(cards.first?.poster.url, repository.original.url)
+        XCTAssertEqual(repository.imageRequests.sorted(), [1, 2])
     }
 
-    func testMissingThumbnailKeepsFestivalWithPlaceholder() async {
+    func testNoPortraitImagesProducesEmptyState() async {
         let repository = ThumbnailRepositoryStub()
-        repository.thumbnailURL = nil
-        let viewModel = makeViewModel(repository)
-        await viewModel.loadInitialTourisms()
-        guard case let .content(cards) = viewModel.tourismState else {
-            return XCTFail("Festival should remain available")
-        }
-        XCTAssertEqual(cards.count, 1)
-        XCTAssertNil(cards.first?.thumbnailURL)
-    }
-
-    func testEmptyListProducesEmptyState() async {
-        let repository = ThumbnailRepositoryStub()
-        repository.isEmpty = true
+        repository.approvedIDs = []
         let viewModel = makeViewModel(repository)
         await viewModel.loadInitialTourisms()
         XCTAssertEqual(viewModel.tourismState, .empty)
+    }
+
+    func testFilteredFirstPageContinuesToNextPage() async {
+        let repository = ThumbnailRepositoryStub()
+        repository.pages = [[1, 2], [3]]
+        repository.approvedIDs = [3]
+        let viewModel = makeViewModel(repository)
+        await viewModel.loadInitialTourisms()
+        guard case let .content(cards) = viewModel.tourismState else { return XCTFail("Expected second-page poster") }
+        XCTAssertEqual(cards.map(\.id), [3])
+        XCTAssertEqual(repository.pageRequests, 2)
+    }
+
+    func testCandidateScanStopsAfterThreePages() async {
+        let repository = ThumbnailRepositoryStub()
+        repository.pages = [[1], [2], [3], [4]]
+        repository.approvedIDs = [4]
+        let viewModel = makeViewModel(repository)
+        await viewModel.loadInitialTourisms()
+        XCTAssertEqual(viewModel.tourismState, .empty)
+        XCTAssertEqual(repository.pageRequests, 3)
+    }
+
+    func testOneFailedImageDoesNotRemoveSuccessfulCard() async {
+        let repository = ThumbnailRepositoryStub()
+        repository.failingIDs = [2]
+        let viewModel = makeViewModel(repository)
+        await viewModel.loadInitialTourisms()
+        guard case let .content(cards) = viewModel.tourismState else { return XCTFail("Expected surviving card") }
+        XCTAssertEqual(cards.map(\.id), [1])
+    }
+
+    func testAllImageRequestsFailShowsRetryInsteadOfEmpty() async {
+        let repository = ThumbnailRepositoryStub()
+        repository.failingIDs = [1, 2]
+        let viewModel = makeViewModel(repository)
+        await viewModel.loadInitialTourisms()
+        guard case let .failed(error) = viewModel.tourismState else { return XCTFail("Expected failure") }
+        XCTAssertEqual(error.recoveryAction, .retry)
+    }
+
+    func testCancellationRestoresIdleState() async {
+        let repository = ThumbnailRepositoryStub()
+        repository.error = CancellationError()
+        repository.failingIDs = [1, 2]
+        let viewModel = makeViewModel(repository)
+        await viewModel.loadInitialTourisms()
+        XCTAssertEqual(viewModel.tourismState, .idle)
+    }
+
+    func testAuthenticationFailureIsNotHiddenBySuccessfulCard() async {
+        let repository = ThumbnailRepositoryStub()
+        repository.error = APIError.missingAccessToken
+        repository.failingIDs = [2]
+        let viewModel = makeViewModel(repository)
+        await viewModel.loadInitialTourisms()
+        guard case let .failed(error) = viewModel.tourismState else { return XCTFail("Expected sign-in") }
+        XCTAssertEqual(error.recoveryAction, .signIn)
     }
 
     private func makeViewModel(_ repository: ThumbnailRepositoryStub) -> HomeViewModel {
@@ -44,19 +88,29 @@ final class HomeTourismThumbnailTests: XCTestCase {
     }
 }
 
+@MainActor
 private final class ThumbnailRepositoryStub: TourismRepository {
-    var thumbnailURL = URL(string: "https://example.invalid/list-thumbnail.jpg")
-    var detailRequests = 0
-    var isEmpty = false
+    let original = TourismPortraitImage(url: URL(string: "https://example.invalid/original.jpg")!,
+                                       data: Data([1]), width: 200, height: 300)!
+    var approvedIDs: Set<Int64> = [1]
+    var failingIDs: Set<Int64> = []
+    var error: Error = APIError.network(URLError(.notConnectedToInternet))
+    var imageRequests: [Int64] = []
+    var pageRequests = 0
+    var pages: [[Int64]] = [[1, 2]]
+    func fetchPortraitImage(tourismID: Int64) async throws -> TourismPortraitImage? {
+        imageRequests.append(tourismID)
+        if failingIDs.contains(tourismID) { throw error }
+        return approvedIDs.contains(tourismID) ? original : nil
+    }
     func fetchTourisms(category: TourismCategory, cursor: String?, size: Int) async throws -> TourismPage {
-        let items = isEmpty ? [] : [Tourism(id: 1, name: "축제", region: "서울", address: nil,
-            thumbnailURL: thumbnailURL, startDate: nil, endDate: nil, category: .events)]
-        return TourismPage(tourisms: items, hasNext: false, nextCursor: nil)
+        let index = cursor.flatMap(Int.init) ?? 0
+        pageRequests += 1
+        let items = pages[index].map { Tourism(id: $0, name: "축제", region: "서울", address: nil,
+            thumbnailURL: URL(string: "https://example.invalid/thumbnail.jpg"), startDate: nil, endDate: nil, category: .events) }
+        return TourismPage(tourisms: items, hasNext: index + 1 < pages.count, nextCursor: String(index + 1))
     }
-    func fetchTourismDetail(tourismID: Int64) async throws -> TourismDetail {
-        detailRequests += 1
-        throw URLError(.unsupportedURL)
-    }
+    func fetchTourismDetail(tourismID: Int64) async throws -> TourismDetail { fatalError("Repository resolves original") }
 }
 
 /// 관광 이미지 테스트에서 다른 기능의 네트워크·재생을 사용하지 않도록 막는다.

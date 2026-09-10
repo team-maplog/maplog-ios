@@ -45,7 +45,7 @@
 //- title: String
 //- locationText: String
 //- periodText: String
-//- thumbnailURL: URL?
+//- poster: 세로형 원본 이미지와 비율
 //View가 “판단·변환”하지 않고, 받은 값을 “표시”만 하게 만들기 위해서
 
 //region: String? → locationText: String, Date → periodText: String이라는 분명한 변환이 있으므로 HomeTourismCardViewData를 두는 게 좋음
@@ -112,7 +112,8 @@ final class HomeViewModel: ObservableObject {
 
 
             tourismState = cards.isEmpty ? .empty : .content(cards)
-        } catch is CancellationError { // CancellationError는 탭 이동처럼 화면이 사라져 요청이 취소된 정상 상황이므로 실패 UI로 바꾸지 않음, 실패 화면의 버튼은 retryInitialTourisms()를 호출하는 구조
+        } catch is CancellationError {
+            tourismState = .idle
             return
         } catch {
             tourismState = .failed(TourismErrorPolicy.presentation(for: error))
@@ -560,14 +561,81 @@ final class HomeViewModel: ObservableObject {
     // API 요청 + Domain Model을 ViewData로 변환
     private func fetchTourismCards() async throws
         -> [HomeTourismCardViewData] {
-        let page = try await tourismRepository.fetchTourisms(
-            category: .events,
-            cursor: nil,
-            size: 10
-        )
+        var cards: [HomeTourismCardViewData] = []
+        var cursor: String?
+        var seenCursors = Set<String>()
+        var seenIDs = Set<Int64>()
+        var firstFailure: Error?
 
-        return page.tourisms.map { tourism in
-            makeCardViewData(from: tourism)
+        // 필터링 후 첫 페이지가 비어도 다음 페이지를 확인하되 요청량은 30개 후보로 제한한다.
+        for _ in 0..<3 {
+            try Task.checkCancellation()
+            let page: TourismPage
+            do {
+                page = try await tourismRepository.fetchTourisms(category: .events, cursor: cursor, size: 10)
+            } catch {
+                try Task.checkCancellation()
+                if cards.isEmpty || TourismErrorPolicy.presentation(for: error).recoveryAction == .signIn {
+                    throw error
+                }
+                break
+            }
+            let candidates = page.tourisms.filter { seenIDs.insert($0.id).inserted }
+            let results = await fetchPortraitImages(for: candidates)
+            for (tourism, result) in zip(candidates, results) {
+                try Task.checkCancellation()
+                switch result {
+                case .success(let image):
+                    if let image {
+                        cards.append(makeCardViewData(from: tourism, poster: image))
+                    }
+                case .failure(let error):
+                    if error is CancellationError || TourismErrorPolicy.presentation(for: error).recoveryAction == .signIn {
+                        throw error
+                    }
+                    firstFailure = firstFailure ?? error
+                }
+            }
+            if cards.count >= 10 { break }
+            guard page.hasNext, let next = page.nextCursor, seenCursors.insert(next).inserted else { break }
+            cursor = next
+        }
+        // 일시적 조회 실패를 '세로 이미지 없음'으로 오인하지 않도록 재시도 상태를 남긴다.
+        if cards.isEmpty, let firstFailure { throw firstFailure }
+        return Array(cards.prefix(10))
+    }
+
+    private func fetchPortraitImages(for tourisms: [Tourism]) async -> [Result<TourismPortraitImage?, Error>] {
+        let repository = tourismRepository
+        return await withTaskGroup(of: (Int, Result<TourismPortraitImage?, Error>).self) { group in
+            var results = Array<Result<TourismPortraitImage?, Error>>(
+                repeating: .success(nil), count: tourisms.count
+            )
+            var nextIndex = 0
+            // 상세와 이미지 요청을 한꺼번에 쏟지 않으면서 서버 목록 순서를 보존한다.
+            func enqueue(_ index: Int) {
+                let id = tourisms[index].id
+                group.addTask {
+                    do {
+                        let image = try await repository.fetchPortraitImage(tourismID: id)
+                        return (index, .success(image))
+                    } catch {
+                        return (index, .failure(error))
+                    }
+                }
+            }
+            while nextIndex < min(3, tourisms.count) {
+                enqueue(nextIndex)
+                nextIndex += 1
+            }
+            for await (index, result) in group {
+                results[index] = result
+                if nextIndex < tourisms.count, !Task.isCancelled {
+                    enqueue(nextIndex)
+                    nextIndex += 1
+                }
+            }
+            return results
         }
     }
 
@@ -814,7 +882,7 @@ final class HomeViewModel: ObservableObject {
         )
     }
 
-    private func makeCardViewData(from tourism: Tourism) -> HomeTourismCardViewData {
+    private func makeCardViewData(from tourism: Tourism, poster: TourismPortraitImage) -> HomeTourismCardViewData {
         HomeTourismCardViewData(
             id: tourism.id,
             title: tourism.name,
@@ -824,7 +892,7 @@ final class HomeViewModel: ObservableObject {
                 endDate: tourism.endDate
             ),
             dDayText: dDayText(startDate: tourism.startDate, endDate: tourism.endDate),
-            thumbnailURL: tourism.thumbnailURL
+            poster: poster
         )
     }
 
