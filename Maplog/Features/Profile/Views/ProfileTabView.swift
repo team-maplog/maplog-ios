@@ -412,27 +412,11 @@ private struct ProfileHeader: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            HStack(alignment: .top, spacing: 16) {
-                ProfileAvatar(
-                    imageData: avatarImageData,
-                    nickname: profile.nickname
-                )
-
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(profile.nickname)
-                        .font(.title2.weight(.bold))
-                        .foregroundStyle(Color.maplogInk)
-
-                    if !profile.bio.isEmpty {
-                        Text(profile.bio)
-                            .font(.subheadline)
-                            .foregroundStyle(Color.maplogMuted)
-                            .lineLimit(3)
-                    }
-                }
-
-                Spacer(minLength: 0)
-            }
+            ProfileIdentityHeader(
+                nickname: profile.nickname,
+                bio: profile.bio,
+                imageData: avatarImageData
+            )
 
             HStack(spacing: 0) {
                 followMetric(
@@ -457,7 +441,7 @@ private struct ProfileHeader: View {
                 )
             )
         }
-        .padding(18)
+        .padding(ProfileLayout.headerInset)
         .background(
             Color.maplogSurfaceRaised,
             in: RoundedRectangle(
@@ -492,35 +476,6 @@ private struct ProfileHeader: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("\(kind.title) \(value)명 목록 보기")
-    }
-}
-
-private struct ProfileAvatar: View {
-    let imageData: Data?
-    let nickname: String
-
-    var body: some View {
-        Group {
-            if let imageData,
-               let image = UIImage(data: imageData) {
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFill()
-            } else {
-                Image(systemName: "person.fill")
-                    .font(.title2.weight(.semibold))
-                    .foregroundStyle(Color.maplogOlive)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(Color.maplogCanvas)
-            }
-        }
-        .frame(width: 76, height: 76)
-        .clipShape(Circle())
-        .overlay {
-            Circle()
-                .stroke(Color.white.opacity(0.64), lineWidth: 1)
-        }
-        .accessibilityLabel("\(nickname) 프로필 사진")
     }
 }
 

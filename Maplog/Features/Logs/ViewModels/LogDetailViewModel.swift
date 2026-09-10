@@ -36,6 +36,8 @@ final class LogDetailViewModel: ObservableObject {
     private let logDetailRepository: any LogDetailRepository
     private let logMediaRepository: any LogMediaRepository
     private let playbackService: any VideoPlaybackService
+    private var hasPreparedPlayback = false
+    private var playbackRequestID: UUID?
 
     init(
         logID: Int64,
@@ -53,6 +55,11 @@ final class LogDetailViewModel: ObservableObject {
     }
 
     func loadIfNeeded() async {
+        // 상세 데이터는 캐시되어 있어도 화면 이탈로 비운 플레이어는 다시 준비해야 한다.
+        if state == .content, !hasPreparedPlayback {
+            await loadPlayback()
+            return
+        }
         guard state == .idle else {
             return
         }
@@ -76,7 +83,7 @@ final class LogDetailViewModel: ObservableObject {
         shouldRemoveFromSourceList = false
         clearCaptionMessages()
         deletionError = nil
-        playbackService.stop()
+        stopPlayback()
 
         do {
             let detail = try await logDetailRepository.fetchDetail(logID: logID)
@@ -125,12 +132,17 @@ final class LogDetailViewModel: ObservableObject {
         }
 
         isLoadingPlayback = true
+        let requestID = UUID()
+        playbackRequestID = requestID
+        hasPreparedPlayback = false
         playbackErrorMessage = nil
         playbackProgress = 0
         isPlaying = false
 
         defer {
-            isLoadingPlayback = false
+            if playbackRequestID == requestID {
+                isLoadingPlayback = false
+            }
         }
 
         do {
@@ -138,13 +150,15 @@ final class LogDetailViewModel: ObservableObject {
                 logID: logID
             )
 
-            guard !Task.isCancelled else {
+            guard !Task.isCancelled, playbackRequestID == requestID else {
                 return
             }
 
             playbackService.loadVideo(at: fileURL)
+            hasPreparedPlayback = true
             playbackService.observeProgress { [weak self] progress in
-                self?.playbackProgress = progress
+                guard let self, self.playbackRequestID == requestID else { return }
+                self.playbackProgress = progress
             }
             // AVPlayerLooper는 "반복"만 담당합니다. 실제 재생 시작은 별도로
             // 요청해야 하므로, 상세 진입 직후에도 영상이 자동으로 재생됩니다.
@@ -155,7 +169,7 @@ final class LogDetailViewModel: ObservableObject {
         } catch is CancellationError {
             return
         } catch {
-            guard !Task.isCancelled else {
+            guard !Task.isCancelled, playbackRequestID == requestID else {
                 return
             }
 
@@ -291,6 +305,9 @@ final class LogDetailViewModel: ObservableObject {
     }
 
     func stopPlayback() {
+        playbackRequestID = nil
+        hasPreparedPlayback = false
+        isLoadingPlayback = false
         playbackService.stop()
         playbackProgress = 0
         isPlaying = false

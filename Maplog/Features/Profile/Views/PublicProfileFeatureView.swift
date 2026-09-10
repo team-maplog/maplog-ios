@@ -105,35 +105,11 @@ struct PublicProfileFeatureView: View {
         _ profile: PublicProfileHeaderViewData
     ) -> some View {
         VStack(spacing: MaplogSpacing.medium) {
-            HStack(spacing: MaplogSpacing.medium) {
-                MaplogProfileAvatar(
-                    imageData: viewModel.avatarImageData,
-                    nickname: profile.nickname,
-                    size: 84,
-                    fallbackBackground: Color.maplogCanvas,
-                    fallbackForeground: Color.maplogOlive,
-                    borderColor: .white.opacity(0.64)
-                )
-
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(profile.nickname)
-                        .font(.title3.weight(.bold))
-                        .foregroundStyle(Color.maplogInk)
-
-                    Text("(profile.joinedAtText)부터 Maplog 기록 중")
-                        .font(.caption)
-                        .foregroundStyle(Color.maplogMuted)
-                }
-
-                Spacer(minLength: 0)
-            }
-
-            if !profile.bio.isEmpty {
-                Text(profile.bio)
-                    .font(.subheadline)
-                    .foregroundStyle(Color.maplogTextPrimary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
+            ProfileIdentityHeader(
+                nickname: profile.nickname,
+                bio: profile.bio,
+                imageData: viewModel.avatarImageData
+            )
 
             PublicProfileStats(
                 logCountText: profile.logCountText,
@@ -144,6 +120,11 @@ struct PublicProfileFeatureView: View {
             followButton
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(ProfileLayout.headerInset)
+        .background(
+            Color.maplogSurfaceRaised,
+            in: RoundedRectangle(cornerRadius: 22, style: .continuous)
+        )
     }
 
     @ViewBuilder
@@ -364,7 +345,7 @@ private struct PublicProfileLogCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
             thumbnail
-                .frame(height: 156)
+                .aspectRatio(ProfileLayout.thumbnailAspectRatio, contentMode: .fit)
                 .clipShape(
                     RoundedRectangle(
                         cornerRadius: MaplogRadius.medium,

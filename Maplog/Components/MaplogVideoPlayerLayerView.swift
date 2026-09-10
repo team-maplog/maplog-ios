@@ -28,9 +28,7 @@ struct MaplogVideoPlayerLayerView: UIViewRepresentable, Equatable {
     ) -> MaplogPlayerLayerContainerView {
         let view = MaplogPlayerLayerContainerView() // AVPlayerLayer를 기본 layer로 갖는 UIKit View를 생성
 
-        view.playerLayer.player = player // View 안의 AVPlayerLayer에 실제 재생기를 연결, 여기서 부터 player가 가진 영상 프레임을 화면에 그릴 수 있음
-        view.playerLayer.videoGravity = videoGravity // 전달받은 영상 비율 규칙을 AVPlayerLayer에 적용
-
+        view.configure(player: player, videoGravity: videoGravity)
 
         return view
     }
@@ -39,12 +37,13 @@ struct MaplogVideoPlayerLayerView: UIViewRepresentable, Equatable {
         _ uiView: MaplogPlayerLayerContainerView,
         context: Context
     ) {
-        if uiView.playerLayer.player !== player { // 기존 화면이 다른 AVPlayer를 연결하고 있을 때만
-            uiView.playerLayer.player = player // 새 재생기로 교체
-        }
-
-        uiView.playerLayer.videoGravity = videoGravity
+        uiView.configure(player: player, videoGravity: videoGravity)
     }
+
+    static func dismantleUIView(_ uiView: MaplogPlayerLayerContainerView, coordinator: ()) {
+        uiView.disconnectPlayer()
+    }
+
 }
 
 final class MaplogPlayerLayerContainerView: UIView {
@@ -54,6 +53,32 @@ final class MaplogPlayerLayerContainerView: UIView {
 
     var playerLayer: AVPlayerLayer { // UIView의 layer를 AVPlayerLayer로 편하게 꺼내 쓰기 위한 계산 프로퍼티
         layer as! AVPlayerLayer
+    }
+
+    private(set) var configuredPlayer: AVPlayer?
+
+    func configure(player: AVPlayer, videoGravity: AVLayerVideoGravity) {
+        configuredPlayer = player
+        playerLayer.videoGravity = videoGravity
+        updatePlayerAttachment()
+    }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        updatePlayerAttachment()
+    }
+
+    func disconnectPlayer() {
+        configuredPlayer = nil
+        playerLayer.player = nil
+    }
+
+    private func updatePlayerAttachment() {
+        // 스택에 보관된 이전 화면이 공유 플레이어의 영상 출력을 계속 점유하지 않게 한다.
+        let visiblePlayer = window == nil ? nil : configuredPlayer
+        if playerLayer.player !== visiblePlayer {
+            playerLayer.player = visiblePlayer
+        }
     }
 
     override init(frame: CGRect) {
