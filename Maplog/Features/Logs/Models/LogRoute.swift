@@ -20,7 +20,7 @@ struct LogRoutePoint: Identifiable, Equatable, Sendable {
     let startTimeMillis: Int64
     let endTimeMillis: Int64
 
-    let placeName: String
+    let placeName: String?
     let address: String
     let latitude: Double
     let longitude: Double

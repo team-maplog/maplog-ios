@@ -74,7 +74,7 @@ final class DefaultLogRouteRepository: LogRouteRepository {
             sequence: dto.sequence,
             startTimeMillis: dto.startTimeMillis,
             endTimeMillis: dto.endTimeMillis,
-            placeName: dto.placeName,
+            placeName: normalizedText(dto.placeName),
             address: dto.address,
             latitude: dto.latitude,
             longitude: dto.longitude,
