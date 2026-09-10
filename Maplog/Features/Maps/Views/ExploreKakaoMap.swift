@@ -291,8 +291,8 @@ private struct ExploreKakaoMapRepresentable: UIViewRepresentable {
 
         @objc func addViews() {
             let initialPosition = MapPoint(
-                longitude: 127.0479,
-                latitude: 37.5446
+                longitude: currentLocation?.longitude ?? 127.0479,
+                latitude: currentLocation?.latitude ?? 37.5446
             )
 
             let mapViewInfo = MapviewInfo(
@@ -1055,26 +1055,11 @@ private struct ExploreKakaoMapRepresentable: UIViewRepresentable {
             let visualStyle = TourismMapMarkerAppearance.style(
                 for: marker.category
             )
-            let bubbleColor = isSelected
-                ? visualStyle.color
-                : UIColor.white
-            let textColor = isSelected
-                ? UIColor.white
-                : UIColor(
-                    red: 0.11,
-                    green: 0.13,
-                    blue: 0.17,
-                    alpha: 1
-                )
-            let iconBackgroundColor = isSelected
-                ? UIColor.white
-                : visualStyle.color
-            let iconColor = isSelected
-                ? visualStyle.color
-                : UIColor.white
-            let borderColor = isSelected
-                ? visualStyle.color
-                : UIColor.white
+            let bubbleColor = UIColor.white
+            let textColor = UIColor(red: 0.11, green: 0.13, blue: 0.17, alpha: 1)
+            let iconBackgroundColor = visualStyle.color.withAlphaComponent(0.14)
+            let iconColor = visualStyle.color
+            let borderColor = visualStyle.color.withAlphaComponent(isSelected ? 1 : 0.28)
 
             let titleAttributes: [NSAttributedString.Key: Any] = [
                 .font: font,

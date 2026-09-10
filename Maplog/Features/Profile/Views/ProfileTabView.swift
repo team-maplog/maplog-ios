@@ -511,14 +511,14 @@ private struct ProfileAvatar: View {
                     .font(.title2.weight(.semibold))
                     .foregroundStyle(Color.maplogOlive)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(Color.maplogLime.opacity(0.35))
+                    .background(Color.maplogCanvas)
             }
         }
         .frame(width: 76, height: 76)
         .clipShape(Circle())
         .overlay {
             Circle()
-                .stroke(Color.maplogLime.opacity(0.85), lineWidth: 3)
+                .stroke(Color.white.opacity(0.64), lineWidth: 1)
         }
         .accessibilityLabel("\(nickname) 프로필 사진")
     }

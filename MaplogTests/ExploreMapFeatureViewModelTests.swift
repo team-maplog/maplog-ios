@@ -124,6 +124,51 @@ final class ExploreMapFeatureViewModelTests: XCTestCase {
         )
     }
 
+    func testInitialLocationFocusesOnceAndPreservesCameraRequestOnReturn() async {
+        let service = MapCurrentLocationServiceStub(coordinate: MapCoordinate(latitude: 35.1, longitude: 129.0))
+        let viewModel = makeViewModel(locationService: service)
+
+        await viewModel.loadCurrentLocationIfNeeded()
+        let firstRequest = viewModel.currentLocationFocusRequestID
+        XCTAssertEqual(viewModel.currentLocation, service.coordinate)
+        XCTAssertNotNil(firstRequest)
+
+        await viewModel.loadCurrentLocationIfNeeded()
+        XCTAssertEqual(service.requestCount, 1)
+        XCTAssertEqual(viewModel.currentLocationFocusRequestID, firstRequest)
+    }
+
+    func testInitialLocationFailureDoesNotFocusAndCanRetry() async {
+        let service = MapCurrentLocationServiceStub(coordinate: MapCoordinate(latitude: 35.1, longitude: 129.0))
+        service.error = MapCurrentLocationError.authorizationDenied
+        let viewModel = makeViewModel(locationService: service)
+
+        await viewModel.loadCurrentLocationIfNeeded()
+        XCTAssertNil(viewModel.currentLocation)
+        XCTAssertNil(viewModel.currentLocationFocusRequestID)
+        XCTAssertFalse(viewModel.isLoadingCurrentLocation)
+
+        service.error = nil
+        await viewModel.loadCurrentLocationIfNeeded()
+        XCTAssertEqual(service.requestCount, 2)
+        XCTAssertNotNil(viewModel.currentLocationFocusRequestID)
+    }
+
+    func testInitialLocationDoesNotOverrideSelectedSearchDestination() async {
+        let viewModel = makeViewModel()
+        let marker = MapMarker.tourism(TourismMapMarker(
+            tourismID: 99, name: "부산", thumbnailURL: nil, startDateText: nil, endDateText: nil,
+            category: .natureTourism, coordinate: MapCoordinate(latitude: 35.1, longitude: 129.0)
+        ))
+        viewModel.selectSearchResult(MapMarkerSummary(marker: marker, title: "부산", subtitle: "", summary: nil))
+        let searchRequest = viewModel.searchFocusRequest?.id
+
+        await viewModel.loadCurrentLocationIfNeeded()
+        XCTAssertNotNil(viewModel.currentLocation)
+        XCTAssertNil(viewModel.currentLocationFocusRequestID)
+        XCTAssertEqual(viewModel.searchFocusRequest?.id, searchRequest)
+    }
+
     func testFocusCurrentLocationRequestsCoordinateAndCreatesMapMoveCommand() async throws {
         let locationService = MapCurrentLocationServiceStub(
             coordinate: MapCoordinate(
@@ -320,6 +365,7 @@ private final class MapLogMediaRepositoryStub: LogMediaRepository {
 @MainActor
 private final class MapCurrentLocationServiceStub: MapCurrentLocationService {
     let coordinate: MapCoordinate
+    var error: Error?
     private(set) var requestCount = 0
 
     init(
@@ -330,6 +376,7 @@ private final class MapCurrentLocationServiceStub: MapCurrentLocationService {
 
     func requestCurrentLocation() async throws -> MapCoordinate {
         requestCount += 1
+        if let error { throw error }
         return coordinate
     }
 }

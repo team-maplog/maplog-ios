@@ -64,13 +64,17 @@ final class ExploreMapFeatureViewModel: ObservableObject {
         self.currentLocationService = currentLocationService
     }
 
-    /// 지도 탭이 처음 열릴 때 도트 표시용 좌표를 한 번 받아온다.
+    /// 최초 위치 조회 성공 시 카메라도 이동한다. 재진입 시 사용자가 탐색하던 범위는 유지한다.
     func loadCurrentLocationIfNeeded() async {
-        guard currentLocation == nil else {
+        guard currentLocation == nil, !isLoadingCurrentLocation else {
             return
         }
 
-        _ = await refreshCurrentLocation()
+        guard await refreshCurrentLocation() != nil else { return }
+        // 위치를 기다리는 동안 검색 결과로 이동했다면 사용자의 선택을 우선한다.
+        if searchFocusRequest == nil {
+            currentLocationFocusRequestID = UUID()
+        }
     }
 
     /// 버튼을 누르면 최신 좌표를 요청하고, 지도 이동 명령을 새로 만든다.

@@ -105,9 +105,9 @@ private struct ExploreMapFilterChip: View {
     private var tint: Color {
         switch filter {
         case .all:
-            return Color.maplogPrimary
+            return Color.maplogTextPrimary
         case .maplog:
-            return Color.maplogOlive
+            return Color(uiColor: TourismMapMarkerAppearance.style(for: .natureTourism).color)
         default:
             return Color(
                 uiColor: TourismMapMarkerAppearance.style(
@@ -131,22 +131,22 @@ private struct ExploreMapFilterChip: View {
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(
                     isSelected
-                        ? Color.white
-                        : Color.maplogMuted
+                        ? Color.maplogTextPrimary
+                        : Color.maplogTextSecondary
                 )
                 .padding(.horizontal, 14)
                 .frame(height: 34)
                 .background(
                     isSelected
-                        ? tint
+                        ? Color.clear
                         : Color.white.opacity(0.92),
                     in: Capsule()
                 )
                 .overlay {
                     Capsule()
                         .strokeBorder(
-                            tint.opacity(isSelected ? 0 : 0.24),
-                            lineWidth: 1
+                            tint.opacity(isSelected ? 1 : 0.22),
+                            lineWidth: isSelected ? 1.5 : 1
                         )
                 }
         }
