@@ -33,8 +33,7 @@ struct HomeReelFirstFramePlayerView: UIViewRepresentable, Equatable {
     ) -> MaplogPlayerLayerContainerView {
         let view = MaplogPlayerLayerContainerView()
 
-        view.playerLayer.player = player
-        view.playerLayer.videoGravity = .resizeAspectFill
+        view.configure(player: player, videoGravity: .resizeAspectFill)
         context.coordinator.startObserving(view.playerLayer)
 
         return view
@@ -47,11 +46,11 @@ struct HomeReelFirstFramePlayerView: UIViewRepresentable, Equatable {
     ) {
         context.coordinator.onFirstFrameReady = onFirstFrameReady
 
-        guard uiView.playerLayer.player !== player else {
+        guard uiView.configuredPlayer !== player else {
             return
         }
 
-        uiView.playerLayer.player = player
+        uiView.configure(player: player, videoGravity: .resizeAspectFill)
         context.coordinator.startObserving(uiView.playerLayer)
     }
 
@@ -61,6 +60,7 @@ struct HomeReelFirstFramePlayerView: UIViewRepresentable, Equatable {
         coordinator: Coordinator
     ) {
         coordinator.stopObserving()
+        uiView.disconnectPlayer()
     }
 
     @MainActor

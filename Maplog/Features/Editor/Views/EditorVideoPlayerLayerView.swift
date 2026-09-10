@@ -21,43 +21,22 @@ struct EditorVideoPlayerLayerView: UIViewRepresentable, Equatable {
     
     func makeUIView(
         context: Context
-    ) -> PlayerLayerContainerView {
-        let view = PlayerLayerContainerView()
+    ) -> MaplogPlayerLayerContainerView {
+        let view = MaplogPlayerLayerContainerView()
 
-        view.playerLayer.player = player
+        view.configure(player: player, videoGravity: .resizeAspect)
 
         return view
     }
 
     func updateUIView(
-        _ uiView: PlayerLayerContainerView,
+        _ uiView: MaplogPlayerLayerContainerView,
         context: Context
     ) {
-        guard uiView.playerLayer.player !== player else {
-            return
-        }
-
-        uiView.playerLayer.player = player
-    }
-}
-
-final class PlayerLayerContainerView: UIView {
-    override class var layerClass: AnyClass {
-        AVPlayerLayer.self
+        uiView.configure(player: player, videoGravity: .resizeAspect)
     }
 
-    var playerLayer: AVPlayerLayer {
-        layer as! AVPlayerLayer
-    }
-
-    override init(frame: CGRect) {
-        super.init(frame: frame)
-
-        backgroundColor = .black
-        playerLayer.videoGravity = .resizeAspect
-    }
-
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
+    static func dismantleUIView(_ uiView: MaplogPlayerLayerContainerView, coordinator: ()) {
+        uiView.disconnectPlayer()
     }
 }

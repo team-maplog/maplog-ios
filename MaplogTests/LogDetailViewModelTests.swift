@@ -34,6 +34,25 @@ final class LogDetailViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.detail?.caption, "수정한 캡션")
     }
 
+    func testReturningToLoadedDetailPreparesStoppedVideoAgain() async {
+        let playback = VideoPlaybackServiceStub()
+        let model = LogDetailViewModel(
+            logID: 501,
+            logDetailRepository: LogDetailRepositoryStub(detail: makeDetail()),
+            logMediaRepository: LogMediaRepositoryStub(),
+            playbackService: playback
+        )
+        await model.loadIfNeeded()
+        XCTAssertEqual(playback.loadCallCount, 1)
+        await model.loadIfNeeded()
+        XCTAssertEqual(playback.loadCallCount, 1)
+        model.stopPlayback()
+        await model.loadIfNeeded()
+        XCTAssertEqual(playback.loadCallCount, 2)
+        XCTAssertEqual(playback.playCallCount, 2)
+        XCTAssertEqual(model.state, .content)
+    }
+
     func testCommentNotificationDoesNotAutoplayButAllowsManualPlayback() async {
         let playback = VideoPlaybackServiceStub()
         let model = LogDetailViewModel(
@@ -300,12 +319,14 @@ private final class LogMediaRepositoryStub: LogMediaRepository {
 private final class VideoPlaybackServiceStub: VideoPlaybackService {
     let player = AVPlayer()
     private(set) var loadedURL: URL?
+    private(set) var loadCallCount = 0
     private(set) var playCallCount = 0
     private(set) var pauseCallCount = 0
     var isMuted = false
 
     func loadVideo(at url: URL) {
         loadedURL = url
+        loadCallCount += 1
     }
 
     func loadVideoSequence(

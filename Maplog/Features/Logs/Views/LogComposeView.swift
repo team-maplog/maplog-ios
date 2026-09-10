@@ -11,7 +11,7 @@ import SwiftUI
 
 struct LogComposeView: View {
     @ObservedObject var viewModel: LogComposeViewModel
-    @FocusState private var isCaptionFocused: Bool
+    @State private var isCaptionFocused = false
     @Environment(\.maplogSelectTab) private var selectTab
 
     let previewPlayer: AVPlayer
@@ -36,13 +36,6 @@ struct LogComposeView: View {
             .padding(.bottom, MaplogSpacing.section)
         }
         .scrollDismissesKeyboard(.interactively)
-        .contentShape(Rectangle())
-        .gesture(
-            TapGesture().onEnded {
-                isCaptionFocused = false
-            },
-            including: .gesture
-        )
         .onDisappear { isCaptionFocused = false }
         .navigationTitle("로그 작성")
         .navigationBarTitleDisplayMode(.inline)
@@ -76,6 +69,10 @@ struct LogComposeView: View {
             )
         }
         .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("완료") { isCaptionFocused = false }
+            }
             ToolbarItem(placement: .topBarLeading) {
                 Button {
                     dismiss()
@@ -222,7 +219,7 @@ struct LogComposeView: View {
                 )
                 .clipped()
         } else {
-            VideoPlayer(player: previewPlayer)
+            MaplogVideoPlayerLayerView(player: previewPlayer, videoGravity: .resizeAspect)
                 .frame(
                     width: width,
                     height: height
