@@ -1145,47 +1145,51 @@ struct HomeView: View {
 
             Spacer()
 
-            Button(action: onCreateLog) {
-                Image(systemName: "plus")
-                    .font(.system(size: 18, weight: .semibold))
-                    .foregroundStyle(Color.maplogInk)
-                    .frame(
-                        width: MaplogSize.minimumTapTarget,
-                        height: MaplogSize.minimumTapTarget
+            // 44pt 터치 영역은 유지하고 버튼 사이의 추가 여백만 없앱니다.
+            HStack(spacing: 0) {
+                Button(action: onCreateLog) {
+                    Image(systemName: "plus")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(Color.maplogInk)
+                        .frame(
+                            width: MaplogSize.minimumTapTarget,
+                            height: MaplogSize.minimumTapTarget
+                        )
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("로그 작성")
+                .accessibilityHint("저장한 클립을 골라 로그 작성을 시작합니다")
+
+                NavigationLink {
+                    HomeSearchFeatureView(
+                        searchRepository: homeSearchRepository,
+                        logMediaRepository: logMediaRepository,
+                        logReelRepository: logReelRepository,
+                        onShowLogDetail: onShowLogDetail,
+                        onShowTourismDetail: onShowTourismDetail
                     )
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("로그 작성")
-            .accessibilityHint("저장한 클립을 골라 로그 작성을 시작합니다")
+                } label: {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 19, weight: .semibold))
+                        .foregroundStyle(Color.maplogInk)
+                        .frame(width: MaplogSize.minimumTapTarget, height: MaplogSize.minimumTapTarget)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("검색")
 
-            NavigationLink {
-                HomeSearchFeatureView(
-                    searchRepository: homeSearchRepository,
-                    logMediaRepository: logMediaRepository,
-                    logReelRepository: logReelRepository,
-                    onShowLogDetail: onShowLogDetail,
-                    onShowTourismDetail: onShowTourismDetail
-                )
-            } label: {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 19, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 42, height: 42)
+                Button(action: onShowNotifications) {
+                    Image(systemName: "bell")
+                        .font(.system(size: 19, weight: .semibold))
+                        .foregroundStyle(Color.maplogInk)
+                        .frame(width: MaplogSize.minimumTapTarget, height: MaplogSize.minimumTapTarget)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("알림")
+                .accessibilityHint("서버에 저장된 알림 목록을 엽니다")
+                .accessibilityIdentifier("home.notifications")
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("검색")
-
-            Button(action: onShowNotifications) {
-                Image(systemName: "bell")
-                    .font(.system(size: 19, weight: .semibold))
-                    .foregroundStyle(Color.maplogInk)
-                    .frame(width: MaplogSize.minimumTapTarget, height: MaplogSize.minimumTapTarget)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("알림")
-            .accessibilityHint("서버에 저장된 알림 목록을 엽니다")
-            .accessibilityIdentifier("home.notifications")
         }
     }
 
