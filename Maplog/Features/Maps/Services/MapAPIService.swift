@@ -8,6 +8,8 @@
 import Foundation
 
 protocol MapAPIService {
+    func search(query: String, scope: String, category: TourismMapCategory) async throws -> MapSearchResponseDTO
+
     func fetchViewportContent(
         in viewport: MapViewport,
         tourismCategory: TourismMapCategory

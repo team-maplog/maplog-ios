@@ -15,6 +15,7 @@ struct ExploreKakaoMap: View {
     let selectedMarkerID: String? // 현재 선택되어 강조 표시할 핀
     let currentLocation: MapCoordinate?
     let currentLocationFocusRequestID: UUID?
+    var searchFocusRequest: MapCameraFocusRequest? = nil
 
     let onViewportChanged: (MapViewport) -> Void
     let onMarkerSelected: (String) -> Void // 핀을 탭했을 때 ViewModel에 전달할 동작
@@ -32,6 +33,7 @@ struct ExploreKakaoMap: View {
                     selectedMarkerID: selectedMarkerID,
                     currentLocation: currentLocation,
                     currentLocationFocusRequestID: currentLocationFocusRequestID,
+                    searchFocusRequest: searchFocusRequest,
                     onViewportChanged: onViewportChanged,
                     onMarkerSelected: onMarkerSelected,
                     onMapTapped: onMapTapped
@@ -58,6 +60,7 @@ private struct ExploreKakaoMapRepresentable: UIViewRepresentable {
     let selectedMarkerID: String?
     let currentLocation: MapCoordinate?
     let currentLocationFocusRequestID: UUID?
+    var searchFocusRequest: MapCameraFocusRequest? = nil
 
     let onViewportChanged: (MapViewport) -> Void
     let onMarkerSelected: (String) -> Void
@@ -90,6 +93,8 @@ private struct ExploreKakaoMapRepresentable: UIViewRepresentable {
             currentLocation,
             focusRequestID: currentLocationFocusRequestID
         )
+
+        context.coordinator.updateSearchFocus(searchFocusRequest)
 
         if shouldDrawMap {
             context.coordinator.activateEngineIfNeeded()
@@ -140,6 +145,26 @@ private struct ExploreKakaoMapRepresentable: UIViewRepresentable {
         private var currentLocation: MapCoordinate?
         private var currentLocationFocusRequestID: UUID?
         private var handledCurrentLocationFocusRequestID: UUID?
+        private var searchFocusRequest: MapCameraFocusRequest?
+        private var handledSearchFocusID: UUID?
+
+        func updateSearchFocus(_ request: MapCameraFocusRequest?) {
+            searchFocusRequest = request
+            focusSearchResultIfNeeded()
+        }
+
+        private func focusSearchResultIfNeeded() {
+            guard let request = searchFocusRequest, request.id != handledSearchFocusID,
+                  let mapView = currentMapView else { return }
+            // 검색 좌표는 카메라만 움직인다. 실제 내 위치 도트와 섞지 않는다.
+            let update = CameraUpdate.make(
+                target: MapPoint(longitude: request.coordinate.longitude, latitude: request.coordinate.latitude),
+                zoomLevel: 15, mapView: mapView
+            )
+            mapView.moveCamera(update)
+            handledSearchFocusID = request.id
+        }
+
 
         private let onViewportChanged: (MapViewport) -> Void
         private let onMarkerSelected: (String) -> Void
@@ -261,6 +286,7 @@ private struct ExploreKakaoMapRepresentable: UIViewRepresentable {
 
             renderCurrentLocationIfNeeded()
             focusCurrentLocationIfNeeded()
+            focusSearchResultIfNeeded()
         }
 
         @objc func addViews() {
@@ -330,6 +356,7 @@ private struct ExploreKakaoMapRepresentable: UIViewRepresentable {
             renderMarkersIfNeeded()
             renderCurrentLocationIfNeeded()
             focusCurrentLocationIfNeeded()
+            focusSearchResultIfNeeded()
 
             notifyViewportChanged(
                 from: mapView

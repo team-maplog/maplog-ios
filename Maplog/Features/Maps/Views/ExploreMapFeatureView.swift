@@ -60,6 +60,7 @@ struct ExploreMapFeatureView: View {
                 selectedMarkerID: viewModel.selectedMarkerID,
                 currentLocation: viewModel.currentLocation,
                 currentLocationFocusRequestID: viewModel.currentLocationFocusRequestID,
+                searchFocusRequest: viewModel.searchFocusRequest,
                 onViewportChanged: handleViewportChanged,
                 onMarkerSelected: handleMarkerSelected,
                 onMapTapped: dismissSearchKeyboard
@@ -76,6 +77,10 @@ struct ExploreMapFeatureView: View {
                     onSelectFilter: handleFilterSelected,
                     onClearSearch: viewModel.clearSearch
                 )
+
+                if viewModel.showsSearchResults {
+                    searchResultsPanel
+                }
 
                 ExploreMapStateOverlay(
                     state: viewModel.state,
@@ -153,6 +158,50 @@ struct ExploreMapFeatureView: View {
                 )
             }
         }
+    }
+
+    private var searchResultsPanel: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            if viewModel.isSearching {
+                ProgressView("장소 검색 중")
+            } else if let error = viewModel.searchError {
+                Text(error.message).font(.subheadline)
+                if error.recoveryAction == .retry {
+                    Button("다시 검색", action: viewModel.retrySearch)
+                }
+            } else {
+                if !viewModel.isTourismSearchAvailable {
+                    Text("관광 정보를 불러오지 못해 맵로그 결과만 표시합니다.").font(.caption)
+                }
+                if viewModel.searchResults.isEmpty {
+                    Text("검색 결과가 없어요.").font(.subheadline)
+                } else {
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 0) {
+                            ForEach(viewModel.searchResults) { item in
+                                Button {
+                                    dismissSearchKeyboard()
+                                    viewModel.selectSearchResult(item)
+                                } label: {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(item.title).font(.subheadline.weight(.semibold))
+                                        Text(item.subtitle).font(.caption).foregroundStyle(.secondary)
+                                    }
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(.vertical, 10)
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                                Divider()
+                            }
+                        }
+                    }
+                    .frame(maxHeight: 240)
+                }
+            }
+        }
+        .padding(16)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
     }
 
     private func handleViewportChanged(
