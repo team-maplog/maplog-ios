@@ -110,9 +110,9 @@ struct PublicProfileFeatureView: View {
                     imageData: viewModel.avatarImageData,
                     nickname: profile.nickname,
                     size: 84,
-                    fallbackBackground: Color.maplogLime.opacity(0.28),
+                    fallbackBackground: Color.maplogCanvas,
                     fallbackForeground: Color.maplogOlive,
-                    borderColor: Color.maplogLime.opacity(0.8)
+                    borderColor: .white.opacity(0.64)
                 )
 
                 VStack(alignment: .leading, spacing: 5) {

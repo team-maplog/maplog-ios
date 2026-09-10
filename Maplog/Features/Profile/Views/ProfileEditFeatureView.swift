@@ -137,14 +137,14 @@ private struct ProfileEditAvatarSection: View {
                         .font(.system(size: 34, weight: .semibold))
                         .foregroundStyle(Color.maplogOlive)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(Color.maplogLime.opacity(0.35))
+                        .background(Color.maplogCanvas)
                 }
             }
             .frame(width: 104, height: 104)
             .clipShape(Circle())
             .overlay {
                 Circle()
-                    .stroke(Color.maplogLime, lineWidth: 3)
+                    .stroke(Color.white.opacity(0.64), lineWidth: 1)
             }
 
             PhotosPicker(
