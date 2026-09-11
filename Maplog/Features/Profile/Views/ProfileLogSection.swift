@@ -2,7 +2,6 @@ import SwiftUI
 import UIKit
 
 struct ProfileLogEmptyConfiguration {
-    let iconName: String
     let title: String
     let message: String
     let actionTitle: String?
@@ -199,10 +198,6 @@ private struct ProfileEmptyLogState: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            Image(systemName: configuration.iconName)
-                .font(.system(size: 34, weight: .semibold))
-                .foregroundStyle(Color.maplogOlive)
-
             Text(configuration.title)
                 .font(.headline)
                 .foregroundStyle(Color.maplogInk)
@@ -228,14 +223,8 @@ private struct ProfileEmptyLogState: View {
                 .padding(.top, 4)
             }
         }
-        .padding(22)
+        .padding(.horizontal, MaplogSpacing.large)
+        .padding(.vertical, MaplogSpacing.xxLarge)
         .frame(maxWidth: .infinity)
-        .background(
-            Color.maplogCanvas,
-            in: RoundedRectangle(
-                cornerRadius: 18,
-                style: .continuous
-            )
-        )
     }
 }
