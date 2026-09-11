@@ -75,6 +75,16 @@ final class LogCommentsViewModel: ObservableObject {
         }
     }
 
+    /// 서버는 최상위 댓글을 부모로 하는 한 단계 답글만 허용합니다.
+    func replyParentID(for comment: LogComment) -> Int64? {
+        guard !comment.isDeleted else { return nil }
+        let parentID = comment.parentCommentID ?? comment.id
+        guard comments.contains(where: { $0.id == parentID && $0.parentCommentID == nil && !$0.isDeleted }) else {
+            return nil
+        }
+        return parentID
+    }
+
     /// 삭제된 부모 댓글은 답글의 문맥을 위해 남겨둘 수 있지만 댓글 수에는 포함하지 않습니다.
     var activeCommentCount: Int {
         comments.filter { !$0.isDeleted }.count
