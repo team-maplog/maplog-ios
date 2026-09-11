@@ -8,6 +8,8 @@
 import Foundation
 
 protocol LogLocationRepository {
+    func searchLocations(query: String, near location: LogLocationDraft) async throws -> [LogLocationDraft]
+
     func resolveLocation(
         latitude: Double,
         longitude: Double

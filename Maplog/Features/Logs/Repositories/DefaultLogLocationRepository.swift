@@ -8,12 +8,23 @@
 import Foundation
 
 final class DefaultLogLocationRepository: LogLocationRepository {
+    private let searchService: any LocationSearchService
     private let apiService: any LogLocationAPIService
 
     init(
-        apiService: any LogLocationAPIService
+        apiService: any LogLocationAPIService,
+        searchService: any LocationSearchService
     ) {
         self.apiService = apiService
+        self.searchService = searchService
+    }
+
+    func searchLocations(query: String, near location: LogLocationDraft) async throws -> [LogLocationDraft] {
+        let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return [] }
+        let results = try await searchService.search(query: query, near: location)
+        var seen = Set<LogLocationDraft>()
+        return results.filter { seen.insert($0).inserted }
     }
 
     func resolveLocation(

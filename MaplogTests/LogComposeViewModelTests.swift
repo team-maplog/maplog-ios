@@ -397,6 +397,10 @@ final class LogComposeViewModelTests: XCTestCase {
 }
 
 private final class LogLocationRepositoryStub: LogLocationRepository {
+    func searchLocations(query: String, near location: LogLocationDraft) async throws -> [LogLocationDraft] {
+        [LogLocationDraft(latitude: 35.1, longitude: 129.0, name: "검색한 장소", address: "검색 주소")]
+    }
+
     private(set) var requestedCoordinates: [(Double, Double)] = []
     var error: Error?
 

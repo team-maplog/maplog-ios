@@ -9,6 +9,14 @@ import Foundation
 
 @MainActor
 final class ClipLocationEditViewModel: ObservableObject {
+    @Published var searchQuery = "" {
+        didSet { cancelSearch() }
+    }
+    @Published private(set) var searchResults: [LogLocationDraft] = []
+    @Published private(set) var isSearching = false
+    @Published private(set) var searchMessage: String?
+    private var searchTask: Task<Void, Never>?
+    private var searchRequestID = UUID()
     @Published private(set) var selectedLocation: LogLocationDraft?
     @Published private(set) var isResolvingLocation = false
     @Published private(set) var locationResolutionError: ErrorPresentation?
@@ -26,6 +34,50 @@ final class ClipLocationEditViewModel: ObservableObject {
         self.originalClipLocation = clipLocation // 처음 카드에서 전달받은 원본
         self.selectedLocation = clipLocation.location  // 사용자가 수정 중인 임시 값
         self.logLocationRepository = logLocationRepository
+    }
+
+    func searchLocations() {
+        cancelSearch()
+        let query = searchQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return }
+        let requestID = UUID()
+        searchRequestID = requestID
+        let location = mapLocation
+        isSearching = true
+        searchTask = Task { [weak self] in
+            guard let self else { return }
+            defer {
+                if self.searchRequestID == requestID { self.isSearching = false }
+            }
+            do {
+                let results = try await self.logLocationRepository.searchLocations(query: query, near: location)
+                guard !Task.isCancelled, self.searchRequestID == requestID else { return }
+                self.searchResults = results
+                self.searchMessage = results.isEmpty ? "검색 결과가 없어요. 다른 장소명이나 주소로 검색해 주세요." : nil
+            } catch {
+                guard !Task.isCancelled, self.searchRequestID == requestID else { return }
+                self.searchMessage = "장소를 검색하지 못했어요. 연결을 확인하고 다시 검색해 주세요."
+            }
+        }
+    }
+
+    func selectSearchResult(_ location: LogLocationDraft) {
+        cancelSearch()
+        // 검색 결과는 이동할 좌표·장소명으로 사용하고 저장 주소는 기존 서버에서 확인합니다.
+        applyLocation(LogLocationDraft(
+            latitude: location.latitude,
+            longitude: location.longitude,
+            name: location.name
+        ))
+    }
+
+    func cancelSearch() {
+        searchTask?.cancel()
+        searchTask = nil
+        searchRequestID = UUID()
+        isSearching = false
+        searchResults = []
+        searchMessage = nil
     }
 
     var timeRangeText: String {
@@ -81,6 +133,7 @@ final class ClipLocationEditViewModel: ObservableObject {
         latitude: Double,
         longitude: Double
     ) {
+        cancelSearch()
         let location = LogLocationDraft(
             latitude: latitude,
             longitude: longitude
@@ -170,7 +223,7 @@ final class ClipLocationEditViewModel: ObservableObject {
                 selectedLocation = LogLocationDraft(
                     latitude: resolvedLocation.latitude,
                     longitude: resolvedLocation.longitude,
-                    name: resolvedLocation.name,
+                    name: resolvedLocation.name ?? location.name,
                     address: resolvedLocation.address
                 )
 
