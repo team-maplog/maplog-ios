@@ -215,7 +215,7 @@ struct OnboardingView: View {
                 provider: .kakao,
                 background: Color(red: 254 / 255, green: 229 / 255, blue: 0),
                 foreground: .black,
-                icon: "bubble.left.fill"
+                icon: ""
             )
             socialLoginButton(provider: .apple, background: .black, foreground: .white, icon: "apple.logo")
 
@@ -262,7 +262,7 @@ struct OnboardingView: View {
                     ? "로그인 중..."
                     : "\(provider.displayName)로 계속하기",
                 icon: icon,
-                imageAsset: provider == .google ? "GoogleSignInGlyph" : nil
+                imageAsset: provider.signInImageAsset
             )
         }
         .buttonStyle(
@@ -291,6 +291,14 @@ struct OnboardingView: View {
 }
 
 private extension OAuthProvider {
+    var signInImageAsset: String? {
+        switch self {
+        case .google: return "GoogleSignInGlyph"
+        case .kakao: return "KakaoSignInGlyph"
+        case .apple: return nil
+        }
+    }
+
     var displayName: String {
         switch self {
         case .google: return "Google"
