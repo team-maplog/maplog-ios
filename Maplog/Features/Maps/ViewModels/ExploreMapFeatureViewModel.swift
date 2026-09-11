@@ -585,7 +585,6 @@ enum ExploreMapFilter: CaseIterable, Equatable, Identifiable {
     case events
     case festival
     case performance
-    case event
     case accommodation
     case food
     case shopping
@@ -616,8 +615,6 @@ enum ExploreMapFilter: CaseIterable, Equatable, Identifiable {
             return "축제"
         case .performance:
             return "공연"
-        case .event:
-            return "행사"
         case .accommodation:
             return "숙소"
         case .food:
@@ -649,8 +646,6 @@ enum ExploreMapFilter: CaseIterable, Equatable, Identifiable {
             return .festival
         case .performance:
             return .performance
-        case .event:
-            return .event
         case .accommodation:
             return .accommodation
         case .food:

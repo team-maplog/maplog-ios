@@ -208,6 +208,127 @@ final class ExploreMapFeatureViewModelTests: XCTestCase {
         )
     }
 
+    func testEveryVisibleMapFilterUsesItsExpectedCategoryAndMarkerScope() {
+        let markers = mapFilterFixtures
+        let expectedFilters = expectedMapFilters(for: markers)
+
+        XCTAssertEqual(
+            ExploreMapFilter.allCases.map(\.title).contains("행사"),
+            false
+        )
+        XCTAssertEqual(
+            ExploreMapFilter.allCases,
+            expectedFilters.map(\.filter)
+        )
+
+        for expected in expectedFilters {
+            XCTAssertEqual(
+                expected.filter.tourismRequestCategory,
+                expected.category,
+                "\(expected.filter.title) 요청 category가 올바르지 않습니다."
+            )
+            XCTAssertEqual(
+                markers
+                    .filter(expected.filter.includes)
+                    .map(\.id),
+                expected.markerIDs,
+                "\(expected.filter.title) 필터 표시 대상이 올바르지 않습니다."
+            )
+        }
+    }
+
+    func testSelectingEveryMapFilterReloadsWithMatchingTourismCategory() async throws {
+        let repository = MapRepositoryStub(
+            content: makeMapViewportContent()
+        )
+        let viewModel = makeViewModel(mapRepository: repository)
+        let expectedFilters = expectedMapFilters(for: mapFilterFixtures)
+
+        await loadContent(into: viewModel)
+        XCTAssertEqual(repository.requestedTourismCategories, [.all])
+
+        for expected in expectedFilters.dropFirst() {
+            viewModel.selectFilter(expected.filter)
+            try await Task.sleep(nanoseconds: 50_000_000)
+
+            XCTAssertEqual(
+                repository.requestedTourismCategories.last,
+                expected.category,
+                "\(expected.filter.title) 선택 시 올바른 category로 다시 조회해야 합니다."
+            )
+        }
+    }
+
+    private func expectedMapFilters(
+        for markers: [MapMarker]
+    ) -> [(filter: ExploreMapFilter, category: TourismMapCategory, markerIDs: [String])] {
+        [
+            (.all, .all, markers.map(\.id)),
+            (.maplog, .all, ["log-1-11"]),
+            (.tourism, .all, tourismMarkerIDs),
+            (.events, .events, ["tourism-101", "tourism-102", "tourism-103"]),
+            (.festival, .festival, ["tourism-101"]),
+            (.performance, .performance, ["tourism-102"]),
+            (.accommodation, .accommodation, ["tourism-104"]),
+            (.food, .food, ["tourism-105"]),
+            (.shopping, .shopping, ["tourism-106"]),
+            (.recommendedCourse, .recommendedCourse, ["tourism-107"]),
+            (.experienceTourism, .experienceTourism, ["tourism-108"]),
+            (.historyTourism, .historyTourism, ["tourism-109"]),
+            (.leisureSports, .leisureSports, ["tourism-110"]),
+            (.natureTourism, .natureTourism, ["tourism-111"]),
+            (.culturalTourism, .culturalTourism, ["tourism-112"])
+        ]
+    }
+
+    private var mapFilterFixtures: [MapMarker] {
+        [
+            .log(MapLogMarker(
+                logID: 1,
+                clipID: 11,
+                sequence: 1,
+                startTimeMillis: 0,
+                endTimeMillis: 1_000,
+                caption: nil,
+                placeName: "맵로그",
+                address: nil,
+                thumbnailURL: nil,
+                coordinate: MapCoordinate(latitude: 37.54, longitude: 127.04)
+            )),
+            tourismMarker(id: 101, category: .festival),
+            tourismMarker(id: 102, category: .performance),
+            tourismMarker(id: 103, category: .event),
+            tourismMarker(id: 104, category: .accommodation),
+            tourismMarker(id: 105, category: .food),
+            tourismMarker(id: 106, category: .shopping),
+            tourismMarker(id: 107, category: .recommendedCourse),
+            tourismMarker(id: 108, category: .experienceTourism),
+            tourismMarker(id: 109, category: .historyTourism),
+            tourismMarker(id: 110, category: .leisureSports),
+            tourismMarker(id: 111, category: .natureTourism),
+            tourismMarker(id: 112, category: .culturalTourism)
+        ]
+    }
+
+    private var tourismMarkerIDs: [String] {
+        mapFilterFixtures.dropFirst().map(\.id)
+    }
+
+    private func tourismMarker(
+        id: Int64,
+        category: TourismMapCategory
+    ) -> MapMarker {
+        .tourism(TourismMapMarker(
+            tourismID: id,
+            name: category.title,
+            thumbnailURL: nil,
+            startDateText: nil,
+            endDateText: nil,
+            category: category,
+            coordinate: MapCoordinate(latitude: 37.5, longitude: 127.0)
+        ))
+    }
+
     private func loadContent(
         into viewModel: ExploreMapFeatureViewModel
     ) async {
@@ -226,80 +347,13 @@ final class ExploreMapFeatureViewModelTests: XCTestCase {
     }
 
     private func makeViewModel(
+        mapRepository: (any MapRepository)? = nil,
         mediaRepository: MapLogMediaRepositoryStub = MapLogMediaRepositoryStub(),
         locationService: MapCurrentLocationServiceStub? = nil
     ) -> ExploreMapFeatureViewModel {
         ExploreMapFeatureViewModel(
-            mapRepository: MapRepositoryStub(
-                content: MapViewportContent(
-                    logMarkers: [
-                        MapLogMarker(
-                            logID: 1,
-                            clipID: 11,
-                            sequence: 1,
-                            startTimeMillis: 0,
-                            endTimeMillis: 1_000,
-                            caption: "성수 카페 기록",
-                            placeName: "성수 카페",
-                            address: "서울 성동구 성수동",
-                            thumbnailURL: URL(
-                                string: "https://example.com/marker-1.jpg"
-                            ),
-                            coordinate: MapCoordinate(
-                                latitude: 37.54,
-                                longitude: 127.04
-                            )
-                        ),
-                        MapLogMarker(
-                            logID: 2,
-                            clipID: 21,
-                            sequence: 1,
-                            startTimeMillis: 0,
-                            endTimeMillis: 1_000,
-                            caption: "서울숲 산책",
-                            placeName: "서울숲",
-                            address: "서울 성동구 뚝섬로",
-                            thumbnailURL: nil,
-                            coordinate: MapCoordinate(
-                                latitude: 37.55,
-                                longitude: 127.03
-                            )
-                        )
-                    ],
-                    tourismMarkers: [
-                        TourismMapMarker(
-                            tourismID: 3,
-                            name: "성수 문화 축제",
-                            thumbnailURL: nil,
-                            startDateText: nil,
-                            endDateText: nil,
-                            category: .festival,
-                            coordinate: MapCoordinate(
-                                latitude: 37.53,
-                                longitude: 127.05
-                            )
-                        ),
-                        TourismMapMarker(
-                            tourismID: 4,
-                            name: "강남 맛집",
-                            thumbnailURL: nil,
-                            startDateText: nil,
-                            endDateText: nil,
-                            category: .food,
-                            coordinate: MapCoordinate(
-                                latitude: 37.52,
-                                longitude: 127.01
-                            )
-                        )
-                    ],
-                    isLogMarkerTruncated: false,
-                    tourismStatus: TourismMapStatus(
-                        isAvailable: true,
-                        isStale: false,
-                        isTruncated: false
-                    )
-                )
-            ),
+            mapRepository: mapRepository
+                ?? MapRepositoryStub(content: makeMapViewportContent()),
             logMediaRepository: mediaRepository,
             currentLocationService: locationService
                 ?? MapCurrentLocationServiceStub(
@@ -310,9 +364,82 @@ final class ExploreMapFeatureViewModelTests: XCTestCase {
                 )
         )
     }
+
+    private func makeMapViewportContent() -> MapViewportContent {
+        MapViewportContent(
+            logMarkers: [
+                MapLogMarker(
+                    logID: 1,
+                    clipID: 11,
+                    sequence: 1,
+                    startTimeMillis: 0,
+                    endTimeMillis: 1_000,
+                    caption: "성수 카페 기록",
+                    placeName: "성수 카페",
+                    address: "서울 성동구 성수동",
+                    thumbnailURL: URL(
+                        string: "https://example.com/marker-1.jpg"
+                    ),
+                    coordinate: MapCoordinate(
+                        latitude: 37.54,
+                        longitude: 127.04
+                    )
+                ),
+                MapLogMarker(
+                    logID: 2,
+                    clipID: 21,
+                    sequence: 1,
+                    startTimeMillis: 0,
+                    endTimeMillis: 1_000,
+                    caption: "서울숲 산책",
+                    placeName: "서울숲",
+                    address: "서울 성동구 뚝섬로",
+                    thumbnailURL: nil,
+                    coordinate: MapCoordinate(
+                        latitude: 37.55,
+                        longitude: 127.03
+                    )
+                )
+            ],
+            tourismMarkers: [
+                TourismMapMarker(
+                    tourismID: 3,
+                    name: "성수 문화 축제",
+                    thumbnailURL: nil,
+                    startDateText: nil,
+                    endDateText: nil,
+                    category: .festival,
+                    coordinate: MapCoordinate(
+                        latitude: 37.53,
+                        longitude: 127.05
+                    )
+                ),
+                TourismMapMarker(
+                    tourismID: 4,
+                    name: "강남 맛집",
+                    thumbnailURL: nil,
+                    startDateText: nil,
+                    endDateText: nil,
+                    category: .food,
+                    coordinate: MapCoordinate(
+                        latitude: 37.52,
+                        longitude: 127.01
+                    )
+                )
+            ],
+            isLogMarkerTruncated: false,
+            tourismStatus: TourismMapStatus(
+                isAvailable: true,
+                isStale: false,
+                isTruncated: false
+            )
+        )
+    }
 }
 
 private final class MapRepositoryStub: MapRepository {
+    private(set) var requestedTourismCategories: [TourismMapCategory] = []
+
     func fetchPreview(for marker: MapMarker) async throws -> MapMarkerSummary {
         MapMarkerSummary(marker: marker, title: marker.title, subtitle: marker.subtitle, summary: nil)
     }
@@ -333,7 +460,8 @@ private final class MapRepositoryStub: MapRepository {
         in viewport: MapViewport,
         tourismCategory: TourismMapCategory
     ) async throws -> MapViewportContent {
-        content
+        requestedTourismCategories.append(tourismCategory)
+        return content
     }
 }
 

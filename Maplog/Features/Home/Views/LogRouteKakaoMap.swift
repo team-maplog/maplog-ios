@@ -328,7 +328,9 @@ private struct LogRouteKakaoMapRepresentable: UIViewRepresentable {
             ) == nil {
                 _ = shapeManager.addShapeLayer(
                     layerID: routeShapeLayerID,
-                    zOrder: 0
+                    // 기본 지도 타일보다 위, Label 마커보다 아래에 표시한다.
+                    zOrder: 10_000,
+                    passType: .overlay
                 )
             }
 
