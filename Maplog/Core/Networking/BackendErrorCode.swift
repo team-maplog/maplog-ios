@@ -9,6 +9,9 @@ enum BackendErrorCode: Equatable {
     case tourAPIUnavailable
     case tourAPIRequestFailed
     case commonValidationFailure
+    case duplicateReport
+    case cannotReportOwnContent
+    case cannotBlockSelf
 
     case expiredAccessToken
     case invalidAuthentication
@@ -57,6 +60,9 @@ enum BackendErrorCode: Equatable {
 
     init(serverCode: String) {
         switch serverCode {
+        case "REPORT-002": self = .duplicateReport
+        case "REPORT-003": self = .cannotReportOwnContent
+        case "BLOCK-001": self = .cannotBlockSelf
         case "TOUR-001":
             self = .tourAPIUnavailable
 

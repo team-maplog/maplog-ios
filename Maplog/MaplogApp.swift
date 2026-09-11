@@ -241,6 +241,14 @@ struct MaplogApp: App { // 앱의 조립 담당자
             }
             .environmentObject(authSessionStore)
             .environmentObject(signOutViewModel)
+            .onReceive(NotificationCenter.default.publisher(for: .maplogUserBlockDidChange)) { _ in
+                MaplogImageCache.shared.clearCache(completion: nil)
+                URLCache.shared.removeAllCachedResponses()
+                // 촬영 원본이 아닌 서버에서 내려받은 재생용 캐시만 지웁니다.
+                if let directory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first {
+                    try? FileManager.default.removeItem(at: directory.appendingPathComponent("LogPlayback"))
+                }
+            }
             .task {
                 appDelegate.installHandlers(
                     onFCMToken: { token in

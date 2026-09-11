@@ -1,5 +1,9 @@
 import Foundation
 
+extension Notification.Name {
+    static let maplogUserBlockDidChange = Notification.Name("MaplogUserBlockDidChange")
+}
+
 /// 로그 상세와 홈 릴스가 공통으로 사용하는 댓글의 앱 내부 모델입니다.
 /// 서버 DTO의 키 이름·날짜 문자열은 Repository에서 이 타입으로 변환됩니다.
 struct LogComment: Identifiable, Equatable, Sendable {

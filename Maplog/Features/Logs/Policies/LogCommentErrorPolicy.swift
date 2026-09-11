@@ -34,6 +34,12 @@ enum LogCommentErrorPolicy {
 
         case let .server(statusCode, response):
             switch BackendErrorCode(serverCode: response.code) {
+            case .duplicateReport:
+                return ErrorPresentation(message: "이미 신고한 댓글이에요.", recoveryAction: .none)
+            case .cannotReportOwnContent:
+                return ErrorPresentation(message: "내 댓글은 신고할 수 없어요.", recoveryAction: .none)
+            case .cannotBlockSelf:
+                return ErrorPresentation(message: "자신은 차단할 수 없어요.", recoveryAction: .none)
             case .expiredAccessToken,
                  .invalidAuthentication,
                  .inactiveUser,
@@ -43,10 +49,10 @@ enum LogCommentErrorPolicy {
 
             case .commonValidationFailure:
                 let fieldMessage = response.data?.first {
-                    $0.field == "content"
+                    $0.field == "content" || $0.field == "reason"
                 }?.message
                 return ErrorPresentation(
-                    message: fieldMessage ?? "댓글 내용을 확인해 주세요.",
+                    message: fieldMessage ?? "입력 내용을 확인해 주세요.",
                     recoveryAction: .none
                 )
 

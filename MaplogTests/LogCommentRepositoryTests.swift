@@ -2,6 +2,59 @@ import XCTest
 @testable import Maplog
 
 final class LogCommentRepositoryTests: XCTestCase {
+    func testModerationServerCodesProduceSpecificNonRetryMessages() {
+        for (code, status, message) in [
+            ("REPORT-002", 409, "이미 신고한 댓글이에요."),
+            ("REPORT-003", 400, "내 댓글은 신고할 수 없어요."),
+            ("BLOCK-001", 400, "자신은 차단할 수 없어요.")
+        ] {
+            let error = APIError.server(statusCode: status, response: APIErrorResponse(
+                successFlag: false, code: code, message: "서버 문구", data: nil))
+            let result = LogCommentErrorPolicy.actionPresentation(for: error, actionName: "댓글 신고")
+            XCTAssertEqual(result.message, message)
+            XCTAssertEqual(result.recoveryAction, .none)
+        }
+    }
+
+    func testReportTrimsReasonAndRejectsEmptyOrTooLongInputBeforeRequest() async throws {
+        let response = makeCommentResponse()
+        let service = LogCommentAPIServiceStub(comments: [], createResponse: response,
+            updateResponse: response, likeResponse: .init(commentID: 31, liked: false))
+        let repository = DefaultLogCommentRepository(apiService: service)
+        for reason in ["   ", String(repeating: "가", count: 1001)] {
+            do {
+                try await repository.reportComment(commentID: 31, reason: reason)
+                XCTFail("Invalid report should fail")
+            } catch { XCTAssertNil(service.reportRequest) }
+        }
+        try await repository.reportComment(commentID: 31, reason: "  욕설  ")
+        XCTAssertEqual(service.reportRequest?.reason, "욕설")
+        XCTAssertEqual(service.reportRequest?.targetId, 31)
+        let encoded = try JSONEncoder().encode(XCTUnwrap(service.reportRequest))
+        let object = try XCTUnwrap(JSONSerialization.jsonObject(with: encoded) as? [String: Any])
+        XCTAssertEqual(object["targetType"] as? String, "COMMENT")
+    }
+
+    func testBlockRejectsWrongUserOrUnblockedResponse() async {
+        let response = makeCommentResponse()
+        let service = LogCommentAPIServiceStub(comments: [], createResponse: response,
+            updateResponse: response, likeResponse: .init(commentID: 31, liked: false))
+        let repository = DefaultLogCommentRepository(apiService: service)
+        let userID = UUID()
+        for result in [CommentAuthorBlockStateDTO(userId: UUID(), blocked: true),
+                       CommentAuthorBlockStateDTO(userId: userID, blocked: false)] {
+            service.blockResponse = result
+            do {
+                try await repository.blockAuthor(userID: userID)
+                XCTFail("Mismatched state should fail")
+            } catch {
+                guard case APIError.invalidResponse = error else {
+                    return XCTFail("Expected invalid response")
+                }
+            }
+        }
+    }
+
     func testFetchCommentsMapsTopLevelParentIDToNil() async throws {
         let response = makeCommentResponse(parentCommentID: 0)
         let apiService = LogCommentAPIServiceStub(
@@ -247,6 +300,15 @@ final class LogCommentRepositoryTests: XCTestCase {
 private struct EmptyCommentDeletePayload: Decodable {}
 
 private final class LogCommentAPIServiceStub: LogCommentAPIService {
+    var reportRequest: CommentReportRequestDTO?
+    var blockResponse: CommentAuthorBlockStateDTO?
+    func reportComment(request: CommentReportRequestDTO) async throws -> CommentReportReceiptDTO {
+        reportRequest = request
+        return CommentReportReceiptDTO(reportId: 1, status: "PENDING", createdAt: "2026-09-12T00:00:00")
+    }
+    func blockAuthor(userID: UUID) async throws -> CommentAuthorBlockStateDTO {
+        blockResponse ?? CommentAuthorBlockStateDTO(userId: userID, blocked: true)
+    }
     struct CreateRequest {
         let logID: Int64
         let request: CreateLogCommentRequestDTO
