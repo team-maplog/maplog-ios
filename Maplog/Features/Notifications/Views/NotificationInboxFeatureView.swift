@@ -57,8 +57,7 @@ struct NotificationInboxFeatureView: View {
             await viewModel.loadIfNeeded()
         }
         .task {
-            // 서버 응답을 기다리는 동안에도 시스템 알림 권한을 요청할 수 있어야 합니다.
-            await pushNotificationCoordinator.requestPermissionIfNeeded()
+            await pushNotificationCoordinator.refreshAuthorizationStatus()
         }
         .refreshable {
             await viewModel.reload()
@@ -162,7 +161,12 @@ struct NotificationInboxFeatureView: View {
             )
 
         case .authorized, .provisional, .ephemeral:
-            EmptyView()
+            NotificationPermissionCard(
+                title: "알림 표시 설정",
+                message: "배너, 소리, 알림 센터 표시는 iPhone 설정에서 변경할 수 있어요.",
+                actionTitle: "설정 열기",
+                action: openSystemSettings
+            )
 
         @unknown default:
             EmptyView()
@@ -176,7 +180,7 @@ struct NotificationInboxFeatureView: View {
     }
 
     private func openSystemSettings() {
-        guard let settingsURL = URL(string: UIApplication.openSettingsURLString) else {
+        guard let settingsURL = URL(string: UIApplication.openNotificationSettingsURLString) else {
             return
         }
 

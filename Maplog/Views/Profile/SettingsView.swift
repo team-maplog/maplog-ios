@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 private struct SettingsRoute: Identifiable, Hashable {
     let id: String
@@ -9,8 +10,8 @@ private struct SettingsRoute: Identifiable, Hashable {
 }
 
 struct SettingsView: View {
+    @Environment(\.openURL) private var openURL
     @Environment(\.maplogLogout) private var maplogLogout
-    @EnvironmentObject private var sessionStore: MaplogSessionStore
     @EnvironmentObject private var signOutViewModel: SignOutViewModel
     @State private var showUpdateToast = false
     @State private var toastText = ""
@@ -59,9 +60,11 @@ struct SettingsView: View {
                     }
 
                     settingsSection("알림 설정") {
-                        SettingsToggleRow(title: "푸시 알림", isOn: pushNotificationsBinding)
-                        SettingsDivider()
-                        SettingsToggleRow(title: "서비스 공지 알림", isOn: serviceAnnouncementsBinding)
+                        Button(action: openNotificationSettings) {
+                            SettingsNavigationRow(title: "iPhone 알림 설정")
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityHint("Maplog의 알림 허용, 배너와 소리 설정을 엽니다")
                     }
 
                     settingsSection("서비스 정보") {
@@ -148,24 +151,11 @@ struct SettingsView: View {
         .maplogTabBarHidden()
     }
 
-    private var pushNotificationsBinding: Binding<Bool> {
-        Binding(
-            get: { sessionStore.notificationSettings.pushNotificationsEnabled },
-            set: { isEnabled in
-                sessionStore.setPushNotificationsEnabled(isEnabled)
-                showToastTemporarily(isEnabled ? "푸시 알림을 켰어요" : "푸시 알림을 껐어요")
-            }
-        )
-    }
-
-    private var serviceAnnouncementsBinding: Binding<Bool> {
-        Binding(
-            get: { sessionStore.notificationSettings.serviceAnnouncementsEnabled },
-            set: { isEnabled in
-                sessionStore.setServiceAnnouncementsEnabled(isEnabled)
-                showToastTemporarily(isEnabled ? "서비스 공지 알림을 켰어요" : "서비스 공지 알림을 껐어요")
-            }
-        )
+    private func openNotificationSettings() {
+        guard let url = URL(string: UIApplication.openNotificationSettingsURLString) else {
+            return
+        }
+        openURL(url)
     }
 
     private func settingsSection<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
