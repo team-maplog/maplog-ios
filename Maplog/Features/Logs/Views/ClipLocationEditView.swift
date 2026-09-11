@@ -10,6 +10,7 @@ import UIKit
 
 struct ClipLocationEditView: View {
     @ObservedObject var viewModel: ClipLocationEditViewModel // 부모가 만든 viewModel을 전달받아 관찰만 함
+    @FocusState private var isSearchFocused: Bool
     @Environment(\.dismiss) private var dismiss
 
     let thumbnailData: Data?
@@ -19,12 +20,15 @@ struct ClipLocationEditView: View {
 
         GeometryReader { geometry in
             VStack(spacing: MaplogSpacing.medium) {
+                searchField
+
                 // 지도는 바깥 ScrollView에 넣지 않아 이동·핀치가 화면 스크롤과 경쟁하지 않는다.
                 locationMap
                     .frame(height: min(360, max(180, geometry.size.height * 0.48)))
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: MaplogSpacing.section) {
+                        searchResults
                         clipSummary
                         locationSelectionStatus
                         locationInformation
@@ -65,8 +69,72 @@ struct ClipLocationEditView: View {
             viewModel.resolveInitialLocationIfNeeded()
         }
         .onDisappear {
+            viewModel.cancelSearch()
             viewModel.cancelLocationResolution()
         }
+    }
+
+    private var searchField: some View {
+        HStack(spacing: MaplogSpacing.small) {
+            TextField("장소명 또는 주소 검색", text: $viewModel.searchQuery)
+                .font(MaplogFont.body)
+                .submitLabel(.search)
+                .focused($isSearchFocused)
+                .onSubmit(search)
+                .autocorrectionDisabled()
+            Button(action: search) {
+                Image(systemName: "magnifyingglass")
+                    .frame(width: 44, height: 44)
+            }
+            .disabled(viewModel.searchQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .accessibilityLabel("장소 검색")
+        }
+        .padding(.leading, MaplogSpacing.medium)
+        .background(Color.maplogSurfaceRaised, in: RoundedRectangle(cornerRadius: MaplogRadius.medium))
+    }
+
+    @ViewBuilder
+    private var searchResults: some View {
+        if viewModel.isSearching {
+            ProgressView("장소를 찾고 있어요")
+        }
+        if let message = viewModel.searchMessage {
+            Text(message)
+                .font(MaplogFont.caption)
+                .foregroundStyle(Color.maplogMuted)
+        }
+        if !viewModel.searchResults.isEmpty {
+            VStack(alignment: .leading, spacing: MaplogSpacing.small) {
+                Text("검색 결과")
+                    .font(MaplogFont.sectionTitle)
+                ForEach(viewModel.searchResults, id: \.self) { location in
+                    Button {
+                        isSearchFocused = false
+                        viewModel.selectSearchResult(location)
+                    } label: {
+                        VStack(alignment: .leading, spacing: 4) {
+                            MaplogLocationLabel(title: location.name ?? "장소", pinSize: 16)
+                                .font(MaplogFont.bodyStrong)
+                                .foregroundStyle(Color.maplogInk)
+                            if let address = location.address {
+                                Text(address)
+                                    .font(MaplogFont.caption)
+                                    .foregroundStyle(Color.maplogMuted)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint("지도를 이 장소로 이동합니다. 이동 후 위치를 미세 조정할 수 있습니다.")
+                }
+            }
+        }
+    }
+
+    private func search() {
+        isSearchFocused = false
+        viewModel.searchLocations()
     }
 
     private var clipSummary: some View {
