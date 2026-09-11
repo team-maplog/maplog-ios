@@ -46,6 +46,7 @@ struct SignUpView: View {
             .padding(.top, MaplogSpacing.xLarge)
             .padding(.bottom, MaplogSpacing.xxxLarge)
         }
+        .scrollDismissesKeyboard(.interactively)
         .background(Color.maplogSurface)
         .navigationTitle("회원가입")
         .navigationBarTitleDisplayMode(.inline)
@@ -95,7 +96,7 @@ struct SignUpView: View {
     private var emailField: some View {
         SignUpInputSection(
             title: "이메일 주소",
-            message: viewModel.emailError
+            message: viewModel.emailFeedback
         ) {
             TextField("example@maplog.app", text: $viewModel.email)
                 .keyboardType(.emailAddress)
@@ -114,7 +115,7 @@ struct SignUpView: View {
     private var passwordField: some View {
         SignUpInputSection(
             title: "비밀번호",
-            message: viewModel.passwordError,
+            message: viewModel.passwordFeedback,
             helper: "8~72자, 영문 소문자·숫자·특수문자를 포함해 주세요."
         ) {
             SecureField("비밀번호를 입력해주세요", text: $viewModel.password)
@@ -133,7 +134,7 @@ struct SignUpView: View {
     private var passwordConfirmationField: some View {
         SignUpInputSection(
             title: "비밀번호 확인",
-            message: viewModel.passwordConfirmationError
+            message: viewModel.passwordConfirmationFeedback
         ) {
             SecureField(
                 "비밀번호를 한 번 더 입력해주세요",
@@ -154,7 +155,7 @@ struct SignUpView: View {
     private var nicknameField: some View {
         SignUpInputSection(
             title: "닉네임",
-            message: viewModel.nicknameError,
+            message: viewModel.nicknameFeedback,
             helper: "2~20자, 한글·영문·숫자와 단일 공백만 사용할 수 있어요."
         ) {
             TextField("사용할 닉네임", text: $viewModel.nickname)
@@ -176,14 +177,20 @@ struct SignUpView: View {
                 title: "이용약관 동의 (필수)",
                 isAgreed: viewModel.termsAgreed,
                 message: viewModel.termsError,
-                action: viewModel.toggleTermsAgreement
+                action: {
+                    focusedField = nil
+                    viewModel.toggleTermsAgreement()
+                }
             )
 
             SignUpAgreementRow(
                 title: "개인정보 처리방침 동의 (필수)",
                 isAgreed: viewModel.privacyPolicyAgreed,
                 message: viewModel.privacyPolicyError,
-                action: viewModel.togglePrivacyPolicyAgreement
+                action: {
+                    focusedField = nil
+                    viewModel.togglePrivacyPolicyAgreement()
+                }
             )
         }
     }
@@ -246,7 +253,7 @@ private struct SignUpInputSection<Content: View>: View {
                 Text(message)
                     .font(MaplogFont.caption)
                     .foregroundStyle(Color.maplogDanger)
-                    .accessibilityLabel("\(title) 오류: \(message)")
+                    .accessibilityLabel("\(title): \(message)")
             } else if let helper {
                 Text(helper)
                     .font(MaplogFont.caption)

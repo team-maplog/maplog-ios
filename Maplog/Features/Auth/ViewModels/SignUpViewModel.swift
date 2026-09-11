@@ -51,6 +51,7 @@ final class SignUpViewModel: ObservableObject {
     private let authRepository: any AuthRepository
     private let authSession: any AuthSessionManaging
     private var touchedFields = Set<SignUpField>()
+    @Published private var completedFields = Set<SignUpField>()
 
     init(
         authRepository: any AuthRepository,
@@ -68,7 +69,32 @@ final class SignUpViewModel: ObservableObject {
 
     func didFinishEditing(_ field: SignUpField) {
         touchedFields.insert(field)
+        completedFields.insert(field)
         validate(field)
+    }
+
+    var emailFeedback: String? {
+        emailError ?? successMessage(for: .email, message: "올바른 이메일 형식입니다.")
+    }
+
+    var passwordFeedback: String? {
+        passwordError ?? successMessage(for: .password, message: "사용 가능한 비밀번호입니다.")
+    }
+
+    var passwordConfirmationFeedback: String? {
+        passwordConfirmationError ?? successMessage(for: .passwordConfirmation, message: "비밀번호가 일치합니다.")
+    }
+
+    var nicknameFeedback: String? {
+        nicknameError ?? successMessage(for: .nickname, message: "올바른 닉네임 형식입니다.")
+    }
+
+    private func successMessage(for field: SignUpField, message: String) -> String? {
+        // 형식 검사는 이메일·닉네임 중복 확인을 대신하지 않습니다.
+        // 정상 안내는 입력을 마친 값에만 표시하고, 서버 오류가 있으면 오류를 우선합니다.
+        completedFields.contains(field) && validationMessage(for: field) == nil
+            ? message
+            : nil
     }
 
     func toggleTermsAgreement() {
@@ -118,6 +144,7 @@ final class SignUpViewModel: ObservableObject {
     }
 
     private func inputDidChange(_ field: SignUpField) {
+        completedFields.remove(field)
         let shouldValidateChangedField = touchedFields.contains(field)
 
         if shouldValidateChangedField {
