@@ -13,6 +13,8 @@ final class LogCommentsViewModel: ObservableObject {
     @Published private(set) var state: LogCommentsState = .idle
     @Published private(set) var actionError: ErrorPresentation?
     @Published private(set) var isSending = false
+    @Published private(set) var isModerating = false
+    @Published var moderationMessage: String?
     @Published private(set) var updatingCommentIDs = Set<Int64>()
     @Published private var profileImageDataByAuthorID: [UUID: Data] = [:]
     @Published private var profileImageLoadingAuthorIDs = Set<UUID>()
@@ -33,6 +35,8 @@ final class LogCommentsViewModel: ObservableObject {
         case update(commentID: Int64, content: String)
         case delete(commentID: Int64)
         case like(commentID: Int64, isLiked: Bool)
+        case report(commentID: Int64, reason: String)
+        case block(userID: UUID)
     }
 
     init(
@@ -90,6 +94,10 @@ final class LogCommentsViewModel: ObservableObject {
         }
 
         switch lastAction {
+        case let .report(commentID, reason):
+            await reportComment(commentID: commentID, reason: reason)
+        case let .block(userID):
+            await blockAuthor(userID: userID)
         case .load:
             await reloadComments()
 
@@ -115,13 +123,61 @@ final class LogCommentsViewModel: ObservableObject {
 
     func dismissActionError() {
         actionError = nil
-        lastAction = nil
+        // 알림창이 먼저 닫혀도 그 버튼에서 시작한 비동기 재시도가 작업을 읽을 수 있게 둡니다.
     }
 
     func isOwnedByViewer(
         _ comment: LogComment
     ) -> Bool {
         comment.author.id == viewerID
+    }
+
+    func canModerate(_ comment: LogComment) -> Bool {
+        viewerID != nil && !isOwnedByViewer(comment) && !comment.isDeleted
+    }
+
+    func reportComment(commentID: Int64, reason: String) async {
+        guard !isModerating,
+              let comment = comments.first(where: { $0.id == commentID }),
+              canModerate(comment) else { return }
+        isModerating = true
+        actionError = nil
+        defer { isModerating = false }
+        do {
+            try await commentRepository.reportComment(commentID: commentID, reason: reason)
+            lastAction = nil
+            moderationMessage = "신고가 접수됐어요. 검토 후 필요한 조치를 진행합니다."
+        } catch is CancellationError {
+            return
+        } catch {
+            lastAction = .report(commentID: commentID, reason: reason)
+            actionError = LogCommentErrorPolicy.actionPresentation(for: error, actionName: "댓글 신고")
+        }
+    }
+
+    func blockAuthor(userID: UUID) async {
+        guard !isModerating, let viewerID, userID != viewerID else { return }
+        isModerating = true
+        actionError = nil
+        defer { isModerating = false }
+        do {
+            try await commentRepository.blockAuthor(userID: userID)
+            // 차단은 삭제가 아니므로 댓글 삭제 집계를 호출하지 않습니다.
+            let blockedParentIDs = Set(comments.filter { $0.author.id == userID }.map(\.id))
+            let remaining = comments.filter {
+                $0.author.id != userID && !blockedParentIDs.contains($0.parentCommentID ?? 0)
+            }
+            updateContentState(with: remaining)
+            profileImageDataByAuthorID[userID] = nil
+            lastAction = nil
+            // 다른 탭의 기존 콘텐츠도 새 차단 정책으로 다시 조회하게 합니다.
+            NotificationCenter.default.post(name: .maplogUserBlockDidChange, object: nil)
+        } catch is CancellationError {
+            return
+        } catch {
+            lastAction = .block(userID: userID)
+            actionError = LogCommentErrorPolicy.actionPresentation(for: error, actionName: "사용자 차단")
+        }
     }
 
     func isUpdating(

@@ -4,6 +4,62 @@ import XCTest
 
 @MainActor
 final class LogCommentsViewModelTests: XCTestCase {
+    func testOwnOrDeletedCommentCannotBeReportedAndSelfCannotBeBlocked() async {
+        let profile = CommentProfileRepositoryStub()
+        let own = makeComment(id: 1, authorID: profile.userID)
+        let deleted = makeComment(id: 2, isDeleted: true)
+        let repository = LogCommentRepositoryStub(comments: [own, deleted])
+        let model = LogCommentsViewModel(logID: 10, commentRepository: repository,
+            profileRepository: profile, onCommentCountChange: { _ in })
+        XCTAssertFalse(model.canModerate(own))
+        await model.loadInitialComments()
+        XCTAssertTrue(model.isOwnedByViewer(own))
+        XCTAssertFalse(model.canModerate(own))
+        XCTAssertFalse(model.canModerate(deleted))
+        await model.reportComment(commentID: own.id, reason: "test")
+        await model.blockAuthor(userID: profile.userID)
+        XCTAssertTrue(repository.reportedIDs.isEmpty)
+        XCTAssertTrue(repository.blockedIDs.isEmpty)
+    }
+
+    func testBlockHidesAuthorAndThreadOnlyAfterServerSuccess() async {
+        let parent = makeComment(id: 1)
+        let reply = makeComment(id: 2, parentCommentID: 1)
+        let unrelated = makeComment(id: 3)
+        let repository = LogCommentRepositoryStub(comments: [parent, reply, unrelated])
+        var deltas: [Int64] = []
+        let model = LogCommentsViewModel(logID: 10, commentRepository: repository,
+            profileRepository: CommentProfileRepositoryStub(), onCommentCountChange: { deltas.append($0) })
+        await model.loadInitialComments()
+        repository.moderationError = APIError.network(URLError(.notConnectedToInternet))
+        await model.blockAuthor(userID: parent.author.id)
+        XCTAssertEqual(model.comments.map(\.id), [1, 2, 3])
+        XCTAssertNotNil(model.actionError)
+        repository.moderationError = nil
+        await model.retryLastAction()
+        XCTAssertEqual(model.comments.map(\.id), [3])
+        XCTAssertEqual(repository.blockedIDs, [parent.author.id])
+        XCTAssertTrue(deltas.isEmpty, "차단은 댓글 삭제가 아닙니다")
+    }
+
+    func testReportSuccessKeepsCommentAndFailureDoesNotClaimSuccess() async {
+        let comment = makeComment(id: 1)
+        let repository = LogCommentRepositoryStub(comments: [comment])
+        let model = LogCommentsViewModel(logID: 10, commentRepository: repository,
+            profileRepository: CommentProfileRepositoryStub(), onCommentCountChange: { _ in })
+        await model.loadInitialComments()
+        repository.moderationError = APIError.network(URLError(.notConnectedToInternet))
+        await model.reportComment(commentID: 1, reason: "괴롭힘")
+        XCTAssertNil(model.moderationMessage)
+        XCTAssertNotNil(model.actionError)
+        repository.moderationError = nil
+        model.dismissActionError()
+        await model.retryLastAction()
+        XCTAssertEqual(repository.reportedIDs, [1])
+        XCTAssertNotNil(model.moderationMessage)
+        XCTAssertEqual(model.comments.map(\.id), [1])
+    }
+
     func testLoadHidesDeletedStandaloneCommentsAndDeletedReplies() async {
         let activeParent = makeComment(id: 1)
         let activeReply = makeComment(id: 2, parentCommentID: activeParent.id)
@@ -105,12 +161,13 @@ final class LogCommentsViewModelTests: XCTestCase {
     private func makeComment(
         id: Int64,
         parentCommentID: Int64? = nil,
-        isDeleted: Bool = false
+        isDeleted: Bool = false,
+        authorID: UUID = UUID()
     ) -> LogComment {
         LogComment(
             id: id,
             author: LogCommentAuthor(
-                id: UUID(),
+                id: authorID,
                 nickname: "여행자\(id)",
                 profileImageURL: nil
             ),
@@ -126,6 +183,17 @@ final class LogCommentsViewModelTests: XCTestCase {
 }
 
 private final class LogCommentRepositoryStub: LogCommentRepository {
+    var moderationError: Error?
+    var reportedIDs: [Int64] = []
+    var blockedIDs: [UUID] = []
+    func reportComment(commentID: Int64, reason: String) async throws {
+        if let moderationError { throw moderationError }
+        reportedIDs.append(commentID)
+    }
+    func blockAuthor(userID: UUID) async throws {
+        if let moderationError { throw moderationError }
+        blockedIDs.append(userID)
+    }
     private let comments: [LogComment]
 
     init(comments: [LogComment]) {
@@ -161,9 +229,10 @@ private final class LogCommentRepositoryStub: LogCommentRepository {
 }
 
 private final class CommentProfileRepositoryStub: ProfileRepository {
+    let userID = UUID()
     func fetchMyProfile() async throws -> MyProfile {
         MyProfile(
-            id: UUID(),
+            id: userID,
             nickname: "나",
             profileImageURL: URL(string: "https://example.com/avatar.png"),
             bio: "",

@@ -1,5 +1,22 @@
 import Foundation
 
+struct CommentReportRequestDTO: Encodable {
+    let targetType = "COMMENT"
+    let targetId: Int64
+    let reason: String
+}
+
+struct CommentReportReceiptDTO: Decodable {
+    let reportId: Int64
+    let status: String
+    let createdAt: String
+}
+
+struct CommentAuthorBlockStateDTO: Decodable {
+    let userId: UUID
+    let blocked: Bool
+}
+
 /// GET, POST, PATCH 댓글 API가 공통으로 반환하는 서버 DTO입니다.
 struct LogCommentResponseDTO: Decodable {
     let commentID: Int64

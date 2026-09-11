@@ -10,6 +10,9 @@ struct LogCommentsFeatureSheet: View {
     @State private var draft = ""
     @State private var composerMode: ComposerMode = .new
     @State private var commentPendingDeletion: LogComment?
+    @State private var commentPendingReport: LogComment?
+    @State private var commentPendingBlock: LogComment?
+    @State private var reportReason = ""
     @State private var selectedAuthor: FollowUser?
     private let initialCommentID: Int64?
     @State private var didScrollToComment = false
@@ -105,6 +108,11 @@ struct LogCommentsFeatureSheet: View {
         NavigationStack {
             VStack(spacing: 0) {
                 header
+                if viewModel.isModerating {
+                    ProgressView("처리 중…")
+                        .font(.caption)
+                        .padding(.bottom, MaplogSpacing.small)
+                }
                 if viewModel.isRequestedCommentUnavailable(initialCommentID) {
                     Text("알림의 댓글이 삭제되었거나 더 이상 표시되지 않아요.")
                         .font(.subheadline)
@@ -146,21 +154,22 @@ struct LogCommentsFeatureSheet: View {
             } message: {
                 Text(viewModel.actionError?.message ?? "")
             }
-            .confirmationDialog(
+            .alert(
                 "댓글을 삭제할까요?",
                 isPresented: deleteConfirmationPresented,
-                titleVisibility: .visible
-            ) {
-                if let comment = commentPendingDeletion {
-                    Button("삭제", role: .destructive) {
-                        Task {
-                            await viewModel.deleteComment(commentID: comment.id)
-                        }
-                    }
+                presenting: commentPendingDeletion
+            ) { comment in
+                Button("취소", role: .cancel) {
+                    commentPendingDeletion = nil
                 }
 
-                Button("취소", role: .cancel) {}
-            } message: {
+                Button("삭제", role: .destructive) {
+                    commentPendingDeletion = nil
+                    Task {
+                        await viewModel.deleteComment(commentID: comment.id)
+                    }
+                }
+            } message: { _ in
                 Text("삭제한 댓글은 되돌릴 수 없어요.")
             }
             .navigationDestination(item: $selectedAuthor) { author in
@@ -169,6 +178,40 @@ struct LogCommentsFeatureSheet: View {
                     followRepository: followRepository,
                     profileRepository: profileRepository
                 )
+            }
+            .alert("댓글 신고", isPresented: Binding(
+                get: { commentPendingReport != nil },
+                set: { if !$0 { commentPendingReport = nil } }
+            ), presenting: commentPendingReport) { comment in
+                TextField("신고 사유 (최대 1,000자)", text: $reportReason)
+                Button("취소", role: .cancel) { commentPendingReport = nil }
+                Button("신고", role: .destructive) {
+                    let reason = reportReason
+                    Task { await viewModel.reportComment(commentID: comment.id, reason: reason) }
+                }
+                .disabled(reportReason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                          || reportReason.utf16.count > 1000)
+            } message: { _ in
+                Text("이 댓글을 신고하는 이유를 알려주세요.")
+            }
+            .alert("사용자를 차단할까요?", isPresented: Binding(
+                get: { commentPendingBlock != nil },
+                set: { if !$0 { commentPendingBlock = nil } }
+            ), presenting: commentPendingBlock) { comment in
+                Button("취소", role: .cancel) { commentPendingBlock = nil }
+                Button("차단", role: .destructive) {
+                    Task { await viewModel.blockAuthor(userID: comment.author.id) }
+                }
+            } message: { comment in
+                Text("\(comment.author.nickname)님과 서로의 로그와 댓글이 숨겨져요. 차단하면 홈으로 돌아갑니다.")
+            }
+            .alert("신고 접수", isPresented: Binding(
+                get: { viewModel.moderationMessage != nil },
+                set: { if !$0 { viewModel.moderationMessage = nil } }
+            )) {
+                Button("확인", role: .cancel) { viewModel.moderationMessage = nil }
+            } message: {
+                Text(viewModel.moderationMessage ?? "")
             }
         }
     }
@@ -330,7 +373,8 @@ struct LogCommentsFeatureSheet: View {
 
                     Spacer(minLength: 0)
 
-                    if viewModel.isOwnedByViewer(comment), !comment.isDeleted {
+                    if !comment.isDeleted,
+                       viewModel.isOwnedByViewer(comment) || viewModel.canModerate(comment) {
                         commentMenu(for: comment)
                     }
                 }
@@ -387,12 +431,25 @@ struct LogCommentsFeatureSheet: View {
         for comment: LogComment
     ) -> some View {
         Menu {
-            Button("수정") {
-                startEditing(comment)
-            }
+            if viewModel.isOwnedByViewer(comment) {
+                Button("수정") {
+                    startEditing(comment)
+                }
 
-            Button("삭제", role: .destructive) {
-                commentPendingDeletion = comment
+                Button("삭제", role: .destructive) {
+                    isComposerFocused = false
+                    commentPendingDeletion = comment
+                }
+            } else {
+                Button("댓글 신고", systemImage: "flag") {
+                    isComposerFocused = false
+                    reportReason = ""
+                    commentPendingReport = comment
+                }
+                Button("사용자 차단", systemImage: "person.crop.circle.badge.xmark", role: .destructive) {
+                    isComposerFocused = false
+                    commentPendingBlock = comment
+                }
             }
         } label: {
             Image(systemName: "ellipsis")
@@ -401,7 +458,8 @@ struct LogCommentsFeatureSheet: View {
                 .frame(width: MaplogSize.minimumTapTarget, height: 28)
                 .contentShape(Rectangle())
         }
-        .accessibilityLabel("내 댓글 메뉴")
+        .disabled(viewModel.isModerating || viewModel.isUpdating(commentID: comment.id))
+        .accessibilityLabel(viewModel.isOwnedByViewer(comment) ? "내 댓글 메뉴" : "댓글 신고 및 사용자 차단")
     }
 
     private func commentLikeButton(

@@ -103,6 +103,38 @@ final class DefaultLogCommentAPIService: LogCommentAPIService {
         return try validatedData(from: response)
     }
 
+    func reportComment(request: CommentReportRequestDTO) async throws -> CommentReportReceiptDTO {
+        var urlRequest = URLRequest(url: APIConfiguration.baseURL.appendingPathComponent("api/v1/reports"))
+        urlRequest.httpMethod = "POST"
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Accept")
+        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        urlRequest.httpBody = try JSONEncoder().encode(request)
+        let response = try await authenticatedAPIClient.request(
+            urlRequest, responseType: APIResponse<CommentReportReceiptDTO>.self
+        )
+        guard response.successFlag, response.code == "SUCCESS-001" else {
+            throw APIError.unexpectedResponse(code: response.code, message: response.message)
+        }
+        guard let receipt = response.data else { throw APIError.missingData }
+        return receipt
+    }
+
+    func blockAuthor(userID: UUID) async throws -> CommentAuthorBlockStateDTO {
+        var request = URLRequest(url: APIConfiguration.baseURL
+            .appendingPathComponent("api/v1/blocks")
+            .appendingPathComponent(userID.uuidString))
+        request.httpMethod = "PUT"
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        let response = try await authenticatedAPIClient.request(
+            request, responseType: APIResponse<CommentAuthorBlockStateDTO>.self
+        )
+        guard response.successFlag, response.code == "SUCCESS-003" else {
+            throw APIError.unexpectedResponse(code: response.code, message: response.message)
+        }
+        guard let result = response.data else { throw APIError.missingData }
+        return result
+    }
+
     private func logCommentsEndpoint(
         logID: Int64
     ) throws -> URL {

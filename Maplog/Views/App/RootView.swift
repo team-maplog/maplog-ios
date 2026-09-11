@@ -153,6 +153,7 @@ struct RootView: View {
 
     @State private var hasFinishedInitialAuthCheck = false // keychain 조회 기억 상태
     @State private var phase: LaunchPhase = .login
+    @State private var contentRevision = UUID()
     @State private var requestedTab: MaplogTab?
     @State private var requestedCapturePlaceName: String?
     @State private var requestedNotificationDestination: MaplogNotificationDestination?
@@ -312,6 +313,7 @@ struct RootView: View {
                     requestedCapturePlaceName: $requestedCapturePlaceName,
                     requestedNotificationDestination: $requestedNotificationDestination
                 )
+                .id(contentRevision)
                 .task {
                     // 로그인과 위치 권한 단계를 마친 뒤에만 알림 권한을 요청합니다.
                     guard authSessionStore.isAuthenticated else { return }
@@ -330,6 +332,13 @@ struct RootView: View {
         }
         .environmentObject(sessionStore)
         .onAppear(perform: consumeLaunchRequest)
+        .onReceive(NotificationCenter.default.publisher(for: .maplogUserBlockDidChange)) { _ in
+            // 이미 열린 상세·검색·댓글 화면에 차단 전 데이터가 남지 않도록 닫고 재조회합니다.
+            requestedNotificationDestination = nil
+            requestedTab = nil
+            requestedCapturePlaceName = nil
+            contentRevision = UUID()
+        }
         .onReceive(NotificationCenter.default.publisher(for: MaplogLaunchRequest.didChangeNotification)) { _ in
             consumeLaunchRequest()
         } // 앱 시작 시 세션 복구

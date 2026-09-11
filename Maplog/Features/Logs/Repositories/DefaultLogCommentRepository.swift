@@ -7,6 +7,26 @@ final class DefaultLogCommentRepository: LogCommentRepository {
         self.apiService = apiService
     }
 
+    func reportComment(commentID: Int64, reason: String) async throws {
+        let reason = reason.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard commentID > 0, !reason.isEmpty, reason.utf16.count <= 1000 else {
+            throw APIError.invalidRequest(reason: "신고 사유는 1~1,000자로 입력해 주세요.")
+        }
+        let receipt = try await apiService.reportComment(
+            request: CommentReportRequestDTO(targetId: commentID, reason: reason)
+        )
+        guard receipt.reportId > 0, receipt.status == "PENDING" else {
+            throw APIError.invalidResponse
+        }
+    }
+
+    func blockAuthor(userID: UUID) async throws {
+        let result = try await apiService.blockAuthor(userID: userID)
+        guard result.userId == userID, result.blocked else {
+            throw APIError.invalidResponse
+        }
+    }
+
     func fetchComments(
         logID: Int64
     ) async throws -> [LogComment] {

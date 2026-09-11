@@ -2,6 +2,9 @@ import Foundation
 
 /// Swagger의 댓글 endpoint를 호출하는 네트워크 경계입니다.
 protocol LogCommentAPIService {
+    func reportComment(request: CommentReportRequestDTO) async throws -> CommentReportReceiptDTO
+    func blockAuthor(userID: UUID) async throws -> CommentAuthorBlockStateDTO
+
     func fetchComments(
         logID: Int64
     ) async throws -> [LogCommentResponseDTO]
