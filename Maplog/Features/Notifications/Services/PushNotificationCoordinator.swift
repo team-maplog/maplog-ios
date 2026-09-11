@@ -19,6 +19,7 @@ final class PushNotificationCoordinator: ObservableObject, PushNotificationSessi
     private let authenticationState: any AuthenticationStateProviding
     private let tokenStore: any PushNotificationTokenStoring
     private var isSigningOut = false
+    private var isRequestingPermission = false
     private var registrationTask: Task<Void, Error>?
     private var registrationID: UUID?
 
@@ -49,6 +50,11 @@ final class PushNotificationCoordinator: ObservableObject, PushNotificationSessi
 
     /// 권한은 앱 실행 직후가 아니라 사용자가 알림 목록을 열었을 때 요청합니다.
     func requestPermissionIfNeeded() async {
+        // 화면 진입과 허용 버튼이 겹쳐도 시스템 요청은 한 번만 진행합니다.
+        guard !isRequestingPermission else { return }
+        isRequestingPermission = true
+        defer { isRequestingPermission = false }
+
         await refreshAuthorizationStatus()
 
         guard authorizationStatus == .notDetermined else {
@@ -56,11 +62,14 @@ final class PushNotificationCoordinator: ObservableObject, PushNotificationSessi
         }
 
         do {
-            _ = try await UNUserNotificationCenter.current()
+            logger.info("Notification permission request started")
+            let granted = try await UNUserNotificationCenter.current()
                 .requestAuthorization(options: [.alert, .badge, .sound])
+            logger.info("Notification permission request completed, granted: \(granted)")
             await refreshAuthorizationStatus()
 
         } catch {
+            logger.error("Notification permission request failed, error code: \((error as NSError).code)")
             await refreshAuthorizationStatus()
         }
     }
