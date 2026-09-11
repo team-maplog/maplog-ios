@@ -700,6 +700,7 @@ struct HomeView: View {
                     viewportSize: overlayProxy.size
                 )
             }
+            .clipped()
         }
         .background(
             isHomeReelActive
@@ -738,7 +739,11 @@ struct HomeView: View {
         if isHomeReelActive,
            let firstReel,
            let authorAnchor = anchors[firstReel.id],
-           let firstReelTopOffset {
+           let firstReelTopOffset,
+           HomeReelMetadataLayout.isVisible(
+               pageTop: firstReelTopOffset,
+               viewportHeight: viewportSize.height
+           ) {
             let revealProgress = firstReelRevealProgress(
                 viewportHeight: viewportSize.height
             )
@@ -749,7 +754,6 @@ struct HomeView: View {
                     - (MaplogSpacing.page * 2)
             )
             let destinationX = authorFrame.minX
-            let destinationY = authorFrame.minY - firstReelTopOffset
             let sourceX = MaplogSpacing.page
             // 최초 한 프레임에는 예상 높이를 쓰고, 이후에는 실제 렌더링 높이를 사용합니다.
             // 선택 정보가 비어도 블록의 아래쪽은 항상 하단 내비게이션 바로 위에 고정됩니다.
@@ -801,10 +805,11 @@ struct HomeView: View {
                     to: destinationX,
                     progress: revealProgress
                 ),
-                y: interpolatedValue(
-                    from: sourceY,
-                    to: destinationY,
-                    progress: revealProgress
+                y: HomeReelMetadataLayout.verticalOffset(
+                    sourceY: sourceY,
+                    authorY: authorFrame.minY,
+                    pageTop: firstReelTopOffset,
+                    revealProgress: revealProgress
                 )
             )
             .zIndex(2)
