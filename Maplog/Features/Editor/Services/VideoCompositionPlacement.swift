@@ -26,8 +26,20 @@ enum VideoCompositionPlacement {
         crop: VideoClipCrop = VideoClipCrop()
     ) async throws -> VideoPlacement {
         let naturalSize = try await sourceVideoTrack.load(.naturalSize)
-        let preferredTransform = try await sourceVideoTrack.load(
-            .preferredTransform
+        let sourceTransform = try await sourceVideoTrack.load(.preferredTransform)
+        return try make(naturalSize: naturalSize, sourceTransform: sourceTransform,
+                        in: destinationFrame, contentMode: contentMode, crop: crop)
+    }
+
+    static func make(
+        naturalSize: CGSize,
+        sourceTransform: CGAffineTransform,
+        in destinationFrame: CGRect,
+        contentMode: VideoSlotContentMode,
+        crop: VideoClipCrop
+    ) throws -> VideoPlacement {
+        let preferredTransform = sourceTransform.concatenating(
+            CGAffineTransform(rotationAngle: CGFloat(crop.quarterTurns) * .pi / 2)
         )
         let transformedBounds = CGRect(
             origin: .zero,

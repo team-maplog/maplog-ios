@@ -11,6 +11,8 @@ import Foundation
 final class ClipEditorViewModel: ObservableObject {
     @Published private(set) var compositionConfiguration: VideoCompositionConfiguration
     @Published private(set) var isUpdatingCrop = false
+    @Published private(set) var selectedCropClipID: UUID?
+    @Published private(set) var cropFrameData: Data?
     @Published private(set) var cropError: ErrorPresentation?
     @Published private(set) var state: ClipEditorState = .loading
     @Published private(set) var timelineItems: [ClipEditorTimelineItemViewData] = [] // View가 그릴 타임라인 카드 목록
@@ -35,6 +37,7 @@ final class ClipEditorViewModel: ObservableObject {
         let activeTool: ClipEditorActiveTool
     }
 
+    private var cropFrameRequestID = UUID()
     private var ignoresPlaybackProgress = false // 드래그 중에는 재생 시간 갱신을 무시
     private let input: ClipEditorInput // Clip Picker에서 넘겨준 선택 결과, 실제 CaptureDraftClip들이 있고, 각 클립의 파일 URL·촬영 날짜·길이가 들어있음
     private let videoThumbnailService: any VideoThumbnailService // 영상 파일 URL로부터 썸네일 Data를 만드는 기술 담당
@@ -73,13 +76,50 @@ final class ClipEditorViewModel: ObservableObject {
         editorTimeline.totalDuration
     }
 
+    var cropClipIDs: [UUID] {
+        if compositionConfiguration.layout == .single {
+            return [playingClipID ?? selectedPreview?.id].compactMap { $0 }
+        }
+        return orderedClips.filter { $0.mediaType == .video }
+            .prefix(compositionConfiguration.requiredClipCount).map(\.id)
+    }
+
+    func selectCropClip(_ id: UUID) async {
+        guard !isUpdatingCrop, !isExporting,
+              let clip = orderedClips.first(where: { $0.id == id }) else { return }
+        cropError = nil
+        pausePreviewForEditing()
+        selectTextOverlay(id: nil)
+        selectedCropClipID = id
+        cropFrameData = nil
+        let requestID = UUID()
+        cropFrameRequestID = requestID
+        let time = compositionConfiguration.layout == .single ? playingLocalTime : currentPlaybackTime
+        let lastFrameTime = max(0, (clip.duration ?? (time + 1)) - 1.0 / 30)
+        do {
+            let data = try await videoThumbnailService.makeEditingFrameData(
+                for: clip.fileURL, at: min(time, lastFrameTime)
+            )
+            guard requestID == cropFrameRequestID, !Task.isCancelled else { return }
+            cropFrameData = data
+        } catch {
+            guard requestID == cropFrameRequestID else { return }
+            cropError = ClipEditorErrorPolicy.playbackPresentation(for: error)
+        }
+    }
+
+    func finishCropSelection() {
+        selectedCropClipID = nil
+        cropFrameData = nil
+        cropFrameRequestID = UUID()
+    }
+
     func crop(for clipID: UUID) -> VideoClipCrop {
         compositionConfiguration.clipCrops[clipID] ?? VideoClipCrop()
     }
 
     func updateCrop(_ crop: VideoClipCrop, for clipID: UUID) async {
-        guard compositionConfiguration.layout != .single,
-              orderedClips.contains(where: { $0.id == clipID }),
+        guard orderedClips.contains(where: { $0.id == clipID }),
               !isUpdatingCrop, !isExporting,
               self.crop(for: clipID) != crop else { return }
 
@@ -95,6 +135,8 @@ final class ClipEditorViewModel: ObservableObject {
             try await loadSequencePreview()
             try Task.checkCancellation()
             movePlayback(to: previousTime)
+        } catch is CancellationError {
+            compositionConfiguration.clipCrops[clipID] = previousCrop
         } catch {
             compositionConfiguration.clipCrops[clipID] = previousCrop
             cropError = ClipEditorErrorPolicy.playbackPresentation(for: error)
@@ -258,6 +300,8 @@ final class ClipEditorViewModel: ObservableObject {
         id: UUID,
         shouldPlay: Bool = true
     ) {
+        guard !isUpdatingCrop else { return }
+        finishCropSelection()
         guard
                 let timelineItem = timelineItems.first( // 예) B 카드의 썸네일·표시용 정보, 사용자가 탭한 바로 그 카드
                     where: { $0.id == id }
@@ -295,6 +339,8 @@ final class ClipEditorViewModel: ObservableObject {
 
     // 재생·일시정지와 재생 위치 이동 행동
     func togglePreviewPlayback() {
+        guard !isUpdatingCrop else { return }
+        finishCropSelection()
         guard totalDuration > 0 else {
             return
         }
@@ -383,6 +429,8 @@ final class ClipEditorViewModel: ObservableObject {
     func seekPreview( // 화면의 0.0 ~ 1.0 슬라이더 값을 실제 영상 시간으로 바꿔서, 이미 있는 movePlayback(to:)에 전달
         to progress: Double
     ) {
+        guard !isUpdatingCrop else { return }
+        finishCropSelection()
         let safeProgress = min(
             max(progress, 0),
             1
@@ -1042,6 +1090,8 @@ final class ClipEditorViewModel: ObservableObject {
 
     // 클립 제외 뒤에도 재생 순서 갱신
     func removeClip(id: UUID) {
+        guard !isUpdatingCrop else { return }
+        finishCropSelection()
         guard canRemoveClip,
               let index = orderedClips.firstIndex(
                 where: { $0.id == id }
@@ -1191,6 +1241,8 @@ final class ClipEditorViewModel: ObservableObject {
     }
 
     func moveClipEarlier(id: UUID) {
+        guard !isUpdatingCrop else { return }
+        finishCropSelection()
         guard let index = orderedClips.firstIndex(where: { $0.id == id }) else {
             return
         }
@@ -1209,6 +1261,8 @@ final class ClipEditorViewModel: ObservableObject {
     }
 
     func moveClipLater(id: UUID) {
+        guard !isUpdatingCrop else { return }
+        finishCropSelection()
         guard let index = orderedClips.firstIndex(where: { $0.id == id }) else {
             return
         }
@@ -1233,6 +1287,8 @@ final class ClipEditorViewModel: ObservableObject {
 //    → ViewModel이 orderedClips와 timelineItems를 같은 순서로 이동
 //    → 타임라인 번호와 최종 영상 연결 순서가 함께 변경
     func moveClip(id: UUID, to targetID: UUID) {
+        guard !isUpdatingCrop else { return }
+        finishCropSelection()
         guard id != targetID,
               let sourceIndex = orderedClips.firstIndex(where: { $0.id == id }
               ),
@@ -1253,20 +1309,10 @@ final class ClipEditorViewModel: ObservableObject {
     }
 
     private func loadSequencePreview() async throws {
-        let videoURLs = orderedClips
-            .filter { $0.mediaType == .video }
-            .map(\.fileURL)
-
-        if compositionConfiguration.layout == .single {
-            try await videoPlaybackService.loadVideoSequence(
-                from: videoURLs
-            )
-        } else {
-            try await videoPlaybackService.loadVideoComposition(
-                from: orderedClips,
-                configuration: compositionConfiguration
-            )
-        }
+        try await videoPlaybackService.loadVideoComposition(
+            from: orderedClips,
+            configuration: compositionConfiguration
+        )
 
         videoPlaybackService.observeProgress { [weak self] progress in
             guard let self, !self.ignoresPlaybackProgress else { // 드래그 중에는 playbackProgress, playingClipID, playingLocalTime이 계속 바뀌지 않게 막는 거야. 즉 화면 전체가 0.05초마다 다시 그려지는 것을 막음

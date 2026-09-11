@@ -224,11 +224,29 @@ struct VideoClipCrop: Equatable, Sendable {
     let horizontalPosition: Double
     let verticalPosition: Double
     let zoom: Double
+    let quarterTurns: Int
 
-    init(horizontalPosition: Double = 0.5, verticalPosition: Double = 0.5, zoom: Double = 1) {
+    init(horizontalPosition: Double = 0.5, verticalPosition: Double = 0.5, zoom: Double = 1, quarterTurns: Int = 0) {
+        self.quarterTurns = ((quarterTurns % 4) + 4) % 4
         self.horizontalPosition = horizontalPosition.isFinite ? min(max(horizontalPosition, 0), 1) : 0.5
         self.verticalPosition = verticalPosition.isFinite ? min(max(verticalPosition, 0), 1) : 0.5
         self.zoom = zoom.isFinite ? min(max(zoom, 1), 3) : 1
+    }
+
+    func moved(by translation: CGSize, sourceSize: CGSize, slotSize: CGSize) -> VideoClipCrop {
+        guard slotSize.width > 0, slotSize.height > 0 else { return self }
+        let rect = sourceRect(in: CGRect(origin: .zero, size: sourceSize),
+                              destinationAspectRatio: slotSize.width / slotSize.height)
+        guard rect.width > 0 else { return self }
+        let scale = slotSize.width / rect.width
+        let travelX = (sourceSize.width - rect.width) * scale
+        let travelY = (sourceSize.height - rect.height) * scale
+        // 영상을 아래로 밀면 원본의 더 위쪽을 보게 되므로 크롭 위치는 반대로 이동한다.
+        return VideoClipCrop(
+            horizontalPosition: travelX > 0.001 ? horizontalPosition - translation.width / travelX : horizontalPosition,
+            verticalPosition: travelY > 0.001 ? verticalPosition - translation.height / travelY : verticalPosition,
+            zoom: zoom, quarterTurns: quarterTurns
+        )
     }
 
     func sourceRect(in bounds: CGRect, destinationAspectRatio: CGFloat) -> CGRect {

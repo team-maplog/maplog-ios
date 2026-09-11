@@ -30,6 +30,9 @@ final class HomeSearchViewModelTests: XCTestCase {
 
         XCTAssertEqual(viewModel.state, .content)
         XCTAssertEqual(viewModel.items.map(\.serverID), [1])
+        await viewModel.loadThumbnails(for: viewModel.items)
+        XCTAssertNil(viewModel.thumbnailData(for: viewModel.items[0]))
+        XCTAssertEqual(viewModel.items.count, 1, "사진 없는 결과도 화면 목록과 다음 페이지 트리거에 남아야 합니다.")
 
         await viewModel.loadNextPageIfNeeded(for: makeItem(id: 1))
 

@@ -193,14 +193,6 @@ struct HomeSearchFeatureView: View {
 
                 resultGrid
 
-                if viewModel.visibleItems.isEmpty {
-                    if viewModel.isPrefetchingSearchThumbnails {
-                        HomeSearchImageLoadingState()
-                    } else {
-                        HomeSearchNoImageState()
-                    }
-                }
-
                 if viewModel.isLoadingNextPage {
                     ProgressView()
                         .frame(maxWidth: .infinity)
@@ -223,31 +215,43 @@ struct HomeSearchFeatureView: View {
     }
 
     private var resultGrid: some View {
-        LazyVGrid(
-            columns: Array(
-                repeating: GridItem(.flexible(), spacing: 12, alignment: .top),
-                count: 2
-            ),
-            spacing: 20
-        ) {
-            ForEach(viewModel.visibleItems) { item in
+        LazyVStack(spacing: 0) {
+            ForEach(viewModel.items) { item in
                 Button {
                     open(item)
                 } label: {
-                    VStack(alignment: .leading, spacing: 8) {
-                        HomeSearchThumbnailCard(
-                            item: item,
-                            thumbnailData: viewModel.thumbnailData(for: item)
-                        )
-                        Text(item.title)
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundStyle(Color.maplogInk)
-                            .lineLimit(2)
-                        Text(item.author?.nickname ?? item.subtitle)
-                            .font(.system(size: 12))
+                    HStack(spacing: 14) {
+                        if let data = viewModel.thumbnailData(for: item),
+                           let image = UIImage(data: data) {
+                            Image(uiImage: image)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 64, height: 64)
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                        }
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text(item.title)
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundStyle(Color.maplogInk)
+                                .lineLimit(2)
+                            Text(item.author?.nickname ?? item.subtitle)
+                                .font(.system(size: 13))
+                                .foregroundStyle(Color.maplogMuted)
+                                .lineLimit(2)
+                            if let category = item.category, !category.isEmpty {
+                                Text(category)
+                                    .font(MaplogFont.caption)
+                                    .foregroundStyle(Color.maplogMuted)
+                            }
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 12, weight: .medium))
                             .foregroundStyle(Color.maplogMuted)
-                            .lineLimit(1)
                     }
+                    .frame(minHeight: 64)
+                    .padding(.vertical, 16)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(accessibilityLabel(for: item))
@@ -255,15 +259,14 @@ struct HomeSearchFeatureView: View {
                 .task {
                     await viewModel.loadNextPageIfNeeded(for: item)
                 }
+                if item.id != viewModel.items.last?.id {
+                    Divider().overlay(Color.maplogLine.opacity(0.3))
+                }
             }
         }
         .task(id: viewModel.items.map(\.id)) {
             await viewModel.loadThumbnails(for: viewModel.items)
         }
-        .animation(
-            .easeOut(duration: 0.18),
-            value: viewModel.visibleItems.map(\.id)
-        )
     }
 
     @ViewBuilder
@@ -301,13 +304,7 @@ struct HomeSearchFeatureView: View {
 
                 recentLogGrid
 
-                if viewModel.visibleRecentLogs.isEmpty {
-                    if viewModel.isPrefetchingRecentThumbnails {
-                        HomeSearchImageLoadingState()
-                    } else {
-                        HomeSearchNoImageState()
-                    }
-                }
+
             }
         }
     }
@@ -320,7 +317,7 @@ struct HomeSearchFeatureView: View {
             ),
             spacing: 20
         ) {
-            ForEach(viewModel.visibleRecentLogs) { log in
+            ForEach(viewModel.recentLogs) { log in
                 Button {
                     isSearchFieldFocused = false
                     onShowLogDetail(log.id)
@@ -350,7 +347,7 @@ struct HomeSearchFeatureView: View {
         }
         .animation(
             .easeOut(duration: 0.18),
-            value: viewModel.visibleRecentLogs.map(\.id)
+            value: viewModel.recentLogs.map(\.id)
         )
     }
 
@@ -422,7 +419,7 @@ private struct HomeSearchThumbnailCard: View {
                 width: proxy.size.width,
                 height: proxy.size.height
             )
-            .background(Color.clear)
+            .background(Color.maplogSurface)
             .clipShape(
                 RoundedRectangle(
                     cornerRadius: MaplogRadius.medium,
@@ -457,25 +454,6 @@ private struct HomeSearchThumbnailCard: View {
                     alignment: .topLeading
                 )
         }
-    }
-}
-
-private struct HomeSearchImageLoadingState: View {
-    var body: some View {
-        ProgressView()
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 36)
-            .accessibilityLabel("이미지를 불러오는 중")
-    }
-}
-
-private struct HomeSearchNoImageState: View {
-    var body: some View {
-        Text("표시할 사진이 있는 결과가 없어요")
-            .font(.system(size: 14, weight: .medium))
-            .foregroundStyle(Color.maplogMuted)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 36)
     }
 }
 

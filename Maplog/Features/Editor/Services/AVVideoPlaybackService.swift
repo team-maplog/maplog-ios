@@ -82,27 +82,21 @@ final class AVVideoPlaybackService: VideoPlaybackService {
         from clips: [CaptureDraftClip],
         configuration: VideoCompositionConfiguration
     ) async throws {
-        guard configuration.layout != .single else {
-            try await loadVideoSequence(
-                from: clips
-                    .filter { $0.mediaType == .video }
-                    .map(\.fileURL)
+        let videos = clips.filter { $0.mediaType == .video }
+        let templateItem: AVPlayerItem
+        if configuration.layout == .single {
+            templateItem = try await makeSequenceItem(
+                from: videos.map(\.fileURL),
+                configuration: configuration,
+                crops: videos.map { configuration.clipCrops[$0.id] ?? VideoClipCrop() }
             )
-            return
+        } else {
+            templateItem = try await makeSplitCompositionItem(from: clips, configuration: configuration)
         }
-
-        stop()
-
-        let templateItem = try await makeSplitCompositionItem(
-            from: clips,
-            configuration: configuration
-        )
-
         try Task.checkCancellation()
-        playerLooper = AVPlayerLooper(
-            player: queuePlayer,
-            templateItem: templateItem
-        )
+        // 준비가 끝날 때 교체해 구도 변경 중 기존 화면이 검게 비지 않게 한다.
+        stop()
+        playerLooper = AVPlayerLooper(player: queuePlayer, templateItem: templateItem)
     }
 
     // 재생 위치 이동 기능
@@ -271,7 +265,9 @@ final class AVVideoPlaybackService: VideoPlaybackService {
 
     // 영상들을 메모리 안에서 이어 붙임, 파일로 내보내지 않고, AVPlayerItem으로 만들어 즉시 재생
     private func makeSequenceItem(
-        from urls: [URL]
+        from urls: [URL],
+        configuration: VideoCompositionConfiguration? = nil,
+        crops: [VideoClipCrop] = []
     ) async throws -> AVPlayerItem {
         let composition = AVMutableComposition()
 
@@ -293,7 +289,7 @@ final class AVVideoPlaybackService: VideoPlaybackService {
         var instructions: [AVMutableVideoCompositionInstruction] = []
         var renderSize: CGSize?
 
-        for url in urls {
+        for (index, url) in urls.enumerated() {
             let asset = AVURLAsset(url: url)
 
             guard let sourceVideoTrack = try await asset
@@ -382,10 +378,18 @@ final class AVVideoPlaybackService: VideoPlaybackService {
                     assetTrack: compositionVideoTrack
                 ) // compositionVideoTrack은 A, B, C가 시간 순서대로 들어간 하나의 비디오 레일
 
-            layerInstruction.setTransform( // 아이폰 영상은 실제 픽셀 데이터는 가로인데, “세로로 돌려서 보여 줘”라는 회전 정보
-                preferredTransform,
-                at: insertionTime
-            )
+            if let configuration {
+                renderSize = configuration.renderSize
+                let placement = try await VideoCompositionPlacement.make(
+                    for: sourceVideoTrack,
+                    in: configuration.sceneFrame,
+                    contentMode: .fit,
+                    crop: crops.indices.contains(index) ? crops[index] : VideoClipCrop()
+                )
+                layerInstruction.setTransform(placement.transform, at: insertionTime)
+            } else {
+                layerInstruction.setTransform(preferredTransform, at: insertionTime)
+            }
 
 //            layerInstructions: 이 시간 구간에 적용할 실제 그림 규칙
 //            instructions: A용, B용, C용 지시서를 계속 모아 두는 배열

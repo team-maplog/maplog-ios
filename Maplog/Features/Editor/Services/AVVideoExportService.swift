@@ -114,7 +114,8 @@ actor AVVideoExportService: VideoExportService {
                 sourceVideoTrack: source.videoTrack,
                 destinationFrame: targetFrame,
                 at: insertionTime,
-                contentMode: .fit
+                contentMode: .fit,
+                crop: request.compositionConfiguration.clipCrops[clip.id] ?? VideoClipCrop()
             )
 
             let instruction = AVMutableVideoCompositionInstruction()
