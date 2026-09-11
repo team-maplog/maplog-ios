@@ -9,6 +9,7 @@ struct ProfileLogEmptyConfiguration {
 }
 
 struct ProfileLogSection: View {
+    @Environment(\.makeLogPlaybackService) private var makeLogPlaybackService
     let logs: [ProfileLogCardViewData]
     let thumbnailData: (Int64) -> Data?
     let isLoadingThumbnail: (Int64) -> Bool
@@ -76,7 +77,7 @@ struct ProfileLogSection: View {
                     logMediaRepository: logMediaRepository,
                     followRepository: followRepository,
                     profileRepository: profileRepository,
-                    playbackService: playbackService,
+                    playbackService: makeLogPlaybackService?() ?? playbackService,
                     onLogRemoved: {
                         await onLogUnavailable(selectedLogID)
                     }
@@ -125,8 +126,9 @@ private struct ProfileLogCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            thumbnail
+            Color.maplogCanvas
                 .aspectRatio(ProfileLayout.thumbnailAspectRatio, contentMode: .fit)
+                .overlay { thumbnail }
                 .clipShape(
                     RoundedRectangle(
                         cornerRadius: 16,

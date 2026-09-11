@@ -83,6 +83,13 @@ final class LogCommentsViewModelTests: XCTestCase {
         XCTAssertFalse(model.isRequestedCommentUnavailable(nil))
     }
 
+    func testComposerLoadsViewerAvatarThroughProfileRepository() async {
+        let viewModel = makeViewModel(comments: [])
+        await viewModel.loadInitialComments()
+        XCTAssertEqual(viewModel.viewerNickname, "나")
+        XCTAssertEqual(viewModel.viewerImageData, Data([1, 2, 3]))
+    }
+
     private func makeViewModel(
         comments: [LogComment],
         onCommentCountChange: @escaping (Int64) -> Void = { _ in }
@@ -158,7 +165,7 @@ private final class CommentProfileRepositoryStub: ProfileRepository {
         MyProfile(
             id: UUID(),
             nickname: "나",
-            profileImageURL: nil,
+            profileImageURL: URL(string: "https://example.com/avatar.png"),
             bio: "",
             followerCount: 0,
             followingCount: 0,
@@ -196,6 +203,6 @@ private final class CommentProfileRepositoryStub: ProfileRepository {
         cacheKey: String,
         targetSize: MaplogImageTargetSize
     ) async throws -> Data {
-        Data()
+        Data([1, 2, 3])
     }
 }

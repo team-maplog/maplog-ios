@@ -1,3 +1,4 @@
+import OSLog
 import FirebaseCore
 import FirebaseMessaging
 import UIKit
@@ -9,6 +10,7 @@ final class MaplogAppDelegate: NSObject,
     UIApplicationDelegate,
     UNUserNotificationCenterDelegate,
     MessagingDelegate {
+    private let logger = Logger(subsystem: "com.maplog.app", category: "PushRegistration")
     private var fcmTokenHandler: (@MainActor (String) -> Void)?
     private var remoteNotificationHandler: (@MainActor ([AnyHashable: Any]) -> Void)?
     private var foregroundNotificationHandler: (@MainActor () -> Void)?
@@ -23,6 +25,7 @@ final class MaplogAppDelegate: NSObject,
             forResource: "GoogleService-Info",
             ofType: "plist"
         ) != nil else {
+            logger.error("Firebase configuration file is missing; push is unavailable")
             // 로컬 Firebase 설정 파일이 없는 협업 환경에서도 앱이 시작될 수 있게 둡니다.
             return true
         }
@@ -66,7 +69,24 @@ final class MaplogAppDelegate: NSObject,
         _ application: UIApplication,
         didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
     ) {
+        guard FirebaseApp.app() != nil else { return }
         Messaging.messaging().apnsToken = deviceToken
+        logger.info("APNs device registration succeeded")
+        // APNs 등록 전에 FCM 조회가 실패했어도 APNs 연결 후 다시 확보합니다.
+        Messaging.messaging().token { [weak self] token, error in
+            guard let token, error == nil else {
+                self?.logger.error("FCM token fetch after APNs registration failed")
+                return
+            }
+            self?.deliverFCMToken(token)
+        }
+    }
+
+    func application(
+        _ application: UIApplication,
+        didFailToRegisterForRemoteNotificationsWithError error: Error
+    ) {
+        logger.error("APNs device registration failed, error code: \((error as NSError).code)")
     }
 
     func messaging(

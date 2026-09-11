@@ -13,6 +13,7 @@ private enum ExploreMapDestination: Hashable {
 }
 
 struct ExploreMapFeatureView: View {
+    @Environment(\.makeLogPlaybackService) private var makeLogPlaybackService
     private let tourismRepository: any TourismRepository
     private let logDetailRepository: any LogDetailRepository
     private let logMediaRepository: any LogMediaRepository
@@ -151,7 +152,7 @@ struct ExploreMapFeatureView: View {
                     logMediaRepository: logMediaRepository,
                     followRepository: followRepository,
                     profileRepository: profileRepository,
-                    playbackService: playbackService,
+                    playbackService: makeLogPlaybackService?() ?? playbackService,
                     onLogRemoved: { }
                 )
 

@@ -36,6 +36,6 @@ struct ProfileIdentityHeader: View {
 enum ProfileLayout {
     static let avatarSize: CGFloat = 76
     static let headerInset: CGFloat = 18
-    // 열 너비는 유지하고, 9:10보다 세로 길이만 약 5% 줄입니다.
+    // 목록은 짧은 카드로 표시하고, 영상 전체 비율은 상세 화면에서 유지합니다.
     static let thumbnailAspectRatio: CGFloat = 19 / 20
 }

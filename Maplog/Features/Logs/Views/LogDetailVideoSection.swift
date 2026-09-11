@@ -1,8 +1,7 @@
 import AVFoundation
 import SwiftUI
 
-/// 2:3 크기의 상세 영상과 공용 재생 컨트롤입니다.
-/// 세로 영상의 맥락은 남기되, 캡션까지 한 화면에서 볼 수 있게 높이를 제한합니다.
+/// 상세에서는 원본 세로 캔버스를 온전히 보여 주고 목록 카드의 높이와 분리합니다.
 struct LogDetailVideoSection: View {
     let player: AVPlayer
     let isLoading: Bool
@@ -19,7 +18,7 @@ struct LogDetailVideoSection: View {
 
             MaplogVideoPlayerLayerView(
                 player: player,
-                videoGravity: .resizeAspectFill
+                videoGravity: .resizeAspect
             )
             .equatable()
             .allowsHitTesting(false)
@@ -44,7 +43,7 @@ struct LogDetailVideoSection: View {
                 playbackFailure(message: errorMessage)
             }
         }
-        .aspectRatio(2 / 3, contentMode: .fit)
+        .aspectRatio(9 / 16, contentMode: .fit)
         .clipShape(RoundedRectangle(
             cornerRadius: MaplogRadius.xLarge,
             style: .continuous

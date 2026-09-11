@@ -6,7 +6,6 @@ struct LogCaptionEditView: View {
     @Environment(\.dismiss) private var dismiss
 
     @Binding var caption: String
-    let selectedTags: Set<LogTag>
 
     let thumbnailData: Data?
     let address: String
@@ -14,7 +13,6 @@ struct LogCaptionEditView: View {
     let formMessage: String?
     let captionMessage: String?
     let recoveryAction: ErrorPresentation.RecoveryAction?
-    let onTagToggle: (LogTag) -> Void
     let onSave: () -> Void
     let onCancel: () -> Void
     let onSignIn: () -> Void
@@ -30,7 +28,6 @@ struct LogCaptionEditView: View {
             VStack(alignment: .leading, spacing: MaplogSpacing.xLarge) {
                 LogCaptionEditPreview(thumbnailData: thumbnailData)
                 captionEditor
-                tagEditor
                 placeRow
             }
             .maplogPagePadding()
@@ -122,8 +119,7 @@ struct LogCaptionEditView: View {
 
     private var placeRow: some View {
         HStack(spacing: MaplogSpacing.small) {
-            Image(systemName: "mappin.and.ellipse")
-                .font(.system(size: MaplogSize.iconMedium, weight: .semibold))
+            MaplogPinGlyphIcon(size: MaplogSize.iconMedium)
                 .foregroundStyle(Color.maplogMuted)
 
             Text("장소")
@@ -144,19 +140,6 @@ struct LogCaptionEditView: View {
                 .frame(height: 1)
         }
         .accessibilityHint("현재 장소 수정은 지원하지 않습니다")
-    }
-
-    private var tagEditor: some View {
-        VStack(alignment: .leading, spacing: MaplogSpacing.small) {
-            Text("태그")
-                .font(MaplogFont.caption)
-                .foregroundStyle(Color.maplogMuted)
-
-            LogTagPicker(
-                selectedTags: selectedTags,
-                onToggle: onTagToggle
-            )
-        }
     }
 
     private func cancel() {

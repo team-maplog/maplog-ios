@@ -33,6 +33,28 @@ final class AVVideoPlaybackSeekTests: XCTestCase {
         XCTAssertGreaterThan(service.player.currentTime().seconds, 4.15)
     }
 
+    func testStoppingPreviousScreenDoesNotStopIndependentDetailPlayback() async throws {
+        let url = try await makeSilentVideo()
+        defer { try? FileManager.default.removeItem(at: url) }
+        let previous = AVVideoPlaybackService()
+        let detail = AVVideoPlaybackService()
+        defer { previous.stop(); detail.stop() }
+        XCTAssertFalse(previous.player === detail.player)
+        previous.loadVideo(at: url)
+        detail.loadVideo(at: url)
+        let ready = expectation(description: "Detail is ready")
+        detail.seek(to: 1) { finished in
+            XCTAssertTrue(finished)
+            ready.fulfill()
+        }
+        await fulfillment(of: [ready], timeout: 8)
+        detail.play()
+        previous.stop()
+        try await Task.sleep(for: .milliseconds(450))
+        XCTAssertNotNil(detail.player.currentItem)
+        XCTAssertGreaterThan(detail.player.currentTime().seconds, 1.15)
+    }
+
     private func makeSilentVideo() async throws -> URL {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".mov")
         let writer = try AVAssetWriter(outputURL: url, fileType: .mov)
@@ -61,11 +83,16 @@ final class AVVideoPlaybackSeekTests: XCTestCase {
 
         for frame in 0..<90 {
             var attempts = 0
-            while !input.isReadyForMoreMediaData && attempts < 200 {
+            // 시뮬레이터의 첫 인코더 초기화는 재사용보다 오래 걸릴 수 있습니다.
+            while !input.isReadyForMoreMediaData && writer.status == .writing && attempts < 1_000 {
                 try await Task.sleep(nanoseconds: 10_000_000)
                 attempts += 1
             }
-            XCTAssertTrue(input.isReadyForMoreMediaData)
+            guard input.isReadyForMoreMediaData else {
+                writer.cancelWriting()
+                try? FileManager.default.removeItem(at: url)
+                throw NSError(domain: "PlaybackTestFixture", code: 1)
+            }
             XCTAssertTrue(adaptor.append(pixelBuffer, withPresentationTime: CMTime(value: Int64(frame), timescale: 15)))
         }
         input.markAsFinished()

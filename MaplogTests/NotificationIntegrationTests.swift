@@ -136,6 +136,18 @@ final class NotificationIntegrationTests: XCTestCase {
         XCTAssertEqual(error.recoveryAction, ErrorPresentation.RecoveryAction.none)
     }
 
+    func testPushRegistrationFailureIsVisibleAndRetryClearsIt() async {
+        let events = Events()
+        let repository = PushRepositoryStub(events: events)
+        repository.registerError = URLError(.notConnectedToInternet)
+        let coordinator = makeCoordinator(repository, SessionStub(events: events), TokenStoreStub())
+        await coordinator.syncCachedTokenIfAuthenticated()
+        XCTAssertNotNil(coordinator.registrationErrorMessage)
+        repository.registerError = nil
+        await coordinator.syncCachedTokenIfAuthenticated()
+        XCTAssertNil(coordinator.registrationErrorMessage)
+    }
+
     private func makeCoordinator(_ repository: PushRepositoryStub, _ session: SessionStub, _ store: TokenStoreStub) -> PushNotificationCoordinator {
         PushNotificationCoordinator(notificationRepository: repository, authenticationState: session, tokenStore: store, onNavigate: { _ in })
     }
@@ -170,6 +182,7 @@ private final class TokenStoreStub: PushNotificationTokenStoring {
 private final class PushRepositoryStub: NotificationRepository {
     let events: Events
     var registrations: [FCMTokenRegistration] = []
+    var registerError: Error?
     var unregisterError: Error?
     var holdsRegistration = false
     var pendingRegistration: CheckedContinuation<Void, Never>?
@@ -177,6 +190,7 @@ private final class PushRepositoryStub: NotificationRepository {
     var cursors: [String?] = []
     init(events: Events) { self.events = events }
     func registerFCMToken(_ registration: FCMTokenRegistration) async throws {
+        if let registerError { throw registerError }
         registrations.append(registration)
         events.values.append("register")
         if holdsRegistration { await withCheckedContinuation { pendingRegistration = $0 } }
