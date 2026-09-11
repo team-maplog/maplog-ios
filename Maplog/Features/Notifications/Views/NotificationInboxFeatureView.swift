@@ -55,7 +55,9 @@ struct NotificationInboxFeatureView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task {
             await viewModel.loadIfNeeded()
-            await pushNotificationCoordinator.refreshAuthorizationStatus()
+        }
+        .task {
+            // 서버 응답을 기다리는 동안에도 시스템 알림 권한을 요청할 수 있어야 합니다.
             await pushNotificationCoordinator.requestPermissionIfNeeded()
         }
         .refreshable {
