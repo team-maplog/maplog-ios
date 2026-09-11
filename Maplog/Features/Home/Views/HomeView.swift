@@ -81,6 +81,7 @@ struct HomeView: View {
     @State private var shareReel: HomeReelViewData?
     @State private var saveToastText: String?
     @State private var firstReelTopOffset: CGFloat?
+    @State private var homeIntroHeight: CGFloat = 0
     /// 홈 미리보기의 메타데이터는 로그마다 선택 입력이 달라 실제 높이를 따로 기억합니다.
     @State private var reelMetadataHeightByID: [Int64: CGFloat] = [:]
 
@@ -654,68 +655,40 @@ struct HomeView: View {
 
     private var reelsPanel: some View {
         GeometryReader { proxy in
-            // PageTabView가 자식 페이지를 아래로 배치한 실제 거리만큼 렌더링 위치를 되돌림
-            let pageTopOffset = max(
-                proxy.frame(
-                    in: .named(Self.viewportCoordinateSpace)
-                ).minY,
-                0
-            )
+            ScrollView(showsIndicators: false) {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    homeIntro
+                        .padding(.top, topSafeAreaInset + 12)
+                        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: {
+                            homeIntroHeight = $0
+                        }
+                        .id("home-intro")
 
-            ScrollViewReader { scrollProxy in
-                ScrollView(showsIndicators: false) {
-                    LazyVStack(alignment: .leading, spacing: 0) {
-                        homeIntro
-                            .padding(
-                                .top,
-                                topSafeAreaInset + 12 + pageTopOffset
-                            )
-                            .id("home-intro")
-
-                        homeReelPages(
-                            viewportSize: proxy.size
-                        )
-                    }
-                    .scrollTargetLayout()
+                    homeReelPages(viewportSize: proxy.size)
                 }
-                .scrollPosition(
-                    id: $homeScrollPosition,
-                    anchor: .top
+                .scrollTargetLayout()
+                // 서로 다른 높이를 섞은 LazyVStack의 추정 길이로 마지막 정지점이 잘리지 않게 한다.
+                .frame(
+                    height: homeIntroHeight > 0
+                        ? homeIntroHeight + CGFloat(reelPageCount) * proxy.size.height
+                        : nil,
+                    alignment: .top
                 )
-                .scrollTargetBehavior(
-                    .viewAligned(limitBehavior: .always)
-                )
-                .refreshable {
-                    await viewModel.refreshHome()
-                }
-                .onPreferenceChange(FirstReelTopOffsetPreferenceKey.self) {
-                    firstReelTopOffset = $0
-                }
-                .onChange(of: homeScrollPosition) {
-                    previousPosition,
-                    newPosition in
-
-                    guard
-                        previousPosition == "home-intro",
-                        let newPosition,
-                        newPosition != "home-intro"
-                    else {
-                        return
-                    }
-
-                    withAnimation(
-                        reduceMotion
-                            ? nil
-                            : .easeOut(duration: 0.24)
-                    ) {
-                        scrollProxy.scrollTo(
-                            newPosition,
-                            anchor: .top
-                        )
-                    }
-                }
             }
-            .offset(y: -pageTopOffset)
+            .contentMargins(.vertical, 0, for: .scrollContent)
+            .scrollPosition(id: $homeScrollPosition, anchor: .top)
+            .scrollTargetBehavior(
+                HomeReelScrollBehavior(
+                    introHeight: homeIntroHeight,
+                    pageHeight: proxy.size.height
+                )
+            )
+            .refreshable {
+                await viewModel.refreshHome()
+            }
+            .onPreferenceChange(FirstReelTopOffsetPreferenceKey.self) {
+                firstReelTopOffset = $0
+            }
         }
         .overlayPreferenceValue(HomeReelAuthorAnchorPreferenceKey.self) {
             anchors in
@@ -747,6 +720,13 @@ struct HomeView: View {
         .onDisappear {
             viewModel.stopPlayback()
         }
+    }
+
+    private var reelPageCount: Int {
+        if case let .content(reels) = viewModel.reelState {
+            return reels.count
+        }
+        return 1
     }
 
     @ViewBuilder
