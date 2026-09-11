@@ -336,12 +336,14 @@ private struct LogRouteKakaoMapRepresentable: UIViewRepresentable {
                 let lineStyle = PolylineStyle(
                     styles: [
                         PerLevelPolylineStyle(
-                            bodyColor: UIColor(Color.maplogLime),
-                            bodyWidth: 7,
+                            // 마커와 장소 카드가 주인공이고, 선은 이동 순서만 보조한다.
+                            bodyColor: UIColor(Color.maplogLime)
+                                .withAlphaComponent(0.58),
+                            bodyWidth: 4,
                             strokeColor: UIColor(
                                 Color.maplogMapLightTextSecondary
-                            ).withAlphaComponent(0.24),
-                            strokeWidth: 2,
+                            ).withAlphaComponent(0.14),
+                            strokeWidth: 1,
                             level: 0
                         )
                     ]

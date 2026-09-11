@@ -188,7 +188,7 @@ struct OnboardingView: View {
             NavigationLink {
                 SignInView(authRepository: authRepository, authSession: authSession)
             } label: {
-                OnboardingLoginButtonLabel(title: "이메일로 로그인", icon: "envelope")
+                OnboardingLoginButtonLabel(title: "이메일로 로그인")
             }
             .buttonStyle(MaplogButtonStyle(
                 variant: .brand(background: .maplogLime, foreground: .maplogInk),
@@ -310,23 +310,25 @@ private extension OAuthProvider {
 
 private struct OnboardingLoginButtonLabel: View {
     let title: String
-    let icon: String
+    var icon: String? = nil
     var imageAsset: String? = nil
 
     var body: some View {
         HStack(spacing: 12) {
-            Group {
-                if let imageAsset {
-                    Image(imageAsset)
-                        .resizable()
-                        .scaledToFit()
-                } else {
-                    Image(systemName: icon)
-                        .font(.system(size: 21, weight: .medium))
+            if imageAsset != nil || icon != nil {
+                Group {
+                    if let imageAsset {
+                        Image(imageAsset)
+                            .resizable()
+                            .scaledToFit()
+                    } else if let icon {
+                        Image(systemName: icon)
+                            .font(.system(size: 21, weight: .medium))
+                    }
                 }
+                .frame(width: 22, height: 22)
+                .accessibilityHidden(true)
             }
-            .frame(width: 22, height: 22)
-            .accessibilityHidden(true)
 
             Text(title)
                 .fixedSize(horizontal: false, vertical: true)
