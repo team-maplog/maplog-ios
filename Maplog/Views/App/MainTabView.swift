@@ -15,6 +15,7 @@
 import SwiftUI
 
 struct MainTabView: View {
+    @Environment(\.makeLogPlaybackService) private var makeLogPlaybackService
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @StateObject private var homeviewModel: HomeViewModel // @StateObject를 MainTabView에 두는 이유는 MainTabView가 HomeViewModel의 소유자이기 때문, 홈 탭이 다시 그려져도 같은 ViewModel 인스턴스를 유지하기 좋음
     @StateObject private var homeMapPanelViewModel: HomeMapPanelViewModel
@@ -293,7 +294,7 @@ struct MainTabView: View {
                                     logMediaRepository: logMediaRepository,
                                     followRepository: followRepository,
                                     profileRepository: profileRepository,
-                                    playbackService: videoPlaybackService,
+                                    playbackService: makeLogPlaybackService?() ?? videoPlaybackService,
                                     onLogRemoved: {}
                                 )
 
@@ -475,7 +476,7 @@ struct MainTabView: View {
                 logMediaRepository: logMediaRepository,
                 followRepository: followRepository,
                 profileRepository: profileRepository,
-                playbackService: videoPlaybackService,
+                playbackService: makeLogPlaybackService?() ?? videoPlaybackService,
                 onLogRemoved: {},
                 initialCommentID: commentID,
                 commentRepository: logCommentRepository

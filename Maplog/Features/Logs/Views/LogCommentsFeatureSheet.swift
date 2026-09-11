@@ -468,9 +468,11 @@ struct LogCommentsFeatureSheet: View {
 
             HStack(spacing: MaplogSpacing.xSmall) {
                 HStack(spacing: MaplogSpacing.xSmall) {
-                    Image(systemName: "person.crop.circle.fill")
-                        .font(.system(size: 25))
-                        .foregroundStyle(Color.maplogMuted)
+                    MaplogProfileAvatar(
+                        imageData: viewModel.viewerImageData,
+                        nickname: viewModel.viewerNickname,
+                        size: 28
+                    )
 
                     TextField(
                         "",

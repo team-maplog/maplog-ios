@@ -30,6 +30,20 @@ struct NotificationInboxFeatureView: View {
             VStack(alignment: .leading, spacing: MaplogSpacing.medium) {
                 permissionStatusCard
 
+                if let message = pushNotificationCoordinator.registrationErrorMessage {
+                    NotificationPermissionCard(
+                        title: "푸시 알림 연결 확인",
+                        message: message,
+                        actionTitle: "다시 연결",
+                        action: {
+                            Task {
+                                await pushNotificationCoordinator.refreshAuthorizationStatus()
+                                await pushNotificationCoordinator.syncCachedTokenIfAuthenticated()
+                            }
+                        }
+                    )
+                }
+
                 content
             }
             .padding(.horizontal, MaplogSpacing.page)

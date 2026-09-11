@@ -50,7 +50,8 @@ struct LogDetailFeatureView: View {
                 logDetailRepository: logDetailRepository,
                 logMediaRepository: logMediaRepository,
                 playbackService: playbackService,
-                automaticallyPlays: initialCommentID == nil
+                automaticallyPlays: initialCommentID == nil,
+                profileRepository: profileRepository
             )
         )
     }
@@ -89,6 +90,7 @@ struct LogDetailFeatureView: View {
             ToolbarItem(placement: .principal) {
                 LogDetailNavigationAuthor(
                     detail: viewModel.detail,
+                    imageData: viewModel.authorImageData,
                     followRepository: followRepository,
                     profileRepository: profileRepository
                 )
@@ -177,14 +179,12 @@ struct LogDetailFeatureView: View {
             NavigationStack {
                 LogCaptionEditView(
                     caption: captionBinding,
-                    selectedTags: viewModel.tagDraft,
                     thumbnailData: viewModel.thumbnailData,
                     address: detail.address,
                     isSaving: viewModel.isSavingCaption,
                     formMessage: viewModel.captionFormMessage,
                     captionMessage: viewModel.captionMessage,
                     recoveryAction: viewModel.captionRecoveryAction,
-                    onTagToggle: viewModel.toggleTagDraft,
                     onSave: saveCaption,
                     onCancel: cancelCaptionEditing,
                     onSignIn: performLogout
@@ -311,6 +311,7 @@ struct LogDetailFeatureView: View {
 
 private struct LogDetailNavigationAuthor: View {
     let detail: LogDetail?
+    let imageData: Data?
     let followRepository: any FollowRepository
     let profileRepository: any ProfileRepository
 
@@ -341,11 +342,11 @@ private struct LogDetailNavigationAuthor: View {
 
     private var authorLabel: some View {
         HStack(spacing: MaplogSpacing.xSmall) {
-            Text(initial)
-                .font(MaplogFont.badge)
-                .foregroundStyle(Color.maplogOlive)
-                .frame(width: 28, height: 28)
-                .background(Color.maplogLime.opacity(0.35), in: Circle())
+            MaplogProfileAvatar(
+                imageData: imageData,
+                nickname: nickname,
+                size: 28
+            )
 
             Text(nickname)
                 .font(MaplogFont.calloutStrong)

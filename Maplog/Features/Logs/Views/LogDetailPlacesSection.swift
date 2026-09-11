@@ -10,7 +10,7 @@ struct LogDetailPlacesSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: MaplogSpacing.small) {
-            Text("영상 속 장소")
+            Text("영상 장소")
                 .font(MaplogFont.sectionTitle)
                 .foregroundStyle(Color.maplogInk)
 
@@ -58,11 +58,7 @@ private struct LogDetailPlaceCard: View {
             }
         }
         .frame(maxWidth: .infinity, minHeight: 54, alignment: .leading)
-        .padding(MaplogSpacing.xSmall)
-        .background(
-            Color.maplogCanvas,
-            in: RoundedRectangle(cornerRadius: MaplogRadius.large, style: .continuous)
-        )
+        .padding(.vertical, MaplogSpacing.xSmall)
         .accessibilityLabel(
             "\(clip.displayOrder + 1)번째 장소, \(clip.location.name ?? clip.location.address)"
         )

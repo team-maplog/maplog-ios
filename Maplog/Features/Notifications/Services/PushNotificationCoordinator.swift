@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 import UIKit
 import UserNotifications
 
@@ -10,6 +11,8 @@ protocol PushNotificationSessionManaging {
 
 @MainActor
 final class PushNotificationCoordinator: ObservableObject, PushNotificationSessionManaging {
+    @Published private(set) var registrationErrorMessage: String?
+    private let logger = Logger(subsystem: "com.maplog.app", category: "PushRegistration")
     @Published private(set) var authorizationStatus: UNAuthorizationStatus = .notDetermined
 
     private let notificationRepository: any NotificationRepository
@@ -37,6 +40,7 @@ final class PushNotificationCoordinator: ObservableObject, PushNotificationSessi
         authorizationStatus = await UNUserNotificationCenter.current()
             .notificationSettings()
             .authorizationStatus
+        logger.info("Notification authorization status: \(self.authorizationStatus.rawValue)")
         // 이미 허용한 기기는 재실행·설정 복귀 때도 APNs에 등록해 새 기기 토큰을 받습니다.
         if authorizationStatus == .authorized || authorizationStatus == .provisional {
             UIApplication.shared.registerForRemoteNotifications()
@@ -97,8 +101,20 @@ final class PushNotificationCoordinator: ObservableObject, PushNotificationSessi
                 registrationID = nil
             }
         }
-        // 실패한 토큰은 Keychain에 남겨 다음 로그인·foreground에서 재시도합니다.
-        _ = try? await task.value
+        // 등록 실패를 숨기면 앱 내 알림은 보이지만 푸시는 오지 않는 상태를 알 수 없습니다.
+        do {
+            try await task.value
+            if registrationID == requestID {
+                registrationErrorMessage = nil
+            }
+            logger.info("Push token synchronization finished")
+        } catch {
+            if registrationID == requestID {
+                registrationErrorMessage = "이 기기에 알림을 연결하지 못했어요. 다시 시도해 주세요."
+            }
+            // 토큰·서버 본문·사용자 정보는 진단 로그에 남기지 않습니다.
+            logger.error("Push token synchronization failed")
+        }
     }
 
     func prepareForSignOut() async throws {

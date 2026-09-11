@@ -222,6 +222,20 @@ struct MaplogApp: App { // 앱의 조립 담당자
                 photoLibraryVideoSaveService: photoLibraryVideoSaveService
 
             )
+            .environment(\.makeLogPlaybackService) { AVVideoPlaybackService() }
+            .environment(\.publicLogDestination) { logID in
+                AnyView(LogDetailFeatureView(
+                    logID: logID,
+                    allowsManagement: false,
+                    logDetailRepository: logDetailRepository,
+                    logMediaRepository: logMediaRepository,
+                    followRepository: followRepository,
+                    profileRepository: profileRepository,
+                    playbackService: AVVideoPlaybackService(),
+                    onLogRemoved: {},
+                    commentRepository: logCommentRepository
+                ))
+            }
             .environmentObject(authSessionStore)
             .environmentObject(signOutViewModel)
             .task {

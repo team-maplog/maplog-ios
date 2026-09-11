@@ -22,6 +22,8 @@ final class LogCommentsViewModel: ObservableObject {
     private let profileRepository: any ProfileRepository
     private let onCommentCountChange: (Int64) -> Void
 
+    @Published private(set) var viewerNickname = "나"
+    @Published private(set) var viewerImageData: Data?
     private var viewerID: UUID?
     private var lastAction: RetryAction?
 
@@ -341,7 +343,16 @@ final class LogCommentsViewModel: ObservableObject {
             // 댓글 조회 실패와 내 프로필 조회 실패를 분리합니다.
             // 프로필을 못 받아도 댓글을 읽거나 작성하는 기능은 계속 사용할 수 있습니다.
             if let profile = try? await profileRepository.fetchMyProfile() {
+                guard !Task.isCancelled else { return }
                 viewerID = profile.id
+                viewerNickname = profile.nickname
+                if let url = profile.profileImageURL {
+                    let data = try? await profileRepository.fetchImageData(from: url)
+                    guard !Task.isCancelled else { return }
+                    viewerImageData = data
+                } else {
+                    viewerImageData = nil
+                }
             }
 
         } catch is CancellationError {

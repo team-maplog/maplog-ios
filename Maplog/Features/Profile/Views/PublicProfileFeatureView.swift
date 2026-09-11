@@ -2,6 +2,9 @@ import SwiftUI
 import UIKit
 
 struct PublicProfileFeatureView: View {
+    @Environment(\.publicLogDestination) private var logDestination
+    @State private var selectedLogID: Int64?
+    @State private var showsLogDetail = false
     @Environment(\.maplogLogout) private var performLogout
 
     private let onFollowStateChanged: (FollowState) -> Void
@@ -29,6 +32,12 @@ struct PublicProfileFeatureView: View {
                 .padding(.horizontal, MaplogSpacing.page)
                 .padding(.top, MaplogSpacing.medium)
                 .maplogListBottomPadding()
+        }
+        .navigationDestination(isPresented: $showsLogDetail) {
+            if let selectedLogID, let logDestination {
+                logDestination(selectedLogID)
+                    .id(selectedLogID)
+            }
         }
         .background(Color.maplogSurface)
         .navigationTitle(viewModel.nickname)
@@ -87,7 +96,11 @@ struct PublicProfileFeatureView: View {
                         isLoadingNextPage: viewModel.isLoadingNextPage,
                         nextPageError: viewModel.nextPageError,
                         onLoadNextPage: loadNextPage,
-                        onRetryNextPage: retryNextPage
+                        onRetryNextPage: retryNextPage,
+                        onSelectLog: { logID in
+                            selectedLogID = logID
+                            showsLogDetail = true
+                        }
                     )
                 }
             }
@@ -254,6 +267,7 @@ private struct PublicProfileLogSection: View {
     let nextPageError: ErrorPresentation?
     let onLoadNextPage: () -> Void
     let onRetryNextPage: () -> Void
+    let onSelectLog: (Int64) -> Void
 
     private let columns = [
         GridItem(.flexible(), spacing: MaplogSpacing.small),
@@ -294,11 +308,17 @@ private struct PublicProfileLogSection: View {
             } else {
                 LazyVGrid(columns: columns, spacing: MaplogSpacing.medium) {
                     ForEach(logs) { log in
-                        PublicProfileLogCard(
-                            log: log,
-                            thumbnailData: thumbnailData(log.id),
-                            isLoadingThumbnail: isLoadingThumbnail(log.id)
-                        )
+                        Button {
+                            onSelectLog(log.id)
+                        } label: {
+                            PublicProfileLogCard(
+                                log: log,
+                                thumbnailData: thumbnailData(log.id),
+                                isLoadingThumbnail: isLoadingThumbnail(log.id)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityHint("영상을 재생합니다")
                     }
                 }
 
@@ -344,8 +364,9 @@ private struct PublicProfileLogCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
-            thumbnail
+            Color.maplogCanvas
                 .aspectRatio(ProfileLayout.thumbnailAspectRatio, contentMode: .fit)
+                .overlay { thumbnail }
                 .clipShape(
                     RoundedRectangle(
                         cornerRadius: MaplogRadius.medium,

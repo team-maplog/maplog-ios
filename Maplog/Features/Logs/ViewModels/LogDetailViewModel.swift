@@ -35,6 +35,8 @@ final class LogDetailViewModel: ObservableObject {
     private let logID: Int64
     private let logDetailRepository: any LogDetailRepository
     private let logMediaRepository: any LogMediaRepository
+    @Published private(set) var authorImageData: Data?
+    private let profileRepository: (any ProfileRepository)?
     private let playbackService: any VideoPlaybackService
     private var hasPreparedPlayback = false
     private var playbackRequestID: UUID?
@@ -44,12 +46,14 @@ final class LogDetailViewModel: ObservableObject {
         logDetailRepository: any LogDetailRepository,
         logMediaRepository: any LogMediaRepository,
         playbackService: any VideoPlaybackService,
-        automaticallyPlays: Bool = true
+        automaticallyPlays: Bool = true,
+        profileRepository: (any ProfileRepository)? = nil
     ) {
         self.automaticallyPlays = automaticallyPlays
         self.logID = logID
         self.logDetailRepository = logDetailRepository
         self.logMediaRepository = logMediaRepository
+        self.profileRepository = profileRepository
         self.playbackService = playbackService
         self.player = playbackService.player
     }
@@ -75,6 +79,7 @@ final class LogDetailViewModel: ObservableObject {
         state = .initialLoading
         detail = nil
         thumbnailData = nil
+        authorImageData = nil
         clipThumbnailDataByID = [:]
         loadingClipThumbnailIDs = []
         playbackErrorMessage = nil
@@ -97,7 +102,9 @@ final class LogDetailViewModel: ObservableObject {
             tagDraft = Set(detail.tags)
             state = .content
 
+            async let authorImage: Void = loadAuthorImage(for: detail.author)
             await loadPlayback()
+            await authorImage
             await loadThumbnail()
             await loadClipThumbnails(for: detail.clips)
         } catch is CancellationError {
@@ -113,6 +120,13 @@ final class LogDetailViewModel: ObservableObject {
                 LogDetailErrorPolicy.detailPresentation(for: error)
             )
         }
+    }
+
+    private func loadAuthorImage(for author: LogReelAuthor) async {
+        guard let url = author.profileImageURL, let profileRepository else { return }
+        let data = try? await profileRepository.fetchImageData(from: url)
+        guard !Task.isCancelled, detail?.author.id == author.id else { return }
+        authorImageData = data
     }
 
     func retryInitialLoad() async {
