@@ -48,9 +48,9 @@ final class PushNotificationCoordinator: ObservableObject, PushNotificationSessi
         }
     }
 
-    /// 권한은 앱 실행 직후가 아니라 사용자가 알림 목록을 열었을 때 요청합니다.
+    /// 로그인 후 메인 화면에 진입했을 때 미결정 권한만 요청합니다.
     func requestPermissionIfNeeded() async {
-        // 화면 진입과 허용 버튼이 겹쳐도 시스템 요청은 한 번만 진행합니다.
+        // 화면 재진입과 허용 버튼이 겹쳐도 시스템 요청은 한 번만 진행합니다.
         guard !isRequestingPermission else { return }
         isRequestingPermission = true
         defer { isRequestingPermission = false }

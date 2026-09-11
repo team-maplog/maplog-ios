@@ -312,6 +312,11 @@ struct RootView: View {
                     requestedCapturePlaceName: $requestedCapturePlaceName,
                     requestedNotificationDestination: $requestedNotificationDestination
                 )
+                .task {
+                    // 로그인과 위치 권한 단계를 마친 뒤에만 알림 권한을 요청합니다.
+                    guard authSessionStore.isAuthenticated else { return }
+                    await pushNotificationCoordinator.requestPermissionIfNeeded()
+                }
             }
         }
         .tint(.maplogLime)
