@@ -244,6 +244,73 @@ final class LogDetailViewModelTests: XCTestCase {
         )
     }
 
+    func testSavingLocationPreservesOtherClipsAndVideoTiming() async {
+        let original = LogReelLocation(name: "서울숲", address: "서울 성동구", latitude: 37.54, longitude: 127.04)
+        let first = LogReelClip(id: 701, displayOrder: 0, startTimeMillis: 0, endTimeMillis: 4000, location: original, thumbnailURL: nil)
+        let second = LogReelClip(id: 702, displayOrder: 1, startTimeMillis: 4000, endTimeMillis: 8000, location: original, thumbnailURL: nil)
+        let repository = LogDetailRepositoryStub(detail: makeDetail(clips: [first, second]))
+        let vm = LogDetailViewModel(logID: 501, logDetailRepository: repository,
+                                   logMediaRepository: LogMediaRepositoryStub(), playbackService: VideoPlaybackServiceStub())
+        await vm.loadIfNeeded()
+        vm.beginCaptionEditing()
+        let selected = LogLocationDraft(latitude: 35.16, longitude: 129.16, name: "해운대", address: "부산 해운대구")
+        vm.updateRepresentativeLocation(selected)
+        vm.updateClipLocation(selected, clipID: 702)
+        vm.updateClipLocation(selected, clipID: 999)
+        XCTAssertEqual(vm.detail?.address, "서울 성동구", "선택만으로 저장된 상세 정보가 바뀌지 않습니다")
+        let saved = await vm.saveCaption()
+        XCTAssertTrue(saved)
+        XCTAssertEqual(repository.updatedDraft?.clips?.map(\.logClipID), [702])
+        XCTAssertEqual(vm.detail?.address, "부산 해운대구")
+        XCTAssertEqual(vm.detail?.clips.first, first)
+        XCTAssertEqual(vm.detail?.clips.last?.location.name, "해운대")
+        XCTAssertEqual(vm.detail?.clips.last?.startTimeMillis, 4000)
+        XCTAssertEqual(vm.detail?.clips.last?.endTimeMillis, 8000)
+        XCTAssertEqual(vm.detail?.clips.last?.displayOrder, 1)
+    }
+
+    func testFailedLocationSaveKeepsDraftAndCancelRestoresOriginal() async {
+        let repository = LogDetailRepositoryStub(detail: makeDetail(), updateError: APIError.missingAccessToken)
+        let vm = LogDetailViewModel(logID: 501, logDetailRepository: repository,
+                                   logMediaRepository: LogMediaRepositoryStub(), playbackService: VideoPlaybackServiceStub())
+        await vm.loadIfNeeded()
+        vm.beginCaptionEditing()
+        vm.updateRepresentativeLocation(LogLocationDraft(latitude: 35.16, longitude: 129.16, address: "부산 해운대구"))
+        let saved = await vm.saveCaption()
+        XCTAssertFalse(saved)
+        XCTAssertEqual(vm.addressDraft, "부산 해운대구")
+        XCTAssertEqual(vm.detail?.address, "서울 성동구")
+        vm.cancelCaptionEditing()
+        XCTAssertEqual(vm.addressDraft, "서울 성동구")
+        XCTAssertNil(vm.representativeLocationDraft)
+        XCTAssertTrue(vm.clipLocationDrafts.isEmpty)
+    }
+
+    func testExistingEmptyCaptionCanUpdateOnlyLocation() async {
+        let detail = makeDetail().replacingContent(caption: "", tags: [])
+        let repository = LogDetailRepositoryStub(detail: detail)
+        let vm = LogDetailViewModel(logID: 501, logDetailRepository: repository,
+                                   logMediaRepository: LogMediaRepositoryStub(), playbackService: VideoPlaybackServiceStub())
+        await vm.loadIfNeeded()
+        vm.beginCaptionEditing()
+        vm.updateRepresentativeLocation(LogLocationDraft(latitude: 35.16, longitude: 129.16, address: "부산 해운대구"))
+        let saved = await vm.saveCaption()
+        XCTAssertTrue(saved)
+        XCTAssertNil(repository.updatedDraft?.caption)
+        XCTAssertEqual(repository.updatedDraft?.address, "부산 해운대구")
+    }
+
+    func testServerClipLocationErrorShowsPlaceGuidance() {
+        let presentation = LogDetailErrorPolicy.captionPresentation(for: APIError.server(
+            statusCode: 400,
+            response: APIErrorResponse(successFlag: false, code: "COMMON-014", message: "Validation failed",
+                                       data: [FieldValidationError(field: "clips[0].location.address", rejectedValue: nil,
+                                                                   message: "Location address is required.")])
+        ))
+        XCTAssertEqual(presentation.formMessage, "선택한 장소를 확인해 주세요. 지도에서 위치를 다시 선택할 수 있어요.")
+        XCTAssertNil(presentation.captionMessage)
+    }
+
     private func makeDetail(
         clips: [LogReelClip] = []
     ) -> LogDetail {
@@ -275,6 +342,7 @@ private final class LogDetailRepositoryStub: LogDetailRepository {
     private let fetchError: Error?
     private let updateError: Error?
 
+    private(set) var updatedDraft: LogUpdateDraft?
     private(set) var updatedCaption: String?
     private(set) var updatedTags: [LogTag]?
 
@@ -306,11 +374,14 @@ private final class LogDetailRepositoryStub: LogDetailRepository {
             throw updateError
         }
 
+        updatedDraft = draft
         updatedCaption = draft.caption
         updatedTags = draft.tags
         return LogUpdateResult(
             caption: draft.caption ?? detail.caption,
-            tags: draft.tags ?? detail.tags
+            tags: draft.tags ?? detail.tags,
+            address: draft.address ?? detail.address,
+            updatedLocations: draft.clips ?? []
         )
     }
 

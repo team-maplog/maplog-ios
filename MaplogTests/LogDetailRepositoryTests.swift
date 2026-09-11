@@ -49,6 +49,37 @@ final class LogDetailRepositoryTests: XCTestCase {
         XCTAssertEqual(result.tags, [.cafe, .walk])
     }
 
+    func testLocationPatchUsesServerClipIDAndOmitsVideoMetadata() async throws {
+        let api = LogDetailAPIServiceStub(detail: makeDetailDTO(), updatedLog: LogBasicResponseDTO(
+            logID: 501, caption: "기존 글", tags: [], address: "부산 해운대구",
+            publishedAt: "2026-08-14T10:30:00", viewCount: 12, playbackURL: nil
+        ))
+        let location = LogReelLocation(name: nil, address: "부산 해운대구", latitude: 35.16, longitude: 129.16)
+        let update = LogClipLocationUpdate(logClipID: 702, location: location)
+        let result = try await DefaultLogDetailRepository(apiService: api).updateLog(
+            logID: 501, draft: LogUpdateDraft(caption: nil, tags: nil, address: location.address, clips: [update])
+        )
+        let request = try XCTUnwrap(api.updateRequest)
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(request)) as? [String: Any])
+        XCTAssertEqual(Set(json.keys), ["address", "clips"])
+        let clips = try XCTUnwrap(json["clips"] as? [[String: Any]])
+        XCTAssertEqual(clips.count, 1)
+        XCTAssertEqual(Set(clips[0].keys), ["logClipId", "location"])
+        XCTAssertEqual(clips[0]["logClipId"] as? Int, 702)
+        let encodedLocation = try XCTUnwrap(clips[0]["location"] as? [String: Any])
+        XCTAssertEqual(encodedLocation["latitude"] as? Double, 35.16)
+        XCTAssertEqual(encodedLocation["longitude"] as? Double, 129.16)
+        XCTAssertEqual(encodedLocation["address"] as? String, location.address)
+        XCTAssertEqual(result.address, location.address)
+        XCTAssertEqual(result.updatedLocations, [update])
+    }
+
+    func testCaptionOnlyPatchDoesNotIncludeLocationFields() throws {
+        let request = UpdateLogRequestDTO(caption: "수정한 글", tags: nil)
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(request)) as? [String: Any])
+        XCTAssertEqual(Set(json.keys), ["caption"])
+    }
+
     func testDeleteForwardsLogID() async throws {
         let apiService = LogDetailAPIServiceStub(detail: makeDetailDTO())
         let repository = DefaultLogDetailRepository(apiService: apiService)

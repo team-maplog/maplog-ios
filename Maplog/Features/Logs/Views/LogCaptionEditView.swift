@@ -1,7 +1,7 @@
 import SwiftUI
 import UIKit
 
-/// 상세 화면과 분리된 로그 수정 화면입니다. 장소는 읽기 전용으로 표시합니다.
+/// 캡션과 장소 초안을 편집하고 완료할 때 함께 저장합니다.
 struct LogCaptionEditView: View {
     @Environment(\.dismiss) private var dismiss
 
@@ -9,6 +9,11 @@ struct LogCaptionEditView: View {
 
     let thumbnailData: Data?
     let address: String
+    let clips: [LogReelClip]
+    let clipLocations: [Int64: LogReelLocation]
+    let onEditRepresentativeLocation: () -> Void
+    let onEditClipLocation: (LogReelClip) -> Void
+    let allowsEmptyCaption: Bool
     let isSaving: Bool
     let formMessage: String?
     let captionMessage: String?
@@ -19,7 +24,7 @@ struct LogCaptionEditView: View {
 
     private var canSave: Bool {
         !isSaving
-            && !caption.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && (allowsEmptyCaption || !caption.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             && caption.count <= 1_000
     }
 
@@ -118,28 +123,50 @@ struct LogCaptionEditView: View {
     }
 
     private var placeRow: some View {
-        HStack(spacing: MaplogSpacing.small) {
-            MaplogPinGlyphIcon(size: MaplogSize.iconMedium)
-                .foregroundStyle(Color.maplogMuted)
+        VStack(alignment: .leading, spacing: MaplogSpacing.medium) {
+            Divider()
+            Text("장소").font(MaplogFont.bodyStrong)
+            locationButton(title: "대표 장소", address: address, action: onEditRepresentativeLocation)
+            Text("대표 장소는 게시물 목록에 표시돼요.")
+                .font(MaplogFont.caption).foregroundStyle(Color.maplogMuted)
 
-            Text("장소")
-                .font(MaplogFont.body)
-                .foregroundStyle(Color.maplogMuted)
-
-            Text(address)
-                .font(MaplogFont.bodyStrong)
-                .foregroundStyle(Color.maplogInk)
-                .lineLimit(1)
-
-            Spacer(minLength: 0)
+            if !clips.isEmpty {
+                Text("영상 속 장소").font(MaplogFont.bodyStrong)
+                Text("장소를 바꾸면 지도에 표시되는 경로도 바뀌어요.")
+                    .font(MaplogFont.caption).foregroundStyle(Color.maplogMuted)
+                ForEach(Array(clips.enumerated()), id: \.element.id) { index, clip in
+                    let location = clipLocations[clip.id] ?? clip.location
+                    locationButton(
+                        title: "\(index + 1). \(location.name ?? "장소")",
+                        address: location.address
+                    ) { onEditClipLocation(clip) }
+                }
+            }
         }
-        .padding(.top, MaplogSpacing.medium)
-        .overlay(alignment: .top) {
-            Rectangle()
-                .fill(Color.maplogLine)
-                .frame(height: 1)
+        .disabled(isSaving)
+    }
+
+    private func locationButton(title: String, address: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: MaplogSpacing.small) {
+                MaplogPinGlyphIcon(size: MaplogSize.iconMedium)
+                    .foregroundStyle(Color.maplogOlive)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title).font(MaplogFont.bodyStrong).foregroundStyle(Color.maplogInk)
+                    Text(address).font(MaplogFont.caption).foregroundStyle(Color.maplogMuted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 8)
+                Text("변경").font(MaplogFont.caption).foregroundStyle(Color.maplogOlive)
+                Image(systemName: "chevron.right").font(.caption).foregroundStyle(Color.maplogMuted)
+            }
+            .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
+            .padding(MaplogSpacing.medium)
+            .background(Color.maplogSurfaceRaised, in: RoundedRectangle(cornerRadius: MaplogRadius.medium))
+            .contentShape(Rectangle())
         }
-        .accessibilityHint("현재 장소 수정은 지원하지 않습니다")
+        .buttonStyle(.plain)
+        .accessibilityHint("지도에서 위치를 움직이거나 검색해 변경합니다")
     }
 
     private func cancel() {

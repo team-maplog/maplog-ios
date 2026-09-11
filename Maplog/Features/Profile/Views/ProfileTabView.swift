@@ -23,8 +23,10 @@ struct ProfileTabView: View {
     let socialConnectionRepository: any SocialConnectionRepository
     let followRepository: any FollowRepository
     let logDetailRepository: any LogDetailRepository
+    let logLocationRepository: any LogLocationRepository
     let logMediaRepository: any LogMediaRepository
     let playbackService: any VideoPlaybackService
+    var onLogUpdated: () async -> Void = {}
     @ObservedObject var viewModel: ProfileTabViewModel
     @State private var selectedLogTab: ProfileLogTab = .myLogs
 
@@ -170,6 +172,7 @@ struct ProfileTabView: View {
                 thumbnailData: viewModel.thumbnailData(for:),
                 isLoadingThumbnail: viewModel.isLoadingThumbnail(for:),
                 logDetailRepository: logDetailRepository,
+                logLocationRepository: logLocationRepository,
                 logMediaRepository: logMediaRepository,
                 followRepository: followRepository,
                 profileRepository: profileRepository,
@@ -188,6 +191,10 @@ struct ProfileTabView: View {
                 onSelectCapture: selectCaptureTab,
                 onLogUnavailable: { _ in
                     await viewModel.reload()
+                },
+                onLogUpdated: {
+                    await viewModel.reload()
+                    await onLogUpdated()
                 }
             )
 
@@ -202,6 +209,7 @@ struct ProfileTabView: View {
                     thumbnailData: viewModel.thumbnailData(for:),
                     isLoadingThumbnail: viewModel.isLoadingThumbnail(for:),
                     logDetailRepository: logDetailRepository,
+                    logLocationRepository: logLocationRepository,
                     logMediaRepository: logMediaRepository,
                     followRepository: followRepository,
                     profileRepository: profileRepository,

@@ -16,6 +16,7 @@ struct ExploreMapFeatureView: View {
     @Environment(\.makeLogPlaybackService) private var makeLogPlaybackService
     private let tourismRepository: any TourismRepository
     private let logDetailRepository: any LogDetailRepository
+    private let logLocationRepository: any LogLocationRepository
     private let logMediaRepository: any LogMediaRepository
     private let followRepository: any FollowRepository
     private let profileRepository: any ProfileRepository
@@ -30,6 +31,7 @@ struct ExploreMapFeatureView: View {
         mapRepository: any MapRepository,
         tourismRepository: any TourismRepository,
         logDetailRepository: any LogDetailRepository,
+        logLocationRepository: any LogLocationRepository,
         logMediaRepository: any LogMediaRepository,
         followRepository: any FollowRepository,
         profileRepository: any ProfileRepository,
@@ -38,6 +40,7 @@ struct ExploreMapFeatureView: View {
     ) {
         self.tourismRepository = tourismRepository
         self.logDetailRepository = logDetailRepository
+        self.logLocationRepository = logLocationRepository
         self.logMediaRepository = logMediaRepository
         self.followRepository = followRepository
         self.profileRepository = profileRepository
@@ -149,6 +152,7 @@ struct ExploreMapFeatureView: View {
                     logID: logID,
                     allowsManagement: false,
                     logDetailRepository: logDetailRepository,
+                    logLocationRepository: logLocationRepository,
                     logMediaRepository: logMediaRepository,
                     followRepository: followRepository,
                     profileRepository: profileRepository,

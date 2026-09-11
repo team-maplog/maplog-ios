@@ -231,6 +231,7 @@ struct MaplogApp: App { // 앱의 조립 담당자
                     logID: logID,
                     allowsManagement: false,
                     logDetailRepository: logDetailRepository,
+                    logLocationRepository: logLocationRepository,
                     logMediaRepository: logMediaRepository,
                     followRepository: followRepository,
                     profileRepository: profileRepository,
