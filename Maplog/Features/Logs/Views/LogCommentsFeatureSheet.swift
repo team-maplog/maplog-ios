@@ -6,6 +6,8 @@ struct LogCommentsFeatureSheet: View {
     @Environment(\.maplogLogout) private var performLogout
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @FocusState private var isComposerFocused: Bool
+    @ScaledMetric(relativeTo: .subheadline) private var commentTextSize = 15
+    @ScaledMetric(relativeTo: .subheadline) private var replyTextSize = 14
     @StateObject private var viewModel: LogCommentsViewModel
     @State private var draft = ""
     @State private var composerMode: ComposerMode = .new
@@ -357,7 +359,7 @@ struct LogCommentsFeatureSheet: View {
             VStack(alignment: .leading, spacing: MaplogSpacing.xxSmall) {
                 HStack(alignment: .firstTextBaseline, spacing: MaplogSpacing.xxSmall) {
                     Text(comment.author.nickname)
-                        .font((isReply ? Font.subheadline : Font.body).weight(.semibold))
+                        .font(.system(size: isReply ? replyTextSize : commentTextSize, weight: .semibold))
                         .foregroundStyle(Color.maplogInk)
 
                     TimelineView(.periodic(from: .now, by: 1)) { context in
@@ -368,7 +370,7 @@ struct LogCommentsFeatureSheet: View {
                             )
                         )
                     }
-                    .font(.caption)
+                    .font(.caption2)
                     .foregroundStyle(Color.maplogMuted)
 
                     Spacer(minLength: 0)
@@ -381,7 +383,7 @@ struct LogCommentsFeatureSheet: View {
 
                 if comment.isDeleted {
                     Text("삭제된 댓글입니다.")
-                        .font(.subheadline)
+                        .font(.system(size: isReply ? replyTextSize : commentTextSize))
                         .italic()
                         .foregroundStyle(Color.maplogMuted)
                         .padding(.vertical, MaplogSpacing.xxxSmall)
@@ -389,7 +391,7 @@ struct LogCommentsFeatureSheet: View {
                     HStack(alignment: .center, spacing: MaplogSpacing.small) {
                         VStack(alignment: .leading, spacing: 0) {
                             Text(comment.content)
-                                .font(isReply ? .subheadline : .body)
+                                .font(.system(size: isReply ? replyTextSize : commentTextSize))
                                 .foregroundStyle(Color.maplogInk)
                                 .fixedSize(horizontal: false, vertical: true)
 
@@ -541,7 +543,7 @@ struct LogCommentsFeatureSheet: View {
                         prompt: Text(composerPrompt)
                             .foregroundStyle(Color.maplogMuted)
                     )
-                    .font(.body)
+                    .font(.subheadline)
                     .foregroundStyle(Color.maplogInk)
                     .tint(Color.maplogLime)
                     .focused($isComposerFocused)
