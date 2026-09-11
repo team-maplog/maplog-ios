@@ -4,6 +4,21 @@ import XCTest
 
 @MainActor
 final class LogCommentsViewModelTests: XCTestCase {
+    func testReplyToReplyUsesTopLevelParentAndRejectsDeletedThread() async {
+        let parent = makeComment(id: 1)
+        let reply = makeComment(id: 2, parentCommentID: 1)
+        let deletedParent = makeComment(id: 3, isDeleted: true)
+        let replyToDeletedParent = makeComment(id: 4, parentCommentID: 3)
+        let orphan = makeComment(id: 5, parentCommentID: 99)
+        let model = makeViewModel(comments: [parent, reply, deletedParent, replyToDeletedParent, orphan])
+        await model.loadInitialComments()
+        XCTAssertEqual(model.replyParentID(for: parent), 1)
+        XCTAssertEqual(model.replyParentID(for: reply), 1)
+        XCTAssertNil(model.replyParentID(for: deletedParent))
+        XCTAssertNil(model.replyParentID(for: replyToDeletedParent))
+        XCTAssertNil(model.replyParentID(for: orphan))
+    }
+
     func testOwnOrDeletedCommentCannotBeReportedAndSelfCannotBeBlocked() async {
         let profile = CommentProfileRepositoryStub()
         let own = makeComment(id: 1, authorID: profile.userID)

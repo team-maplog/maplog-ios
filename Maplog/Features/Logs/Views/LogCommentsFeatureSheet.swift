@@ -42,12 +42,12 @@ struct LogCommentsFeatureSheet: View {
 
     private enum ComposerMode: Equatable {
         case new
-        case reply(LogComment)
+        case reply(target: LogComment, parentCommentID: Int64)
         case edit(LogComment)
 
         var parentCommentID: Int64? {
-            if case let .reply(comment) = self {
-                return comment.id
+            if case let .reply(_, parentCommentID) = self {
+                return parentCommentID
             }
 
             return nil
@@ -58,7 +58,7 @@ struct LogCommentsFeatureSheet: View {
             case .new:
                 return nil
 
-            case let .reply(comment):
+            case let .reply(comment, _):
                 return "@\(comment.author.nickname)님에게 답글 작성 중"
 
             case .edit:
@@ -283,11 +283,11 @@ struct LogCommentsFeatureSheet: View {
                     Group {
                         if initialCommentID != nil {
                             // 알림의 답글이 화면 밖에 있어도 정확한 위치를 계산하도록 배치합니다.
-                            VStack(alignment: .leading, spacing: MaplogSpacing.large) {
+                            VStack(alignment: .leading, spacing: MaplogSpacing.medium) {
                                 commentThreads
                             }
                         } else {
-                            LazyVStack(alignment: .leading, spacing: MaplogSpacing.large) {
+                            LazyVStack(alignment: .leading, spacing: MaplogSpacing.medium) {
                                 commentThreads
                             }
                         }
@@ -318,12 +318,12 @@ struct LogCommentsFeatureSheet: View {
     private func commentThread(
         _ comment: LogComment
     ) -> some View {
-        VStack(alignment: .leading, spacing: MaplogSpacing.medium) {
+        VStack(alignment: .leading, spacing: MaplogSpacing.small) {
             commentRow(comment)
 
             let replies = replies(for: comment)
             if !replies.isEmpty {
-                VStack(alignment: .leading, spacing: MaplogSpacing.medium) {
+                VStack(alignment: .leading, spacing: MaplogSpacing.small) {
                     ForEach(replies) { reply in
                         commentRow(reply, isReply: true)
                     }
@@ -386,23 +386,26 @@ struct LogCommentsFeatureSheet: View {
                         .foregroundStyle(Color.maplogMuted)
                         .padding(.vertical, MaplogSpacing.xxxSmall)
                 } else {
-                    Text(comment.content)
-                        .font(isReply ? .subheadline : .body)
-                        .foregroundStyle(Color.maplogInk)
-                        .fixedSize(horizontal: false, vertical: true)
+                    HStack(alignment: .center, spacing: MaplogSpacing.small) {
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text(comment.content)
+                                .font(isReply ? .subheadline : .body)
+                                .foregroundStyle(Color.maplogInk)
+                                .fixedSize(horizontal: false, vertical: true)
 
-                    HStack(spacing: MaplogSpacing.small) {
-                        if !isReply {
-                            Button("답글 달기") {
-                                startReply(to: comment)
+                            if viewModel.replyParentID(for: comment) != nil {
+                                Button("답글 달기") {
+                                    startReply(to: comment)
+                                }
+                                .buttonStyle(MaplogPressFeedbackStyle())
+                                .font(.caption2.weight(.medium))
+                                .foregroundStyle(Color.maplogMuted)
+                                .frame(minHeight: 28, alignment: .leading)
+                                .contentShape(Rectangle())
+                                .accessibilityLabel("\(comment.author.nickname)님에게 답글 달기")
                             }
-                            .buttonStyle(MaplogPressFeedbackStyle())
-                            .font(.caption.weight(.semibold))
-                            .foregroundStyle(Color.maplogMuted)
-                            .frame(minHeight: 32)
                         }
-
-                        Spacer(minLength: 0)
+                        .frame(maxWidth: .infinity, alignment: .leading)
 
                         commentLikeButton(for: comment)
                     }
@@ -470,7 +473,7 @@ struct LogCommentsFeatureSheet: View {
                 await viewModel.toggleLike(for: comment)
             }
         } label: {
-            HStack(spacing: 4) {
+            VStack(spacing: 2) {
                 if viewModel.isUpdating(commentID: comment.id) {
                     ProgressView()
                         .controlSize(.small)
@@ -494,7 +497,7 @@ struct LogCommentsFeatureSheet: View {
                     ? Color.maplogLime
                     : Color.maplogMuted
             )
-            .frame(minWidth: MaplogSize.minimumTapTarget, minHeight: 32)
+            .frame(minWidth: MaplogSize.minimumTapTarget, minHeight: MaplogSize.minimumTapTarget)
         }
         .buttonStyle(MaplogPressFeedbackStyle())
         .disabled(viewModel.isUpdating(commentID: comment.id))
@@ -602,7 +605,12 @@ struct LogCommentsFeatureSheet: View {
     private func startReply(
         to comment: LogComment
     ) {
-        composerMode = .reply(comment)
+        guard let parentCommentID = viewModel.replyParentID(for: comment) else { return }
+        // 답글의 답글도 같은 묶음에 저장하므로 수신 대상 이름은 본문으로 표시합니다.
+        if comment.parentCommentID != nil, draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            draft = "@\(comment.author.nickname) "
+        }
+        composerMode = .reply(target: comment, parentCommentID: parentCommentID)
         isComposerFocused = true
     }
 
