@@ -20,19 +20,28 @@ struct LogDetail: Equatable, Sendable {
 
     func replacingContent(
         caption: String,
-        tags: [LogTag]
+        tags: [LogTag],
+        address: String? = nil,
+        updatedLocations: [LogClipLocationUpdate] = []
     ) -> LogDetail {
         LogDetail(
             id: id,
             author: author,
             caption: caption,
             tags: tags,
-            address: address,
+            address: address ?? self.address,
             thumbnailURL: thumbnailURL,
             playbackURL: playbackURL,
             publishedAt: publishedAt,
             viewCount: viewCount,
-            clips: clips,
+            clips: clips.map { clip in
+                guard let update = updatedLocations.first(where: { $0.logClipID == clip.id }) else { return clip }
+                return LogReelClip(
+                    id: clip.id, displayOrder: clip.displayOrder,
+                    startTimeMillis: clip.startTimeMillis, endTimeMillis: clip.endTimeMillis,
+                    location: update.location, thumbnailURL: clip.thumbnailURL
+                )
+            },
             likeCount: likeCount,
             commentCount: commentCount,
             isLikedByViewer: isLikedByViewer,
@@ -45,10 +54,19 @@ struct LogDetail: Equatable, Sendable {
 struct LogUpdateResult: Equatable, Sendable {
     let caption: String
     let tags: [LogTag]
+    var address: String? = nil
+    var updatedLocations: [LogClipLocationUpdate] = []
 }
 
 struct LogUpdateDraft: Sendable {
     let caption: String?
     /// nil은 변경하지 않음, 빈 배열은 모든 태그 해제입니다.
     let tags: [LogTag]?
+    var address: String? = nil
+    var clips: [LogClipLocationUpdate]? = nil
+}
+
+struct LogClipLocationUpdate: Equatable, Sendable {
+    let logClipID: Int64
+    let location: LogReelLocation
 }

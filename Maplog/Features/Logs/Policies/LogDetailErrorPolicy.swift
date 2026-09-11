@@ -62,6 +62,14 @@ enum LogDetailErrorPolicy {
         case .server(let statusCode, let response):
             switch BackendErrorCode(serverCode: response.code) {
             case .commonValidationFailure:
+                if response.data?.contains(where: {
+                    $0.field == "address" || $0.field == "clips" || $0.field.hasPrefix("clips[")
+                }) == true {
+                    return LogCaptionEditErrorPresentation(
+                        formMessage: "선택한 장소를 확인해 주세요. 지도에서 위치를 다시 선택할 수 있어요.",
+                        captionMessage: nil, recoveryAction: .none
+                    )
+                }
                 let hasCaptionError = response.data?.contains {
                     $0.field == "caption"
                 } ?? false
@@ -173,13 +181,13 @@ enum LogDetailErrorPolicy {
     )
 
     private static let retryCaptionPresentation = LogCaptionEditErrorPresentation(
-        formMessage: "캡션을 저장하지 못했어요. 잠시 후 다시 시도해 주세요.",
+        formMessage: "게시물을 저장하지 못했어요. 잠시 후 다시 시도해 주세요.",
         captionMessage: nil,
         recoveryAction: .retry
     )
 
     private static let defaultCaptionPresentation = LogCaptionEditErrorPresentation(
-        formMessage: "캡션을 저장하지 못했어요.",
+        formMessage: "게시물을 저장하지 못했어요.",
         captionMessage: nil,
         recoveryAction: .none
     )

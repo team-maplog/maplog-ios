@@ -40,10 +40,14 @@ struct LogDetailResponseDTO: Decodable {
 struct UpdateLogRequestDTO: Encodable {
     let caption: String?
     let tags: [String]?
+    var address: String? = nil
+    var clips: [UpdateLogClipLocationDTO]? = nil
 
     enum CodingKeys: String, CodingKey {
         case caption
         case tags
+        case address
+        case clips
     }
 
     func encode(to encoder: Encoder) throws {
@@ -51,6 +55,8 @@ struct UpdateLogRequestDTO: Encodable {
         try container.encodeIfPresent(caption, forKey: .caption)
         // nil은 "태그는 수정하지 않음", 빈 배열은 "태그 전체 해제"입니다.
         try container.encodeIfPresent(tags, forKey: .tags)
+        try container.encodeIfPresent(address, forKey: .address)
+        try container.encodeIfPresent(clips, forKey: .clips)
     }
 }
 
@@ -72,5 +78,16 @@ struct LogBasicResponseDTO: Decodable {
         case publishedAt
         case viewCount
         case playbackURL = "playbackUrl"
+    }
+}
+
+/// 상세 응답의 클립 ID를 사용하며 영상·순서·시간은 PATCH에 포함하지 않습니다.
+struct UpdateLogClipLocationDTO: Encodable {
+    let logClipID: Int64
+    let location: LogCreateLocationDTO
+
+    enum CodingKeys: String, CodingKey {
+        case logClipID = "logClipId"
+        case location
     }
 }

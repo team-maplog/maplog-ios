@@ -20,6 +20,9 @@ final class LogDetailViewModel: ObservableObject {
     @Published private(set) var playbackProgress = 0.0
     @Published private(set) var isPlaying = false
     @Published var captionDraft = ""
+    @Published private(set) var addressDraft = ""
+    @Published private(set) var representativeLocationDraft: LogLocationDraft?
+    @Published private(set) var clipLocationDrafts: [Int64: LogReelLocation] = [:]
     @Published private(set) var tagDraft = Set<LogTag>()
     @Published private(set) var isSavingCaption = false
     @Published private(set) var captionFormMessage: String?
@@ -99,6 +102,8 @@ final class LogDetailViewModel: ObservableObject {
 
             self.detail = detail
             captionDraft = detail.caption
+            addressDraft = detail.address
+            clipLocationDrafts = [:]
             tagDraft = Set(detail.tags)
             state = .content
 
@@ -194,6 +199,9 @@ final class LogDetailViewModel: ObservableObject {
 
     func beginCaptionEditing() {
         captionDraft = detail?.caption ?? ""
+        addressDraft = detail?.address ?? ""
+        clipLocationDrafts = [:]
+        representativeLocationDraft = nil
         tagDraft = Set(detail?.tags ?? [])
         clearCaptionMessages()
     }
@@ -203,6 +211,25 @@ final class LogDetailViewModel: ObservableObject {
     ) {
         captionDraft = caption
         clearCaptionMessages()
+    }
+
+    func updateRepresentativeLocation(_ location: LogLocationDraft) {
+        guard !isSavingCaption, let validLocation = location.validatedReelLocation else { return }
+        addressDraft = validLocation.address
+        representativeLocationDraft = location
+        clearCaptionMessages()
+    }
+
+    func updateClipLocation(_ location: LogLocationDraft, clipID: Int64) {
+        guard !isSavingCaption,
+              detail?.clips.contains(where: { $0.id == clipID }) == true,
+              let validLocation = location.validatedReelLocation else { return }
+        clipLocationDrafts[clipID] = validLocation
+        clearCaptionMessages()
+    }
+
+    func locationDraft(for clip: LogReelClip) -> LogReelLocation {
+        clipLocationDrafts[clip.id] ?? clip.location
     }
 
     func toggleTagDraft(_ tag: LogTag) {
@@ -217,6 +244,9 @@ final class LogDetailViewModel: ObservableObject {
 
     func cancelCaptionEditing() {
         captionDraft = detail?.caption ?? ""
+        addressDraft = detail?.address ?? ""
+        clipLocationDrafts = [:]
+        representativeLocationDraft = nil
         tagDraft = Set(detail?.tags ?? [])
         clearCaptionMessages()
     }
@@ -234,7 +264,7 @@ final class LogDetailViewModel: ObservableObject {
             in: .whitespacesAndNewlines
         )
 
-        guard !trimmedCaption.isEmpty else {
+        guard !trimmedCaption.isEmpty || detail.caption.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             captionMessage = "캡션을 입력해 주세요."
             return false
         }
@@ -242,6 +272,17 @@ final class LogDetailViewModel: ObservableObject {
         guard trimmedCaption.count <= 1_000 else {
             captionMessage = "캡션은 1,000자 이하로 입력해 주세요."
             return false
+        }
+
+        let updatedAddress = addressDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        let addressChanged = !addressDraft.isEmpty && updatedAddress != detail.address
+        guard !addressChanged || (!updatedAddress.isEmpty && updatedAddress.count <= 300) else {
+            captionFormMessage = "대표 장소를 다시 선택해 주세요."
+            return false
+        }
+        let updatedLocations = detail.clips.compactMap { clip -> LogClipLocationUpdate? in
+            guard let location = clipLocationDrafts[clip.id], location != clip.location else { return nil }
+            return LogClipLocationUpdate(logClipID: clip.id, location: location)
         }
 
         isSavingCaption = true
@@ -253,8 +294,10 @@ final class LogDetailViewModel: ObservableObject {
             let result = try await logDetailRepository.updateLog(
                 logID: detail.id,
                 draft: LogUpdateDraft(
-                    caption: trimmedCaption,
-                    tags: LogTag.allCases.filter(tagDraft.contains)
+                    caption: trimmedCaption.isEmpty ? nil : trimmedCaption,
+                    tags: LogTag.allCases.filter(tagDraft.contains),
+                    address: addressChanged ? updatedAddress : nil,
+                    clips: updatedLocations.isEmpty ? nil : updatedLocations
                 )
             )
 
@@ -264,8 +307,12 @@ final class LogDetailViewModel: ObservableObject {
 
             self.detail = detail.replacingContent(
                 caption: result.caption,
-                tags: result.tags
+                tags: result.tags,
+                address: result.address,
+                updatedLocations: result.updatedLocations
             )
+            addressDraft = self.detail?.address ?? detail.address
+            clipLocationDrafts = [:]
             captionDraft = result.caption
             tagDraft = Set(result.tags)
             return true

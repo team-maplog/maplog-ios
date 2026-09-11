@@ -24,7 +24,17 @@ final class DefaultLogDetailRepository: LogDetailRepository {
             logID: logID,
             request: UpdateLogRequestDTO(
                 caption: draft.caption,
-                tags: draft.tags?.map(\.rawValue)
+                tags: draft.tags?.map(\.rawValue),
+                address: draft.address,
+                clips: draft.clips?.map { clip in
+                    UpdateLogClipLocationDTO(
+                        logClipID: clip.logClipID,
+                        location: LogCreateLocationDTO(
+                            name: clip.location.name, address: clip.location.address,
+                            latitude: clip.location.latitude, longitude: clip.location.longitude
+                        )
+                    )
+                }
             )
         )
 
@@ -32,7 +42,10 @@ final class DefaultLogDetailRepository: LogDetailRepository {
             caption: responseDTO.caption,
             tags: responseDTO.tags.map { LogTag.makeTags(from: $0) }
                 ?? draft.tags
-                ?? []
+                ?? [],
+            address: responseDTO.address,
+            // PATCH 응답에는 클립이 없으므로 성공한 장소 변경만 상세 상태에 반영합니다.
+            updatedLocations: draft.clips ?? []
         )
     }
 

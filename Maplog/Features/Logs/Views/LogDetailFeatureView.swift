@@ -10,12 +10,15 @@ struct LogDetailFeatureView: View {
     @State private var didOpenNotificationComment = false
 
     private let allowsManagement: Bool
+    private let logLocationRepository: any LogLocationRepository
+    private let onLogUpdated: () async -> Void
     private let onLogRemoved: () async -> Void
     private let followRepository: any FollowRepository
     private let profileRepository: any ProfileRepository
 
     @StateObject private var viewModel: LogDetailViewModel
     @State private var showsCaptionEditor = false
+    @State private var selectedPlaceTarget: LogPlaceEditTarget?
     @State private var showsDeletionConfirmation = false
 
     private var captionBinding: Binding<String> {
@@ -29,11 +32,13 @@ struct LogDetailFeatureView: View {
         logID: Int64,
         allowsManagement: Bool,
         logDetailRepository: any LogDetailRepository,
+        logLocationRepository: any LogLocationRepository,
         logMediaRepository: any LogMediaRepository,
         followRepository: any FollowRepository,
         profileRepository: any ProfileRepository,
         playbackService: any VideoPlaybackService,
         onLogRemoved: @escaping () async -> Void,
+        onLogUpdated: @escaping () async -> Void = {},
         initialCommentID: Int64? = nil,
         commentRepository: (any LogCommentRepository)? = nil
     ) {
@@ -41,6 +46,8 @@ struct LogDetailFeatureView: View {
         self.commentRepository = commentRepository
         self.allowsManagement = allowsManagement
         self.onLogRemoved = onLogRemoved
+        self.onLogUpdated = onLogUpdated
+        self.logLocationRepository = logLocationRepository
         self.followRepository = followRepository
         self.profileRepository = profileRepository
 
@@ -180,7 +187,12 @@ struct LogDetailFeatureView: View {
                 LogCaptionEditView(
                     caption: captionBinding,
                     thumbnailData: viewModel.thumbnailData,
-                    address: detail.address,
+                    address: viewModel.addressDraft,
+                    clips: detail.clips,
+                    clipLocations: viewModel.clipLocationDrafts,
+                    onEditRepresentativeLocation: { selectedPlaceTarget = .representative },
+                    onEditClipLocation: { selectedPlaceTarget = .clip($0.id) },
+                    allowsEmptyCaption: detail.caption.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
                     isSaving: viewModel.isSavingCaption,
                     formMessage: viewModel.captionFormMessage,
                     captionMessage: viewModel.captionMessage,
@@ -189,8 +201,33 @@ struct LogDetailFeatureView: View {
                     onCancel: cancelCaptionEditing,
                     onSignIn: performLogout
                 )
+                .navigationDestination(item: $selectedPlaceTarget) { target in
+                    LogPlaceEditFeatureView(
+                        title: target == .representative ? "대표 장소 변경" : "영상 속 장소 변경",
+                        location: initialPlaceLocation(for: target, detail: detail),
+                        repository: logLocationRepository
+                    ) { location in
+                        switch target {
+                        case .representative: viewModel.updateRepresentativeLocation(location)
+                        case .clip(let id): viewModel.updateClipLocation(location, clipID: id)
+                        }
+                    }
+                }
             }
         }
+    }
+
+    private func initialPlaceLocation(for target: LogPlaceEditTarget, detail: LogDetail) -> LogLocationDraft {
+        let clip: LogReelClip?
+        switch target {
+        case .representative:
+            if let selected = viewModel.representativeLocationDraft { return selected }
+            clip = detail.clips.first { viewModel.locationDraft(for: $0).address == viewModel.addressDraft }
+                ?? detail.clips.first
+        case .clip(let id): clip = detail.clips.first { $0.id == id }
+        }
+        if let clip { return LogLocationDraft(location: viewModel.locationDraft(for: clip)) }
+        return LogLocationDraft(latitude: 37.5665, longitude: 126.9780)
     }
 
     private var deletionErrorPresented: Binding<Bool> {
@@ -282,6 +319,7 @@ struct LogDetailFeatureView: View {
 
             viewModel.resumePlayback()
             showsCaptionEditor = false
+            await onLogUpdated()
         }
     }
 
@@ -362,4 +400,9 @@ private struct LogDetailNavigationAuthor: View {
     private var initial: String {
         String(nickname.prefix(1))
     }
+}
+
+private enum LogPlaceEditTarget: Hashable {
+    case representative
+    case clip(Int64)
 }

@@ -13,6 +13,7 @@ struct ProfileLogSection: View {
     let thumbnailData: (Int64) -> Data?
     let isLoadingThumbnail: (Int64) -> Bool
     let logDetailRepository: any LogDetailRepository
+    let logLocationRepository: any LogLocationRepository
     let logMediaRepository: any LogMediaRepository
     let followRepository: any FollowRepository
     let profileRepository: any ProfileRepository
@@ -26,6 +27,7 @@ struct ProfileLogSection: View {
     let emptyConfiguration: ProfileLogEmptyConfiguration
     let onSelectCapture: () -> Void
     let onLogUnavailable: (Int64) async -> Void
+    var onLogUpdated: () async -> Void = {}
 
     @State private var selectedLogID: Int64?
     @State private var showsLogDetail = false
@@ -73,13 +75,15 @@ struct ProfileLogSection: View {
                     logID: selectedLogID,
                     allowsManagement: allowsManagement,
                     logDetailRepository: logDetailRepository,
+                    logLocationRepository: logLocationRepository,
                     logMediaRepository: logMediaRepository,
                     followRepository: followRepository,
                     profileRepository: profileRepository,
                     playbackService: makeLogPlaybackService?() ?? playbackService,
                     onLogRemoved: {
                         await onLogUnavailable(selectedLogID)
-                    }
+                    },
+                    onLogUpdated: onLogUpdated
                 )
                 .id(selectedLogID)
             } else {

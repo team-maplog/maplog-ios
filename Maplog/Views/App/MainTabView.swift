@@ -291,6 +291,7 @@ struct MainTabView: View {
                                     logID: logID,
                                     allowsManagement: false,
                                     logDetailRepository: logDetailRepository,
+                                    logLocationRepository: logLocationRepository,
                                     logMediaRepository: logMediaRepository,
                                     followRepository: followRepository,
                                     profileRepository: profileRepository,
@@ -353,6 +354,7 @@ struct MainTabView: View {
                         mapRepository: mapRepository,
                         tourismRepository: tourismRepository,
                         logDetailRepository: logDetailRepository,
+                        logLocationRepository: logLocationRepository,
                         logMediaRepository: logMediaRepository,
                         followRepository: followRepository,
                         profileRepository: profileRepository,
@@ -367,8 +369,10 @@ struct MainTabView: View {
                         socialConnectionRepository: socialConnectionRepository,
                         followRepository: followRepository,
                         logDetailRepository: logDetailRepository,
+                        logLocationRepository: logLocationRepository,
                         logMediaRepository: logMediaRepository,
                         playbackService: videoPlaybackService,
+                        onLogUpdated: { await homeviewModel.refreshHome() },
                         viewModel: profileViewModel
                     )
                 }
@@ -473,6 +477,7 @@ struct MainTabView: View {
                 logID: logID,
                 allowsManagement: false,
                 logDetailRepository: logDetailRepository,
+                logLocationRepository: logLocationRepository,
                 logMediaRepository: logMediaRepository,
                 followRepository: followRepository,
                 profileRepository: profileRepository,

@@ -38,3 +38,24 @@ struct LogLocationDraft: Equatable, Hashable, Sendable {
         )
     }
 }
+
+extension LogLocationDraft {
+    /// 게시물 장소 수정 계약에 맞게 주소와 선택적 장소명을 정리합니다.
+    var validatedReelLocation: LogReelLocation? {
+        let address = address?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let name = name?.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !address.isEmpty, address.count <= 300,
+              (name?.count ?? 0) <= 150,
+              latitude.isFinite, longitude.isFinite,
+              (-90...90).contains(latitude), (-180...180).contains(longitude) else { return nil }
+        return LogReelLocation(
+            name: name?.isEmpty == false ? name : nil,
+            address: address, latitude: latitude, longitude: longitude
+        )
+    }
+
+    init(location: LogReelLocation) {
+        self.init(latitude: location.latitude, longitude: location.longitude,
+                  name: location.name, address: location.address)
+    }
+}
