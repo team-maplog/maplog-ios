@@ -146,7 +146,7 @@ final class LogDetailViewModelTests: XCTestCase {
         XCTAssertFalse(viewModel.loadingClipThumbnailIDs.contains(clip.id))
     }
 
-    func testSaveCaptionShowsServerValidationMessage() async {
+    func testSaveCaptionLocalizesServerValidationAndClearsItAfterEditing() async {
         let repository = LogDetailRepositoryStub(
             detail: makeDetail(),
             updateError: APIError.server(
@@ -159,7 +159,7 @@ final class LogDetailViewModelTests: XCTestCase {
                         FieldValidationError(
                             field: "caption",
                             rejectedValue: nil,
-                            message: "캡션을 확인해 주세요."
+                            message: "Caption must not be blank when provided."
                         )
                     ]
                 )
@@ -178,7 +178,36 @@ final class LogDetailViewModelTests: XCTestCase {
         let didSave = await viewModel.saveCaption()
 
         XCTAssertFalse(didSave)
-        XCTAssertEqual(viewModel.captionMessage, "캡션을 확인해 주세요.")
+        XCTAssertEqual(viewModel.captionMessage, "내용을 확인한 뒤 다시 저장해 주세요.")
+        XCTAssertEqual(viewModel.captionDraft, "수정한 캡션")
+        XCTAssertNil(viewModel.captionFormMessage)
+
+        viewModel.updateCaptionDraft("다시 수정한 캡션")
+
+        XCTAssertNil(viewModel.captionMessage)
+        XCTAssertNil(viewModel.captionFormMessage)
+    }
+
+    func testUnrecognizedValidationFieldStillShowsUserFacingMessage() {
+        let presentation = LogDetailErrorPolicy.captionPresentation(
+            for: APIError.server(
+                statusCode: 400,
+                response: APIErrorResponse(
+                    successFlag: false,
+                    code: "COMMON-014",
+                    message: "Invalid request payload",
+                    data: [FieldValidationError(
+                        field: "tags",
+                        rejectedValue: nil,
+                        message: "Unsupported tag value"
+                    )]
+                )
+            )
+        )
+
+        XCTAssertEqual(presentation.formMessage, "수정한 내용을 확인한 뒤 다시 저장해 주세요.")
+        XCTAssertNil(presentation.captionMessage)
+        XCTAssertEqual(presentation.recoveryAction, .none)
     }
 
     func testUnavailableLogRequestsSourceListRemoval() async {

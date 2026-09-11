@@ -62,14 +62,17 @@ enum LogDetailErrorPolicy {
         case .server(let statusCode, let response):
             switch BackendErrorCode(serverCode: response.code) {
             case .commonValidationFailure:
-                let errors = response.data ?? []
+                let hasCaptionError = response.data?.contains {
+                    $0.field == "caption"
+                } ?? false
+                // 서버 검증 문구는 개발자용일 수 있어 필드만 판별하고 화면 문구는 앱에서 정합니다.
                 return LogCaptionEditErrorPresentation(
-                    formMessage: errors.isEmpty
-                        ? "캡션을 확인해 주세요."
+                    formMessage: hasCaptionError
+                        ? nil
+                        : "수정한 내용을 확인한 뒤 다시 저장해 주세요.",
+                    captionMessage: hasCaptionError
+                        ? "내용을 확인한 뒤 다시 저장해 주세요."
                         : nil,
-                    captionMessage: errors.first {
-                        $0.field == "caption"
-                    }?.message,
                     recoveryAction: .none
                 )
 
