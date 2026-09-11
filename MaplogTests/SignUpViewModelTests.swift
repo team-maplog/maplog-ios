@@ -95,6 +95,57 @@ final class SignUpViewModelTests: XCTestCase {
         XCTAssertNil(presentation.formMessage)
     }
 
+    func testSuccessFeedbackAppearsOnlyAfterFinishingEachField() {
+        let viewModel = makeViewModel()
+        fillValidForm(in: viewModel)
+        XCTAssertNil(viewModel.emailFeedback)
+        XCTAssertNil(viewModel.passwordFeedback)
+        XCTAssertNil(viewModel.passwordConfirmationFeedback)
+        XCTAssertNil(viewModel.nicknameFeedback)
+
+        SignUpField.allCases.forEach(viewModel.didFinishEditing)
+
+        XCTAssertEqual(viewModel.emailFeedback, "올바른 이메일 형식입니다.")
+        XCTAssertEqual(viewModel.passwordFeedback, "사용 가능한 비밀번호입니다.")
+        XCTAssertEqual(viewModel.passwordConfirmationFeedback, "비밀번호가 일치합니다.")
+        XCTAssertEqual(viewModel.nicknameFeedback, "올바른 닉네임 형식입니다.")
+    }
+
+    func testEditingAgainClearsPreviousSuccessUntilFinished() {
+        let viewModel = makeViewModel()
+        viewModel.email = "first@maplog.app"
+        viewModel.didFinishEditing(.email)
+
+        viewModel.email = "second@maplog.app"
+        XCTAssertNil(viewModel.emailFeedback)
+        viewModel.didFinishEditing(.email)
+        XCTAssertEqual(viewModel.emailFeedback, "올바른 이메일 형식입니다.")
+
+        viewModel.email = "invalid"
+        XCTAssertEqual(viewModel.emailFeedback, "올바른 이메일 주소를 입력해주세요.")
+    }
+
+    func testPasswordChangeReplacesConfirmationSuccessWithMismatch() {
+        let viewModel = makeViewModel()
+        fillValidForm(in: viewModel)
+        viewModel.didFinishEditing(.passwordConfirmation)
+        XCTAssertEqual(viewModel.passwordConfirmationFeedback, "비밀번호가 일치합니다.")
+
+        viewModel.password = "changed!123"
+        XCTAssertEqual(viewModel.passwordConfirmationFeedback, "비밀번호가 일치하지 않습니다.")
+    }
+
+    func testEmptyFinishedFieldsShowErrorsInsteadOfSuccess() {
+        let viewModel = makeViewModel()
+        SignUpField.allCases.forEach(viewModel.didFinishEditing)
+        XCTAssertEqual(viewModel.emailFeedback, viewModel.emailError)
+        XCTAssertEqual(viewModel.passwordFeedback, viewModel.passwordError)
+        XCTAssertEqual(viewModel.passwordConfirmationFeedback, viewModel.passwordConfirmationError)
+        XCTAssertEqual(viewModel.nicknameFeedback, viewModel.nicknameError)
+        XCTAssertNotNil(viewModel.emailFeedback)
+        XCTAssertNotNil(viewModel.nicknameFeedback)
+    }
+
     private func makeViewModel() -> SignUpViewModel {
         SignUpViewModel(
             authRepository: SignUpAuthRepositorySpy(),
