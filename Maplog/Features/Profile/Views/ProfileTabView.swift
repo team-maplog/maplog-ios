@@ -181,7 +181,6 @@ struct ProfileTabView: View {
                 onRetryNextPage: retryNextPage,
                 allowsManagement: true,
                 emptyConfiguration: ProfileLogEmptyConfiguration(
-                    iconName: "map.circle.fill",
                     title: "아직 공개한 맵로그가 없어요",
                     message: "촬영한 여행 기록을 완성하면 여기에 모여요.",
                     actionTitle: "새 맵로그 촬영하기"
@@ -214,7 +213,6 @@ struct ProfileTabView: View {
                     onRetryNextPage: retryNextSavedLogsPage,
                     allowsManagement: false,
                     emptyConfiguration: ProfileLogEmptyConfiguration(
-                        iconName: "bookmark",
                         title: "저장한 맵로그가 없어요",
                         message: "마음에 드는 여행 영상을 저장하면 여기에 모여요.",
                         actionTitle: nil
