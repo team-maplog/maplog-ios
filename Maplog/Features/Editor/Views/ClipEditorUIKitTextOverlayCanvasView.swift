@@ -27,6 +27,7 @@ struct ClipEditorUIKitTextOverlayCanvasView: UIViewRepresentable {
     let onBackgroundTap: () -> Void // 빈 영역 탭 콜백
     let onTextEditingStarted: (UUID) -> Void
     let onTemplateSwipe: (Int) -> Void
+    var passesBackgroundTouches = false
 
 
     // 화면에 처음 나타날 때 UIKit 캔버스 객체를 딱 한 번 만듦
@@ -39,6 +40,7 @@ struct ClipEditorUIKitTextOverlayCanvasView: UIViewRepresentable {
         _ uiView: EditorTextOverlayCanvasUIView,
         context: Context
     ) {
+        uiView.passesBackgroundTouches = passesBackgroundTouches
         uiView.update(
             items: items,
             selectedID: selectedID,
@@ -85,6 +87,15 @@ private struct TextOverlaySnapCandidate {
 
 // 실제 UIKit 캔버스, 자막별 UILabel, 삭제 버튼, UIPanGestureRecognizer를 넣음
 final class EditorTextOverlayCanvasUIView: UIView, UIGestureRecognizerDelegate {
+    var passesBackgroundTouches = false
+
+    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        let hit = super.hitTest(point, with: event)
+        // 자막은 기존 UIKit 제스처로 처리하고 빈 배경만 아래 영상 구도 캔버스에 전달한다.
+        if passesBackgroundTouches, hit === self { return nil }
+        return hit
+    }
+
     private var itemViews: [
             UUID: EditorTextOverlayItemUIView
         ] = [:]

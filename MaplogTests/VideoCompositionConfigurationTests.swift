@@ -3,6 +3,59 @@ import XCTest
 @testable import Maplog
 
 final class VideoCompositionConfigurationTests: XCTestCase {
+    func testDragMovesContentWithFingerAndClampsAtEdges() {
+        let crop = VideoClipCrop()
+        let source = CGSize(width: 1080, height: 1920)
+        let slot = CGSize(width: 300, height: 150)
+        let down = crop.moved(by: CGSize(width: 0, height: 10000), sourceSize: source, slotSize: slot)
+        let up = crop.moved(by: CGSize(width: 0, height: -10000), sourceSize: source, slotSize: slot)
+        XCTAssertEqual(down.verticalPosition, 0)
+        XCTAssertEqual(up.verticalPosition, 1)
+        XCTAssertEqual(down.horizontalPosition, 0.5)
+    }
+
+    func testFourQuarterTurnsRestoreOriginalOrientation() {
+        XCTAssertEqual(VideoClipCrop(quarterTurns: 4), VideoClipCrop())
+        XCTAssertEqual(VideoClipCrop(quarterTurns: -1).quarterTurns, 3)
+        let crop = VideoClipCrop(quarterTurns: 1)
+        let moved = crop.moved(by: CGSize(width: 20, height: 30),
+                               sourceSize: CGSize(width: 1920, height: 1080),
+                               slotSize: CGSize(width: 300, height: 150))
+        XCTAssertEqual(moved.quarterTurns, 1)
+    }
+
+    func testClockwiseRotationMapsSourceCornersInsideDestination() throws {
+        let placement = try VideoCompositionPlacement.make(
+            naturalSize: CGSize(width: 64, height: 128), sourceTransform: .identity,
+            in: CGRect(x: 0, y: 0, width: 128, height: 64), contentMode: .fit,
+            crop: VideoClipCrop(quarterTurns: 1)
+        )
+        let topLeft = CGPoint.zero.applying(placement.transform)
+        let bottomLeft = CGPoint(x: 0, y: 128).applying(placement.transform)
+        XCTAssertEqual(topLeft.x, 128, accuracy: 0.001)
+        XCTAssertEqual(topLeft.y, 0, accuracy: 0.001)
+        XCTAssertEqual(bottomLeft.x, 0, accuracy: 0.001)
+        XCTAssertEqual(bottomLeft.y, 0, accuracy: 0.001)
+    }
+
+    func testRotatedFillCropCoversSlotWithoutLeavingSource() throws {
+        let source = CGRect(x: 0, y: 0, width: 1080, height: 1920)
+        let slot = CGRect(x: 0, y: 640, width: 1080, height: 640)
+        for turns in 0..<4 {
+            let placement = try VideoCompositionPlacement.make(
+                naturalSize: source.size, sourceTransform: .identity, in: slot, contentMode: .fill,
+                crop: VideoClipCrop(horizontalPosition: 1, verticalPosition: 0, zoom: 1.5, quarterTurns: turns)
+            )
+            let rect = try XCTUnwrap(placement.sourceCropRect)
+            XCTAssertTrue(source.insetBy(dx: -0.001, dy: -0.001).contains(rect))
+            let rendered = rect.applying(placement.transform)
+            XCTAssertEqual(rendered.minX, slot.minX, accuracy: 0.001)
+            XCTAssertEqual(rendered.minY, slot.minY, accuracy: 0.001)
+            XCTAssertEqual(rendered.width, slot.width, accuracy: 0.001)
+            XCTAssertEqual(rendered.height, slot.height, accuracy: 0.001)
+        }
+    }
+
     func testCropCanReachBothEdgesWithoutLeavingSourceBounds() {
         let bounds = CGRect(x: 10, y: 20, width: 1920, height: 1080)
         let left = VideoClipCrop(horizontalPosition: 0).sourceRect(in: bounds, destinationAspectRatio: 0.5)

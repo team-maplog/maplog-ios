@@ -35,6 +35,13 @@ struct ClipEditorPreviewView: View {
     let onTemplateSwipe: (Int) -> Void
     let showsAlignmentGrid: Bool
     let aspectRatio: CGFloat
+    var cropConfiguration = VideoCompositionConfiguration()
+    var cropClipIDs: [UUID] = []
+    var selectedCropClipID: UUID?
+    var cropFrameData: Data?
+    var isUpdatingCrop = false
+    var onCropSelect: (UUID) -> Void = { _ in }
+    var onCropCommit: (UUID, VideoClipCrop) -> Void = { _, _ in }
 
     var body: some View {
         VStack(spacing: MaplogSpacing.xxSmall) {
@@ -62,6 +69,12 @@ struct ClipEditorPreviewView: View {
                         ClipEditorAlignmentGridView()
                     }
 
+                    ClipEditorDirectCropView(
+                        configuration: cropConfiguration, clipIDs: cropClipIDs,
+                        selectedID: selectedCropClipID, frameData: cropFrameData,
+                        isUpdating: isUpdatingCrop, onSelect: onCropSelect, onCommit: onCropCommit
+                    )
+
                     ClipEditorUIKitTextOverlayCanvasView(
                         items: textOverlayItems,
                         selectedID: selectedTextOverlayID,
@@ -75,7 +88,8 @@ struct ClipEditorPreviewView: View {
                         onTextEditingFinished: onTextOverlayTextEditingFinished,
                         onBackgroundTap: onPreviewBackgroundTap,
                         onTextEditingStarted: onTextOverlayTextEditingStarted,
-                        onTemplateSwipe: onTemplateSwipe
+                        onTemplateSwipe: onTemplateSwipe,
+                        passesBackgroundTouches: selectedTextOverlayID == nil && !cropClipIDs.isEmpty
                     )
 
                     if let playbackFeedbackSymbol {

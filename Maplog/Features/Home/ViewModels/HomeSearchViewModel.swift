@@ -76,15 +76,6 @@ final class HomeSearchViewModel: ObservableObject {
         !trimmedQuery.isEmpty && inputValidationMessage == nil
     }
 
-    /// 이미지 요청까지 성공한 결과만 View에 전달해 빈 카드가 생기지 않게 합니다.
-    var visibleItems: [HomeSearchItem] {
-        items.filter { thumbnailDataByItemID[$0.id] != nil }
-    }
-
-    var visibleRecentLogs: [LogReel] {
-        recentLogs.filter { recentThumbnailDataByLogID[$0.id] != nil }
-    }
-
     func updateQuery(_ value: String) {
         query = value
 
@@ -163,9 +154,8 @@ final class HomeSearchViewModel: ObservableObject {
     func loadNextPageIfNeeded(
         for item: HomeSearchItem
     ) async {
-        // 마지막 결과에 썸네일이 없을 수 있으므로, 실제로 보이는 마지막 카드가
-        // 나타날 때 다음 페이지를 요청합니다.
-        guard item.id == (visibleItems.last?.id ?? items.last?.id) else {
+        // 이미지 로딩과 관계없이 마지막 검색 결과에서 다음 페이지를 요청합니다.
+        guard item.id == items.last?.id else {
             return
         }
 
@@ -232,8 +222,7 @@ final class HomeSearchViewModel: ObservableObject {
 
             thumbnailDataByItemID[item.id] = data
         } catch {
-            // 카드 이미지 하나의 실패는 검색 결과 전체 실패가 아니며,
-            // 이미지 없는 카드는 visibleItems에서 자동으로 제외됩니다.
+            // 사진 요청이 실패해도 장소명과 주소로 결과에 접근할 수 있습니다.
             return
         }
     }

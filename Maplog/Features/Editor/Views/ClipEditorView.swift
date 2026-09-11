@@ -10,10 +10,10 @@ import SwiftUI
 
 struct ClipEditorView: View {
     @ObservedObject var viewModel: ClipEditorViewModel
+    @State private var cropTask: Task<Void, Never>?
     @State private var exportPreviewResult: VideoExportResult?
     @State private var isOverlayDragging = false
     @State private var isClipListExpanded = false
-    @State private var showsCropEditor = false
     @State private var hasShownLocationTemplateHint = false
     @State private var isLocationTemplateHintVisible = false
     @State private var playbackFeedbackSymbol: String?
@@ -54,6 +54,8 @@ struct ClipEditorView: View {
         }
         .onDisappear {
             playbackFeedbackTask?.cancel()
+            cropTask?.cancel()
+            viewModel.finishCropSelection()
 
             if exportPreviewResult == nil {
                     viewModel.stopPreview()
@@ -145,9 +147,6 @@ struct ClipEditorView: View {
                 )
             }
         }
-        .sheet(isPresented: $showsCropEditor) {
-            ClipEditorCropView(viewModel: viewModel, player: previewPlayer)
-        }
         .onChange(of: viewModel.isTextEditing) { _, isEditing in
             if isEditing { isClipListExpanded = false }
         }
@@ -220,6 +219,7 @@ struct ClipEditorView: View {
             onTextOverlayTap: { id in
                 isClipListExpanded = false
                 isLocationTemplateHintVisible = false
+                viewModel.finishCropSelection()
                 viewModel.selectTextOverlay(id: id)
             },
             onTextOverlayPositionChange: { id, position in
@@ -274,7 +274,21 @@ struct ClipEditorView: View {
                 )
             },
             showsAlignmentGrid: isOverlayDragging
-            , aspectRatio: viewModel.previewAspectRatio
+            , aspectRatio: viewModel.previewAspectRatio,
+            cropConfiguration: viewModel.compositionConfiguration,
+            cropClipIDs: viewModel.cropClipIDs,
+            selectedCropClipID: viewModel.selectedCropClipID,
+            cropFrameData: viewModel.cropFrameData,
+            isUpdatingCrop: viewModel.isUpdatingCrop,
+            onCropSelect: { id in
+                isClipListExpanded = false
+                cropTask?.cancel()
+                cropTask = Task { await viewModel.selectCropClip(id) }
+            },
+            onCropCommit: { id, crop in
+                cropTask?.cancel()
+                cropTask = Task { await viewModel.updateCrop(crop, for: id) }
+            }
         )
         .frame(maxWidth: .infinity)
         .frame(height: height)
@@ -412,6 +426,11 @@ struct ClipEditorView: View {
             .foregroundStyle(Color.maplogInk)
             .buttonStyle(.plain)
 
+            if let error = viewModel.cropError {
+                Text(error.message)
+                    .font(MaplogFont.caption)
+                    .foregroundStyle(Color.red)
+            }
             exportActionButton
         }
         .padding(.horizontal, MaplogSpacing.page)
@@ -424,17 +443,6 @@ struct ClipEditorView: View {
 
     private var expandedClipList: some View {
         VStack(spacing: MaplogSpacing.small) {
-            if viewModel.compositionConfiguration.layout != .single {
-                Button {
-                    showsCropEditor = true
-                } label: {
-                    Label("분할 영역 조정", systemImage: "crop")
-                        .frame(maxWidth: .infinity, alignment: .trailing)
-                        .frame(minHeight: MaplogSize.minimumTapTarget)
-                }
-                .font(MaplogFont.calloutStrong)
-                .foregroundStyle(Color.maplogInk)
-            }
             timelineSection
         }
         .padding(MaplogSpacing.small)

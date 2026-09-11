@@ -16,7 +16,7 @@ final class VideoExportSilentClipTests: XCTestCase {
                 )
             }
             var configuration = VideoCompositionConfiguration(layout: layout)
-            configuration.clipCrops[clips[0].id] = VideoClipCrop(verticalPosition: 0, zoom: 2)
+            configuration.clipCrops[clips[0].id] = VideoClipCrop(verticalPosition: 0, zoom: 2, quarterTurns: 1)
             let result = try await exporter.export(request: VideoExportRequest(
                 clips: clips, textOverlays: [], isMuted: false, compositionConfiguration: configuration
             ))
@@ -58,11 +58,15 @@ final class VideoExportSilentClipTests: XCTestCase {
 
         for frame in 0..<15 {
             var attempts = 0
-            while !input.isReadyForMoreMediaData && attempts < 200 {
+            while !input.isReadyForMoreMediaData && attempts < 1000 {
                 try await Task.sleep(nanoseconds: 10_000_000)
                 attempts += 1
             }
-            XCTAssertTrue(input.isReadyForMoreMediaData)
+            guard input.isReadyForMoreMediaData else {
+                XCTFail("샘플 영상 인코더가 준비되지 않았습니다: \(String(describing: writer.error))")
+                writer.cancelWriting()
+                throw CocoaError(.fileWriteUnknown)
+            }
             XCTAssertTrue(adaptor.append(pixelBuffer, withPresentationTime: CMTime(value: Int64(frame), timescale: 15)))
         }
         input.markAsFinished()

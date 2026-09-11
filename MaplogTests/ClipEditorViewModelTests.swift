@@ -62,13 +62,30 @@ final class ClipEditorViewModelTests: XCTestCase {
         let exporter = ClipEditorVideoExportServiceStub()
         let viewModel = await makePreparedViewModel(layout: .splitTwo, playback: playback, exporter: exporter)
         let clipID = try XCTUnwrap(viewModel.timelineItems.first?.id)
-        let crop = VideoClipCrop(horizontalPosition: 0.2, verticalPosition: 0.8, zoom: 2)
+        let crop = VideoClipCrop(horizontalPosition: 0.2, verticalPosition: 0.8, zoom: 2, quarterTurns: 1)
         await viewModel.updateCrop(crop, for: clipID)
         XCTAssertEqual(playback.lastConfiguration?.clipCrops[clipID], crop)
         XCTAssertFalse(viewModel.isUpdatingCrop)
         await viewModel.exportVideo()
         let exportedRequest = await exporter.lastRequest
         XCTAssertEqual(exportedRequest?.compositionConfiguration.clipCrops[clipID], crop)
+    }
+
+    func testSingleClipRotationReachesPreviewAndExport() async throws {
+        let playback = ClipEditorVideoPlaybackServiceStub()
+        let exporter = ClipEditorVideoExportServiceStub()
+        let viewModel = await makePreparedViewModel(playback: playback, exporter: exporter)
+        let id = try XCTUnwrap(viewModel.timelineItems.first?.id)
+        await viewModel.selectCropClip(id)
+        XCTAssertEqual(viewModel.selectedCropClipID, id)
+        XCTAssertFalse(viewModel.isPreviewPlaying)
+        await viewModel.updateCrop(VideoClipCrop(quarterTurns: 1), for: id)
+        XCTAssertEqual(playback.lastConfiguration?.clipCrops[id]?.quarterTurns, 1)
+        await viewModel.exportVideo()
+        let request = await exporter.lastRequest
+        XCTAssertEqual(request?.compositionConfiguration.clipCrops[id]?.quarterTurns, 1)
+        viewModel.togglePreviewPlayback()
+        XCTAssertNil(viewModel.selectedCropClipID)
     }
 
     func testFailedCropRestoresPreviousConfiguration() async throws {

@@ -57,7 +57,6 @@ struct ClipLocationEditView: View {
         .safeAreaInset(edge: .bottom) {
             PrimaryActionButton(
                 "이 위치로 저장",
-                systemImage: "checkmark",
                 isEnabled: viewModel.canSave,
                 action: onSave
             )
