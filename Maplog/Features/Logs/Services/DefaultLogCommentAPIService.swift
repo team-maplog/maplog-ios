@@ -135,6 +135,36 @@ final class DefaultLogCommentAPIService: LogCommentAPIService {
         return result
     }
 
+    func fetchBlockedUsers(page: Int, size: Int) async throws -> BlockedUserPageDTO {
+        var components = URLComponents(url: APIConfiguration.baseURL.appendingPathComponent("api/v1/blocks"),
+                                       resolvingAgainstBaseURL: false)
+        components?.queryItems = [URLQueryItem(name: "page", value: String(page)),
+                                 URLQueryItem(name: "size", value: String(size))]
+        guard let url = components?.url else { throw APIError.invalidResponse }
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        let response = try await authenticatedAPIClient.request(request, responseType: APIResponse<BlockedUserPageDTO>.self)
+        guard response.successFlag, response.code == "SUCCESS-002" else {
+            throw APIError.unexpectedResponse(code: response.code, message: response.message)
+        }
+        guard let page = response.data else { throw APIError.missingData }
+        return page
+    }
+
+    func unblockAuthor(userID: UUID) async throws -> CommentAuthorBlockStateDTO {
+        var request = URLRequest(url: APIConfiguration.baseURL.appendingPathComponent("api/v1/blocks")
+            .appendingPathComponent(userID.uuidString))
+        request.httpMethod = "DELETE"
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        let response = try await authenticatedAPIClient.request(request, responseType: APIResponse<CommentAuthorBlockStateDTO>.self)
+        guard response.successFlag, response.code == "SUCCESS-004" else {
+            throw APIError.unexpectedResponse(code: response.code, message: response.message)
+        }
+        guard let state = response.data else { throw APIError.missingData }
+        return state
+    }
+
     private func logCommentsEndpoint(
         logID: Int64
     ) throws -> URL {

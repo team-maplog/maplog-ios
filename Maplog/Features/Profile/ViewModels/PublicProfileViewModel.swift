@@ -4,6 +4,7 @@ enum PublicProfileScreenState: Equatable {
     case idle
     case loading
     case content
+    case blocked
     case failed(ErrorPresentation)
 }
 
@@ -35,6 +36,7 @@ final class PublicProfileViewModel: ObservableObject {
     @Published private(set) var nextPageError: ErrorPresentation?
     @Published private(set) var actionError: ErrorPresentation?
 
+    private var moderationRepository: (any ContentModerationRepository)?
     private let routeUser: FollowUser
     private let followRepository: any FollowRepository
     private let profileRepository: any ProfileRepository
@@ -56,7 +58,8 @@ final class PublicProfileViewModel: ObservableObject {
         profile?.nickname ?? routeUser.nickname
     }
 
-    func loadIfNeeded() async {
+    func loadIfNeeded(moderationRepository: (any ContentModerationRepository)? = nil) async {
+        if let moderationRepository { self.moderationRepository = moderationRepository }
         guard state == .idle else {
             return
         }
@@ -90,6 +93,27 @@ final class PublicProfileViewModel: ObservableObject {
         actionError = nil
 
         do {
+            // 서버가 차단 프로필을 404로 반환하므로, 내 차단 목록으로 먼저 판별한다.
+            if let moderationRepository {
+                var pageNumber = 1
+                while true {
+                    let page = try await moderationRepository.fetchBlockedUsers(page: pageNumber)
+                    try Task.checkCancellation()
+                    if page.users.contains(where: { $0.id == routeUser.id }) {
+                        profile = nil
+                        loadedProfile = nil
+                        logs = []
+                        avatarImageData = nil
+                        thumbnailDataByLogID = [:]
+                        hasNextPage = false
+                        nextCursor = nil
+                        state = .blocked
+                        return
+                    }
+                    guard page.hasNext else { break }
+                    pageNumber = page.page + 1
+                }
+            }
             // 공개 헤더·로그 첫 페이지·내 사용자 ID는 서로 독립적이라 병렬로 가져옵니다.
             async let fetchedProfile = profileRepository.fetchPublicProfile(
                 nickname: routeUser.nickname
