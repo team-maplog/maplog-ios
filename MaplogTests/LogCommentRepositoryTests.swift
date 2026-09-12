@@ -300,6 +300,8 @@ final class LogCommentRepositoryTests: XCTestCase {
 private struct EmptyCommentDeletePayload: Decodable {}
 
 private final class LogCommentAPIServiceStub: LogCommentAPIService {
+    func fetchBlockedUsers(page: Int, size: Int) async throws -> BlockedUserPageDTO { throw APIError.invalidResponse }
+    func unblockAuthor(userID: UUID) async throws -> CommentAuthorBlockStateDTO { throw APIError.invalidResponse }
     var reportRequest: ContentReportRequestDTO?
     var blockResponse: CommentAuthorBlockStateDTO?
     func reportContent(request: ContentReportRequestDTO) async throws -> CommentReportReceiptDTO {

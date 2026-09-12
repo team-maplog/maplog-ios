@@ -57,7 +57,7 @@ struct PublicProfileFeatureView: View {
         }
         .maplogTabBarHidden()
         .task {
-            await viewModel.loadIfNeeded()
+            await viewModel.loadIfNeeded(moderationRepository: moderationRepository)
         }
         .refreshable {
             await viewModel.reload()
@@ -116,6 +116,20 @@ struct PublicProfileFeatureView: View {
                     )
                 }
             }
+
+        case .blocked:
+            VStack(spacing: 16) {
+                Text("차단한 사용자예요").font(MaplogFont.body)
+                Text("이 사용자의 로그는 표시되지 않아요.")
+                    .font(MaplogFont.caption).foregroundStyle(Color.maplogMuted)
+                if let moderationRepository {
+                    NavigationLink("차단 목록에서 관리하기") {
+                        BlockedUsersView(repository: moderationRepository)
+                    }
+                    .frame(minHeight: 44)
+                }
+            }
+            .frame(maxWidth: .infinity).padding(.vertical, 48)
 
         case let .failed(presentation):
             PublicProfileFailureState(

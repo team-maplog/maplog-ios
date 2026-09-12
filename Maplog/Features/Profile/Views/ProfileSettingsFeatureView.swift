@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ProfileSettingsFeatureView: View {
+    @Environment(\.contentModerationRepository) private var moderationRepository
     @Environment(\.maplogLogout) private var performLogout
     @EnvironmentObject private var signOutViewModel: SignOutViewModel
 
@@ -57,6 +58,16 @@ struct ProfileSettingsFeatureView: View {
                         SocialConnectionsView(repository: socialConnectionRepository)
                     } label: {
                         ProfileSettingsNavigationRow(title: "소셜 계정 관리")
+                    }
+                }
+
+                if let moderationRepository {
+                    ProfileSettingsSection(title: "개인정보 및 안전") {
+                        NavigationLink {
+                            BlockedUsersView(repository: moderationRepository)
+                        } label: {
+                            ProfileSettingsNavigationRow(title: "차단 목록")
+                        }
                     }
                 }
 

@@ -57,6 +57,8 @@ final class ContentModerationTests: XCTestCase {
 }
 
 private final class ModerationAPIStub: ContentModerationAPIService {
+    func fetchBlockedUsers(page: Int, size: Int) async throws -> BlockedUserPageDTO { throw APIError.invalidResponse }
+    func unblockAuthor(userID: UUID) async throws -> CommentAuthorBlockStateDTO { throw APIError.invalidResponse }
     var request: ContentReportRequestDTO?
     func reportContent(request: ContentReportRequestDTO) async throws -> CommentReportReceiptDTO {
         self.request = request
@@ -68,6 +70,8 @@ private final class ModerationAPIStub: ContentModerationAPIService {
 }
 
 private final class ModerationRepositoryStub: ContentModerationRepository {
+    func fetchBlockedUsers(page: Int) async throws -> BlockedUserPage { throw APIError.invalidResponse }
+    func unblockUser(id: UUID) async throws { throw APIError.invalidResponse }
     var calls = 0
     func reportLog(id: Int64, reason: String) async throws { calls += 1 }
     func blockUser(id: UUID) async throws { calls += 1 }
@@ -84,4 +88,94 @@ private struct ModerationProfileStub: ProfileRepository {
     func updateMyProfile(_ update: ProfileUpdate) async throws -> MyProfile { throw APIError.invalidResponse }
     func deleteMyProfile() async throws { throw APIError.invalidResponse }
     func fetchImageData(from url: URL, cacheKey: String, targetSize: MaplogImageTargetSize) async throws -> Data { Data() }
+}
+
+@MainActor
+final class BlockedUsersTests: XCTestCase {
+    func testNextPageFailurePreservesVisibleUsers() async {
+        let repository = BlockManagementStub()
+        let model = BlockedUsersViewModel(repository: repository)
+        await model.reload()
+        repository.failPage = 2
+        await model.loadNextPage()
+        XCTAssertEqual(model.users, [repository.user])
+        XCTAssertNotNil(model.nextPageError)
+        XCTAssertEqual(repository.requestedPages, [1, 2])
+    }
+
+    func testUnblockFailurePreservesUser() async {
+        let repository = BlockManagementStub()
+        let model = BlockedUsersViewModel(repository: repository)
+        await model.reload()
+        repository.failUnblock = true
+        await model.unblock(repository.user)
+        XCTAssertEqual(model.users, [repository.user])
+        XCTAssertNotNil(model.error)
+        XCTAssertNil(model.unblockingID)
+    }
+
+    func testUnblockRestartsNumberedPagination() async {
+        let repository = BlockManagementStub()
+        let model = BlockedUsersViewModel(repository: repository)
+        await model.reload()
+        await model.loadNextPage()
+        await model.unblock(repository.user)
+        XCTAssertEqual(repository.requestedPages, [1, 2, 1])
+        XCTAssertTrue(model.users.isEmpty)
+        XCTAssertFalse(model.hasNext)
+    }
+
+    func testLeavingDuringUnblockStillRefreshesContentAfterSuccess() async {
+        let repository = BlockManagementStub()
+        let model = BlockedUsersViewModel(repository: repository)
+        await model.reload()
+        repository.onUnblock = { model.finishManagingBlocks() }
+        let refreshed = expectation(forNotification: .maplogUserBlockDidChange, object: nil)
+        await model.unblock(repository.user)
+        await fulfillment(of: [refreshed], timeout: 1)
+    }
+
+    func testBlockedProfileOnSecondPageDoesNotLoadLogs() async {
+        let repository = BlockManagementStub()
+        repository.targetOnSecondPage = true
+        let user = FollowUser(id: repository.user.id, nickname: "blocked", profileImageURL: nil)
+        let model = PublicProfileViewModel(user: user, followRepository: BlockedProfileFollowStub(),
+                                          profileRepository: ModerationProfileStub(id: UUID()))
+        // The profile stub throws if profile/logs are requested: a blocked state proves these were skipped.
+        await model.loadIfNeeded(moderationRepository: repository)
+        XCTAssertEqual(model.state, .blocked)
+        XCTAssertTrue(model.logs.isEmpty)
+        XCTAssertNil(model.profile)
+        XCTAssertEqual(repository.requestedPages, [1, 2])
+    }
+}
+
+private final class BlockManagementStub: ContentModerationRepository {
+    let user = BlockedUser(id: UUID(), nickname: "blocked")
+    var requestedPages: [Int] = []
+    var failPage: Int?
+    var failUnblock = false
+    var onUnblock: (() -> Void)?
+    var unblocked = false
+    var targetOnSecondPage = false
+    func fetchBlockedUsers(page: Int) async throws -> BlockedUserPage {
+        requestedPages.append(page)
+        if failPage == page { throw APIError.network(URLError(.notConnectedToInternet)) }
+        if unblocked { return .init(users: [], page: page, hasNext: false) }
+        let pageUser = targetOnSecondPage && page == 1 ? BlockedUser(id: UUID(), nickname: "another") : user
+        return .init(users: [pageUser], page: page, hasNext: page == 1)
+    }
+    func unblockUser(id: UUID) async throws {
+        if failUnblock { throw APIError.network(URLError(.notConnectedToInternet)) }
+        onUnblock?()
+        unblocked = true
+    }
+    func reportLog(id: Int64, reason: String) async throws { throw APIError.invalidResponse }
+    func blockUser(id: UUID) async throws { throw APIError.invalidResponse }
+}
+
+private struct BlockedProfileFollowStub: FollowRepository {
+    func fetchUsers(kind: FollowListKind, cursor: String?, size: Int) async throws -> FollowUserPage { throw APIError.invalidResponse }
+    func isFollowing(userID: UUID) async throws -> Bool { throw APIError.invalidResponse }
+    func setFollowing(userID: UUID, isFollowing: Bool) async throws -> FollowState { throw APIError.invalidResponse }
 }
