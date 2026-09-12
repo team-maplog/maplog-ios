@@ -173,6 +173,85 @@ final class LogCommentsViewModelTests: XCTestCase {
         )
     }
 
+    func testPendingCommentAppearsBeforeResponseAndKeepsRowIdentity() async {
+        let repository = LogCommentRepositoryStub(comments: [])
+        let serverComment = makeComment(id: 50)
+        var deltas: [Int64] = []
+        let model = LogCommentsViewModel(logID: 10, commentRepository: repository,
+            profileRepository: CommentProfileRepositoryStub(), onCommentCountChange: { deltas.append($0) })
+        await model.loadInitialComments()
+        let localID = model.enqueueComment(draft: LogCommentDraft(content: "  새 댓글  ", parentCommentID: nil))!
+        XCTAssertEqual(model.comments.first?.content, "새 댓글")
+        XCTAssertTrue(model.isSending)
+        XCTAssertEqual(model.activeCommentCount, 0)
+        XCTAssertNil(model.replyParentID(for: model.comments[0]))
+        XCTAssertNil(model.enqueueComment(draft: LogCommentDraft(content: "중복", parentCommentID: nil)))
+        repository.createdComment = serverComment
+        let succeeded = await model.sendPendingComment(localID: localID)
+        XCTAssertTrue(succeeded)
+        XCTAssertEqual(model.comments.map(\.id), [50])
+        XCTAssertEqual(model.rowID(for: model.comments[0]), localID)
+        XCTAssertEqual(deltas, [1])
+        XCTAssertEqual(model.activeCommentCount, 1)
+        let duplicate = await model.sendPendingComment(localID: localID)
+        XCTAssertFalse(duplicate)
+        XCTAssertEqual(repository.createCallCount, 1)
+    }
+
+    func testSlowRequestShowsPendingRowAndRejectsDuplicateSendUntilResponse() async {
+        let repository = LogCommentRepositoryStub(comments: [])
+        let response = makeComment(id: 80)
+        let started = expectation(description: "request started")
+        var continuation: CheckedContinuation<LogComment, Error>?
+        repository.createOperation = { _ in
+            try await withCheckedThrowingContinuation { pending in
+                continuation = pending
+                started.fulfill()
+            }
+        }
+        let model = LogCommentsViewModel(logID: 10, commentRepository: repository,
+            profileRepository: CommentProfileRepositoryStub(), onCommentCountChange: { _ in })
+        await model.loadInitialComments()
+        let localID = model.enqueueComment(draft: LogCommentDraft(content: "느린 요청", parentCommentID: nil))!
+        let request = Task { await model.sendPendingComment(localID: localID) }
+        await fulfillment(of: [started], timeout: 2)
+        XCTAssertEqual(model.comments.first?.content, "느린 요청")
+        XCTAssertTrue(model.isSending)
+        let duplicate = await model.sendPendingComment(localID: localID)
+        XCTAssertFalse(duplicate)
+        XCTAssertEqual(repository.createCallCount, 1)
+        continuation?.resume(returning: response)
+        let result = await request.value
+        XCTAssertTrue(result)
+        XCTAssertEqual(model.comments.map(\.id), [80])
+    }
+
+    func testFailedReplyIsPreservedAndRetryReplacesTheSameRow() async {
+        let repository = LogCommentRepositoryStub(comments: [makeComment(id: 1)])
+        var deltas: [Int64] = []
+        let model = LogCommentsViewModel(logID: 10, commentRepository: repository,
+            profileRepository: CommentProfileRepositoryStub(), onCommentCountChange: { deltas.append($0) })
+        await model.loadInitialComments()
+        repository.createError = APIError.network(URLError(.notConnectedToInternet))
+        let success = await model.createComment(draft: LogCommentDraft(content: "답글", parentCommentID: 1))
+        XCTAssertFalse(success)
+        let localID = model.comments.last!.id
+        XCTAssertTrue(model.failedSendIDs.contains(localID))
+        XCTAssertEqual(model.comments.last?.content, "답글")
+        XCTAssertEqual(model.comments.last?.parentCommentID, 1)
+        XCTAssertEqual(model.activeCommentCount, 1)
+        XCTAssertTrue(deltas.isEmpty)
+        repository.createError = nil
+        repository.createdComment = makeComment(id: 2, parentCommentID: 1)
+        model.dismissActionError()
+        await model.retryLastAction()
+        XCTAssertEqual(model.comments.map(\.id), [1, 2])
+        XCTAssertEqual(model.rowID(for: model.comments.last!), localID)
+        XCTAssertEqual(deltas, [1])
+        XCTAssertTrue(model.pendingDrafts.isEmpty)
+        XCTAssertFalse(model.isSending)
+    }
+
     private func makeComment(
         id: Int64,
         parentCommentID: Int64? = nil,
@@ -199,6 +278,10 @@ final class LogCommentsViewModelTests: XCTestCase {
 
 private final class LogCommentRepositoryStub: LogCommentRepository {
     var moderationError: Error?
+    var createError: Error?
+    var createdComment: LogComment?
+    var createCallCount = 0
+    var createOperation: ((LogCommentDraft) async throws -> LogComment)?
     var reportedIDs: [Int64] = []
     var blockedIDs: [UUID] = []
     func reportComment(commentID: Int64, reason: String) async throws {
@@ -223,7 +306,10 @@ private final class LogCommentRepositoryStub: LogCommentRepository {
         logID: Int64,
         draft: LogCommentDraft
     ) async throws -> LogComment {
-        fatalError("This test does not create comments.")
+        createCallCount += 1
+        if let createOperation { return try await createOperation(draft) }
+        if let createError { throw createError }
+        return createdComment!
     }
 
     func updateComment(
