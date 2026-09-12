@@ -13,7 +13,7 @@ struct TourismLocationMapView: View {
     let coordinate: TourismDetailCoordinateViewData
 
     var body: some View {
-        KakaoMapCanvas(latitude: coordinate.latitude, longitude: coordinate.longitude)
+        TourismKakaoMapCanvas(latitude: coordinate.latitude, longitude: coordinate.longitude)
             .navigationTitle("위치 보기")
             .navigationBarTitleDisplayMode(.inline)
             .maplogTabBarHidden()

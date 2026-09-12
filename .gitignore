@@ -1,5 +1,10 @@
 Config/Secrets.xcconfig
+Maplog/GoogleService-Info.plist
 DerivedData/
 .DS_Store
 *.xcuserstate
 xcuserdata/
+
+# Local-only collaboration references
+AGENTS.md
+design-review/

@@ -1,5 +1,76 @@
 import SwiftUI
 
+/// 사용자 제공 지도 글리프를 앱 전반에서 같은 비율로 사용한다.
+struct MaplogMapGlyphIcon: View {
+    var size: CGFloat = MaplogSize.iconMedium
+
+    var body: some View {
+        Image("MaplogMapGlyph")
+            .renderingMode(.template)
+            .resizable()
+            .scaledToFit()
+            .frame(width: size, height: size)
+            .accessibilityHidden(true)
+    }
+}
+
+/// 사용자 제공 위치 핀 글리프를 주소 메타데이터에 사용한다.
+struct MaplogPinGlyphIcon: View {
+    var size: CGFloat = MaplogSize.iconSmall
+
+    var body: some View {
+        Image("MaplogPinGlyph")
+            .renderingMode(.template)
+            .resizable()
+            .scaledToFit()
+            .frame(width: size, height: size)
+            .accessibilityHidden(true)
+    }
+}
+
+/// 사용자 제공 달력 글리프를 기간 메타데이터에 사용한다.
+struct MaplogCalendarGlyphIcon: View {
+    var size: CGFloat = MaplogSize.iconSmall
+
+    var body: some View {
+        Image("MaplogCalendarGlyph")
+            .renderingMode(.template)
+            .resizable()
+            .scaledToFit()
+            .frame(width: size, height: size)
+            .accessibilityHidden(true)
+    }
+}
+
+/// 사용자 제공 조회수 글리프를 영상 썸네일 위 메타데이터에 사용한다.
+struct MaplogViewCountGlyphIcon: View {
+    var size: CGFloat = MaplogSize.iconSmall
+
+    var body: some View {
+        Image("MaplogViewCountGlyph")
+            .renderingMode(.template)
+            .resizable()
+            .scaledToFit()
+            .frame(width: size, height: size)
+            .accessibilityHidden(true)
+    }
+}
+
+/// 원형 SF Symbol 대신 프로젝트의 위치 핀 글리프와 문구를 함께 표시한다.
+/// 위치를 뜻하는 보조 문구에서 같은 아이콘 비율을 유지하는 용도다.
+struct MaplogLocationLabel: View {
+    let title: String
+    var pinSize: CGFloat = MaplogSize.iconSmall
+
+    var body: some View {
+        HStack(spacing: MaplogSpacing.xxxSmall) {
+            MaplogPinGlyphIcon(size: pinSize)
+            Text(title)
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
 struct MaplogSectionHeader<Action: View>: View {
     let title: String
     var systemImage: String?

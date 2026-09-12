@@ -20,14 +20,14 @@ final class SignInViewModel: ObservableObject {
     @Published private(set) var isLoading = false
 
     private let authRepository: any AuthRepository
-    private let authSessionStore: AuthSessionStore
+    private let authSession: any AuthSessionManaging
 
     init(
         authRepository: any AuthRepository,
-        authSessionStore: AuthSessionStore
+        authSession: any AuthSessionManaging
     ) {
         self.authRepository = authRepository
-        self.authSessionStore = authSessionStore // ViewModel 안에서 AuthSessionStore()를 새로 만들지 않고 init으로 받음
+        self.authSession = authSession
     }
 
     func signIn() async {
@@ -53,7 +53,7 @@ final class SignInViewModel: ObservableObject {
         do {
             let authToken = try await authRepository.signIn(credentials: credentials)
 
-        try authSessionStore.startSession(with: authToken)
+        try authSession.startSession(with: authToken)
     } catch {
         apply(error)
     }

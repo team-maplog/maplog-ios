@@ -8,11 +8,17 @@
 import Foundation
 
 protocol AuthRepository {
+    func signUp(
+        credentials: SignUpCredentials
+    ) async throws -> AuthToken
+
     func signIn(
         credentials: SignInCredentials
     ) async throws -> AuthToken
 
     func signOut() async throws
+
+    func reissueToken() async throws -> AuthToken
 }
 
 // Repository 밖, 즉 ViewModel은 서버 응답 형식을 몰라야 함

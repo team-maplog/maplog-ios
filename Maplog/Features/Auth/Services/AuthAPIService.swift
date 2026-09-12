@@ -8,9 +8,15 @@
 import Foundation
 
 protocol AuthAPIService {
+    func signUp(
+        request: SignUpRequestDTO
+    ) async throws -> SignUpResponseDTO
+
     func signIn(
         request: SignInRequestDTO
     ) async throws -> SignInResponseDTO
 
     func signOut() async throws
+
+    func reissueToken() async throws -> AuthTokenResponseDTO
 }

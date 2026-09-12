@@ -9,6 +9,9 @@ enum BackendErrorCode: Equatable {
     case tourAPIUnavailable
     case tourAPIRequestFailed
     case commonValidationFailure
+    case duplicateReport
+    case cannotReportOwnContent
+    case cannotBlockSelf
 
     case expiredAccessToken
     case invalidAuthentication
@@ -25,8 +28,41 @@ enum BackendErrorCode: Equatable {
     case commonInvalidRequest
     case tourismNotFound
 
+    case oauthConnectionNotFound
+    case oauthRevokeFailed
+    case oauthPrimaryConnectionRequired
+    case oauthEmailPermissionRequired
+    case oauthStateExpired
+    case oauthEmailAlreadyInUse
+    case oauthHandoffInvalid
+    case oauthHandoffStoreUnavailable
+    case requestRateLimited
+
+    case fileTooLarge
+    case unsupportedFileType
+    case missingLogVideo
+    case invalidLogVideo
+    case logVideoAccessDenied
+    case logVideoTooLong
+    case logVideoResolutionTooLarge
+    case thumbnailGenerationFailed
+    case logVideoInspectionFailed
+    case invalidThumbnailTime
+    case invalidClipTimeRange
+    case logPublishInProgress
+    case invalidLogPublishIdempotencyKey
+    case locationAddressNotFound
+    case locationLookupFailed
+
+    case logNotFound
+    case logNotReadable
+    case logNotOwner
+
     init(serverCode: String) {
         switch serverCode {
+        case "REPORT-002": self = .duplicateReport
+        case "REPORT-003": self = .cannotReportOwnContent
+        case "BLOCK-001": self = .cannotBlockSelf
         case "TOUR-001":
             self = .tourAPIUnavailable
 
@@ -69,6 +105,85 @@ enum BackendErrorCode: Equatable {
 
         case "TOUR-003":
             self = .tourismNotFound
+
+        case "OAUTH-003", "OAUTH-009":
+            self = .oauthEmailPermissionRequired
+
+        case "OAUTH-004":
+            self = .oauthStateExpired
+
+        case "OAUTH-010":
+            self = .oauthEmailAlreadyInUse
+
+        case "OAUTH-005":
+            self = .oauthConnectionNotFound
+        case "OAUTH-007":
+            self = .oauthRevokeFailed
+        case "OAUTH-008":
+            self = .oauthPrimaryConnectionRequired
+
+        case "OAUTH-014":
+            self = .oauthHandoffInvalid
+
+        case "OAUTH-015":
+            self = .oauthHandoffStoreUnavailable
+
+        case "RATE-001":
+            self = .requestRateLimited
+
+        case "FILE-002":
+            self = .fileTooLarge
+
+        case "FILE-003":
+            self = .unsupportedFileType
+
+        case "LOG-004":
+            self = .missingLogVideo
+
+        case "LOG-005":
+            self = .logVideoAccessDenied
+
+        case "LOG-006":
+            self = .invalidLogVideo
+
+        case "LOG-007":
+            self = .logVideoTooLong
+
+        case "LOG-008":
+            self = .logVideoResolutionTooLarge
+
+        case "LOG-009":
+            self = .thumbnailGenerationFailed
+
+        case "LOG-011":
+            self = .logVideoInspectionFailed
+
+        case "LOG-010":
+            self = .invalidThumbnailTime
+
+        case "LOG-012":
+            self = .invalidClipTimeRange
+
+        case "LOG-013":
+            self = .logPublishInProgress
+
+        case "LOG-014":
+            self = .invalidLogPublishIdempotencyKey
+
+        case "LOCATION-002":
+            self = .locationAddressNotFound
+
+        case "LOCATION-003":
+            self = .locationLookupFailed
+
+        case "LOG-001":
+            self = .logNotFound
+
+        case "LOG-002":
+            self = .logNotReadable
+
+        case "LOG-003":
+            self = .logNotOwner
 
         default:
             self = .unknown(serverCode)

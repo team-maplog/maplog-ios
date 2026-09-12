@@ -12,6 +12,8 @@
 //Mock Repository를 주입하면 네트워크 없이 ViewModel 테스트가 가능
 
 protocol TourismRepository {
+    func fetchPortraitImage(tourismID: Int64) async throws -> TourismPortraitImage?
+
     func fetchTourisms(
         category: TourismCategory,
         cursor: String?,

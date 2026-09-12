@@ -13,6 +13,10 @@ enum TourismCategory: String, Codable, CaseIterable, Hashable {
     case performance = "PERFORMANCE"
     case event = "EVENT"
 
+    case accommodation = "ACCOMMODATION"
+    case food = "FOOD"
+    case shopping = "SHOPPING"
+
     case recommendedCourse = "RECOMMENDED_COURSE"
     case experienceTourism = "EXPERIENCE_TOURISM"
     case historyTourism = "HISTORY_TOURISM"
