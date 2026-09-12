@@ -8,6 +8,7 @@ struct ProfileSettingsFeatureView: View {
     private let profile: ProfileHeaderViewData
     private let avatarImageData: Data?
     private let socialConnectionRepository: any SocialConnectionRepository
+    private let followRepository: any FollowRepository
     private let profileRepository: any ProfileRepository
     private let onProfileSaved: () async -> Void
 
@@ -19,11 +20,13 @@ struct ProfileSettingsFeatureView: View {
         profile: ProfileHeaderViewData,
         avatarImageData: Data?,
         profileRepository: any ProfileRepository,
+        followRepository: any FollowRepository,
         socialConnectionRepository: any SocialConnectionRepository,
         onProfileSaved: @escaping () async -> Void
     ) {
         self.profile = profile
         self.avatarImageData = avatarImageData
+        self.followRepository = followRepository
         self.profileRepository = profileRepository
         self.socialConnectionRepository = socialConnectionRepository
         self.onProfileSaved = onProfileSaved
@@ -64,7 +67,8 @@ struct ProfileSettingsFeatureView: View {
                 if let moderationRepository {
                     ProfileSettingsSection(title: "개인정보 및 안전") {
                         NavigationLink {
-                            BlockedUsersView(repository: moderationRepository)
+                            BlockedUsersView(repository: moderationRepository,
+                                             profileRepository: profileRepository, followRepository: followRepository)
                         } label: {
                             ProfileSettingsNavigationRow(title: "차단 목록")
                         }

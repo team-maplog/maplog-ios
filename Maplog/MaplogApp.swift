@@ -245,7 +245,8 @@ struct MaplogApp: App { // 앱의 조립 담당자
             }
             .environmentObject(authSessionStore)
             .environmentObject(signOutViewModel)
-            .onReceive(NotificationCenter.default.publisher(for: .maplogUserBlockDidChange)) { _ in
+            .onReceive(NotificationCenter.default.publisher(for: .maplogUserBlockDidChange)
+                .merge(with: NotificationCenter.default.publisher(for: .maplogUserBlockCacheDidChange))) { _ in
                 MaplogImageCache.shared.clearCache(completion: nil)
                 URLCache.shared.removeAllCachedResponses()
                 // 촬영 원본이 아닌 서버에서 내려받은 재생용 캐시만 지웁니다.

@@ -89,6 +89,22 @@ final class ProfileRepositoryTests: XCTestCase {
         XCTAssertEqual(profile.profileImageURL?.path, "/api/v1/files/31")
     }
 
+    func testRestrictedProfileMapsNullDateAndBlockingFlag() async throws {
+        let dto = PublicProfileResponseDTO(
+            userID: UUID(), nickname: "blocked", profileImageURL: "/api/v1/files/31", bio: nil,
+            followerCount: 0, followingCount: 0, logCount: 0, followedByViewer: false,
+            createdAt: nil, blockedByViewer: true
+        )
+        let api = ProfileAPIServiceStub(
+            logPage: ProfileLogPageDTO(content: [], hasNext: false, nextCursor: nil), publicProfile: dto
+        )
+        let profile = try await DefaultProfileRepository(apiService: api).fetchPublicProfile(nickname: "blocked")
+        XCTAssertTrue(profile.isBlockedByViewer)
+        XCTAssertNil(profile.createdAt)
+        XCTAssertEqual(profile.bio, "")
+        XCTAssertEqual(profile.profileImageURL?.path, "/api/v1/files/31")
+    }
+
     private func makeProfileDTO(
         nickname: String,
         bio: String

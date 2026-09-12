@@ -47,7 +47,7 @@ struct PublicProfileFeatureView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
         .toolbar {
-            if let profile = viewModel.profile, !viewModel.isOwnProfile, let moderationRepository {
+            if viewModel.state == .content, let profile = viewModel.profile, !viewModel.isOwnProfile, let moderationRepository {
                 ToolbarItem(placement: .topBarTrailing) {
                     ContentModerationMenu(authorID: profile.id, repository: moderationRepository,
                                           profileRepository: profileRepository)
@@ -59,16 +59,24 @@ struct PublicProfileFeatureView: View {
         .task {
             await viewModel.loadIfNeeded(moderationRepository: moderationRepository)
         }
+        .onAppear { viewModel.beginManagingBlocks() }
+        .onDisappear {
+            if !showsLogDetail { viewModel.finishManagingBlocks() }
+        }
         .refreshable {
             await viewModel.reload()
         }
         .alert(
-            "팔로우 상태를 바꾸지 못했어요",
+            "요청을 완료하지 못했어요",
             isPresented: actionErrorPresented
         ) {
             if viewModel.actionError?.recoveryAction == .retry {
                 Button("다시 시도") {
-                    toggleFollow()
+                    if viewModel.state == .blocked {
+                        Task { await viewModel.unblock() }
+                    } else {
+                        toggleFollow()
+                    }
                 }
             }
 
@@ -118,15 +126,30 @@ struct PublicProfileFeatureView: View {
             }
 
         case .blocked:
-            VStack(spacing: 16) {
-                Text("차단한 사용자예요").font(MaplogFont.body)
-                Text("이 사용자의 로그는 표시되지 않아요.")
-                    .font(MaplogFont.caption).foregroundStyle(Color.maplogMuted)
-                if let moderationRepository {
-                    NavigationLink("차단 목록에서 관리하기") {
-                        BlockedUsersView(repository: moderationRepository)
+            VStack(spacing: 20) {
+                MaplogProfileAvatar(
+                    imageData: viewModel.avatarImageData,
+                    nickname: viewModel.nickname,
+                    size: ProfileLayout.avatarSize
+                )
+                Text(viewModel.nickname).font(.title2.weight(.bold))
+                Text("차단한 사용자입니다")
+                    .font(MaplogFont.body).foregroundStyle(Color.maplogMuted)
+                if moderationRepository != nil {
+                    Button {
+                        Task { await viewModel.unblock() }
+                    } label: {
+                        HStack(spacing: 8) {
+                            if viewModel.isUnblocking { ProgressView() }
+                            Text(viewModel.isUnblocking ? "차단 해제 중" : "차단 해제")
+                        }
+                        .font(.subheadline.weight(.bold))
+                        .foregroundStyle(Color.maplogOnPrimary)
+                        .padding(.horizontal, 24)
+                        .frame(minHeight: 44)
+                        .background(Color.maplogLime, in: Capsule())
                     }
-                    .frame(minHeight: 44)
+                    .disabled(viewModel.isUnblocking)
                 }
             }
             .frame(maxWidth: .infinity).padding(.vertical, 48)

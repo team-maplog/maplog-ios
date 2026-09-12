@@ -3,9 +3,15 @@ import SwiftUI
 struct BlockedUsersView: View {
     @Environment(\.maplogLogout) private var signIn
     @StateObject private var viewModel: BlockedUsersViewModel
+    private let profileRepository: any ProfileRepository
+    private let followRepository: any FollowRepository
+    @State private var selectedProfile: BlockedUser?
     @State private var selectedUser: BlockedUser?
 
-    init(repository: any ContentModerationRepository) {
+    init(repository: any ContentModerationRepository,
+         profileRepository: any ProfileRepository, followRepository: any FollowRepository) {
+        self.profileRepository = profileRepository
+        self.followRepository = followRepository
         _viewModel = StateObject(wrappedValue: BlockedUsersViewModel(repository: repository))
     }
 
@@ -22,7 +28,17 @@ struct BlockedUsersView: View {
                 }
                 ForEach(viewModel.users) { user in
                     HStack(spacing: 16) {
-                        Text(user.nickname).font(MaplogFont.body)
+                        if user.canOpenProfile {
+                            Button {
+                                selectedProfile = user
+                            } label: {
+                                Text(user.nickname).font(MaplogFont.body)
+                                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                            }
+                            .buttonStyle(.plain)
+                        } else {
+                            Text(user.nickname).font(MaplogFont.body)
+                        }
                         Spacer()
                         Button("차단 해제") { selectedUser = user }
                             .font(MaplogFont.caption)
@@ -50,7 +66,16 @@ struct BlockedUsersView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task { if !viewModel.hasLoaded { await viewModel.reload() } }
         .refreshable { await viewModel.reload() }
-        .onDisappear { viewModel.finishManagingBlocks() }
+        .navigationDestination(item: $selectedProfile) { user in
+            PublicProfileFeatureView(
+                user: FollowUser(id: user.id, nickname: user.nickname, profileImageURL: nil),
+                followRepository: followRepository, profileRepository: profileRepository
+            )
+        }
+        .onAppear { viewModel.beginManagingBlocks() }
+        .onDisappear {
+            if selectedProfile == nil { viewModel.finishManagingBlocks() }
+        }
         .confirmationDialog("차단을 해제할까요?", isPresented: Binding(
             get: { selectedUser != nil }, set: { if !$0 { selectedUser = nil } }
         ), titleVisibility: .visible) {

@@ -36,6 +36,11 @@ final class PublicProfileViewModel: ObservableObject {
     @Published private(set) var nextPageError: ErrorPresentation?
     @Published private(set) var actionError: ErrorPresentation?
 
+    @Published private(set) var isUnblocking = false
+    private var didUnblock = false
+    private var didLeaveScreen = false
+    private var contentRevision = UUID()
+
     private var moderationRepository: (any ContentModerationRepository)?
     private let routeUser: FollowUser
     private let followRepository: any FollowRepository
@@ -68,75 +73,26 @@ final class PublicProfileViewModel: ObservableObject {
     }
 
     func reload() async {
+        guard !isUnblocking else { return }
+        await loadProfile()
+    }
+
+    private func loadProfile() async {
         guard state != .loading else {
             return
         }
 
-        let preservesVisibleContent = state == .content
-
-        if preservesVisibleContent {
-            nextPageError = nil
-        } else {
-            state = .loading
-            profile = nil
-            logs = []
-            avatarImageData = nil
-            thumbnailDataByLogID = [:]
-            thumbnailLoadingIDs = []
-            isFollowing = false
-            isOwnProfile = false
-            hasNextPage = false
-            nextCursor = nil
-            nextPageError = nil
-        }
-
+        contentRevision = UUID()
+        clearContent()
+        state = .loading
         actionError = nil
 
         do {
-            // 서버가 차단 프로필을 404로 반환하므로, 내 차단 목록으로 먼저 판별한다.
-            if let moderationRepository {
-                var pageNumber = 1
-                while true {
-                    let page = try await moderationRepository.fetchBlockedUsers(page: pageNumber)
-                    try Task.checkCancellation()
-                    if page.users.contains(where: { $0.id == routeUser.id }) {
-                        profile = nil
-                        loadedProfile = nil
-                        logs = []
-                        avatarImageData = nil
-                        thumbnailDataByLogID = [:]
-                        hasNextPage = false
-                        nextCursor = nil
-                        state = .blocked
-                        return
-                    }
-                    guard page.hasNext else { break }
-                    pageNumber = page.page + 1
-                }
-            }
-            // 공개 헤더·로그 첫 페이지·내 사용자 ID는 서로 독립적이라 병렬로 가져옵니다.
-            async let fetchedProfile = profileRepository.fetchPublicProfile(
+            // 제한 여부를 먼저 확인해야 차단된 사용자의 콘텐츠 요청을 보내지 않습니다.
+            let publicProfile = try await profileRepository.fetchPublicProfile(
                 nickname: routeUser.nickname
             )
-            async let firstPage = profileRepository.fetchPublicProfileLogs(
-                nickname: routeUser.nickname,
-                cursor: nil,
-                size: pageSize
-            )
-            async let fetchedViewerProfile = profileRepository.fetchMyProfile()
-
-            let (publicProfile, page, viewerProfile) = try await (
-                fetchedProfile,
-                firstPage,
-                fetchedViewerProfile
-            )
-
-            guard !Task.isCancelled else {
-                restoreStateAfterCancellation(
-                    preservesVisibleContent: preservesVisibleContent
-                )
-                return
-            }
+            try Task.checkCancellation()
 
             // 알림을 받은 뒤 닉네임의 소유자가 바뀌었어도 다른 사람의 프로필을 열지 않습니다.
             guard publicProfile.id == routeUser.id else {
@@ -148,6 +104,18 @@ final class PublicProfileViewModel: ObservableObject {
             }
             loadedProfile = publicProfile
             profile = makeHeaderViewData(from: publicProfile)
+            if publicProfile.isBlockedByViewer {
+                state = .blocked
+                loadImages(for: publicProfile, logs: [])
+                return
+            }
+
+            async let firstPage = profileRepository.fetchPublicProfileLogs(
+                nickname: routeUser.nickname, cursor: nil, size: pageSize
+            )
+            async let fetchedViewerProfile = profileRepository.fetchMyProfile()
+            let (page, viewerProfile) = try await (firstPage, fetchedViewerProfile)
+            try Task.checkCancellation()
             isFollowing = publicProfile.isFollowedByViewer
             isOwnProfile = publicProfile.id == viewerProfile.id
             logs = page.logs.map(makeLogCardViewData)
@@ -160,23 +128,61 @@ final class PublicProfileViewModel: ObservableObject {
                 logs: page.logs
             )
         } catch is CancellationError {
-            restoreStateAfterCancellation(
-                preservesVisibleContent: preservesVisibleContent
-            )
+            clearContent()
+            state = .idle
         } catch {
             guard !Task.isCancelled else {
-                restoreStateAfterCancellation(
-                    preservesVisibleContent: preservesVisibleContent
-                )
+                clearContent()
+                state = .idle
                 return
             }
 
-            if !preservesVisibleContent {
-                state = .failed(
-                    PublicProfileErrorPolicy.initialPresentation(for: error)
-                )
-            }
+            clearContent()
+            state = .failed(PublicProfileErrorPolicy.initialPresentation(for: error))
         }
+    }
+
+    func unblock() async {
+        guard state == .blocked, !isUnblocking,
+              let loadedProfile, let moderationRepository else { return }
+        isUnblocking = true
+        actionError = nil
+        defer { isUnblocking = false }
+        do {
+            try await moderationRepository.unblockUser(id: loadedProfile.id)
+            didUnblock = true
+            // 현재 프로필은 재조회 결과를 보여 주고, 뒤에 있는 화면은 돌아가기 전에 재생성합니다.
+            NotificationCenter.default.post(name: .maplogUserBlockCacheDidChange, object: nil)
+            if didLeaveScreen { finishManagingBlocks() }
+            await loadProfile()
+        } catch {
+            actionError = LogCommentErrorPolicy.actionPresentation(for: error, actionName: "차단을 해제")
+        }
+    }
+
+    func beginManagingBlocks() {
+        didLeaveScreen = false
+    }
+
+    func finishManagingBlocks() {
+        didLeaveScreen = true
+        guard didUnblock else { return }
+        didUnblock = false
+        NotificationCenter.default.post(name: .maplogUserBlockDidChange, object: nil)
+    }
+
+    private func clearContent() {
+        loadedProfile = nil
+        profile = nil
+        logs = []
+        avatarImageData = nil
+        thumbnailDataByLogID = [:]
+        thumbnailLoadingIDs = []
+        isFollowing = false
+        isOwnProfile = false
+        hasNextPage = false
+        nextCursor = nil
+        nextPageError = nil
     }
 
     func retryInitialLoad() async {
@@ -197,6 +203,7 @@ final class PublicProfileViewModel: ObservableObject {
             return
         }
 
+        let revision = contentRevision
         isLoadingNextPage = true
         nextPageError = nil
 
@@ -215,6 +222,7 @@ final class PublicProfileViewModel: ObservableObject {
                 return
             }
 
+            guard revision == contentRevision, state == .content else { return }
             logs.append(contentsOf: page.logs.map(makeLogCardViewData))
             self.nextCursor = page.nextCursor
             hasNextPage = page.hasNext
@@ -226,6 +234,7 @@ final class PublicProfileViewModel: ObservableObject {
                 return
             }
 
+            guard revision == contentRevision, state == .content else { return }
             if PublicProfileErrorPolicy.isCursorInvalid(error) {
                 await reload()
                 return
@@ -268,6 +277,7 @@ final class PublicProfileViewModel: ObservableObject {
             return nil
         }
 
+        let revision = contentRevision
         let requestedState = !isFollowing
         isUpdatingFollowState = true
         actionError = nil
@@ -286,6 +296,7 @@ final class PublicProfileViewModel: ObservableObject {
                 return nil
             }
 
+            guard revision == contentRevision, state == .content else { return nil }
             guard followState.userID == loadedProfile.id else {
                 throw APIError.invalidResponse
             }
@@ -317,16 +328,6 @@ final class PublicProfileViewModel: ObservableObject {
         actionError = nil
     }
 
-    private func restoreStateAfterCancellation(
-        preservesVisibleContent: Bool
-    ) {
-        guard !preservesVisibleContent else {
-            return
-        }
-
-        state = .idle
-    }
-
     private func makeHeaderViewData(
         from profile: PublicProfile
     ) -> PublicProfileHeaderViewData {
@@ -337,9 +338,9 @@ final class PublicProfileViewModel: ObservableObject {
             followerCountText: countText(profile.followerCount),
             followingCountText: countText(profile.followingCount),
             logCountText: countText(profile.logCount),
-            joinedAtText: profile.createdAt.formatted(
+            joinedAtText: profile.createdAt?.formatted(
                 .dateTime.year().month()
-            )
+            ) ?? ""
         )
     }
 
@@ -377,10 +378,12 @@ final class PublicProfileViewModel: ObservableObject {
         from url: URL,
         profileID: UUID
     ) async {
+        let revision = contentRevision
         do {
             let data = try await profileRepository.fetchImageData(from: url)
 
             guard !Task.isCancelled,
+                  revision == contentRevision,
                   profile?.id == profileID
             else {
                 return
@@ -410,6 +413,7 @@ final class PublicProfileViewModel: ObservableObject {
             return
         }
 
+        let revision = contentRevision
         thumbnailLoadingIDs.insert(log.id)
 
         Task { [weak self] in
@@ -418,7 +422,7 @@ final class PublicProfileViewModel: ObservableObject {
             }
 
             defer {
-                thumbnailLoadingIDs.remove(log.id)
+                if revision == contentRevision { thumbnailLoadingIDs.remove(log.id) }
             }
 
             do {
@@ -432,6 +436,7 @@ final class PublicProfileViewModel: ObservableObject {
                     return
                 }
 
+                guard revision == contentRevision, state == .content else { return }
                 thumbnailDataByLogID[log.id] = data
             } catch {
                 // 목록 이미지는 보조 UI이므로, 실패해도 빈 카드로 유지합니다.

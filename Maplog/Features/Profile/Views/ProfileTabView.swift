@@ -71,6 +71,7 @@ struct ProfileTabView: View {
                         profile: profile,
                         avatarImageData: viewModel.avatarImageData,
                         profileRepository: profileRepository,
+                        followRepository: followRepository,
                         socialConnectionRepository: socialConnectionRepository,
                         onProfileSaved: reloadProfile
                     )
