@@ -9,7 +9,7 @@
 
 import Foundation
 
-struct Tourism: Identifiable, Equatable {
+struct Tourism: Identifiable, Equatable, Sendable {
     let id: Int64
     let name: String
     let region: String?

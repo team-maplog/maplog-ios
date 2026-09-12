@@ -11,16 +11,39 @@
 //백엔드 JSON이 바뀌면 DTO·Repository만 고치면 됨
 //Mock Repository를 주입하면 네트워크 없이 ViewModel 테스트가 가능
 
+enum TourismFetchPolicy: Sendable {
+    case cached
+    case reload
+}
+
 protocol TourismRepository {
-    func fetchPortraitImage(tourismID: Int64) async throws -> TourismPortraitImage?
+    func invalidateCache() async
+    func fetchPortraitImage(tourismID: Int64, policy: TourismFetchPolicy) async throws -> TourismPortraitImage?
 
     func fetchTourisms(
         category: TourismCategory,
         cursor: String?,
-        size: Int
+        size: Int,
+        policy: TourismFetchPolicy
     ) async throws -> TourismPage
 
     func fetchTourismDetail(
-        tourismID: Int64
+        tourismID: Int64,
+        policy: TourismFetchPolicy
     ) async throws -> TourismDetail
+}
+
+
+extension TourismRepository {
+    func fetchTourisms(category: TourismCategory, cursor: String?, size: Int) async throws -> TourismPage {
+        try await fetchTourisms(category: category, cursor: cursor, size: size, policy: .cached)
+    }
+
+    func fetchTourismDetail(tourismID: Int64) async throws -> TourismDetail {
+        try await fetchTourismDetail(tourismID: tourismID, policy: .cached)
+    }
+
+    func fetchPortraitImage(tourismID: Int64) async throws -> TourismPortraitImage? {
+        try await fetchPortraitImage(tourismID: tourismID, policy: .cached)
+    }
 }

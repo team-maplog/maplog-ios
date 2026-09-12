@@ -17,7 +17,7 @@
 
 import Foundation
 
-struct TourismDetail: Equatable {
+struct TourismDetail: Equatable, Sendable {
     let id: Int64
     let category: TourismCategory
     let common: TourismDetailCommonInfo
@@ -27,7 +27,7 @@ struct TourismDetail: Equatable {
     let petTour: TourismPetTour?
 }
 
-struct TourismDetailCommonInfo: Equatable {
+struct TourismDetailCommonInfo: Equatable, Sendable {
     let name: String
     let createdAt: String?
     let modifiedAt: String?
@@ -51,7 +51,7 @@ struct TourismDetailCommonInfo: Equatable {
     let overview: String?
 }
 
-struct TourismDetailIntroduction: Equatable {
+struct TourismDetailIntroduction: Equatable, Sendable {
     let type: String?
     let startDate: Date?
     let endDate: Date?
@@ -92,7 +92,7 @@ struct TourismDetailIntroduction: Equatable {
     let extraFields: [String: String]?
 }
 
-struct TourismDetailRepeatInfo: Equatable {
+struct TourismDetailRepeatInfo: Equatable, Sendable {
     let serialNumber: String?
     let title: String?
     let description: String?
@@ -100,7 +100,7 @@ struct TourismDetailRepeatInfo: Equatable {
     let attributes: [String: String]?
 }
 
-struct TourismDetailImage: Equatable {
+struct TourismDetailImage: Equatable, Sendable {
     let originalURL: URL?
     let smallURL: URL?
     let name: String?
@@ -108,7 +108,7 @@ struct TourismDetailImage: Equatable {
     let serialNumber: String?
 }
 
-struct TourismPetTour: Equatable {
+struct TourismPetTour: Equatable, Sendable {
     let accidentRisk: String?
     let accompanimentType: String?
     let relatedFacility: String?

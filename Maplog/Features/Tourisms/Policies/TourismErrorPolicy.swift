@@ -25,6 +25,9 @@ enum TourismErrorPolicy {
 
 
     static func presentation(for error: Error) -> ErrorPresentation {
+        if case TourismRepositoryError.requestInvalidated = error {
+            return ErrorPresentation(message: "축제 정보를 다시 불러와 주세요.", recoveryAction: .retry)
+        }
         guard let apiError = error as? APIError else {
             return defaultPresentation
         }

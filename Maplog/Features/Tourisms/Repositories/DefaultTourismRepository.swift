@@ -38,13 +38,25 @@ final class DefaultTourismRepository: TourismRepository {
     private let apiService: any TourismAPIService
     private let imageDataLoader: any ImageDataLoading
 
-    init(apiService: any TourismAPIService, imageDataLoader: any ImageDataLoading) {
+    private struct PageKey: Hashable, Sendable {
+        let category: TourismCategory
+        let cursor: String?
+        let size: Int
+    }
+
+    private let pages: TourismResponseCache<PageKey, TourismPage>
+    private let details: TourismResponseCache<Int64, TourismDetail>
+
+    init(apiService: any TourismAPIService, imageDataLoader: any ImageDataLoading,
+         cacheLifetime: TimeInterval = 600, now: @escaping @Sendable () -> Date = { Date() }) {
+        pages = TourismResponseCache(lifetime: cacheLifetime, capacity: 20, now: now)
+        details = TourismResponseCache(lifetime: cacheLifetime, capacity: 100, now: now)
         self.apiService = apiService
         self.imageDataLoader = imageDataLoader
     }
 
-    func fetchPortraitImage(tourismID: Int64) async throws -> TourismPortraitImage? {
-        let detail = try await fetchTourismDetail(tourismID: tourismID)
+    func fetchPortraitImage(tourismID: Int64, policy: TourismFetchPolicy = .cached) async throws -> TourismPortraitImage? {
+        let detail = try await fetchTourismDetail(tourismID: tourismID, policy: policy)
         // 상세 첫 장과 같은 원본만 검사한다. 썸네일이나 관련 사진으로 대체하지 않는다.
         guard let url = detail.common.originalImageURL,
               ["https", "http"].contains(url.scheme?.lowercased() ?? ""),
@@ -75,25 +87,38 @@ final class DefaultTourismRepository: TourismRepository {
         )
     }
 
-    func fetchTourisms(category: TourismCategory, cursor: String?, size: Int) async throws -> TourismPage {
-        let pageDTO = try await apiService.fetchTourisms(
-            category: category,
-            cursor: cursor,
-            size: size)
+    func invalidateCache() async {
+        await pages.invalidate()
+        await details.invalidate()
+    }
 
-        let tourisms = try pageDTO.content.map { tourismDTO in
-            try makeTourism(from: tourismDTO)
+    func fetchTourisms(category: TourismCategory, cursor: String?, size: Int,
+                       policy: TourismFetchPolicy = .cached) async throws -> TourismPage {
+        guard (1...100).contains(size) else {
+            throw APIError.invalidRequest(reason: "size는 1부터 100 사이여야 합니다.")
         }
-
-        return TourismPage(tourisms: tourisms, hasNext: pageDTO.hasNext, nextCursor: pageDTO.nextCursor)
+        let key = PageKey(category: category, cursor: cursor, size: size)
+        let hasFreshPage = await pages.hasFreshValue(for: key)
+        if cursor == nil, policy == .reload || !hasFreshPage {
+            await pages.invalidate {
+                $0.category == category && $0 != key && (policy == .reload || $0.cursor != nil)
+            }
+        }
+        return try await pages.value(for: key, policy: policy) { [self] in
+            let dto = try await apiService.fetchTourisms(category: category, cursor: cursor, size: size)
+            return TourismPage(tourisms: try dto.content.map(makeTourism),
+                               hasNext: dto.hasNext, nextCursor: dto.nextCursor)
+        }
     }
 
-    func fetchTourismDetail(tourismID: Int64) async throws -> TourismDetail {
-        let detailDTO = try await apiService.fetchTourismDetail(tourismID: tourismID)
-
-        return try makeTourismDetail(from: detailDTO)
+    func fetchTourismDetail(tourismID: Int64,
+                            policy: TourismFetchPolicy = .cached) async throws -> TourismDetail {
+        guard tourismID > 0 else { throw APIError.invalidRequest(reason: "관광 ID는 양수여야 합니다.") }
+        return try await details.value(for: tourismID, policy: policy) { [self] in
+            let dto = try await apiService.fetchTourismDetail(tourismID: tourismID)
+            return try makeTourismDetail(from: dto)
+        }
     }
-
 
     private func makeTourism(from dto: TourismDTO) throws -> Tourism {
         let startDate = try date(from: dto.startDate, field: "startDate")

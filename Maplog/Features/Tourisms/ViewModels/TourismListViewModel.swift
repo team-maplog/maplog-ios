@@ -20,10 +20,13 @@ final class TourismListViewModel: ObservableObject {
     @Published private(set) var tourismState: TourismListState = .idle // 첫 화면의 loading / content / empty / failed 상태
     @Published private(set) var items: [TourismListItemViewData] = [] // 현재 그리드에 실제로 표시 중인 관광 카드들
     @Published private(set) var isLoadingNextPage = false // 기존 그리드를 유지한 채 하단에서 다음 페이지를 불러오는 중인지
+    @Published private(set) var refreshError: ErrorPresentation?
     @Published private(set) var nextPageError: ErrorPresentation? // 전체보기에서 다음 페이지를 이어 불러올 때 오류, nil: 다음 페이지 관련 오류 없음 | 값 있음: 기존 카드들은 그대로 두고, “더 불러오기 실패” 문구와 재시도 버튼을 보여줄 준비가 됨
     @Published private(set) var selectedCategory: TourismCategory = .events
     
     private let tourismRepository: any TourismRepository
+    private var loadRevision = UUID()
+    private var isRefreshing = false
     private var nextCursor: String? // 다음 API 요청에만 쓰는 서버의 위치표
     private var hasNext = false // 더 불러올 데이터가 있는지
     private let pageSize = 20 // 모든 페이지 요청에서 유지할 개수, 여기서는 20
@@ -61,24 +64,38 @@ final class TourismListViewModel: ObservableObject {
 //    → items에 저장
 //    → content / empty / failed 상태 변경
     
-    func loadInitialTourisms() async {
+    func refresh() async {
+        guard !isRefreshing, tourismState != .initialLoading, !isLoadingNextPage else { return }
+        isRefreshing = true
+        defer { isRefreshing = false }
+        await loadInitialTourisms(policy: .reload)
+    }
+
+    func loadInitialTourisms(policy: TourismFetchPolicy = .cached) async {
         let requestedCategory = selectedCategory
+        let revision = UUID()
+        loadRevision = revision
         
         nextPageError = nil
-        items = []
-        nextCursor = nil
-        hasNext = false
+        refreshError = nil
+        let preservesContent = policy == .reload && tourismState == .content
+        if !preservesContent {
+            items = []
+            nextCursor = nil
+            hasNext = false
+            tourismState = .initialLoading
+        }
         isLoadingNextPage = false
-        tourismState = .initialLoading
         
         do {
             let page = try await tourismRepository.fetchTourisms(
                 category: requestedCategory,
                 cursor: nil,
-                size: pageSize
+                size: pageSize,
+                policy: policy
             )
             
-            guard !Task.isCancelled, requestedCategory == selectedCategory else {
+            guard !Task.isCancelled, revision == loadRevision, requestedCategory == selectedCategory else {
                 return
             }
             
@@ -93,16 +110,20 @@ final class TourismListViewModel: ObservableObject {
         } catch is CancellationError {
             return
         } catch {
-            guard !Task.isCancelled, requestedCategory == selectedCategory else {
+            guard !Task.isCancelled, revision == loadRevision, requestedCategory == selectedCategory else {
                 return
             }
 
-            tourismState = .failed(TourismErrorPolicy.presentation(for: error))
+            if !preservesContent {
+                tourismState = .failed(TourismErrorPolicy.presentation(for: error))
+            } else {
+                refreshError = TourismErrorPolicy.presentation(for: error)
+            }
         }
     }
     
     func loadNextPage() async {
-        guard tourismState == .content, // 첫 페이지 카드가 이미 성공적으로 있어야 함
+        guard !isRefreshing, tourismState == .content, // 첫 페이지 카드가 이미 성공적으로 있어야 함
               !isLoadingNextPage, // 이미 다음 페이지를 요청 중이면 또 요청하지 않음
               hasNext, // 서버가 “더 있어요”라고 알려줬을 때만 요청
               let nextCursor // 서버가 준 다음 위치표가 실제로 있어야 요청
@@ -110,13 +131,14 @@ final class TourismListViewModel: ObservableObject {
             return
         }
 
+        let revision = loadRevision
         let requestedCategory = selectedCategory
 
         isLoadingNextPage = true
         nextPageError = nil
 
         defer {
-            isLoadingNextPage = false
+            if revision == loadRevision { isLoadingNextPage = false }
         }
 
         do {
@@ -126,7 +148,7 @@ final class TourismListViewModel: ObservableObject {
                 size: pageSize
             )
 
-            guard !Task.isCancelled, requestedCategory == selectedCategory else { // 이전 요청의 카드 추가 차단
+            guard !Task.isCancelled, revision == loadRevision, requestedCategory == selectedCategory else { // 이전 요청의 카드 추가 차단
                 return
             }
 
@@ -140,12 +162,12 @@ final class TourismListViewModel: ObservableObject {
         } catch is CancellationError {
             return
         } catch {
-            guard !Task.isCancelled, requestedCategory == selectedCategory else { // 이전 요청의 오류 표시 차단
+            guard !Task.isCancelled, revision == loadRevision, requestedCategory == selectedCategory else { // 이전 요청의 오류 표시 차단
                 return
             }
 
             if TourismErrorPolicy.isCursorInvalid(error) { // 현재 들고 있는 다음 페이지 표지가 더는 유효하지 않을 때 같은 cursor로 재시도하면 또 실패하므로 선택된 카테고리는 유지하고 cursor만 버린 뒤 첫 페이지부터 다시 요청
-                await loadInitialTourisms()
+                await loadInitialTourisms(policy: .reload)
                 return
             }
 

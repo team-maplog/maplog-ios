@@ -9,7 +9,7 @@
 
 import Foundation
 
-struct TourismPage: Equatable {
+struct TourismPage: Equatable, Sendable {
     let tourisms: [Tourism]
     let hasNext: Bool
     let nextCursor: String?
