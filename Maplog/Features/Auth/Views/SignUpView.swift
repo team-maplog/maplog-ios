@@ -96,7 +96,8 @@ struct SignUpView: View {
     private var emailField: some View {
         SignUpInputSection(
             title: "이메일 주소",
-            message: viewModel.emailFeedback
+            message: viewModel.emailFeedback,
+            hasError: viewModel.emailError != nil
         ) {
             TextField("example@maplog.app", text: $viewModel.email)
                 .keyboardType(.emailAddress)
@@ -116,6 +117,7 @@ struct SignUpView: View {
         SignUpInputSection(
             title: "비밀번호",
             message: viewModel.passwordFeedback,
+            hasError: viewModel.passwordError != nil,
             helper: "8~72자, 영문 소문자·숫자·특수문자를 포함해 주세요."
         ) {
             SecureField("비밀번호를 입력해주세요", text: $viewModel.password)
@@ -134,7 +136,8 @@ struct SignUpView: View {
     private var passwordConfirmationField: some View {
         SignUpInputSection(
             title: "비밀번호 확인",
-            message: viewModel.passwordConfirmationFeedback
+            message: viewModel.passwordConfirmationFeedback,
+            hasError: viewModel.passwordConfirmationError != nil
         ) {
             SecureField(
                 "비밀번호를 한 번 더 입력해주세요",
@@ -156,6 +159,7 @@ struct SignUpView: View {
         SignUpInputSection(
             title: "닉네임",
             message: viewModel.nicknameFeedback,
+            hasError: viewModel.nicknameError != nil,
             helper: "2~20자, 한글·영문·숫자와 단일 공백만 사용할 수 있어요."
         ) {
             TextField("사용할 닉네임", text: $viewModel.nickname)
@@ -233,17 +237,20 @@ struct SignUpView: View {
 private struct SignUpInputSection<Content: View>: View {
     let title: String
     let message: String?
+    let hasError: Bool
     let helper: String?
     @ViewBuilder let content: Content
 
     init(
         title: String,
         message: String?,
+        hasError: Bool,
         helper: String? = nil,
         @ViewBuilder content: () -> Content
     ) {
         self.title = title
         self.message = message
+        self.hasError = hasError
         self.helper = helper
         self.content = content()
     }
@@ -259,7 +266,7 @@ private struct SignUpInputSection<Content: View>: View {
             if let message {
                 Text(message)
                     .font(MaplogFont.caption)
-                    .foregroundStyle(Color.maplogDanger)
+                    .foregroundStyle(hasError ? Color.maplogDanger : Color.maplogSuccess)
                     .accessibilityLabel("\(title): \(message)")
             } else if let helper {
                 Text(helper)
