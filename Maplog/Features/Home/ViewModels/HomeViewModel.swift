@@ -514,14 +514,20 @@ final class HomeViewModel: ObservableObject {
     }
 
     // 실제 새로고침 함수
-    func refreshHome() async {
-        guard tourismState != .loading,
+    private var isRefreshingHome = false
+
+    func refreshHome(tourismPolicy: TourismFetchPolicy = .cached) async {
+        guard !isRefreshingHome,
+              tourismState != .loading,
               reelState != .loading
         else {
             return
         }
 
-        async let tourism: Void = refreshTourisms()
+        isRefreshingHome = true
+        defer { isRefreshingHome = false }
+
+        async let tourism: Void = refreshTourisms(policy: tourismPolicy)
         async let reels: Void = refreshReels()
 
         _ = await (tourism, reels)
@@ -585,7 +591,7 @@ final class HomeViewModel: ObservableObject {
     }
 
     // API 요청 + Domain Model을 ViewData로 변환
-    private func fetchTourismCards() async throws
+    private func fetchTourismCards(policy: TourismFetchPolicy = .cached) async throws
         -> [HomeTourismCardViewData] {
         var cards: [HomeTourismCardViewData] = []
         var cursor: String?
@@ -598,7 +604,7 @@ final class HomeViewModel: ObservableObject {
             try Task.checkCancellation()
             let page: TourismPage
             do {
-                page = try await tourismRepository.fetchTourisms(category: .events, cursor: cursor, size: 10)
+                page = try await tourismRepository.fetchTourisms(category: .events, cursor: cursor, size: 10, policy: policy)
             } catch {
                 try Task.checkCancellation()
                 if cards.isEmpty || TourismErrorPolicy.presentation(for: error).recoveryAction == .signIn {
@@ -607,7 +613,7 @@ final class HomeViewModel: ObservableObject {
                 break
             }
             let candidates = page.tourisms.filter { seenIDs.insert($0.id).inserted }
-            let results = await fetchPortraitImages(for: candidates)
+            let results = await fetchPortraitImages(for: candidates, policy: policy)
             for (tourism, result) in zip(candidates, results) {
                 try Task.checkCancellation()
                 switch result {
@@ -631,7 +637,7 @@ final class HomeViewModel: ObservableObject {
         return Array(cards.prefix(10))
     }
 
-    private func fetchPortraitImages(for tourisms: [Tourism]) async -> [Result<TourismPortraitImage?, Error>] {
+    private func fetchPortraitImages(for tourisms: [Tourism], policy: TourismFetchPolicy) async -> [Result<TourismPortraitImage?, Error>] {
         let repository = tourismRepository
         return await withTaskGroup(of: (Int, Result<TourismPortraitImage?, Error>).self) { group in
             var results = Array<Result<TourismPortraitImage?, Error>>(
@@ -643,7 +649,7 @@ final class HomeViewModel: ObservableObject {
                 let id = tourisms[index].id
                 group.addTask {
                     do {
-                        let image = try await repository.fetchPortraitImage(tourismID: id)
+                        let image = try await repository.fetchPortraitImage(tourismID: id, policy: policy)
                         return (index, .success(image))
                     } catch {
                         return (index, .failure(error))
@@ -678,11 +684,11 @@ final class HomeViewModel: ObservableObject {
     }
 
     // 내부 새로고침 함수
-    private func refreshTourisms() async {
+    private func refreshTourisms(policy: TourismFetchPolicy) async {
         let previousState = tourismState
 
         do {
-            let cards = try await fetchTourismCards()
+            let cards = try await fetchTourismCards(policy: policy)
 
             guard !Task.isCancelled else {
                 return

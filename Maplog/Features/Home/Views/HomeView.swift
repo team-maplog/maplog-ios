@@ -650,7 +650,7 @@ struct HomeView: View {
                 )
             )
             .refreshable {
-                await viewModel.refreshHome()
+                await viewModel.refreshHome(tourismPolicy: .reload)
             }
             .onPreferenceChange(FirstReelTopOffsetPreferenceKey.self) {
                 firstReelTopOffset = $0

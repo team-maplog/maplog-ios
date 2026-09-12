@@ -245,6 +245,12 @@ struct MaplogApp: App { // 앱의 조립 담당자
             }
             .environmentObject(authSessionStore)
             .environmentObject(signOutViewModel)
+            .onChange(of: authSessionStore.isAuthenticated) { _, _ in
+                Task { await tourismRepository.invalidateCache() }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: UIApplication.didReceiveMemoryWarningNotification)) { _ in
+                Task { await tourismRepository.invalidateCache() }
+            }
             .onReceive(NotificationCenter.default.publisher(for: .maplogUserBlockDidChange)
                 .merge(with: NotificationCenter.default.publisher(for: .maplogUserBlockCacheDidChange))) { _ in
                 MaplogImageCache.shared.clearCache(completion: nil)

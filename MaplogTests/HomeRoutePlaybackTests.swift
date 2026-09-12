@@ -88,9 +88,10 @@ final class HomeRoutePlaybackTests: XCTestCase {
 }
 
 private struct RoutePlaybackTourismStub: TourismRepository {
-    func fetchPortraitImage(tourismID: Int64) async throws -> TourismPortraitImage? { fatalError("Unused") }
-    func fetchTourisms(category: TourismCategory, cursor: String?, size: Int) async throws -> TourismPage { fatalError("Unused") }
-    func fetchTourismDetail(tourismID: Int64) async throws -> TourismDetail { fatalError("Unused") }
+    func invalidateCache() async {}
+    func fetchPortraitImage(tourismID: Int64, policy: TourismFetchPolicy) async throws -> TourismPortraitImage? { fatalError("Unused") }
+    func fetchTourisms(category: TourismCategory, cursor: String?, size: Int, policy: TourismFetchPolicy) async throws -> TourismPage { fatalError("Unused") }
+    func fetchTourismDetail(tourismID: Int64, policy: TourismFetchPolicy) async throws -> TourismDetail { fatalError("Unused") }
 }
 
 @MainActor

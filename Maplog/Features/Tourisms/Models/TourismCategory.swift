@@ -5,7 +5,7 @@
 //  Created by 한채림 on 7/23/26.
 //
 
-enum TourismCategory: String, Codable, CaseIterable, Hashable {
+enum TourismCategory: String, Codable, CaseIterable, Hashable, Sendable {
     case all = "ALL"
 
     case events = "EVENTS"
