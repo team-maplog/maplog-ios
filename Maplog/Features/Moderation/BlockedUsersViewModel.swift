@@ -12,6 +12,7 @@ final class BlockedUsersViewModel: ObservableObject {
     private let repository: any ContentModerationRepository
     private var nextPage = 1
     private var didUnblock = false
+    private var didLeaveScreen = false
 
     init(repository: any ContentModerationRepository) { self.repository = repository }
 
@@ -62,6 +63,7 @@ final class BlockedUsersViewModel: ObservableObject {
             try await repository.unblockUser(id: user.id)
             users.removeAll { $0.id == user.id }
             didUnblock = true
+            if didLeaveScreen { finishManagingBlocks() }
             // 번호 기반 페이지는 삭제 후 앞당겨진다. 1페이지부터 다시 조회해야 사용자를 건너뛰지 않는다.
             hasNext = false
             unblockingID = nil
@@ -73,6 +75,7 @@ final class BlockedUsersViewModel: ObservableObject {
     }
 
     func finishManagingBlocks() {
+        didLeaveScreen = true
         guard didUnblock else { return }
         didUnblock = false
         // 여러 명을 연속 해제할 수 있도록, 목록에서 나갈 때 기존 화면/캐시 갱신을 실행한다.

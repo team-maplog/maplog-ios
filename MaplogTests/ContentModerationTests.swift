@@ -125,6 +125,16 @@ final class BlockedUsersTests: XCTestCase {
         XCTAssertFalse(model.hasNext)
     }
 
+    func testLeavingDuringUnblockStillRefreshesContentAfterSuccess() async {
+        let repository = BlockManagementStub()
+        let model = BlockedUsersViewModel(repository: repository)
+        await model.reload()
+        repository.onUnblock = { model.finishManagingBlocks() }
+        let refreshed = expectation(forNotification: .maplogUserBlockDidChange, object: nil)
+        await model.unblock(repository.user)
+        await fulfillment(of: [refreshed], timeout: 1)
+    }
+
     func testBlockedProfileOnSecondPageDoesNotLoadLogs() async {
         let repository = BlockManagementStub()
         repository.targetOnSecondPage = true
@@ -145,6 +155,7 @@ private final class BlockManagementStub: ContentModerationRepository {
     var requestedPages: [Int] = []
     var failPage: Int?
     var failUnblock = false
+    var onUnblock: (() -> Void)?
     var unblocked = false
     var targetOnSecondPage = false
     func fetchBlockedUsers(page: Int) async throws -> BlockedUserPage {
@@ -156,6 +167,7 @@ private final class BlockManagementStub: ContentModerationRepository {
     }
     func unblockUser(id: UUID) async throws {
         if failUnblock { throw APIError.network(URLError(.notConnectedToInternet)) }
+        onUnblock?()
         unblocked = true
     }
     func reportLog(id: Int64, reason: String) async throws { throw APIError.invalidResponse }
