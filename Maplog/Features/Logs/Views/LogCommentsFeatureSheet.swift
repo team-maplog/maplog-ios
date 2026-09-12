@@ -311,8 +311,14 @@ struct LogCommentsFeatureSheet: View {
         }
     }
 
+    private struct CommentRowItem: Identifiable {
+        let id: Int64
+        let comment: LogComment
+    }
+
     private var commentThreads: some View {
-        ForEach(topLevelComments) { comment in
+        ForEach(topLevelComments.map { CommentRowItem(id: viewModel.rowID(for: $0), comment: $0) }) { item in
+            let comment = item.comment
             commentThread(comment)
         }
     }
@@ -326,8 +332,8 @@ struct LogCommentsFeatureSheet: View {
             let replies = replies(for: comment)
             if !replies.isEmpty {
                 VStack(alignment: .leading, spacing: MaplogSpacing.small) {
-                    ForEach(replies) { reply in
-                        commentRow(reply, isReply: true)
+                    ForEach(replies.map { CommentRowItem(id: viewModel.rowID(for: $0), comment: $0) }) { item in
+                        commentRow(item.comment, isReply: true)
                     }
                 }
                 .padding(.leading, 44)
@@ -355,6 +361,7 @@ struct LogCommentsFeatureSheet: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("\(comment.author.nickname) 프로필 보기")
+            .disabled(viewModel.isLocal(comment))
 
             VStack(alignment: .leading, spacing: MaplogSpacing.xxSmall) {
                 HStack(alignment: .firstTextBaseline, spacing: MaplogSpacing.xxSmall) {
@@ -375,7 +382,7 @@ struct LogCommentsFeatureSheet: View {
 
                     Spacer(minLength: 0)
 
-                    if !comment.isDeleted,
+                    if !comment.isDeleted, !viewModel.isLocal(comment),
                        viewModel.isOwnedByViewer(comment) || viewModel.canModerate(comment) {
                         commentMenu(for: comment)
                     }
@@ -395,6 +402,20 @@ struct LogCommentsFeatureSheet: View {
                                 .foregroundStyle(Color.maplogInk)
                                 .fixedSize(horizontal: false, vertical: true)
 
+                            if viewModel.isLocal(comment) {
+                                HStack {
+                                    Text(viewModel.failedSendIDs.contains(comment.id) ? "전송 실패" : "전송 중…")
+                                    if viewModel.failedSendIDs.contains(comment.id) {
+                                        Button("다시 시도") {
+                                            Task { await viewModel.sendPendingComment(localID: comment.id) }
+                                        }
+                                        .disabled(viewModel.isSending)
+                                    }
+                                }
+                                .font(.caption2)
+                                .foregroundStyle(Color.maplogMuted)
+                                .padding(.top, 4)
+                            }
                             if viewModel.replyParentID(for: comment) != nil {
                                 Button("답글 달기") {
                                     startReply(to: comment)
@@ -409,7 +430,9 @@ struct LogCommentsFeatureSheet: View {
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
 
-                        commentLikeButton(for: comment)
+                        if !viewModel.isLocal(comment) {
+                            commentLikeButton(for: comment)
+                        }
                     }
                 }
             }
@@ -421,7 +444,7 @@ struct LogCommentsFeatureSheet: View {
                     .fill(Color.maplogLime.opacity(0.18))
             }
         }
-        .id(comment.id)
+        .id(viewModel.rowID(for: comment))
         .opacity(viewModel.isUpdating(commentID: comment.id) ? 0.58 : 1)
         .animation(
             reduceMotion ? nil : .easeOut(duration: 0.18),
@@ -637,27 +660,24 @@ struct LogCommentsFeatureSheet: View {
             return
         }
 
-        Task {
-            let didSucceed: Bool
-
-            switch composerMode {
-            case .new, .reply:
-                didSucceed = await viewModel.createComment(
-                    draft: LogCommentDraft(
-                        content: draft,
-                        parentCommentID: composerMode.parentCommentID
-                    )
-                )
-
-            case let .edit(comment):
-                didSucceed = await viewModel.updateComment(
-                    commentID: comment.id,
-                    content: draft
-                )
-            }
-
-            if didSucceed {
-                resetComposer()
+        let submittedMode = composerMode
+        let submittedText = draft
+        switch submittedMode {
+        case .new, .reply:
+            guard let localID = viewModel.enqueueComment(draft: LogCommentDraft(
+                content: submittedText, parentCommentID: submittedMode.parentCommentID
+            )) else { return }
+            // 입력은 즉시 비우고 키보드는 유지한다. 늦게 온 응답이 새 입력을 지우지 않게 한다.
+            draft = ""
+            composerMode = .new
+            Task { await viewModel.sendPendingComment(localID: localID) }
+        case let .edit(comment):
+            Task {
+                let success = await viewModel.updateComment(commentID: comment.id, content: submittedText)
+                if success, draft == submittedText, composerMode == submittedMode {
+                    draft = ""
+                    composerMode = .new
+                }
             }
         }
     }

@@ -28,10 +28,24 @@ final class LogCommentsViewModel: ObservableObject {
     @Published private(set) var viewerImageData: Data?
     private var viewerID: UUID?
     private var lastAction: RetryAction?
+    @Published private(set) var pendingDrafts: [Int64: LogCommentDraft] = [:]
+    @Published private(set) var failedSendIDs = Set<Int64>()
+    private var nextLocalID: Int64 = -1
+    private var rowIDs: [Int64: Int64] = [:]
+    private var queuedID: Int64?
+    private var sendingID: Int64?
+
+    func rowID(for comment: LogComment) -> Int64 {
+        rowIDs[comment.id] ?? comment.id
+    }
+
+    func isLocal(_ comment: LogComment) -> Bool {
+        pendingDrafts[comment.id] != nil
+    }
 
     private enum RetryAction {
         case load
-        case create(LogCommentDraft)
+        case create(Int64)
         case update(commentID: Int64, content: String)
         case delete(commentID: Int64)
         case like(commentID: Int64, isLiked: Bool)
@@ -77,7 +91,7 @@ final class LogCommentsViewModel: ObservableObject {
 
     /// 서버는 최상위 댓글을 부모로 하는 한 단계 답글만 허용합니다.
     func replyParentID(for comment: LogComment) -> Int64? {
-        guard !comment.isDeleted else { return nil }
+        guard !comment.isDeleted, !isLocal(comment) else { return nil }
         let parentID = comment.parentCommentID ?? comment.id
         guard comments.contains(where: { $0.id == parentID && $0.parentCommentID == nil && !$0.isDeleted }) else {
             return nil
@@ -87,7 +101,7 @@ final class LogCommentsViewModel: ObservableObject {
 
     /// 삭제된 부모 댓글은 답글의 문맥을 위해 남겨둘 수 있지만 댓글 수에는 포함하지 않습니다.
     var activeCommentCount: Int {
-        comments.filter { !$0.isDeleted }.count
+        comments.filter { !$0.isDeleted && !isLocal($0) }.count
     }
 
     func loadInitialComments() async {
@@ -111,8 +125,8 @@ final class LogCommentsViewModel: ObservableObject {
         case .load:
             await reloadComments()
 
-        case let .create(draft):
-            await createComment(draft: draft)
+        case let .create(localID):
+            await sendPendingComment(localID: localID)
 
         case let .update(commentID, content):
             await updateComment(
@@ -143,7 +157,7 @@ final class LogCommentsViewModel: ObservableObject {
     }
 
     func canModerate(_ comment: LogComment) -> Bool {
-        viewerID != nil && !isOwnedByViewer(comment) && !comment.isDeleted
+        viewerID != nil && !isLocal(comment) && !isOwnedByViewer(comment) && !comment.isDeleted
     }
 
     func reportComment(commentID: Int64, reason: String) async {
@@ -234,57 +248,77 @@ final class LogCommentsViewModel: ObservableObject {
         }
     }
 
-    @discardableResult
-    func createComment(
-        draft: LogCommentDraft
-    ) async -> Bool {
-        let trimmedContent = trimmed(draft.content)
-        guard !trimmedContent.isEmpty,
-              !isSending
-        else {
-            return false
+    /// 서버 응답 전에 행을 만들고 입력 내용을 보존한다. 임시 ID는 API에 보내지 않는다.
+    func enqueueComment(draft: LogCommentDraft) -> Int64? {
+        switch state {
+        case .content, .empty:
+            break
+        default:
+            return nil
         }
-
-        let normalizedDraft = LogCommentDraft(
-            content: trimmedContent,
-            parentCommentID: draft.parentCommentID
-        )
-
+        let content = trimmed(draft.content)
+        guard !content.isEmpty, !isSending else { return nil }
+        if let parentID = draft.parentCommentID {
+            guard comments.contains(where: {
+                $0.id == parentID && $0.parentCommentID == nil && !$0.isDeleted && !isLocal($0)
+            }) else { return nil }
+        }
+        let localID = nextLocalID
+        nextLocalID -= 1
+        pendingDrafts[localID] = LogCommentDraft(content: content, parentCommentID: draft.parentCommentID)
+        queuedID = localID
         isSending = true
         actionError = nil
+        let now = Date()
+        append(LogComment(
+            id: localID,
+            author: LogCommentAuthor(
+                id: viewerID ?? UUID(), nickname: viewerNickname, profileImageURL: nil
+            ),
+            parentCommentID: draft.parentCommentID,
+            content: content,
+            isDeleted: false,
+            createdAt: now,
+            updatedAt: now,
+            likeCount: 0,
+            isLikedByViewer: false
+        ))
+        return localID
+    }
 
+    @discardableResult
+    func createComment(draft: LogCommentDraft) async -> Bool {
+        guard let localID = enqueueComment(draft: draft) else { return false }
+        return await sendPendingComment(localID: localID)
+    }
+
+    @discardableResult
+    func sendPendingComment(localID: Int64) async -> Bool {
+        guard sendingID == nil,
+              let draft = pendingDrafts[localID],
+              queuedID == localID || !isSending else { return false }
+        queuedID = nil
+        sendingID = localID
+        isSending = true
+        failedSendIDs.remove(localID)
+        actionError = nil
         defer {
+            sendingID = nil
             isSending = false
         }
-
         do {
-            let createdComment = try await commentRepository.createComment(
-                logID: logID,
-                draft: normalizedDraft
-            )
-
-            guard !Task.isCancelled else {
-                return false
-            }
-
-            append(createdComment)
+            let created = try await commentRepository.createComment(logID: logID, draft: draft)
+            // 서버 ID로 바뀌어도 SwiftUI 행의 identity와 위치는 유지한다.
+            rowIDs[created.id] = localID
+            replace(commentID: localID) { _ in created }
+            pendingDrafts[localID] = nil
             onCommentCountChange(1)
             lastAction = nil
             return true
-
-        } catch is CancellationError {
-            return false
-
         } catch {
-            guard !Task.isCancelled else {
-                return false
-            }
-
-            lastAction = .create(normalizedDraft)
-            actionError = LogCommentErrorPolicy.actionPresentation(
-                for: error,
-                actionName: "댓글 등록"
-            )
+            failedSendIDs.insert(localID)
+            lastAction = .create(localID)
+            actionError = LogCommentErrorPolicy.actionPresentation(for: error, actionName: "댓글 등록")
             return false
         }
     }

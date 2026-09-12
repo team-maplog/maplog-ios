@@ -212,6 +212,7 @@ struct ClipEditorView: View {
     ) -> some View {
         ClipEditorPreviewView(
             player: previewPlayer,
+            attachesPlayer: exportPreviewResult == nil && pendingLogComposeInput == nil && logComposeInput == nil,
             selectedItem: viewModel.selectedPreview,
             textOverlayItems: viewModel.visibleTextOverlayItems,
             selectedTextOverlayID: viewModel.selectedTextOverlayID,

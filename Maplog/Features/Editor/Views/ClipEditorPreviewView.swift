@@ -13,6 +13,7 @@ struct ClipEditorPreviewView: View {
 
 
     let player: AVPlayer
+    var attachesPlayer = true
     let selectedItem: ClipEditorTimelineItemViewData?
 
     let textOverlayItems: [ClipTextOverlayItemViewData]
@@ -47,13 +48,15 @@ struct ClipEditorPreviewView: View {
         VStack(spacing: MaplogSpacing.xxSmall) {
             ZStack(alignment: .bottomLeading) {
                 if selectedItem != nil {
-                    MaplogVideoPlayerLayerView(
-                        player: player,
-                        videoGravity: .resizeAspect
-                    )
+                    if attachesPlayer {
+                        MaplogVideoPlayerLayerView(
+                            player: player,
+                            videoGravity: .resizeAspect
+                        )
                         .equatable()
                         .background(Color.black)
                         .allowsHitTesting(false) // 영상 View가 터치를 가로채지 않으므로, 영상 위 텍스트의 탭·드래그만 정상적으로 받게됨
+                    }
 
                     LinearGradient(
                         colors: [
