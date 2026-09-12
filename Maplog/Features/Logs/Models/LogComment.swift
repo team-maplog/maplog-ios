@@ -1,6 +1,7 @@
 import Foundation
 
 extension Notification.Name {
+    static let maplogUserBlockCacheDidChange = Notification.Name("MaplogUserBlockCacheDidChange")
     static let maplogUserBlockDidChange = Notification.Name("MaplogUserBlockDidChange")
 }
 

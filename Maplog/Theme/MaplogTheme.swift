@@ -17,6 +17,7 @@ extension Color {
     static let maplogSurface = Color("MaplogSurface")
     static let maplogSurfaceRaised = Color("MaplogSurfaceRaised")
     static let maplogOlive = Color("MaplogOlive")
+    static let maplogSuccess = Color("MaplogSuccess")
     static let maplogDanger = Color("MaplogDanger")
     static let maplogOnPrimary = Color("MaplogOnAccent")
 

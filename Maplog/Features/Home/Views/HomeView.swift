@@ -650,7 +650,7 @@ struct HomeView: View {
                 )
             )
             .refreshable {
-                await viewModel.refreshHome()
+                await viewModel.refreshHome(tourismPolicy: .reload)
             }
             .onPreferenceChange(FirstReelTopOffsetPreferenceKey.self) {
                 firstReelTopOffset = $0
@@ -1090,9 +1090,17 @@ struct HomeView: View {
 
     private var homeHeader: some View {
         HStack(spacing: MaplogSpacing.small) {
-            Text("Maplog")
-                .font(.title2.weight(.bold))
-                .foregroundStyle(.primary)
+            HStack(spacing: 0) {
+                Image("MaplogHomeLogo")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 44, height: 44)
+                    .accessibilityHidden(true)
+
+                Text("Maplog")
+                    .font(.title2.weight(.bold))
+                    .foregroundStyle(.primary)
+            }
 
             Spacer()
 

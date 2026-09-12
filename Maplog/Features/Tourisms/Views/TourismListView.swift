@@ -49,6 +49,7 @@ struct TourismListView: View {
         }
         .background(Color.white.ignoresSafeArea())
         .maplogTabBarHidden()
+        .refreshable { await viewModel.refresh() }
         .task(id: viewModel.selectedCategory) {
             await viewModel.loadInitialTourisms()
         }
@@ -163,6 +164,13 @@ struct TourismListView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: MaplogSpacing.large) {
+                    if let presentation = viewModel.refreshError {
+                        TourismNextPageErrorFooter(
+                            presentation: presentation,
+                            onRetry: { Task { await viewModel.refresh() } },
+                            onSignIn: performLogout
+                        )
+                    }
                     HStack {
                         Text("\(viewModel.items.count)개")
                             .font(.system(size: 16, weight: .medium))

@@ -4,6 +4,20 @@ import XCTest
 
 @MainActor
 final class HomeTourismThumbnailTests: XCTestCase {
+    func testAutomaticHomeRefreshUsesCachePolicy() async {
+        let repository = ThumbnailRepositoryStub()
+        await makeViewModel(repository).refreshHome()
+        XCTAssertEqual(repository.pagePolicies, [.cached])
+        XCTAssertEqual(repository.imagePolicies, [.cached, .cached])
+    }
+
+    func testUserRefreshReloadsBothPagesAndPortraitMetadata() async {
+        let repository = ThumbnailRepositoryStub()
+        await makeViewModel(repository).refreshHome(tourismPolicy: .reload)
+        XCTAssertEqual(repository.pagePolicies, [.reload])
+        XCTAssertEqual(repository.imagePolicies, [.reload, .reload])
+    }
+
     func testHomeUsesApprovedOriginalInsteadOfListThumbnail() async throws {
         let repository = ThumbnailRepositoryStub()
         let viewModel = makeViewModel(repository)
@@ -90,6 +104,7 @@ final class HomeTourismThumbnailTests: XCTestCase {
 
 @MainActor
 private final class ThumbnailRepositoryStub: TourismRepository {
+    func invalidateCache() async {}
     let original = TourismPortraitImage(url: URL(string: "https://example.invalid/original.jpg")!,
                                        data: Data([1]), width: 200, height: 300)!
     var approvedIDs: Set<Int64> = [1]
@@ -97,20 +112,24 @@ private final class ThumbnailRepositoryStub: TourismRepository {
     var error: Error = APIError.network(URLError(.notConnectedToInternet))
     var imageRequests: [Int64] = []
     var pageRequests = 0
+    var pagePolicies: [TourismFetchPolicy] = []
+    var imagePolicies: [TourismFetchPolicy] = []
     var pages: [[Int64]] = [[1, 2]]
-    func fetchPortraitImage(tourismID: Int64) async throws -> TourismPortraitImage? {
+    func fetchPortraitImage(tourismID: Int64, policy: TourismFetchPolicy) async throws -> TourismPortraitImage? {
         imageRequests.append(tourismID)
+        imagePolicies.append(policy)
         if failingIDs.contains(tourismID) { throw error }
         return approvedIDs.contains(tourismID) ? original : nil
     }
-    func fetchTourisms(category: TourismCategory, cursor: String?, size: Int) async throws -> TourismPage {
+    func fetchTourisms(category: TourismCategory, cursor: String?, size: Int, policy: TourismFetchPolicy) async throws -> TourismPage {
         let index = cursor.flatMap(Int.init) ?? 0
         pageRequests += 1
+        pagePolicies.append(policy)
         let items = pages[index].map { Tourism(id: $0, name: "축제", region: "서울", address: nil,
             thumbnailURL: URL(string: "https://example.invalid/thumbnail.jpg"), startDate: nil, endDate: nil, category: .events) }
         return TourismPage(tourisms: items, hasNext: index + 1 < pages.count, nextCursor: String(index + 1))
     }
-    func fetchTourismDetail(tourismID: Int64) async throws -> TourismDetail { fatalError("Repository resolves original") }
+    func fetchTourismDetail(tourismID: Int64, policy: TourismFetchPolicy) async throws -> TourismDetail { fatalError("Repository resolves original") }
 }
 
 /// 관광 이미지 테스트에서 다른 기능의 네트워크·재생을 사용하지 않도록 막는다.
@@ -118,7 +137,9 @@ private final class ThumbnailRepositoryStub: TourismRepository {
 private final class UnusedHomeDependencies: LogReelRepository, LogInteractionRepository, LogMediaRepository, ProfileRepository, VideoPlaybackService {
     let player = AVPlayer()
     let isMuted = true
-    func fetchReels(cursor: String?, size: Int) async throws -> LogReelPage { fatalError("Unused") }
+    func fetchReels(cursor: String?, size: Int) async throws -> LogReelPage {
+        LogReelPage(reels: [], hasNext: false, nextCursor: nil)
+    }
     func fetchSavedLogs(cursor: String?, size: Int) async throws -> LogReelPage { fatalError("Unused") }
     func setLike(logID: Int64, isLiked: Bool) async throws -> LogLikeInteractionResult { fatalError("Unused") }
     func setSaved(logID: Int64, isSaved: Bool) async throws -> LogSaveInteractionResult { fatalError("Unused") }
