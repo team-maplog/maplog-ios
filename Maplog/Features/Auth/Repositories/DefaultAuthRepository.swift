@@ -38,7 +38,7 @@ final class DefaultAuthRepository: AuthRepository {
         return makeAuthToken(from: response.token)
     }
 
-    private func makeAuthToken(from tokenResponse: TokenResponse) -> AuthToken {
+    private func makeAuthToken(from tokenResponse: AuthTokenResponseDTO) -> AuthToken {
         AuthToken(accessToken: tokenResponse.accessToken, refreshToken: tokenResponse.refreshToken)
     }
 

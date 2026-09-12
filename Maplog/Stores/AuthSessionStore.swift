@@ -60,15 +60,6 @@ final class AuthSessionStore: ObservableObject, AuthSessionManaging, Authenticat
         isAuthenticated = true
     }
 
-    // 기존 회원가입 코드가 당장 깨지지 않도록 임시 호환용 함수
-    // 기존 회원가입 → TokenResponse → 임시 호환 함수 → AuthToken
-    // 새 로그인     → AuthToken     → startSession
-    func startSession(with token: TokenResponse) throws {
-        let authToken = AuthToken(accessToken: token.accessToken, refreshToken: token.refreshToken)
-
-        try startSession(with: authToken)
-    }
-
     // 이미 로그인한 사용자의 토큰 회전
     func replaceTokens(with token: AuthToken) throws {
             try saveTokens(token)

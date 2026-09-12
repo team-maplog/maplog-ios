@@ -8,5 +8,5 @@
 import Foundation
 
 struct SignInResponseDTO: Decodable {
-    let token: TokenResponse
+    let token: AuthTokenResponseDTO
 }

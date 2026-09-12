@@ -122,7 +122,7 @@ final class DefaultAuthAPIService: AuthAPIService {
         }
     }
 
-    func reissueToken() async throws -> TokenResponse {
+    func reissueToken() async throws -> AuthTokenResponseDTO {
         let refreshToken = try await refreshTokenProvider.currentRefreshToken()
 
         guard let refreshToken, !refreshToken.isEmpty else {
@@ -144,7 +144,10 @@ final class DefaultAuthAPIService: AuthAPIService {
                 forHTTPHeaderField: "Authorization"
             )
 
-        let response: APIResponse<TokenResponse> = try await apiClient.request(urlRequest, responseType: APIResponse<TokenResponse>.self)
+        let response: APIResponse<AuthTokenResponseDTO> = try await apiClient.request(
+            urlRequest,
+            responseType: APIResponse<AuthTokenResponseDTO>.self
+        )
 
         guard response.successFlag else {
             throw APIError.unexpectedResponse(code: response.code, message: response.message)
