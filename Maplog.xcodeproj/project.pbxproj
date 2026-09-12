@@ -23,9 +23,9 @@
 		E21BAE28300BC20400B95B53 /* KeychainService.swift in Sources */ = {isa = PBXBuildFile; fileRef = E21BAE27300BC20000B95B53 /* KeychainService.swift */; };
 		E277D473300C975B00648B9A /* AuthValidation.swift in Sources */ = {isa = PBXBuildFile; fileRef = E277D472300C975300648B9A /* AuthValidation.swift */; };
 		E28BFDBE302F759F00CA97BD /* MaplogVideoPlayerLayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E28BFDBD302F758E00CA97BD /* MaplogVideoPlayerLayerView.swift */; };
+		E2A135EB305457340056B009 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = E2A135EA305457340056B009 /* GoogleService-Info.plist */; };
 		FCA100000000000000000001 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = FCA100000000000000000006 /* FirebaseCore */; };
 		FCA100000000000000000002 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = FCA100000000000000000007 /* FirebaseMessaging */; };
-		FCA100000000000000000003 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = FCA100000000000000000004 /* GoogleService-Info.plist */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -55,9 +55,9 @@
 		E277D472300C975300648B9A /* AuthValidation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthValidation.swift; sourceTree = "<group>"; };
 		E28B01123030D75D00CA97BD /* MaplogTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MaplogTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E28BFDBD302F758E00CA97BD /* MaplogVideoPlayerLayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MaplogVideoPlayerLayerView.swift; sourceTree = "<group>"; };
+		E2A135EA305457340056B009 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		E616D005446E65E2A4478814 /* MaplogTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MaplogTheme.swift; sourceTree = "<group>"; };
 		F2B4AB164A4CD66EF46DB763 /* QuickMaplogIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickMaplogIntent.swift; sourceTree = "<group>"; };
-		FCA100000000000000000004 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -117,7 +117,6 @@
 				E281F79B300EACAC00562F7C /* Core */,
 				E21BAE2B300BC22400B95B53 /* Stores */,
 				466D4CDACC71C57EB22009EB /* Info.plist */,
-				FCA100000000000000000004 /* GoogleService-Info.plist */,
 				2672356266064D88A9AB90F5 /* MaplogApp.swift */,
 				788BE76129F3163C4DBBEAC5 /* AppIntents */,
 				86B65D051A5C8E1403262757 /* Components */,
@@ -126,6 +125,7 @@
 				360E622DAD7A55E685E1045E /* Services */,
 				435835C2B477580A99CC08C3 /* Theme */,
 				79110CE8419A39D6032482EF /* Views */,
+				E2A135EA305457340056B009 /* GoogleService-Info.plist */,
 			);
 			path = Maplog;
 			sourceTree = "<group>";
@@ -330,7 +330,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				77DB9C9792EBE33C03EC4360 /* Assets.xcassets in Resources */,
-				FCA100000000000000000003 /* GoogleService-Info.plist in Resources */,
+				E2A135EB305457340056B009 /* GoogleService-Info.plist in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -514,6 +514,7 @@
 				CODE_SIGN_ENTITLEMENTS = Maplog/Maplog.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = ZTTSJ4D5X7;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Maplog/Info.plist;
@@ -596,6 +597,7 @@
 				CODE_SIGN_ENTITLEMENTS = Maplog/Maplog.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = ZTTSJ4D5X7;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Maplog/Info.plist;
