@@ -27,7 +27,7 @@ struct TourismDetailLocationPreviewSection: View {
                 )
             } label: {
                 ZStack(alignment: .bottomLeading) {
-                    KakaoMapCanvas(
+                    TourismKakaoMapCanvas(
                         latitude: coordinate.latitude,
                         longitude: coordinate.longitude
                     )

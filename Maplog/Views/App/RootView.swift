@@ -149,8 +149,6 @@ enum MaplogLaunchRequest {
 struct RootView: View {
     @EnvironmentObject private var authSessionStore: AuthSessionStore // 로그인 여부와 JWT 토큰을 관리해. MaplogApp에서 만들어서 주입한 객체
 
-    @StateObject private var sessionStore = MaplogSessionStore() // 기존 앱의 위치 권한, 저장한 로그·장소 같은 앱 내부 상태를 관리해. RootView가 직접 생성·소유
-
     @State private var hasFinishedInitialAuthCheck = false // keychain 조회 기억 상태
     @State private var phase: LaunchPhase = .login
     @State private var contentRevision = UUID()
@@ -330,7 +328,6 @@ struct RootView: View {
                 phase = .login
             }
         }
-        .environmentObject(sessionStore)
         .onAppear(perform: consumeLaunchRequest)
         .onReceive(NotificationCenter.default.publisher(for: .maplogUserBlockDidChange)) { _ in
             // 이미 열린 상세·검색·댓글 화면에 차단 전 데이터가 남지 않도록 닫고 재조회합니다.
@@ -388,7 +385,7 @@ struct RootView: View {
         isRequestingLocationPermission = true
 
         Task {
-            let result = await locationPermissionService
+            _ = await locationPermissionService
                 .requestWhenInUseAuthorization()
 
             isRequestingLocationPermission = false
@@ -397,20 +394,11 @@ struct RootView: View {
                 return
             }
 
-            switch result {
-            case .authorized:
-                sessionStore.allowLocationPermission()
-
-            case .denied, .servicesDisabled, .unavailable:
-                sessionStore.skipLocationPermission()
-            }
-
             moveToApp()
         }
     }
 
     private func skipLocationPermission() {
-        sessionStore.skipLocationPermission()
         moveToApp()
     }
 

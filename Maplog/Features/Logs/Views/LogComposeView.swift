@@ -231,7 +231,9 @@ struct LogComposeView: View {
 
     private var feedEditor: some View {
         VStack(alignment: .leading, spacing: MaplogSpacing.small) {
-            SectionHeader(title: "피드에 기록")
+            Text("피드에 기록")
+                .font(MaplogFont.sectionTitle)
+                .foregroundStyle(Color.maplogTextPrimary)
 
             Text("여행 이야기와 해시태그를 남기면 검색에서 더 쉽게 발견돼요.")
                 .font(MaplogFont.caption)

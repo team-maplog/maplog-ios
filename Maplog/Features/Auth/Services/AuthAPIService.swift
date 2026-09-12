@@ -18,5 +18,5 @@ protocol AuthAPIService {
 
     func signOut() async throws
 
-    func reissueToken() async throws -> TokenResponse
+    func reissueToken() async throws -> AuthTokenResponseDTO
 }

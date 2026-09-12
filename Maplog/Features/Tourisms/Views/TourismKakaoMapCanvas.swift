@@ -2,7 +2,8 @@ import SwiftUI
 import UIKit
 import KakaoMapsSDK
 
-struct KakaoMapCanvas: View {
+/// 관광 상세 화면에서 하나의 관광지 위치를 표시하는 카카오 지도 캔버스입니다.
+struct TourismKakaoMapCanvas: View {
     let latitude: Double
     let longitude: Double
 
@@ -11,42 +12,39 @@ struct KakaoMapCanvas: View {
     var body: some View {
         Group {
             if KakaoMapSDKConfiguration.hasUsableNativeAppKey {
-                KakaoMapRepresentable(
+                TourismKakaoMapRepresentable(
                     shouldDrawMap: $shouldDrawMap,
                     latitude: latitude,
                     longitude: longitude
                 )
-                    .onAppear {
-                        KakaoMapSDKConfiguration.initializeIfNeeded()
-                        shouldDrawMap = true
-                    }
-                    .onDisappear {
-                        shouldDrawMap = false
-                    }
+                .onAppear {
+                    KakaoMapSDKConfiguration.initializeIfNeeded()
+                    shouldDrawMap = true
+                }
+                .onDisappear {
+                    shouldDrawMap = false
+                }
             } else {
-                KakaoMapSetupPlaceholder()
+                TourismKakaoMapSetupPlaceholder()
             }
         }
     }
 }
 
-private struct KakaoMapRepresentable: UIViewRepresentable {
+private struct TourismKakaoMapRepresentable: UIViewRepresentable {
     @Binding var shouldDrawMap: Bool
     let latitude: Double
     let longitude: Double
 
-    // 실제 KMViewContainer 생성, Coordinator에 연결하고, 엔진 준비 시작하고 swiftUI에 반환
     func makeUIView(context: Context) -> KMViewContainer {
         let view = KMViewContainer()
         view.sizeToFit()
-        // 관광 상세 지도는 기기 다크 모드와 관계없이 라이트 지도를 사용함.
         view.overrideUserInterfaceStyle = .light
         context.coordinator.createController(with: view)
         context.coordinator.prepareEngineIfNeeded()
         return view
     }
 
-    // swiftUI 상태가 바뀔 때 호출, 엔진 활성화, 렌더링 멈춤
     func updateUIView(_ uiView: KMViewContainer, context: Context) {
         if shouldDrawMap {
             context.coordinator.activateEngineIfNeeded()
@@ -55,51 +53,36 @@ private struct KakaoMapRepresentable: UIViewRepresentable {
         }
     }
 
-    // swiftUI가 UIKit View를 완전히 제거할 때 호출, pauseEngine()후 resetEngine()으로 SDK 리소스 정리
     static func dismantleUIView(_ uiView: KMViewContainer, coordinator: Coordinator) {
         coordinator.controller?.pauseEngine()
         coordinator.controller?.resetEngine()
     }
 
-    // swiftUI가 보관할 Coordinator 객체 생성
     func makeCoordinator() -> Coordinator {
-        Coordinator(
-            latitude: latitude,
-            longitude: longitude)
+        Coordinator(latitude: latitude, longitude: longitude)
     }
 
-
-//    LabelLayer  = 핀들을 담는 폴더
-//    PoiStyle    = 핀의 그림/모양
-//    POI         = 특정 좌표에 실제로 놓는 핀
     final class Coordinator: NSObject, MapControllerDelegate {
-        private let mapViewName = "mapview"
-        private var needsInitialCameraMove = true
-
-        private let initialPosition: MapPoint
-
+        private let mapViewName = "tourism-map-view"
         private let tourismPinLayerID = "tourism-pin-layer"
         private let tourismPinStyleID = "tourism-pin-style"
+        private let initialPosition: MapPoint
+
+        private var needsInitialCameraMove = true
         private var hasAddedTourismPin = false
-
-        init(latitude: Double, longitude: Double) {
-            initialPosition = MapPoint(longitude: longitude, latitude: latitude) // initialPosition은 이번 지도 화면이 처음 열릴 때 보여줄 관광지 위치
-            super.init()
-        }
-
-
+        private weak var viewContainer: KMViewContainer?
 
         var controller: KMController?
-        private weak var viewContainer: KMViewContainer? // 뷰를 기억할 프로퍼티
+
+        init(latitude: Double, longitude: Double) {
+            initialPosition = MapPoint(longitude: longitude, latitude: latitude)
+            super.init()
+        }
 
         func createController(with view: KMViewContainer) {
             viewContainer = view
             controller = KMController(viewContainer: view)
             controller?.delegate = self
-        }
-
-        func markNeedsInitialCameraMove() {
-            needsInitialCameraMove = true
         }
 
         func prepareEngineIfNeeded() {
@@ -121,20 +104,41 @@ private struct KakaoMapRepresentable: UIViewRepresentable {
         }
 
         @objc func addViews() {
-
-            let mapviewInfo = MapviewInfo(
+            let mapViewInfo = MapviewInfo(
                 viewName: mapViewName,
                 viewInfoName: "map",
                 defaultPosition: initialPosition,
                 defaultLevel: 15
             )
-
-            controller?.addView(mapviewInfo)
+            controller?.addView(mapViewInfo)
         }
 
-        private func applyMapLayoutIfReady(_ size: CGSize) { // 지도 크기와 최초 카메라 위치를 한 번에 적용하는 함수
+        @objc func addViewSucceeded(_ viewName: String, viewInfoName: String) {
+            guard let size = viewContainer?.bounds.size else {
+                return
+            }
+
+            applyMapLayoutIfReady(size)
+            addTourismPinIfNeeded()
+        }
+
+        @objc func addViewFailed(_ viewName: String, viewInfoName: String) {
+            assertionFailure("Kakao map failed to load: \(viewName), \(viewInfoName)")
+        }
+
+        @objc func authenticationFailed(_ errorCode: Int, desc: String) {
+            assertionFailure("Kakao map authentication failed: \(errorCode), \(desc)")
+        }
+
+        @objc func authenticationSucceeded() {}
+
+        @objc func containerDidResized(_ size: CGSize) {
+            applyMapLayoutIfReady(size)
+        }
+
+        private func applyMapLayoutIfReady(_ size: CGSize) {
             guard size.width > 0,
-                      size.height > 0,
+                  size.height > 0,
                   let mapView = controller?.getView(mapViewName) as? KakaoMap
             else {
                 return
@@ -151,18 +155,8 @@ private struct KakaoMapRepresentable: UIViewRepresentable {
                 zoomLevel: 15,
                 mapView: mapView
             )
-
             mapView.moveCamera(cameraUpdate)
             needsInitialCameraMove = false
-        }
-
-
-        @objc func addViewSucceeded(_ viewName: String, viewInfoName: String) {
-            guard let size = viewContainer?.bounds.size else {
-                return
-            }
-            applyMapLayoutIfReady(size)
-            addTourismPinIfNeeded()
         }
 
         private func addTourismPinIfNeeded() {
@@ -173,13 +167,14 @@ private struct KakaoMapRepresentable: UIViewRepresentable {
             }
 
             let labelManager = mapView.getLabelManager()
-
-            let pinImage = makeTourismPinImage()
-
-            let iconStyle = PoiIconStyle(symbol: pinImage, anchorPoint: CGPoint(x: 0.5,  y: 1.0)) // 가운데 아래쪽이 실제 관광지 좌표를 가리키게 함. 그래서 핀 끝이 위치를 정확히 찍음
-
-            let poiStyle = PoiStyle(styleID: tourismPinStyleID, styles: [PerLevelPoiStyle(iconStyle: iconStyle, level: 0)])
-
+            let iconStyle = PoiIconStyle(
+                symbol: makeTourismPinImage(),
+                anchorPoint: CGPoint(x: 0.5, y: 1)
+            )
+            let poiStyle = PoiStyle(
+                styleID: tourismPinStyleID,
+                styles: [PerLevelPoiStyle(iconStyle: iconStyle, level: 0)]
+            )
             labelManager.addPoiStyle(poiStyle)
 
             let layerOption = LabelLayerOptions(
@@ -194,10 +189,10 @@ private struct KakaoMapRepresentable: UIViewRepresentable {
                 return
             }
 
-            let poiOption = PoiOptions(styleID: tourismPinStyleID, poiID: "tourism-location")
-
-            let pin = layer.addPoi(option: poiOption, at: initialPosition)
-
+            let pin = layer.addPoi(
+                option: PoiOptions(styleID: tourismPinStyleID, poiID: "tourism-location"),
+                at: initialPosition
+            )
             pin?.show()
             hasAddedTourismPin = true
         }
@@ -213,36 +208,14 @@ private struct KakaoMapRepresentable: UIViewRepresentable {
                 renderingMode: .alwaysOriginal
             )
             let renderer = UIGraphicsImageRenderer(size: size)
-
             return renderer.image { _ in
-                tintedImage.draw(
-                    in: CGRect(origin: .zero, size: size)
-                )
+                tintedImage.draw(in: CGRect(origin: .zero, size: size))
             }
-        }
-
-
-        @objc func addViewFailed(_ viewName: String, viewInfoName: String) {
-            print("Kakao map failed to load: \(viewName), \(viewInfoName)")
-        }
-
-        @objc func authenticationFailed(_ errorCode: Int, desc: String) {
-            print("Kakao map authentication failed: \(errorCode), \(desc)")
-        }
-
-        @objc func authenticationSucceeded() {
-            print("Kakao map authentication succeeded")
-        }
-
-        @objc func containerDidResized(_ size: CGSize) {
-            applyMapLayoutIfReady(size)
-
-
         }
     }
 }
 
-private struct KakaoMapSetupPlaceholder: View {
+private struct TourismKakaoMapSetupPlaceholder: View {
     var body: some View {
         ZStack {
             Color(red: 0.86, green: 0.92, blue: 0.88)
