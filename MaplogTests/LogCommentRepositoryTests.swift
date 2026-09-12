@@ -4,8 +4,8 @@ import XCTest
 final class LogCommentRepositoryTests: XCTestCase {
     func testModerationServerCodesProduceSpecificNonRetryMessages() {
         for (code, status, message) in [
-            ("REPORT-002", 409, "이미 신고한 댓글이에요."),
-            ("REPORT-003", 400, "내 댓글은 신고할 수 없어요."),
+            ("REPORT-002", 409, "이미 신고한 콘텐츠예요."),
+            ("REPORT-003", 400, "내 콘텐츠는 신고할 수 없어요."),
             ("BLOCK-001", 400, "자신은 차단할 수 없어요.")
         ] {
             let error = APIError.server(statusCode: status, response: APIErrorResponse(
@@ -300,9 +300,9 @@ final class LogCommentRepositoryTests: XCTestCase {
 private struct EmptyCommentDeletePayload: Decodable {}
 
 private final class LogCommentAPIServiceStub: LogCommentAPIService {
-    var reportRequest: CommentReportRequestDTO?
+    var reportRequest: ContentReportRequestDTO?
     var blockResponse: CommentAuthorBlockStateDTO?
-    func reportComment(request: CommentReportRequestDTO) async throws -> CommentReportReceiptDTO {
+    func reportContent(request: ContentReportRequestDTO) async throws -> CommentReportReceiptDTO {
         reportRequest = request
         return CommentReportReceiptDTO(reportId: 1, status: "PENDING", createdAt: "2026-09-12T00:00:00")
     }

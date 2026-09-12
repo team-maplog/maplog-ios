@@ -173,6 +173,13 @@ struct SignUpView: View {
 
     private var agreementFields: some View {
         VStack(alignment: .leading, spacing: MaplogSpacing.xSmall) {
+            HStack(spacing: MaplogSpacing.medium) {
+                Link("이용약관 보기", destination: MaplogLegalLinks.terms)
+                Link("개인정보 처리방침 보기", destination: MaplogLegalLinks.privacy)
+            }
+            .font(MaplogFont.caption)
+            .foregroundStyle(Color.maplogInk)
+            .padding(.vertical, 8)
             SignUpAgreementRow(
                 title: "이용약관 동의 (필수)",
                 isAgreed: viewModel.termsAgreed,

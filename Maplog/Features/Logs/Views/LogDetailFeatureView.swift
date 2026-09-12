@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct LogDetailFeatureView: View {
+    @Environment(\.contentModerationRepository) private var moderationRepository
     @Environment(\.dismiss) private var dismiss
     @Environment(\.maplogLogout) private var performLogout
 
@@ -103,6 +104,13 @@ struct LogDetailFeatureView: View {
                 )
             }
 
+            if !allowsManagement, let detail = viewModel.detail, let moderationRepository {
+                ToolbarItem(placement: .topBarTrailing) {
+                    ContentModerationMenu(logID: detail.id, authorID: detail.author.id,
+                                          repository: moderationRepository, profileRepository: profileRepository)
+                        .id(detail.id)
+                }
+            }
             if allowsManagement,
                viewModel.detail != nil {
                 ToolbarItem(placement: .topBarTrailing) {

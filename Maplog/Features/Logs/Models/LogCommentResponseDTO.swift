@@ -1,7 +1,7 @@
 import Foundation
 
-struct CommentReportRequestDTO: Encodable {
-    let targetType = "COMMENT"
+struct ContentReportRequestDTO: Encodable {
+    var targetType: ContentReportTargetType = .comment
     let targetId: Int64
     let reason: String
 }

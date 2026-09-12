@@ -35,9 +35,9 @@ enum LogCommentErrorPolicy {
         case let .server(statusCode, response):
             switch BackendErrorCode(serverCode: response.code) {
             case .duplicateReport:
-                return ErrorPresentation(message: "이미 신고한 댓글이에요.", recoveryAction: .none)
+                return ErrorPresentation(message: "이미 신고한 콘텐츠예요.", recoveryAction: .none)
             case .cannotReportOwnContent:
-                return ErrorPresentation(message: "내 댓글은 신고할 수 없어요.", recoveryAction: .none)
+                return ErrorPresentation(message: "내 콘텐츠는 신고할 수 없어요.", recoveryAction: .none)
             case .cannotBlockSelf:
                 return ErrorPresentation(message: "자신은 차단할 수 없어요.", recoveryAction: .none)
             case .expiredAccessToken,

@@ -61,27 +61,17 @@ struct ProfileSettingsFeatureView: View {
                 }
 
                 ProfileSettingsSection(title: "서비스 정보") {
-                    NavigationLink {
-                        ProfileSettingsInformationView(
-                            title: "이용약관",
-                            message: "서비스 이용에 필요한 약관은 추후 제공되는 공식 문서와 연결됩니다."
-                        )
-                    } label: {
+                    Link(destination: MaplogLegalLinks.terms) {
                         ProfileSettingsNavigationRow(title: "이용약관")
                     }
-                    .buttonStyle(.plain)
-
                     ProfileSettingsDivider()
-
-                    NavigationLink {
-                        ProfileSettingsInformationView(
-                            title: "개인정보 처리방침",
-                            message: "프로필과 위치·여행 기록 데이터의 처리 기준은 공식 개인정보 처리방침에서 안내합니다."
-                        )
-                    } label: {
+                    Link(destination: MaplogLegalLinks.privacy) {
                         ProfileSettingsNavigationRow(title: "개인정보 처리방침")
                     }
-                    .buttonStyle(.plain)
+                    ProfileSettingsDivider()
+                    Link(destination: MaplogLegalLinks.support) {
+                        ProfileSettingsNavigationRow(title: "문의하기")
+                    }
                 }
 
                 ProfileSettingsSection(title: "앱 정보") {
@@ -294,21 +284,5 @@ private struct ProfileSettingsDivider: View {
     var body: some View {
         Divider()
             .overlay(Color.maplogLine)
-    }
-}
-
-private struct ProfileSettingsInformationView: View {
-    let title: String
-    let message: String
-
-    var body: some View {
-        Text(message)
-            .font(.body)
-            .foregroundStyle(Color.maplogMuted)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .padding(MaplogSpacing.page)
-            .background(Color.maplogSurface)
-            .navigationTitle(title)
-            .navigationBarTitleDisplayMode(.inline)
     }
 }
