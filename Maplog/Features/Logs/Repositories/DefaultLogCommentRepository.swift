@@ -12,8 +12,8 @@ final class DefaultLogCommentRepository: LogCommentRepository {
         guard commentID > 0, !reason.isEmpty, reason.utf16.count <= 1000 else {
             throw APIError.invalidRequest(reason: "신고 사유는 1~1,000자로 입력해 주세요.")
         }
-        let receipt = try await apiService.reportComment(
-            request: CommentReportRequestDTO(targetId: commentID, reason: reason)
+        let receipt = try await apiService.reportContent(
+            request: ContentReportRequestDTO(targetId: commentID, reason: reason)
         )
         guard receipt.reportId > 0, receipt.status == "PENDING" else {
             throw APIError.invalidResponse

@@ -103,7 +103,7 @@ final class DefaultLogCommentAPIService: LogCommentAPIService {
         return try validatedData(from: response)
     }
 
-    func reportComment(request: CommentReportRequestDTO) async throws -> CommentReportReceiptDTO {
+    func reportContent(request: ContentReportRequestDTO) async throws -> CommentReportReceiptDTO {
         var urlRequest = URLRequest(url: APIConfiguration.baseURL.appendingPathComponent("api/v1/reports"))
         urlRequest.httpMethod = "POST"
         urlRequest.setValue("application/json", forHTTPHeaderField: "Accept")

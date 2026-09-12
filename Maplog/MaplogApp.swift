@@ -23,6 +23,7 @@ struct MaplogApp: App { // 앱의 조립 담당자
     private let logPublishingRepository: any LogPublishingRepository
     private let logReelRepository: any LogReelRepository
     private let logInteractionRepository: any LogInteractionRepository
+    private let contentModerationRepository: any ContentModerationRepository
     private let logCommentRepository: any LogCommentRepository
     private let logMediaRepository: any LogMediaRepository
     private let homeReelPlaybackService: any VideoPlaybackService
@@ -80,6 +81,7 @@ struct MaplogApp: App { // 앱의 조립 담당자
         let logCommentAPIService = DefaultLogCommentAPIService(
             authenticatedAPIClient: authenticatedAPIClient
         )
+        self.contentModerationRepository = DefaultContentModerationRepository(apiService: logCommentAPIService)
         let logCommentRepository = DefaultLogCommentRepository(
             apiService: logCommentAPIService
         )
@@ -225,6 +227,7 @@ struct MaplogApp: App { // 앱의 조립 담당자
                 photoLibraryVideoSaveService: photoLibraryVideoSaveService
 
             )
+            .environment(\.contentModerationRepository, contentModerationRepository)
             .environment(\.makeLogPlaybackService) { AVVideoPlaybackService() }
             .environment(\.publicLogDestination) { logID in
                 AnyView(LogDetailFeatureView(

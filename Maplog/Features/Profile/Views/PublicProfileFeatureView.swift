@@ -2,6 +2,8 @@ import SwiftUI
 import UIKit
 
 struct PublicProfileFeatureView: View {
+    @Environment(\.contentModerationRepository) private var moderationRepository
+    private let profileRepository: any ProfileRepository
     @Environment(\.publicLogDestination) private var logDestination
     @State private var selectedLogID: Int64?
     @State private var showsLogDetail = false
@@ -16,6 +18,7 @@ struct PublicProfileFeatureView: View {
         profileRepository: any ProfileRepository,
         onFollowStateChanged: @escaping (FollowState) -> Void = { _ in }
     ) {
+        self.profileRepository = profileRepository
         self.onFollowStateChanged = onFollowStateChanged
         _viewModel = StateObject(
             wrappedValue: PublicProfileViewModel(
@@ -43,6 +46,15 @@ struct PublicProfileFeatureView: View {
         .navigationTitle(viewModel.nickname)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.visible, for: .navigationBar)
+        .toolbar {
+            if let profile = viewModel.profile, !viewModel.isOwnProfile, let moderationRepository {
+                ToolbarItem(placement: .topBarTrailing) {
+                    ContentModerationMenu(authorID: profile.id, repository: moderationRepository,
+                                          profileRepository: profileRepository)
+                        .id(profile.id)
+                }
+            }
+        }
         .maplogTabBarHidden()
         .task {
             await viewModel.loadIfNeeded()
