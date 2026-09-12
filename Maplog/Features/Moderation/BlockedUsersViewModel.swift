@@ -62,6 +62,7 @@ final class BlockedUsersViewModel: ObservableObject {
         do {
             try await repository.unblockUser(id: user.id)
             users.removeAll { $0.id == user.id }
+            NotificationCenter.default.post(name: .maplogUserBlockCacheDidChange, object: nil)
             didUnblock = true
             if didLeaveScreen { finishManagingBlocks() }
             // 번호 기반 페이지는 삭제 후 앞당겨진다. 1페이지부터 다시 조회해야 사용자를 건너뛰지 않는다.
@@ -72,6 +73,10 @@ final class BlockedUsersViewModel: ObservableObject {
             unblockingID = nil
             self.error = LogCommentErrorPolicy.actionPresentation(for: error, actionName: "차단을 해제")
         }
+    }
+
+    func beginManagingBlocks() {
+        didLeaveScreen = false
     }
 
     func finishManagingBlocks() {

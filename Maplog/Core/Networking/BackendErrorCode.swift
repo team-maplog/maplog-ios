@@ -25,6 +25,7 @@ enum BackendErrorCode: Equatable {
     case wrongPassword
     case cursorInvalid
 
+    case commonNotFound
     case commonInvalidRequest
     case tourismNotFound
 
@@ -99,6 +100,9 @@ enum BackendErrorCode: Equatable {
 
         case "CURSOR-001":
             self = .cursorInvalid
+
+        case "COMMON-003":
+            self = .commonNotFound
 
         case "COMMON-001":
             self = .commonInvalidRequest

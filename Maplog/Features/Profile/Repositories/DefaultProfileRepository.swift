@@ -134,7 +134,8 @@ final class DefaultProfileRepository: ProfileRepository {
             followingCount: dto.followingCount,
             logCount: dto.logCount,
             isFollowedByViewer: dto.followedByViewer,
-            createdAt: try date(from: dto.createdAt)
+            createdAt: try dto.createdAt.map { try date(from: $0) },
+            isBlockedByViewer: dto.blockedByViewer
         )
     }
 

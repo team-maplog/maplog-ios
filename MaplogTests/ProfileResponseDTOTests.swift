@@ -51,5 +51,21 @@ final class ProfileResponseDTOTests: XCTestCase {
         XCTAssertEqual(dto.nickname, "slow.seoul")
         XCTAssertTrue(dto.followedByViewer)
         XCTAssertEqual(dto.logCount, 21)
+        XCTAssertFalse(dto.blockedByViewer)
+    }
+
+    func testRestrictedProfileDecodesMissingOrNullOptionalFields() throws {
+        for optionalFields in ["", ", \"bio\": null, \"createdAt\": null, \"profileImageUrl\": null"] {
+            let data = Data("""
+            {"userId":"A0C09D75-1DB4-4E65-BEEF-5975994401D3", "nickname":"blocked",
+             "followerCount":0, "followingCount":0, "logCount":0,
+             "followedByViewer":false, "blockedByViewer":true \(optionalFields)}
+            """.utf8)
+            let profile = try JSONDecoder().decode(PublicProfileResponseDTO.self, from: data)
+            XCTAssertTrue(profile.blockedByViewer)
+            XCTAssertNil(profile.bio)
+            XCTAssertNil(profile.createdAt)
+            XCTAssertNil(profile.profileImageURL)
+        }
     }
 }

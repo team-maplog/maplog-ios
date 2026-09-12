@@ -44,9 +44,9 @@ enum PublicProfileErrorPolicy {
 
         case let .server(statusCode, response):
             switch BackendErrorCode(serverCode: response.code) {
-            case .userNotFound:
+            case .userNotFound, .commonNotFound:
                 return ErrorPresentation(
-                    message: "존재하지 않거나 볼 수 없는 프로필이에요.",
+                    message: "프로필을 볼 수 없습니다.",
                     recoveryAction: .none
                 )
 

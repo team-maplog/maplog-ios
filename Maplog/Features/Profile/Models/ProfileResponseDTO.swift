@@ -30,7 +30,8 @@ struct PublicProfileResponseDTO: Decodable {
     let followingCount: Int64
     let logCount: Int64
     let followedByViewer: Bool
-    let createdAt: String
+    let createdAt: String?
+    var blockedByViewer: Bool = false
 
     enum CodingKeys: String, CodingKey {
         case userID = "userId"
@@ -42,6 +43,23 @@ struct PublicProfileResponseDTO: Decodable {
         case logCount
         case followedByViewer
         case createdAt
+        case blockedByViewer
+    }
+}
+
+extension PublicProfileResponseDTO {
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        userID = try values.decode(UUID.self, forKey: .userID)
+        nickname = try values.decode(String.self, forKey: .nickname)
+        profileImageURL = try values.decodeIfPresent(String.self, forKey: .profileImageURL)
+        bio = try values.decodeIfPresent(String.self, forKey: .bio)
+        followerCount = try values.decode(Int64.self, forKey: .followerCount)
+        followingCount = try values.decode(Int64.self, forKey: .followingCount)
+        logCount = try values.decode(Int64.self, forKey: .logCount)
+        followedByViewer = try values.decode(Bool.self, forKey: .followedByViewer)
+        createdAt = try values.decodeIfPresent(String.self, forKey: .createdAt)
+        blockedByViewer = try values.decodeIfPresent(Bool.self, forKey: .blockedByViewer) ?? false
     }
 }
 

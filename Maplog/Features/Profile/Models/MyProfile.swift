@@ -21,7 +21,8 @@ struct PublicProfile: Equatable, Sendable {
     let followingCount: Int64
     let logCount: Int64
     let isFollowedByViewer: Bool
-    let createdAt: Date
+    let createdAt: Date?
+    var isBlockedByViewer = false
 
     func replacingFollowState(
         isFollowedByViewer: Bool
@@ -46,7 +47,8 @@ struct PublicProfile: Equatable, Sendable {
             followingCount: followingCount,
             logCount: logCount,
             isFollowedByViewer: isFollowedByViewer,
-            createdAt: createdAt
+            createdAt: createdAt,
+            isBlockedByViewer: isBlockedByViewer
         )
     }
 }
