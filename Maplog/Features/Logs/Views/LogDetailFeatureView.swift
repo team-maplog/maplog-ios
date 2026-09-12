@@ -18,9 +18,14 @@ struct LogDetailFeatureView: View {
     private let profileRepository: any ProfileRepository
 
     @StateObject private var viewModel: LogDetailViewModel
+    @State private var showsManagementActions = false
+    @State private var selectedManagementAction: ManagementAction?
     @State private var showsCaptionEditor = false
+
     @State private var selectedPlaceTarget: LogPlaceEditTarget?
     @State private var showsDeletionConfirmation = false
+
+    private enum ManagementAction { case edit, delete }
 
     private var captionBinding: Binding<String> {
         Binding(
@@ -114,34 +119,53 @@ struct LogDetailFeatureView: View {
             if allowsManagement,
                viewModel.detail != nil {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        Button(action: presentCaptionEditor) {
-                            Label("게시물 수정", systemImage: "pencil")
-                        }
-                        .accessibilityIdentifier("log.detail.edit")
-
-                        Button(role: .destructive, action: presentDeletionConfirmation) {
-                            Label("맵로그 삭제", systemImage: "trash")
-                        }
-                        .accessibilityIdentifier("log.detail.delete")
+                    Button {
+                        selectedManagementAction = nil
+                        showsManagementActions = true
                     } label: {
                         Image(systemName: "ellipsis")
                             .font(.system(size: MaplogSize.iconMedium, weight: .semibold))
                             .foregroundStyle(Color.maplogInk)
-                            .frame(
-                                width: MaplogSize.minimumTapTarget,
-                                height: MaplogSize.minimumTapTarget
-                            )
-                            // 보이는 점 세 개보다 넓은 44pt 사각 영역 전체를 메뉴의 터치 대상으로 만듭니다.
+                            .frame(width: 48, height: 48)
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    .contentShape(Rectangle())
+                    .disabled(viewModel.isDeleting)
                     .accessibilityLabel("맵로그 관리")
                     .accessibilityHint("게시물 수정 또는 맵로그 삭제 메뉴를 엽니다")
                     .accessibilityIdentifier("log.detail.management")
                 }
             }
+        }
+        .sheet(isPresented: $showsManagementActions, onDismiss: performSelectedManagementAction) {
+            VStack(alignment: .leading, spacing: MaplogSpacing.medium) {
+                Text("맵로그 관리")
+                    .font(MaplogFont.sectionTitle)
+                    .foregroundStyle(Color.maplogInk)
+                Button {
+                    selectManagementAction(.edit)
+                } label: {
+                    Label("게시물 수정", systemImage: "pencil")
+                        .foregroundStyle(Color.maplogInk)
+                        .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
+                        .contentShape(Rectangle())
+                }
+                .accessibilityIdentifier("log.detail.edit")
+                Divider()
+                Button(role: .destructive) {
+                    selectManagementAction(.delete)
+                } label: {
+                    Label("맵로그 삭제", systemImage: "trash")
+                        .foregroundStyle(Color.maplogDanger)
+                        .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
+                        .contentShape(Rectangle())
+                }
+                .accessibilityIdentifier("log.detail.delete")
+            }
+            .font(MaplogFont.calloutStrong)
+            .padding(MaplogSpacing.page)
+            .presentationDetents([.height(240), .medium])
+            .presentationDragIndicator(.visible)
         }
         .task {
             await loadDetail()
@@ -279,6 +303,22 @@ struct LogDetailFeatureView: View {
     private func retryPlayback() {
         Task {
             await viewModel.loadPlayback()
+        }
+    }
+
+    private func selectManagementAction(_ action: ManagementAction) {
+        selectedManagementAction = action
+        showsManagementActions = false
+    }
+
+    private func performSelectedManagementAction() {
+        let action = selectedManagementAction
+        selectedManagementAction = nil
+        // 선택 시트가 닫힌 뒤 다음 화면을 열어 두 presentation이 겹치지 않게 한다.
+        switch action {
+        case .edit: presentCaptionEditor()
+        case .delete: presentDeletionConfirmation()
+        case nil: break
         }
     }
 
