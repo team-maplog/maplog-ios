@@ -55,7 +55,26 @@ final class AVVideoPlaybackSeekTests: XCTestCase {
         XCTAssertGreaterThan(detail.player.currentTime().seconds, 1.15)
     }
 
-    private func makeSilentVideo() async throws -> URL {
+    func testURLVideoLoopKeepsTheSamePlayerItem() async throws {
+        let url = try await makeSilentVideo(frameCount: 6)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let service = AVVideoPlaybackService()
+        defer { service.stop() }
+
+        service.loadVideo(at: url)
+        let initialItem = try XCTUnwrap(service.player.currentItem)
+        service.play()
+
+        try await Task.sleep(for: .seconds(1.2))
+
+        XCTAssertTrue(service.player.currentItem === initialItem)
+        XCTAssertGreaterThan(service.player.currentTime().seconds, 0.05)
+    }
+
+    private func makeSilentVideo(
+        frameCount: Int = 90
+    ) async throws -> URL {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".mov")
         let writer = try AVAssetWriter(outputURL: url, fileType: .mov)
         let input = AVAssetWriterInput(mediaType: .video, outputSettings: [
@@ -81,7 +100,7 @@ final class AVVideoPlaybackSeekTests: XCTestCase {
         }
         CVPixelBufferUnlockBaseAddress(pixelBuffer, [])
 
-        for frame in 0..<90 {
+        for frame in 0..<frameCount {
             var attempts = 0
             // 시뮬레이터의 첫 인코더 초기화는 재사용보다 오래 걸릴 수 있습니다.
             while !input.isReadyForMoreMediaData && writer.status == .writing && attempts < 1_000 {
@@ -96,7 +115,12 @@ final class AVVideoPlaybackSeekTests: XCTestCase {
             XCTAssertTrue(adaptor.append(pixelBuffer, withPresentationTime: CMTime(value: Int64(frame), timescale: 15)))
         }
         input.markAsFinished()
-        writer.endSession(atSourceTime: CMTime(seconds: 6, preferredTimescale: 15))
+        writer.endSession(
+            atSourceTime: CMTime(
+                value: Int64(frameCount),
+                timescale: 15
+            )
+        )
         await writer.finishWriting()
         XCTAssertEqual(writer.status, .completed, String(describing: writer.error))
         return url

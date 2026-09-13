@@ -436,6 +436,7 @@ struct HomeView: View {
             .container,
             edges: [.top, .bottom]
         )
+        .ignoresSafeArea(.keyboard, edges: .bottom)
         .toolbar(.hidden, for: .navigationBar)
         .overlay {
             panelEdgeSwipeOverlay

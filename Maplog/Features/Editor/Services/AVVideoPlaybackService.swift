@@ -25,6 +25,8 @@ final class AVVideoPlaybackService: VideoPlaybackService {
     private let queuePlayer = AVQueuePlayer()
     private var playerLooper: AVPlayerLooper?
     private var periodicTimeObserver: Any? // AVPlayer가 주기적으로 알려주는 재생 시간을 해제하기 위해 보관하는 토큰
+    private var endOfItemObserver: NSObjectProtocol?
+    private weak var loopingItem: AVPlayerItem?
 
     private struct PendingSeek {
         let time: CMTime
@@ -51,12 +53,60 @@ final class AVVideoPlaybackService: VideoPlaybackService {
     func loadVideo(at url: URL) { // 영상 교체·반복 재생 준비
         stop() // 새 영상을 넣기 전, Service 상태를 항상 깨끗하게 초기화
 
-        let templateItem = AVPlayerItem(url: url) // 다운로드한 Caches/LogPlayback/log-2.video 같은 실제 로컬 영상 파일을 재생 가능한 AVPlayerItem으로 감쌈
+        let item = AVPlayerItem(url: url) // 다운로드한 Caches/LogPlayback/log-2.video 같은 실제 로컬 영상 파일을 재생 가능한 AVPlayerItem으로 감쌈
 
-        playerLooper = AVPlayerLooper(
-            player: queuePlayer,
-            templateItem: templateItem
-        )
+        // 홈의 완성 영상은 AVPlayerLooper가 반복마다 AVPlayerItem을 교체하지 않도록 한다.
+        // 동일 item을 처음으로 되감으면 AVPlayerLayer가 계속 같은 출력 대상을 유지한다.
+        queuePlayer.actionAtItemEnd = .none
+        queuePlayer.insert(item, after: nil)
+        observeEndOfItem(for: item)
+    }
+
+    private func observeEndOfItem(for item: AVPlayerItem) {
+        loopingItem = item
+        endOfItemObserver = NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemDidPlayToEndTime,
+            object: item,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self, weak item] in
+                guard let self, let item else {
+                    return
+                }
+
+                self.restartLoopingItemIfNeeded(item)
+            }
+        }
+    }
+
+    private func restartLoopingItemIfNeeded(_ item: AVPlayerItem) {
+        guard loopingItem === item,
+              queuePlayer.currentItem === item
+        else {
+            return
+        }
+
+        queuePlayer.seek(
+            to: .zero,
+            toleranceBefore: .zero,
+            toleranceAfter: .zero
+        ) { [weak self, weak item] finished in
+            guard finished else {
+                return
+            }
+
+            Task { @MainActor [weak self, weak item] in
+                guard let self,
+                      let item,
+                      self.loopingItem === item,
+                      self.queuePlayer.currentItem === item
+                else {
+                    return
+                }
+
+                self.queuePlayer.play()
+            }
+        }
     }
 
     func loadVideoSequence(
@@ -67,6 +117,7 @@ final class AVVideoPlaybackService: VideoPlaybackService {
         }
 
         stop()
+        queuePlayer.actionAtItemEnd = .advance
 
         let templateItem = try await makeSequenceItem(
             from: urls
@@ -96,6 +147,7 @@ final class AVVideoPlaybackService: VideoPlaybackService {
         try Task.checkCancellation()
         // 준비가 끝날 때 교체해 구도 변경 중 기존 화면이 검게 비지 않게 한다.
         stop()
+        queuePlayer.actionAtItemEnd = .advance
         playerLooper = AVPlayerLooper(player: queuePlayer, templateItem: templateItem)
     }
 
@@ -227,12 +279,14 @@ final class AVVideoPlaybackService: VideoPlaybackService {
     func stop() {
         cancelPendingSeek()
         removeProgressObserver()
+        removeEndOfItemObserver()
         queuePlayer.pause()
 
         playerLooper?.disableLooping()
         playerLooper = nil
 
         queuePlayer.removeAllItems()
+        queuePlayer.actionAtItemEnd = .advance
     }
 
     func observeProgress(_ handler: @escaping (Double) -> Void) {
@@ -585,6 +639,15 @@ final class AVVideoPlaybackService: VideoPlaybackService {
 
         queuePlayer.removeTimeObserver(periodicTimeObserver)
         self.periodicTimeObserver = nil
+    }
+
+    private func removeEndOfItemObserver() {
+        if let endOfItemObserver {
+            NotificationCenter.default.removeObserver(endOfItemObserver)
+        }
+
+        endOfItemObserver = nil
+        loopingItem = nil
     }
 }
 

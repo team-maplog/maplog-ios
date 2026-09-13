@@ -34,6 +34,14 @@ struct LogComposeView: View {
             .maplogPagePadding()
             .padding(.top, MaplogSpacing.pageTop)
             .padding(.bottom, MaplogSpacing.section)
+            .background {
+                Color.clear.contentShape(Rectangle())
+                    .onTapGesture { isCaptionFocused = false }
+            }
+        }
+        .background {
+            Color.clear.contentShape(Rectangle())
+                .onTapGesture { isCaptionFocused = false }
         }
         .scrollDismissesKeyboard(.interactively)
         .onDisappear { isCaptionFocused = false }
