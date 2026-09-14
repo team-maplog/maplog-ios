@@ -1,17 +1,14 @@
 import SwiftUI
 
 struct LocationPermissionView: View {
-    let onAllow: () -> Void
-    let onSkip: () -> Void
+    let onContinue: () -> Void
     let isRequesting: Bool
 
     init(
-        onAllow: @escaping () -> Void,
-        onSkip: @escaping () -> Void,
+        onContinue: @escaping () -> Void,
         isRequesting: Bool = false
     ) {
-        self.onAllow = onAllow
-        self.onSkip = onSkip
+        self.onContinue = onContinue
         self.isRequesting = isRequesting
     }
 
@@ -27,9 +24,7 @@ struct LocationPermissionView: View {
             Spacer()
 
             LocationPermissionActions(
-                primaryTitle: "위치 권한 허용",
-                onAllow: onAllow,
-                onSkip: onSkip,
+                onContinue: onContinue,
                 isRequesting: isRequesting
             )
             .padding(.bottom, 26)
@@ -78,49 +73,36 @@ private struct LocationPermissionCopy: View {
 }
 
 private struct LocationPermissionActions: View {
-    let primaryTitle: String
-    let onAllow: () -> Void
-    let onSkip: () -> Void
+    let onContinue: () -> Void
     let isRequesting: Bool
 
     init(
-        primaryTitle: String,
-        onAllow: @escaping () -> Void,
-        onSkip: @escaping () -> Void,
+        onContinue: @escaping () -> Void,
         isRequesting: Bool = false
     ) {
-        self.primaryTitle = primaryTitle
-        self.onAllow = onAllow
-        self.onSkip = onSkip
+        self.onContinue = onContinue
         self.isRequesting = isRequesting
     }
 
     var body: some View {
-        VStack(spacing: 18) {
-            Button(action: onAllow) {
-                Group {
-                    if isRequesting {
-                        ProgressView()
-                            .tint(Color.maplogInk)
-                    } else {
-                        Text(primaryTitle)
-                            .font(.system(size: 18, weight: .medium))
-                    }
+        Button(action: onContinue) {
+            Group {
+                if isRequesting {
+                    ProgressView()
+                        .tint(Color.maplogInk)
+                } else {
+                    Text("계속")
+                        .font(.system(size: 18, weight: .medium))
                 }
-                .foregroundStyle(Color.maplogOnPrimary)
-                .frame(maxWidth: .infinity)
-                .frame(height: 54)
-                .background(Color.maplogLime)
-                .clipShape(Capsule())
-                .shadow(color: Color.maplogLime.opacity(0.22), radius: 14, x: 0, y: 8)
             }
-            .buttonStyle(.plain)
-            .disabled(isRequesting)
-
-            Button("나중에 하기", action: onSkip)
-                .font(MaplogFont.callout)
-                .foregroundStyle(Color.maplogMuted)
-                .buttonStyle(.plain)
+            .foregroundStyle(Color.maplogOnPrimary)
+            .frame(maxWidth: .infinity)
+            .frame(height: 54)
+            .background(Color.maplogLime)
+            .clipShape(Capsule())
+            .shadow(color: Color.maplogLime.opacity(0.22), radius: 14, x: 0, y: 8)
         }
+        .buttonStyle(.plain)
+        .disabled(isRequesting)
     }
 }

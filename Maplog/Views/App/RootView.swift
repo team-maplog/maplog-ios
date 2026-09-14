@@ -275,8 +275,7 @@ struct RootView: View {
                 )
             case .location:
                 LocationPermissionView(
-                    onAllow: requestLocationPermission,
-                    onSkip: skipLocationPermission,
+                    onContinue: requestLocationPermission,
                     isRequesting: isRequestingLocationPermission
                 )
             case .app:
@@ -396,10 +395,6 @@ struct RootView: View {
 
             moveToApp()
         }
-    }
-
-    private func skipLocationPermission() {
-        moveToApp()
     }
 
     private func moveToApp() {
