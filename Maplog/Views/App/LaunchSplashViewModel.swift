@@ -11,7 +11,7 @@ final class LaunchSplashViewModel: ObservableObject {
     }
 
     static let entranceDuration: Duration = .milliseconds(1300)
-    static let revealDuration: Duration = .milliseconds(500)
+    static let revealDuration: Duration = .milliseconds(220)
 
     @Published private(set) var stage: Stage = .presenting
     private var hasFinishedEntrance = false
