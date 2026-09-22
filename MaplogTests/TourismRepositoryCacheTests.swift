@@ -6,8 +6,11 @@ final class TourismRepositoryCacheTests: XCTestCase {
     func testEveryListCategoryLoadsItsOwnContentAndClearsPreviousPage() async {
         let service = TourismCacheAPIStub()
         let viewModel = TourismListViewModel(tourismRepository: makeRepository(service))
-        XCTAssertTrue(viewModel.categoryTabs.contains { $0.category == .food })
+        XCTAssertFalse(viewModel.categoryTabs.contains { $0.category == .food })
         for tab in viewModel.categoryTabs {
+            XCTAssertTrue(ExploreMapFilter.allCases.contains {
+                $0.tourismRequestCategory.requestValue == tab.category.rawValue
+            }, "목록 카테고리는 지도에서도 조회할 수 있어야 한다.")
             viewModel.selectCategory(tab.category)
             XCTAssertTrue(viewModel.items.isEmpty)
             await viewModel.loadNextPage()
@@ -16,6 +19,69 @@ final class TourismRepositoryCacheTests: XCTestCase {
             XCTAssertEqual(viewModel.tourismState, .content)
             XCTAssertEqual(viewModel.items.first?.categoryTitle, tab.title)
         }
+    }
+
+    func testAllListHidesFoodCardsWithoutChangingSharedRepositoryData() async throws {
+        let service = TourismCacheAPIStub()
+        service.customPages = ["first": page([.food, .festival, .natureTourism])]
+        let repository = makeRepository(service)
+        let list = TourismListViewModel(tourismRepository: repository)
+        list.selectCategory(.all)
+        await list.loadInitialTourisms()
+        XCTAssertEqual(list.items.map(\.id), [2, 3])
+        let original = try await repository.fetchTourisms(category: .all, cursor: nil, size: 20)
+        XCTAssertEqual(original.tourisms.map(\.category), [.food, .festival, .natureTourism])
+    }
+
+    func testFoodOnlyFirstPageContinuesToVisibleTourism() async {
+        let service = TourismCacheAPIStub()
+        service.customPages = ["first": page([.food], next: "next"), "next": page([.festival])]
+        let list = TourismListViewModel(tourismRepository: makeRepository(service))
+        list.selectCategory(.all)
+        await list.loadInitialTourisms()
+        XCTAssertEqual(list.tourismState, .content)
+        XCTAssertEqual(list.items.first?.categoryTitle, "축제")
+        XCTAssertEqual(service.pageCalls, 2)
+    }
+
+    func testFoodOnlyNextPageContinuesWithoutDroppingExistingCards() async {
+        let service = TourismCacheAPIStub()
+        service.customPages = ["first": page([.festival], next: "next"),
+                               "next": page([.food], next: "last"), "last": page([.event], firstID: 2)]
+        let list = TourismListViewModel(tourismRepository: makeRepository(service))
+        list.selectCategory(.all)
+        await list.loadInitialTourisms()
+        await list.loadNextPage()
+        XCTAssertEqual(list.items.map(\.id), [1, 2])
+        XCTAssertEqual(service.pageCalls, 3)
+        XCTAssertNil(list.nextPageError)
+    }
+
+    func testAllFoodPagesEndInEmptyState() async {
+        let service = TourismCacheAPIStub()
+        service.customPages = ["first": page([.food], next: "next"), "next": page([.food])]
+        let list = TourismListViewModel(tourismRepository: makeRepository(service))
+        list.selectCategory(.all)
+        await list.loadInitialTourisms()
+        XCTAssertEqual(list.tourismState, .empty)
+        XCTAssertEqual(service.pageCalls, 2)
+    }
+
+    func testRepeatingFoodPageCursorStopsWithRetry() async {
+        let service = TourismCacheAPIStub()
+        service.customPages = ["first": page([.food], next: "next"), "next": page([.food], next: "next")]
+        let list = TourismListViewModel(tourismRepository: makeRepository(service))
+        list.selectCategory(.all)
+        await list.loadInitialTourisms()
+        guard case .failed = list.tourismState else { return XCTFail("Expected invalid cursor failure") }
+        XCTAssertEqual(service.pageCalls, 2)
+    }
+
+    private func page(_ categories: [TourismCategory], next: String? = nil, firstID: Int64 = 1) -> TourismPageDTO {
+        TourismPageDTO(content: categories.enumerated().map { index, category in
+            TourismDTO(tourismId: firstID + Int64(index), name: "테스트 장소", region: "서울", address: nil,
+                       thumbnailURL: nil, startDate: nil, endDate: nil, category: category)
+        }, hasNext: next != nil, nextCursor: next)
     }
 
     func testCacheInvalidationOffersRetryInsteadOfLeavingLoadingState() async {
@@ -146,6 +212,7 @@ final class TourismRepositoryCacheTests: XCTestCase {
 }
 
 private final class TourismCacheAPIStub: TourismAPIService {
+    var customPages: [String: TourismPageDTO] = [:]
     var requestedCategories: [TourismCategory] = []
     var pageCalls = 0
     var detailCalls = 0
@@ -167,6 +234,7 @@ private final class TourismCacheAPIStub: TourismAPIService {
                 successFlag: false, code: "TOUR-002", message: "Test upstream failure", data: nil
             ))
         }
+        if let page = customPages[cursor ?? "first"] { return page }
         return TourismPageDTO(content: [TourismDTO(
             tourismId: 1, name: "테스트 축제", region: "서울", address: nil,
             thumbnailURL: nil, startDate: startDate, endDate: nil, category: category

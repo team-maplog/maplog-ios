@@ -37,7 +37,6 @@ final class TourismListViewModel: ObservableObject {
         .init(category: .festival, title: "축제"),
         .init(category: .performance, title: "공연"),
         .init(category: .event, title: "행사"),
-        .init(category: .food, title: "음식점·카페"),
         .init(category: .recommendedCourse, title: "추천 코스"),
         .init(category: .experienceTourism, title: "체험 관광"),
         .init(category: .historyTourism, title: "역사 관광"),
@@ -89,10 +88,9 @@ final class TourismListViewModel: ObservableObject {
         isLoadingNextPage = false
         
         do {
-            let page = try await tourismRepository.fetchTourisms(
+            let page = try await fetchVisiblePage(
                 category: requestedCategory,
                 cursor: nil,
-                size: pageSize,
                 policy: policy
             )
             
@@ -143,10 +141,10 @@ final class TourismListViewModel: ObservableObject {
         }
 
         do {
-            let page = try await tourismRepository.fetchTourisms(
+            let page = try await fetchVisiblePage(
                 category: requestedCategory,
                 cursor: nextCursor,
-                size: pageSize
+                policy: .cached
             )
 
             guard !Task.isCancelled, revision == loadRevision, requestedCategory == selectedCategory else { // 이전 요청의 카드 추가 차단
@@ -182,6 +180,34 @@ final class TourismListViewModel: ObservableObject {
         }
 
         await loadNextPage()
+    }
+
+    private func fetchVisiblePage(
+        category: TourismCategory,
+        cursor: String?,
+        policy: TourismFetchPolicy
+    ) async throws -> TourismPage {
+        var currentCursor = cursor
+        var visitedCursors = Set<String>()
+        if let cursor { visitedCursors.insert(cursor) }
+
+        while true {
+            try Task.checkCancellation()
+            guard category == selectedCategory else { throw CancellationError() }
+            let page = try await tourismRepository.fetchTourisms(
+                category: category, cursor: currentCursor, size: pageSize, policy: policy
+            )
+            let visibleTourisms = page.tourisms.filter { $0.category != .food }
+            if !visibleTourisms.isEmpty || !page.hasNext {
+                return TourismPage(tourisms: visibleTourisms, hasNext: page.hasNext, nextCursor: page.nextCursor)
+            }
+
+            // ALL 응답에 음식점만 있는 페이지도 있다. 빈 화면에서 페이지 이동이 멈추지 않게 이어 읽는다.
+            guard let next = page.nextCursor, visitedCursors.insert(next).inserted else {
+                throw APIError.invalidResponse
+            }
+            currentCursor = next
+        }
     }
 
 
