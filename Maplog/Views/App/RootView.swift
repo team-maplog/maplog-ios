@@ -327,10 +327,9 @@ struct RootView: View {
         .overlay {
             if launchSplash.isVisible {
                 LaunchSplashView(isRevealing: launchSplash.stage == .revealing)
-                    .id(launchSplash.presentationID)
             }
         }
-        .task(id: launchSplash.presentationID) {
+        .task {
             do { try await Task.sleep(for: LaunchSplashViewModel.entranceDuration) } catch { return }
             guard !Task.isCancelled else { return }
             launchSplash.entranceDidFinish()
@@ -397,7 +396,6 @@ struct RootView: View {
 
             withAnimation(.easeOut(duration: 0.15)) {
                 if isAuthenticated {
-                    if authenticatedPhase == .app { launchSplash.prepareForHome() }
                     phase = authenticatedPhase
                 } else {
                     phase = .login
@@ -432,7 +430,6 @@ struct RootView: View {
     }
 
     private func moveToApp() {
-        launchSplash.prepareForHome()
         withAnimation(.easeOut(duration: 0.15)) {
             phase = .app
         }
