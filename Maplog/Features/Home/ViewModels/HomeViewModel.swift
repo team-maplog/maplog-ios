@@ -56,6 +56,7 @@ import Foundation
 
 @MainActor
 final class HomeViewModel: ObservableObject {
+    private(set) var hasPreparedInitialContent = false
     @Published private(set) var tourismState: HomeTourismSectionState = .idle
     private var tourismsLoadedAt: Date?
     private let now: () -> Date
@@ -105,6 +106,16 @@ final class HomeViewModel: ObservableObject {
         self.logMediaRepository = logMediaRepository
         self.profileRepository = profileRepository
         self.playbackService = playbackService
+    }
+
+    func prepareInitialContent() async {
+        guard !hasPreparedInitialContent else { return }
+        async let tourism: Void = loadInitialTourisms()
+        async let reels: Void = loadInitialReels()
+        _ = await (tourism, reels)
+        guard !Task.isCancelled else { return }
+        // 실패 상태도 준비 완료입니다. 홈의 기존 재시도 UI에서 복구합니다.
+        hasPreparedInitialContent = true
     }
 
     func loadInitialTourisms() async {
@@ -161,6 +172,7 @@ final class HomeViewModel: ObservableObject {
 
         do {
             let reels = try await fetchReelViewData()
+            try Task.checkCancellation()
 
             reelState = reels.isEmpty
                 ? .empty

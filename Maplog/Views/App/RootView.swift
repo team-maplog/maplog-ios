@@ -150,6 +150,7 @@ enum MaplogLaunchRequest {
 struct RootView: View {
     @EnvironmentObject private var authSessionStore: AuthSessionStore // 로그인 여부와 JWT 토큰을 관리해. MaplogApp에서 만들어서 주입한 객체
 
+    @StateObject private var launchSplash = LaunchSplashViewModel()
     @State private var hasFinishedInitialAuthCheck = false // keychain 조회 기억 상태
     @State private var phase: LaunchPhase = .checkingSession
     @State private var contentRevision = UUID()
@@ -264,12 +265,10 @@ struct RootView: View {
     }
 
     var body: some View {
-        Group {
+        ZStack {
             switch phase {
             case .checkingSession:
-                ProgressView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(Color.maplogSurface)
+                Color("LaunchBackground").ignoresSafeArea()
             case .login:
                 OnboardingView(
                     authRepository: authRepository,
@@ -313,14 +312,50 @@ struct RootView: View {
                     photoLibraryVideoSaveService: photoLibraryVideoSaveService,
                     requestedTab: $requestedTab,
                     requestedCapturePlaceName: $requestedCapturePlaceName,
-                    requestedNotificationDestination: $requestedNotificationDestination
+                    requestedNotificationDestination: $requestedNotificationDestination,
+                    onHomePrepared: {
+                        guard phase == .app else { return }
+                        launchSplash.destinationDidBecomeReady()
+                    }
                 )
                 .id(contentRevision)
-                .task {
-                    // 로그인과 위치 권한 단계를 마친 뒤에만 알림 권한을 요청합니다.
-                    guard authSessionStore.isAuthenticated else { return }
+                .task(id: launchSplash.stage) {
+                    // 시작 화면이 사라진 뒤에만 시스템 권한 창을 표시합니다.
+                    guard authSessionStore.isAuthenticated, !launchSplash.isVisible else { return }
                     await pushNotificationCoordinator.requestPermissionIfNeeded()
                 }
+            }
+        }
+        .allowsHitTesting(!launchSplash.isVisible)
+        .accessibilityHidden(launchSplash.isVisible)
+        .overlay {
+            if launchSplash.isVisible {
+                LaunchSplashView(isRevealing: launchSplash.stage == .revealing)
+                    .id(launchSplash.presentationID)
+            }
+        }
+        .task(id: launchSplash.presentationID) {
+            do { try await Task.sleep(for: LaunchSplashViewModel.entranceDuration) } catch { return }
+            guard !Task.isCancelled else { return }
+            launchSplash.entranceDidFinish()
+        }
+        .task(id: launchSplash.stage) {
+            guard launchSplash.stage == .revealing else { return }
+            do { try await Task.sleep(for: LaunchSplashViewModel.revealDuration) } catch { return }
+            guard !Task.isCancelled else { return }
+            launchSplash.revealDidFinish()
+        }
+        .task(id: phase) {
+            switch phase {
+            case .checkingSession:
+                return
+            case .login, .location:
+                launchSplash.destinationDidBecomeReady()
+            case .app:
+                // 느린 조회는 홈에서 계속합니다. 제한 시간 경과가 API 요청을 취소하지는 않습니다.
+                do { try await Task.sleep(for: LaunchSplashViewModel.homeWaitLimit) } catch { return }
+                guard !Task.isCancelled else { return }
+                launchSplash.destinationDidBecomeReady()
             }
         }
         .tint(.maplogLime)
@@ -374,6 +409,7 @@ struct RootView: View {
 
             withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) {
                 if isAuthenticated {
+                    if authenticatedPhase == .app { launchSplash.prepareForHome() }
                     phase = authenticatedPhase
                 } else {
                     phase = .login
@@ -408,6 +444,7 @@ struct RootView: View {
     }
 
     private func moveToApp() {
+        launchSplash.prepareForHome()
         withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) {
             phase = .app
         }
