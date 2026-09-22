@@ -10,7 +10,8 @@ final class LaunchSplashViewModel: ObservableObject {
         case finished
     }
 
-    static let entranceDuration: Duration = .milliseconds(1300)
+    // 카드 모션 속도는 유지하고, 홈 데이터가 준비될 시간을 1초 더 확보합니다.
+    static let entranceDuration: Duration = .milliseconds(2300)
     static let revealDuration: Duration = .milliseconds(220)
 
     @Published private(set) var stage: Stage = .presenting
