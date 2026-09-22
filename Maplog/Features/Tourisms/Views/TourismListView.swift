@@ -37,6 +37,7 @@ struct TourismListView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            TourismListNavigationBar(onBack: dismiss.callAsFunction)
             categoryCarousel
             Divider()
             tourismContent
@@ -44,9 +45,6 @@ struct TourismListView: View {
         // iOS의 기본 뒤로가기 버튼은 OS 버전에 따라 원형 유리 버튼이 된다.
         // 시안처럼 얇은 chevron을 고정하기 위해 이 화면만 자체 헤더를 사용한다.
         .toolbar(.hidden, for: .navigationBar)
-        .safeAreaInset(edge: .top, spacing: 0) {
-            TourismListNavigationBar(onBack: dismiss.callAsFunction)
-        }
         .background(Color.white.ignoresSafeArea())
         .maplogTabBarHidden()
         .refreshable { await viewModel.refresh() }
@@ -57,7 +55,7 @@ struct TourismListView: View {
 
     private var categoryCarousel: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            LazyHStack(spacing: MaplogSpacing.xSmall) {
+            HStack(spacing: MaplogSpacing.xSmall) {
                 ForEach(viewModel.categoryTabs) { tab in
                     Button(action: { selectCategory(tab.category) }) {
                         Text(tab.title)
@@ -99,6 +97,7 @@ struct TourismListView: View {
             .padding(.horizontal, MaplogSpacing.page)
         }
         .frame(height: 52)
+        .fixedSize(horizontal: false, vertical: true)
         .background(Color.white)
     }
 
@@ -107,14 +106,14 @@ struct TourismListView: View {
     private var tourismContent: some View {
         switch viewModel.tourismState {
         case .idle, .initialLoading:
-            ProgressView("축제 정보를 불러오는 중이에요")
+            ProgressView("\(gridCategoryTitle) 정보를 불러오는 중이에요")
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         case .content:
             tourismGrid
         case .empty:
-            ContentUnavailableView("표시할 축제가 없어요",
+            ContentUnavailableView("표시할 \(gridCategoryTitle) 정보가 없어요",
             systemImage: "calendar.badge.exclamationmark",
-                                   description: Text("현재 진행 예정인 축제가 없어요.")
+                                   description: Text("다른 카테고리를 선택하거나 나중에 다시 확인해 주세요.")
             )
         case .failed(let presentation):
             VStack(spacing: 12) {
@@ -194,7 +193,7 @@ struct TourismListView: View {
                             } label: {
                                 TourismGridCard(
                                     item: item,
-                                    categoryTitle: gridCategoryTitle,
+                                    categoryTitle: item.categoryTitle,
                                     cardWidth: cardWidth
                                 )
                             }

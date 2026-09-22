@@ -28,4 +28,5 @@ struct TourismListItemViewData: Identifiable, Equatable {
     let locationText: String
     let periodText: String
     let thumbnailURL: URL?
+    var categoryTitle: String = "관광"
 }

@@ -37,6 +37,7 @@ final class TourismListViewModel: ObservableObject {
         .init(category: .festival, title: "축제"),
         .init(category: .performance, title: "공연"),
         .init(category: .event, title: "행사"),
+        .init(category: .food, title: "음식점·카페"),
         .init(category: .recommendedCourse, title: "추천 코스"),
         .init(category: .experienceTourism, title: "체험 관광"),
         .init(category: .historyTourism, title: "역사 관광"),
@@ -195,7 +196,8 @@ final class TourismListViewModel: ObservableObject {
                 title: tourism.name,
                 locationText: tourism.region ?? "지역 정보 없음",
                 periodText: formattedPeriodText,
-                thumbnailURL: tourism.thumbnailURL
+                thumbnailURL: tourism.thumbnailURL,
+                categoryTitle: categoryTabs.first { $0.category == tourism.category }?.title ?? "관광"
             )
     }
     
@@ -234,6 +236,15 @@ final class TourismListViewModel: ObservableObject {
         guard selectedCategory != category else {
             return
         }
+        // 선택 직후 기존 페이지 요청과 결과를 분리한다. 새 .task 시작 전에도 적용된다.
+        loadRevision = UUID()
+        items = []
+        nextCursor = nil
+        hasNext = false
+        nextPageError = nil
+        refreshError = nil
+        isLoadingNextPage = false
+        tourismState = .idle
         selectedCategory = category
     }
 }
