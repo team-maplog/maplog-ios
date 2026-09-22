@@ -57,6 +57,8 @@ import Foundation
 @MainActor
 final class HomeViewModel: ObservableObject {
     @Published private(set) var tourismState: HomeTourismSectionState = .idle
+    private var tourismsLoadedAt: Date?
+    private let now: () -> Date
     @Published private(set) var reelState: HomeReelSectionState = .idle
     @Published private var thumbnailDataByReelID: [Int64: Data] = [:] // [로그 ID: 해당 썸네일 이미지 원본 Data]
     @Published private var thumbnailLoadingIDs: Set<Int64> = [] //현재 네트워크 요청 중인 로그 ID 모음
@@ -93,9 +95,11 @@ final class HomeViewModel: ObservableObject {
         logInteractionRepository: any LogInteractionRepository,
         logMediaRepository: any LogMediaRepository,
         profileRepository: any ProfileRepository,
-        playbackService: any VideoPlaybackService
+        playbackService: any VideoPlaybackService,
+        now: @escaping () -> Date = { Date() }
     ) { // HomeViewModel을 만들 때 Repository를 반드시 전달받게 함
         self.tourismRepository = tourismRepository
+        self.now = now
         self.logReelRepository = logReelRepository
         self.logInteractionRepository = logInteractionRepository
         self.logMediaRepository = logMediaRepository
@@ -104,7 +108,12 @@ final class HomeViewModel: ObservableObject {
     }
 
     func loadInitialTourisms() async {
-        guard tourismState != .loading else {
+        guard tourismState != .loading, !hasFreshTourismCards else {
+            return
+        }
+
+        if case .content = tourismState {
+            await refreshTourisms(policy: .cached)
             return
         }
 
@@ -112,8 +121,8 @@ final class HomeViewModel: ObservableObject {
 
         do {
             let cards = try await fetchTourismCards()
-
-
+            try Task.checkCancellation()
+            tourismsLoadedAt = now()
             tourismState = cards.isEmpty ? .empty : .content(cards)
         } catch is CancellationError {
             tourismState = .idle
@@ -123,11 +132,22 @@ final class HomeViewModel: ObservableObject {
         }
     }
 
+    private var hasFreshTourismCards: Bool {
+        guard let tourismsLoadedAt else { return false }
+        let instant = now()
+        let age = instant.timeIntervalSince(tourismsLoadedAt)
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "Asia/Seoul")!
+        return age >= 0 && age < 600
+            && calendar.isDate(tourismsLoadedAt, inSameDayAs: instant)
+    }
+
     func retryInitialTourisms() async {
         guard tourismState != .loading else {
             return
         }
 
+        tourismsLoadedAt = nil
         tourismState = .idle
         await loadInitialTourisms()
     }
@@ -685,6 +705,7 @@ final class HomeViewModel: ObservableObject {
 
     // 내부 새로고침 함수
     private func refreshTourisms(policy: TourismFetchPolicy) async {
+        guard policy == .reload || !hasFreshTourismCards else { return }
         let previousState = tourismState
 
         do {
@@ -697,6 +718,7 @@ final class HomeViewModel: ObservableObject {
             tourismState = cards.isEmpty
                 ? .empty
                 : .content(cards)
+            tourismsLoadedAt = now()
 
         } catch is CancellationError {
             return

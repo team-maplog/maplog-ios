@@ -3,6 +3,21 @@ import XCTest
 
 @MainActor
 final class TourismRepositoryCacheTests: XCTestCase {
+    func testEveryListCategoryLoadsItsOwnContentAndClearsPreviousPage() async {
+        let service = TourismCacheAPIStub()
+        let viewModel = TourismListViewModel(tourismRepository: makeRepository(service))
+        XCTAssertTrue(viewModel.categoryTabs.contains { $0.category == .food })
+        for tab in viewModel.categoryTabs {
+            viewModel.selectCategory(tab.category)
+            XCTAssertTrue(viewModel.items.isEmpty)
+            await viewModel.loadNextPage()
+            await viewModel.loadInitialTourisms()
+            XCTAssertEqual(service.requestedCategories.last, tab.category)
+            XCTAssertEqual(viewModel.tourismState, .content)
+            XCTAssertEqual(viewModel.items.first?.categoryTitle, tab.title)
+        }
+    }
+
     func testCacheInvalidationOffersRetryInsteadOfLeavingLoadingState() async {
         let service = TourismCacheAPIStub()
         service.invalidated = true
@@ -131,6 +146,7 @@ final class TourismRepositoryCacheTests: XCTestCase {
 }
 
 private final class TourismCacheAPIStub: TourismAPIService {
+    var requestedCategories: [TourismCategory] = []
     var pageCalls = 0
     var detailCalls = 0
     var startDate: String? = nil
@@ -138,6 +154,7 @@ private final class TourismCacheAPIStub: TourismAPIService {
     var rejectCursor = false
     var invalidated = false
     func fetchTourisms(category: TourismCategory, cursor: String?, size: Int) async throws -> TourismPageDTO {
+        requestedCategories.append(category)
         pageCalls += 1
         if invalidated { throw TourismRepositoryError.requestInvalidated }
         if rejectCursor, cursor != nil {

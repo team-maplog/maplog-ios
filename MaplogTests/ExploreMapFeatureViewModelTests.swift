@@ -4,6 +4,38 @@ import XCTest
 
 @MainActor
 final class ExploreMapFeatureViewModelTests: XCTestCase {
+    func testUnavailableTourismWithoutMarkersKeepsFailureStatusForRetry() async {
+        let content = MapViewportContent(logMarkers: [], tourismMarkers: [],
+            isLogMarkerTruncated: false,
+            tourismStatus: TourismMapStatus(isAvailable: false, isStale: false, isTruncated: false))
+        let viewModel = makeViewModel(mapRepository: MapRepositoryStub(content: content))
+        await loadContent(into: viewModel)
+        XCTAssertEqual(viewModel.state, .content(content))
+        XCTAssertTrue(viewModel.filteredMarkers.isEmpty)
+    }
+
+    func testUnavailableTourismPreservesLogMarkers() async {
+        let initial = makeMapViewportContent()
+        let content = MapViewportContent(logMarkers: initial.logMarkers, tourismMarkers: [],
+            isLogMarkerTruncated: false,
+            tourismStatus: TourismMapStatus(isAvailable: false, isStale: false, isTruncated: false))
+        let viewModel = makeViewModel(mapRepository: MapRepositoryStub(content: content))
+        await loadContent(into: viewModel)
+        XCTAssertEqual(viewModel.filteredMarkers.map(\.id), initial.logMarkers.map(\.mapMarkerID))
+        XCTAssertEqual(viewModel.state.content?.tourismStatus.isAvailable, false)
+    }
+
+    func testStaleFestivalMarkersRemainVisible() async {
+        let initial = makeMapViewportContent()
+        let content = MapViewportContent(logMarkers: [], tourismMarkers: initial.tourismMarkers,
+            isLogMarkerTruncated: false,
+            tourismStatus: TourismMapStatus(isAvailable: true, isStale: true, isTruncated: false))
+        let viewModel = makeViewModel(mapRepository: MapRepositoryStub(content: content))
+        await loadContent(into: viewModel)
+        XCTAssertEqual(viewModel.filteredMarkers, content.markers)
+        XCTAssertEqual(viewModel.state.content?.tourismStatus.isStale, true)
+    }
+
     func testClosingCardDiscardsPendingPreview() async throws {
         let viewModel = makeViewModel()
         await loadContent(into: viewModel)
@@ -214,7 +246,7 @@ final class ExploreMapFeatureViewModelTests: XCTestCase {
 
         XCTAssertEqual(
             ExploreMapFilter.allCases.map(\.title).contains("행사"),
-            false
+            true
         )
         XCTAssertEqual(
             ExploreMapFilter.allCases,
@@ -269,6 +301,7 @@ final class ExploreMapFeatureViewModelTests: XCTestCase {
             (.events, .events, ["tourism-101", "tourism-102", "tourism-103"]),
             (.festival, .festival, ["tourism-101"]),
             (.performance, .performance, ["tourism-102"]),
+            (.event, .event, ["tourism-103"]),
             (.accommodation, .accommodation, ["tourism-104"]),
             (.food, .food, ["tourism-105"]),
             (.shopping, .shopping, ["tourism-106"]),

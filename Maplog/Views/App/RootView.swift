@@ -2,6 +2,7 @@ import Foundation
 import SwiftUI
 
 private enum LaunchPhase {
+    case checkingSession
     case login
     case location
     case app
@@ -150,7 +151,7 @@ struct RootView: View {
     @EnvironmentObject private var authSessionStore: AuthSessionStore // 로그인 여부와 JWT 토큰을 관리해. MaplogApp에서 만들어서 주입한 객체
 
     @State private var hasFinishedInitialAuthCheck = false // keychain 조회 기억 상태
-    @State private var phase: LaunchPhase = .login
+    @State private var phase: LaunchPhase = .checkingSession
     @State private var contentRevision = UUID()
     @State private var requestedTab: MaplogTab?
     @State private var requestedCapturePlaceName: String?
@@ -265,6 +266,10 @@ struct RootView: View {
     var body: some View {
         Group {
             switch phase {
+            case .checkingSession:
+                ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color.maplogSurface)
             case .login:
                 OnboardingView(
                     authRepository: authRepository,
@@ -343,13 +348,14 @@ struct RootView: View {
                 return
             }
 
+            // 복원 중의 인증 변경이 로그인 성공 이벤트로 처리되지 않게 한다.
+            defer { hasFinishedInitialAuthCheck = true }
+
             do {
                 try authSessionStore.restoreSession()
             } catch {
                 try? authSessionStore.endSession()
             }
-
-            hasFinishedInitialAuthCheck = true
 
             guard authSessionStore.isAuthenticated else {
                 phase = .login
@@ -358,7 +364,7 @@ struct RootView: View {
 
             // 저장된 refresh token 존재만으로 홈을 열지 않고 보호 API까지 확인함
             phase = await sessionLifecycle.validateRestoredSession()
-                ? .app
+                ? authenticatedPhase
                 : .login
         } // 회원가입 성공 로그아웃 변화 감지
         .onChange(of: authSessionStore.isAuthenticated) { _, isAuthenticated in
@@ -368,12 +374,16 @@ struct RootView: View {
 
             withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) {
                 if isAuthenticated {
-                    phase = .location
+                    phase = authenticatedPhase
                 } else {
                     phase = .login
                 }
             }
         }
+    }
+
+    private var authenticatedPhase: LaunchPhase {
+        locationPermissionService.needsAuthorizationRequest ? .location : .app
     }
 
     private func requestLocationPermission() {
@@ -389,7 +399,7 @@ struct RootView: View {
 
             isRequestingLocationPermission = false
 
-            guard !Task.isCancelled else {
+            guard !Task.isCancelled, authSessionStore.isAuthenticated else {
                 return
             }
 

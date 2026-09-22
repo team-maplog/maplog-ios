@@ -4,6 +4,7 @@ import Foundation
 /// 위치 좌표를 읽지 않고, iOS의 "앱 사용 중 위치" 권한만 요청하는 경계입니다.
 @MainActor
 protocol LocationPermissionService {
+    var needsAuthorizationRequest: Bool { get }
     func requestWhenInUseAuthorization() async -> LocationPermissionResult
 }
 
@@ -17,16 +18,21 @@ enum LocationPermissionResult: Equatable {
 @MainActor
 final class CoreLocationPermissionService: NSObject,
     LocationPermissionService {
-    private let locationManager = CLLocationManager()
+    private let locationManager: CLLocationManager
     private var continuations: [
         UUID: CheckedContinuation<LocationPermissionResult, Never>
     ] = [:]
     private var isAuthorizationRequestInFlight = false
 
-    override init() {
+    init(locationManager: CLLocationManager = CLLocationManager()) {
+        self.locationManager = locationManager
         super.init()
 
         locationManager.delegate = self
+    }
+
+    var needsAuthorizationRequest: Bool {
+        locationManager.authorizationStatus == .notDetermined
     }
 
     func requestWhenInUseAuthorization() async -> LocationPermissionResult {
