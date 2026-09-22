@@ -108,6 +108,14 @@ final class HomeViewModel: ObservableObject {
         self.playbackService = playbackService
     }
 
+    /// 관광 카드와 포스터 준비가 끝났거나, 홈에서 빈 화면·재시도를 보여줄 수 있는 상태입니다.
+    var hasResolvedInitialTourisms: Bool {
+        switch tourismState {
+        case .idle, .loading: false
+        case .content, .empty, .failed: true
+        }
+    }
+
     func prepareInitialContent() async {
         guard !hasPreparedInitialContent else { return }
         async let tourism: Void = loadInitialTourisms()

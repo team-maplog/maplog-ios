@@ -1,7 +1,7 @@
 import Foundation
 
-/// 앱 최초 진입 시 사진 등장 모션과 세션 분기 완료까지만 기다립니다.
-/// 홈 API 응답은 시작 화면을 닫는 조건에 포함하지 않습니다.
+/// 앱 최초 진입 시 카드 등장과 목적지 준비를 모두 기다립니다.
+/// 홈으로 진입할 때는 관광 조회 결과가 준비된 뒤 목적지 완료 신호를 받습니다.
 @MainActor
 final class LaunchSplashViewModel: ObservableObject {
     enum Stage {

@@ -13,11 +13,11 @@ final class LaunchSplashViewModelTests: XCTestCase {
         XCTAssertFalse(model.isVisible)
     }
 
-    func testEntranceWaitsForSessionButDoesNotNeedHomeResponse() {
+    func testEntranceWaitsForTourismResultBeforeRevealingHome() {
         let model = LaunchSplashViewModel()
         model.entranceDidFinish()
         XCTAssertEqual(model.stage, .presenting)
-        // 세션 분기 완료만 전달합니다. 홈 조회 완료 신호는 필요하지 않습니다.
+        // 카드 모션이 끝나도 관광 조회 결과가 준비되기 전에는 홈을 열지 않습니다.
         model.destinationDidBecomeReady()
         XCTAssertEqual(model.stage, .revealing)
     }

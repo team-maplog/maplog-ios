@@ -312,7 +312,11 @@ struct RootView: View {
                     photoLibraryVideoSaveService: photoLibraryVideoSaveService,
                     requestedTab: $requestedTab,
                     requestedCapturePlaceName: $requestedCapturePlaceName,
-                    requestedNotificationDestination: $requestedNotificationDestination
+                    requestedNotificationDestination: $requestedNotificationDestination,
+                    onInitialTourismsResolved: {
+                        guard phase == .app else { return }
+                        launchSplash.destinationDidBecomeReady()
+                    }
                 )
                 .id(contentRevision)
                 .task(id: launchSplash.stage) {
@@ -341,9 +345,13 @@ struct RootView: View {
             launchSplash.revealDidFinish()
         }
         .task(id: phase) {
-            // 인증/위치 분기가 정해지면 준비 완료로 처리합니다. 홈 API 응답은 기다리지 않습니다.
-            guard phase != .checkingSession else { return }
-            launchSplash.destinationDidBecomeReady()
+            switch phase {
+            case .checkingSession, .app:
+                // 홈은 관광 카드 준비 완료 신호로 열고, 고정 시간 제한으로 먼저 닫지 않습니다.
+                return
+            case .login, .location:
+                launchSplash.destinationDidBecomeReady()
+            }
         }
         .tint(.maplogLime)
         .font(MaplogFont.body)

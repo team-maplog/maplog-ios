@@ -4,6 +4,29 @@ import XCTest
 
 @MainActor
 final class HomeTourismThumbnailTests: XCTestCase {
+    func testTourismReadinessWaitsForResponseAndDoesNotRequireReels() async {
+        let repository = ThumbnailRepositoryStub()
+        let started = expectation(description: "Tourism request started")
+        var response: CheckedContinuation<Void, Never>?
+        repository.beforePageResponse = {
+            await withCheckedContinuation { continuation in
+                response = continuation
+                started.fulfill()
+            }
+        }
+        let model = makeViewModel(repository)
+        XCTAssertFalse(model.hasResolvedInitialTourisms)
+        let task = Task { await model.loadInitialTourisms() }
+        await fulfillment(of: [started], timeout: 2)
+        XCTAssertEqual(model.tourismState, .loading)
+        XCTAssertFalse(model.hasResolvedInitialTourisms)
+        response?.resume()
+        await task.value
+        XCTAssertTrue(model.hasResolvedInitialTourisms)
+        XCTAssertFalse(model.hasPreparedInitialContent)
+        guard case .content = model.tourismState else { return XCTFail("Expected cards") }
+    }
+
     func testSplashPreparationLoadsBothSectionsAndHomeReusesResults() async {
         let repository = ThumbnailRepositoryStub()
         let dependencies = UnusedHomeDependencies()
@@ -29,6 +52,7 @@ final class HomeTourismThumbnailTests: XCTestCase {
         XCTAssertTrue(model.hasPreparedInitialContent)
         XCTAssertEqual(model.reelState, .empty)
         guard case let .failed(error) = model.tourismState else { return XCTFail("Expected failure") }
+        XCTAssertTrue(model.hasResolvedInitialTourisms)
         XCTAssertEqual(error.recoveryAction, .retry)
         await model.prepareInitialContent()
         XCTAssertEqual(repository.pageRequests, 1)
@@ -65,6 +89,7 @@ final class HomeTourismThumbnailTests: XCTestCase {
         await viewModel.loadInitialTourisms()
         XCTAssertEqual(viewModel.tourismState, .empty)
         XCTAssertEqual(repository.pageRequests, 1)
+        XCTAssertTrue(viewModel.hasResolvedInitialTourisms)
     }
 
     func testHomeRefreshesAfterTenMinutes() async {
@@ -199,6 +224,7 @@ private final class ThumbnailRepositoryStub: TourismRepository {
     var pagePolicies: [TourismFetchPolicy] = []
     var imagePolicies: [TourismFetchPolicy] = []
     var pages: [[Int64]] = [[1, 2]]
+    var beforePageResponse: (() async -> Void)?
     func fetchPortraitImage(tourismID: Int64, policy: TourismFetchPolicy) async throws -> TourismPortraitImage? {
         imageRequests.append(tourismID)
         imagePolicies.append(policy)
@@ -206,6 +232,7 @@ private final class ThumbnailRepositoryStub: TourismRepository {
         return approvedIDs.contains(tourismID) ? original : nil
     }
     func fetchTourisms(category: TourismCategory, cursor: String?, size: Int, policy: TourismFetchPolicy) async throws -> TourismPage {
+        await beforePageResponse?()
         let index = cursor.flatMap(Int.init) ?? 0
         pageRequests += 1
         pagePolicies.append(policy)
