@@ -4,6 +4,47 @@ import XCTest
 
 @MainActor
 final class HomeTourismThumbnailTests: XCTestCase {
+    func testSplashPreparationLoadsBothSectionsAndHomeReusesResults() async {
+        let repository = ThumbnailRepositoryStub()
+        let dependencies = UnusedHomeDependencies()
+        let model = HomeViewModel(tourismRepository: repository, logReelRepository: dependencies,
+                                  logInteractionRepository: dependencies, logMediaRepository: dependencies,
+                                  profileRepository: dependencies, playbackService: dependencies)
+        await model.prepareInitialContent()
+        XCTAssertTrue(model.hasPreparedInitialContent)
+        XCTAssertEqual(model.reelState, .empty)
+        guard case .content = model.tourismState else { return XCTFail("Expected tourism cards") }
+        await model.prepareInitialContent()
+        await model.loadInitialTourisms()
+        await model.loadInitialReels()
+        XCTAssertEqual(repository.pageRequests, 1)
+        XCTAssertEqual(dependencies.reelRequests, 1)
+    }
+
+    func testFailedTourismPreparationStillCompletesWithRetryState() async {
+        let repository = ThumbnailRepositoryStub()
+        repository.failingIDs = [1, 2]
+        let model = makeViewModel(repository)
+        await model.prepareInitialContent()
+        XCTAssertTrue(model.hasPreparedInitialContent)
+        XCTAssertEqual(model.reelState, .empty)
+        guard case let .failed(error) = model.tourismState else { return XCTFail("Expected failure") }
+        XCTAssertEqual(error.recoveryAction, .retry)
+        await model.prepareInitialContent()
+        XCTAssertEqual(repository.pageRequests, 1)
+    }
+
+    func testCancelledPreparationDoesNotPublishCompletion() async {
+        let repository = ThumbnailRepositoryStub()
+        let model = makeViewModel(repository)
+        let task = Task { await model.prepareInitialContent() }
+        task.cancel()
+        await task.value
+        XCTAssertFalse(model.hasPreparedInitialContent)
+        XCTAssertEqual(model.tourismState, .idle)
+        XCTAssertEqual(model.reelState, .idle)
+    }
+
     func testReturningHomeKeepsCardsAndDoesNotRescanImages() async {
         let repository = ThumbnailRepositoryStub()
         let viewModel = makeViewModel(repository)
@@ -180,8 +221,10 @@ private final class ThumbnailRepositoryStub: TourismRepository {
 private final class UnusedHomeDependencies: LogReelRepository, LogInteractionRepository, LogMediaRepository, ProfileRepository, VideoPlaybackService {
     let player = AVPlayer()
     let isMuted = true
+    var reelRequests = 0
     func fetchReels(cursor: String?, size: Int) async throws -> LogReelPage {
-        LogReelPage(reels: [], hasNext: false, nextCursor: nil)
+        reelRequests += 1
+        return LogReelPage(reels: [], hasNext: false, nextCursor: nil)
     }
     func fetchSavedLogs(cursor: String?, size: Int) async throws -> LogReelPage { fatalError("Unused") }
     func setLike(logID: Int64, isLiked: Bool) async throws -> LogLikeInteractionResult { fatalError("Unused") }
