@@ -312,11 +312,7 @@ struct RootView: View {
                     photoLibraryVideoSaveService: photoLibraryVideoSaveService,
                     requestedTab: $requestedTab,
                     requestedCapturePlaceName: $requestedCapturePlaceName,
-                    requestedNotificationDestination: $requestedNotificationDestination,
-                    onHomePrepared: {
-                        guard phase == .app else { return }
-                        launchSplash.destinationDidBecomeReady()
-                    }
+                    requestedNotificationDestination: $requestedNotificationDestination
                 )
                 .id(contentRevision)
                 .task(id: launchSplash.stage) {
@@ -331,13 +327,7 @@ struct RootView: View {
         .overlay {
             if launchSplash.isVisible {
                 LaunchSplashView(isRevealing: launchSplash.stage == .revealing)
-                    .id(launchSplash.presentationID)
             }
-        }
-        .task(id: launchSplash.presentationID) {
-            do { try await Task.sleep(for: LaunchSplashViewModel.entranceDuration) } catch { return }
-            guard !Task.isCancelled else { return }
-            launchSplash.entranceDidFinish()
         }
         .task(id: launchSplash.stage) {
             guard launchSplash.stage == .revealing else { return }
@@ -346,24 +336,16 @@ struct RootView: View {
             launchSplash.revealDidFinish()
         }
         .task(id: phase) {
-            switch phase {
-            case .checkingSession:
-                return
-            case .login, .location:
-                launchSplash.destinationDidBecomeReady()
-            case .app:
-                // 느린 조회는 홈에서 계속합니다. 제한 시간 경과가 API 요청을 취소하지는 않습니다.
-                do { try await Task.sleep(for: LaunchSplashViewModel.homeWaitLimit) } catch { return }
-                guard !Task.isCancelled else { return }
-                launchSplash.destinationDidBecomeReady()
-            }
+            // 인증/위치 분기가 정해지면 홈 데이터와 무관하게 즉시 전환합니다.
+            guard phase != .checkingSession else { return }
+            launchSplash.destinationDidBecomeReady()
         }
         .tint(.maplogLime)
         .font(MaplogFont.body)
         .environment(\.maplogLogout) {
             // 이미 토큰이 지워진 오류 상태여도 버튼은 항상 로그인 화면으로 보냄
             try? authSessionStore.endSession()
-            withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) {
+            withAnimation(.easeOut(duration: 0.15)) {
                 phase = .login
             }
         }
@@ -407,9 +389,8 @@ struct RootView: View {
                 return
             }
 
-            withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) {
+            withAnimation(.easeOut(duration: 0.15)) {
                 if isAuthenticated {
-                    if authenticatedPhase == .app { launchSplash.prepareForHome() }
                     phase = authenticatedPhase
                 } else {
                     phase = .login
@@ -444,8 +425,7 @@ struct RootView: View {
     }
 
     private func moveToApp() {
-        launchSplash.prepareForHome()
-        withAnimation(.spring(response: 0.45, dampingFraction: 0.9)) {
+        withAnimation(.easeOut(duration: 0.15)) {
             phase = .app
         }
     }

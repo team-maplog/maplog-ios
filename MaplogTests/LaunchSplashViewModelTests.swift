@@ -3,64 +3,38 @@ import XCTest
 
 @MainActor
 final class LaunchSplashViewModelTests: XCTestCase {
-    func testFastDestinationStillFinishesEntranceBeforeRevealing() {
+    func testResolvedDestinationRevealsImmediatelyWithoutEntranceOrHomeSignal() {
         let model = LaunchSplashViewModel()
         model.destinationDidBecomeReady()
-        XCTAssertEqual(model.stage, .presenting)
-        model.entranceDidFinish()
         XCTAssertEqual(model.stage, .revealing)
+        XCTAssertEqual(LaunchSplashViewModel.revealDuration, .milliseconds(150))
         model.revealDidFinish()
         XCTAssertFalse(model.isVisible)
     }
 
-    func testSlowDestinationRemainsCoveredUntilReadyOrDeadlineSignal() {
+    func testUnresolvedSessionCannotBeBypassedByAnimationCompletion() {
         let model = LaunchSplashViewModel()
-        model.entranceDidFinish()
-        XCTAssertEqual(model.stage, .presenting)
-        // RootView sends the same readiness signal when the home wait limit expires.
-        model.destinationDidBecomeReady()
-        XCTAssertEqual(model.stage, .revealing)
-    }
-
-    func testFinishingAnimationCannotBypassUnresolvedSession() {
-        let model = LaunchSplashViewModel()
-        model.entranceDidFinish()
         model.revealDidFinish()
         XCTAssertEqual(model.stage, .presenting)
     }
 
-    func testRestoredSessionDoesNotRestartVisibleEntrance() {
+    func testLoginAndLocationCompletionDoNotStartAnotherSplash() {
         let model = LaunchSplashViewModel()
-        let id = model.presentationID
-        model.entranceDidFinish()
-        model.prepareForHome()
-        XCTAssertEqual(model.presentationID, id)
-        model.destinationDidBecomeReady()
-        XCTAssertEqual(model.stage, .revealing)
-    }
-
-    func testLoginStartsNewPresentationAfterOnboarding() {
-        let model = LaunchSplashViewModel()
-        model.entranceDidFinish()
         model.destinationDidBecomeReady()
         model.revealDidFinish()
-        let previousID = model.presentationID
-        model.prepareForHome()
-        XCTAssertNotEqual(model.presentationID, previousID)
-        XCTAssertEqual(model.stage, .presenting)
-        model.entranceDidFinish()
-        XCTAssertEqual(model.stage, .presenting)
+        // 로그인과 위치 권한 단계가 끝나도 시작 화면을 다시 열지 않습니다.
         model.destinationDidBecomeReady()
-        XCTAssertEqual(model.stage, .revealing)
-    }
-
-    func testLateDataAfterTimeoutDoesNotShowSplashAgain() {
-        let model = LaunchSplashViewModel()
-        model.entranceDidFinish()
         model.destinationDidBecomeReady()
-        model.revealDidFinish()
-        model.destinationDidBecomeReady()
-        model.entranceDidFinish()
         XCTAssertFalse(model.isVisible)
+    }
+
+    func testRepeatedReadyEventsDoNotRestartTransition() {
+        let model = LaunchSplashViewModel()
+        model.destinationDidBecomeReady()
+        model.destinationDidBecomeReady()
+        XCTAssertEqual(model.stage, .revealing)
+        model.revealDidFinish()
+        model.revealDidFinish()
+        XCTAssertEqual(model.stage, .finished)
     }
 }
