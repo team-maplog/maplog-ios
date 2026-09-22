@@ -6,7 +6,6 @@ struct LaunchSplashView: View {
     let isRevealing: Bool
 
     @State private var hasEntered = false
-    @State private var revealScale: CGFloat = 0
     @State private var contentOpacity: Double = 1
 
     private let ink = Color(red: 36 / 255, green: 37 / 255, blue: 34 / 255)
@@ -61,14 +60,6 @@ struct LaunchSplashView: View {
                 .opacity(hasEntered || reduceMotion ? 1 : 0)
                 .offset(y: hasEntered || reduceMotion ? 0 : 14)
                 .animation(reduceMotion ? nil : .easeOut(duration: 0.35).delay(0.4), value: hasEntered)
-
-                if !reduceMotion {
-                    Circle()
-                        .fill(Color.maplogLime)
-                        .frame(width: max(proxy.size.width, height) * 2)
-                        .scaleEffect(revealScale)
-                        .position(x: proxy.size.width / 2, y: height * 0.45)
-                }
             }
             .foregroundStyle(ink)
         }
@@ -80,10 +71,6 @@ struct LaunchSplashView: View {
         .task { hasEntered = true }
         .task(id: isRevealing) {
             guard isRevealing else { return }
-            if !reduceMotion {
-                withAnimation(.easeInOut(duration: 0.24)) { revealScale = 1 }
-                do { try await Task.sleep(for: .milliseconds(240)) } catch { return }
-            }
             guard !Task.isCancelled else { return }
             withAnimation(.easeOut(duration: 0.22)) { contentOpacity = 0 }
         }
