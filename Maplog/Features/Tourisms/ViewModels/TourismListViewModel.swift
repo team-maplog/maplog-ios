@@ -88,10 +88,9 @@ final class TourismListViewModel: ObservableObject {
         isLoadingNextPage = false
         
         do {
-            let page = try await tourismRepository.fetchTourisms(
+            let page = try await fetchVisiblePage(
                 category: requestedCategory,
                 cursor: nil,
-                size: pageSize,
                 policy: policy
             )
             
@@ -142,10 +141,10 @@ final class TourismListViewModel: ObservableObject {
         }
 
         do {
-            let page = try await tourismRepository.fetchTourisms(
+            let page = try await fetchVisiblePage(
                 category: requestedCategory,
                 cursor: nextCursor,
-                size: pageSize
+                policy: .cached
             )
 
             guard !Task.isCancelled, revision == loadRevision, requestedCategory == selectedCategory else { // 이전 요청의 카드 추가 차단
@@ -183,6 +182,34 @@ final class TourismListViewModel: ObservableObject {
         await loadNextPage()
     }
 
+    private func fetchVisiblePage(
+        category: TourismCategory,
+        cursor: String?,
+        policy: TourismFetchPolicy
+    ) async throws -> TourismPage {
+        var currentCursor = cursor
+        var visitedCursors = Set<String>()
+        if let cursor { visitedCursors.insert(cursor) }
+
+        while true {
+            try Task.checkCancellation()
+            guard category == selectedCategory else { throw CancellationError() }
+            let page = try await tourismRepository.fetchTourisms(
+                category: category, cursor: currentCursor, size: pageSize, policy: policy
+            )
+            let visibleTourisms = page.tourisms.filter { $0.category != .food }
+            if !visibleTourisms.isEmpty || !page.hasNext {
+                return TourismPage(tourisms: visibleTourisms, hasNext: page.hasNext, nextCursor: page.nextCursor)
+            }
+
+            // ALL 응답에 음식점만 있는 페이지도 있다. 빈 화면에서 페이지 이동이 멈추지 않게 이어 읽는다.
+            guard let next = page.nextCursor, visitedCursors.insert(next).inserted else {
+                throw APIError.invalidResponse
+            }
+            currentCursor = next
+        }
+    }
+
 
     private func makeListItemViewData(from tourism: Tourism) -> TourismListItemViewData {
         let formattedPeriodText = periodText(
@@ -195,7 +222,8 @@ final class TourismListViewModel: ObservableObject {
                 title: tourism.name,
                 locationText: tourism.region ?? "지역 정보 없음",
                 periodText: formattedPeriodText,
-                thumbnailURL: tourism.thumbnailURL
+                thumbnailURL: tourism.thumbnailURL,
+                categoryTitle: categoryTabs.first { $0.category == tourism.category }?.title ?? "관광"
             )
     }
     
@@ -234,6 +262,15 @@ final class TourismListViewModel: ObservableObject {
         guard selectedCategory != category else {
             return
         }
+        // 선택 직후 기존 페이지 요청과 결과를 분리한다. 새 .task 시작 전에도 적용된다.
+        loadRevision = UUID()
+        items = []
+        nextCursor = nil
+        hasNext = false
+        nextPageError = nil
+        refreshError = nil
+        isLoadingNextPage = false
+        tourismState = .idle
         selectedCategory = category
     }
 }

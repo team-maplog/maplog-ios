@@ -470,11 +470,10 @@ struct HomeView: View {
                     .accessibilityAddTraits(.isStaticText)
             }
         }
-        .task { // body 안에서 직접 API를 호출하지 않고, View가 화면에 등장하는 생명주기에 맞는 .task에서 호출
-            async let tourism: Void = viewModel.loadInitialTourisms()
-            async let reels: Void = viewModel.loadInitialReels()
-
-            _ = await (tourism, reels)
+        .task {
+            // 첫 조회는 MainTabView가 유지합니다. 화면 복귀에서는 관광 캐시 만료만 확인합니다.
+            guard viewModel.hasPreparedInitialContent else { return }
+            await viewModel.loadInitialTourisms()
         }
         .task(
             id: MapRouteLoadRequest(

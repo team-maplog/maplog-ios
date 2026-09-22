@@ -57,6 +57,7 @@ struct MainTabView: View {
     private let mapCurrentLocationService: any MapCurrentLocationService
     private let photoLibraryVideoImportService: any PhotoLibraryVideoImporting
     private let photoLibraryVideoSaveService: any PhotoLibraryVideoSaving
+    private let onHomePrepared: () -> Void
     @State private var homeNavigationPath: [HomeNavigationRoute] = []
 
 
@@ -89,8 +90,10 @@ struct MainTabView: View {
         photoLibraryVideoSaveService: any PhotoLibraryVideoSaving,
         requestedTab: Binding<MaplogTab?> = .constant(nil),
         requestedCapturePlaceName: Binding<String?> = .constant(nil),
-        requestedNotificationDestination: Binding<MaplogNotificationDestination?> = .constant(nil)
+        requestedNotificationDestination: Binding<MaplogNotificationDestination?> = .constant(nil),
+        onHomePrepared: @escaping () -> Void = {}
     ) {
+        self.onHomePrepared = onHomePrepared
         self.tourismRepository = tourismRepository
         self.cameraCaptureService = cameraCaptureService
         self.mediaDraftRepository = mediaDraftRepository
@@ -205,7 +208,7 @@ struct MainTabView: View {
     }
 
     var body: some View {
-        Group {
+        ZStack {
             switch selectedTab {
             case .home:
                 GeometryReader { rootProxy in
@@ -407,6 +410,12 @@ struct MainTabView: View {
             withAnimation(tabBarMorphAnimation) {
                 prefersReelTabBarStyle = prefersReelStyle
             }
+        }
+        .task {
+            // 홈 탭 외의 딥링크로 들어와도 같은 ViewModel에 첫 화면 데이터를 준비합니다.
+            await homeviewModel.prepareInitialContent()
+            guard !Task.isCancelled else { return }
+            onHomePrepared()
         }
         .onAppear(perform: applyPendingRequestedTab)
         .onChange(of: requestedTab) { _, newTab in

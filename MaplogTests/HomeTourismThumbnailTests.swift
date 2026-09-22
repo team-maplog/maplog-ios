@@ -4,6 +4,90 @@ import XCTest
 
 @MainActor
 final class HomeTourismThumbnailTests: XCTestCase {
+    func testSplashPreparationLoadsBothSectionsAndHomeReusesResults() async {
+        let repository = ThumbnailRepositoryStub()
+        let dependencies = UnusedHomeDependencies()
+        let model = HomeViewModel(tourismRepository: repository, logReelRepository: dependencies,
+                                  logInteractionRepository: dependencies, logMediaRepository: dependencies,
+                                  profileRepository: dependencies, playbackService: dependencies)
+        await model.prepareInitialContent()
+        XCTAssertTrue(model.hasPreparedInitialContent)
+        XCTAssertEqual(model.reelState, .empty)
+        guard case .content = model.tourismState else { return XCTFail("Expected tourism cards") }
+        await model.prepareInitialContent()
+        await model.loadInitialTourisms()
+        await model.loadInitialReels()
+        XCTAssertEqual(repository.pageRequests, 1)
+        XCTAssertEqual(dependencies.reelRequests, 1)
+    }
+
+    func testFailedTourismPreparationStillCompletesWithRetryState() async {
+        let repository = ThumbnailRepositoryStub()
+        repository.failingIDs = [1, 2]
+        let model = makeViewModel(repository)
+        await model.prepareInitialContent()
+        XCTAssertTrue(model.hasPreparedInitialContent)
+        XCTAssertEqual(model.reelState, .empty)
+        guard case let .failed(error) = model.tourismState else { return XCTFail("Expected failure") }
+        XCTAssertEqual(error.recoveryAction, .retry)
+        await model.prepareInitialContent()
+        XCTAssertEqual(repository.pageRequests, 1)
+    }
+
+    func testCancelledPreparationDoesNotPublishCompletion() async {
+        let repository = ThumbnailRepositoryStub()
+        let model = makeViewModel(repository)
+        let task = Task { await model.prepareInitialContent() }
+        task.cancel()
+        await task.value
+        XCTAssertFalse(model.hasPreparedInitialContent)
+        XCTAssertEqual(model.tourismState, .idle)
+        XCTAssertEqual(model.reelState, .idle)
+    }
+
+    func testReturningHomeKeepsCardsAndDoesNotRescanImages() async {
+        let repository = ThumbnailRepositoryStub()
+        let viewModel = makeViewModel(repository)
+        await viewModel.loadInitialTourisms()
+        let initialState = viewModel.tourismState
+        await viewModel.loadInitialTourisms()
+        await viewModel.refreshHome()
+        XCTAssertEqual(viewModel.tourismState, initialState)
+        XCTAssertEqual(repository.pageRequests, 1)
+        XCTAssertEqual(repository.imageRequests.sorted(), [1, 2])
+    }
+
+    func testEmptyHomeResultIsAlsoReused() async {
+        let repository = ThumbnailRepositoryStub()
+        repository.approvedIDs = []
+        let viewModel = makeViewModel(repository)
+        await viewModel.loadInitialTourisms()
+        await viewModel.loadInitialTourisms()
+        XCTAssertEqual(viewModel.tourismState, .empty)
+        XCTAssertEqual(repository.pageRequests, 1)
+    }
+
+    func testHomeRefreshesAfterTenMinutes() async {
+        let repository = ThumbnailRepositoryStub()
+        var instant = Date(timeIntervalSince1970: 1_790_000_000)
+        let viewModel = makeViewModel(repository, now: { instant })
+        await viewModel.loadInitialTourisms()
+        instant.addTimeInterval(599)
+        await viewModel.loadInitialTourisms()
+        XCTAssertEqual(repository.pageRequests, 1)
+        instant.addTimeInterval(1)
+        await viewModel.loadInitialTourisms()
+        XCTAssertEqual(repository.pageRequests, 2)
+    }
+
+    func testUserRefreshBypassesFreshHomeCards() async {
+        let repository = ThumbnailRepositoryStub()
+        let viewModel = makeViewModel(repository)
+        await viewModel.loadInitialTourisms()
+        await viewModel.refreshHome(tourismPolicy: .reload)
+        XCTAssertEqual(repository.pagePolicies, [.cached, .reload])
+    }
+
     func testAutomaticHomeRefreshUsesCachePolicy() async {
         let repository = ThumbnailRepositoryStub()
         await makeViewModel(repository).refreshHome()
@@ -94,11 +178,11 @@ final class HomeTourismThumbnailTests: XCTestCase {
         XCTAssertEqual(error.recoveryAction, .signIn)
     }
 
-    private func makeViewModel(_ repository: ThumbnailRepositoryStub) -> HomeViewModel {
+    private func makeViewModel(_ repository: ThumbnailRepositoryStub, now: @escaping () -> Date = { Date() }) -> HomeViewModel {
         let unused = UnusedHomeDependencies()
         return HomeViewModel(tourismRepository: repository, logReelRepository: unused,
                              logInteractionRepository: unused, logMediaRepository: unused,
-                             profileRepository: unused, playbackService: unused)
+                             profileRepository: unused, playbackService: unused, now: now)
     }
 }
 
@@ -137,8 +221,10 @@ private final class ThumbnailRepositoryStub: TourismRepository {
 private final class UnusedHomeDependencies: LogReelRepository, LogInteractionRepository, LogMediaRepository, ProfileRepository, VideoPlaybackService {
     let player = AVPlayer()
     let isMuted = true
+    var reelRequests = 0
     func fetchReels(cursor: String?, size: Int) async throws -> LogReelPage {
-        LogReelPage(reels: [], hasNext: false, nextCursor: nil)
+        reelRequests += 1
+        return LogReelPage(reels: [], hasNext: false, nextCursor: nil)
     }
     func fetchSavedLogs(cursor: String?, size: Int) async throws -> LogReelPage { fatalError("Unused") }
     func setLike(logID: Int64, isLiked: Bool) async throws -> LogLikeInteractionResult { fatalError("Unused") }

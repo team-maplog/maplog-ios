@@ -391,15 +391,20 @@ private struct ExploreMapStateOverlay: View {
         content: MapViewportContent
     ) -> some View {
         Group {
-            if content.shouldAskUserToZoomIn {
+            if let refreshError {
+                errorMessage(presentation: refreshError)
+            } else if !content.tourismStatus.isAvailable {
+                errorMessage(presentation: ErrorPresentation(
+                    message: "관광·행사 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.",
+                    recoveryAction: .retry
+                ))
+            } else if content.tourismStatus.isStale {
+                errorMessage(presentation: ErrorPresentation(
+                    message: "관광·행사 정보 갱신이 늦어져 이전 정보를 표시하고 있어요.",
+                    recoveryAction: .retry
+                ))
+            } else if content.shouldAskUserToZoomIn {
                 Text("장소가 많아요. 지도를 확대해 더 자세히 보세요.")
-                    .font(.caption.weight(.medium))
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
-                    .background(.regularMaterial, in: Capsule())
-
-            } else if let refreshError {
-                Text(refreshError.message)
                     .font(.caption.weight(.medium))
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
