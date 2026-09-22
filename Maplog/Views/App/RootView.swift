@@ -327,7 +327,13 @@ struct RootView: View {
         .overlay {
             if launchSplash.isVisible {
                 LaunchSplashView(isRevealing: launchSplash.stage == .revealing)
+                    .id(launchSplash.presentationID)
             }
+        }
+        .task(id: launchSplash.presentationID) {
+            do { try await Task.sleep(for: LaunchSplashViewModel.entranceDuration) } catch { return }
+            guard !Task.isCancelled else { return }
+            launchSplash.entranceDidFinish()
         }
         .task(id: launchSplash.stage) {
             guard launchSplash.stage == .revealing else { return }
@@ -336,7 +342,7 @@ struct RootView: View {
             launchSplash.revealDidFinish()
         }
         .task(id: phase) {
-            // 인증/위치 분기가 정해지면 홈 데이터와 무관하게 즉시 전환합니다.
+            // 인증/위치 분기가 정해지면 준비 완료로 처리합니다. 홈 API 응답은 기다리지 않습니다.
             guard phase != .checkingSession else { return }
             launchSplash.destinationDidBecomeReady()
         }
@@ -391,6 +397,7 @@ struct RootView: View {
 
             withAnimation(.easeOut(duration: 0.15)) {
                 if isAuthenticated {
+                    if authenticatedPhase == .app { launchSplash.prepareForHome() }
                     phase = authenticatedPhase
                 } else {
                     phase = .login
@@ -425,6 +432,7 @@ struct RootView: View {
     }
 
     private func moveToApp() {
+        launchSplash.prepareForHome()
         withAnimation(.easeOut(duration: 0.15)) {
             phase = .app
         }
