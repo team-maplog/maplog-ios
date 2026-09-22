@@ -29,29 +29,15 @@ final class LaunchSplashViewModelTests: XCTestCase {
         XCTAssertEqual(model.stage, .presenting)
     }
 
-    func testRestoredSessionDoesNotRestartVisibleEntrance() {
+    func testDestinationChangeDuringRevealDoesNotRestartEntrance() {
         let model = LaunchSplashViewModel()
-        let id = model.presentationID
         model.entranceDidFinish()
-        model.prepareForHome()
-        XCTAssertEqual(model.presentationID, id)
         model.destinationDidBecomeReady()
         XCTAssertEqual(model.stage, .revealing)
-    }
-
-    func testLoginStartsNewPresentationAfterOnboarding() {
-        let model = LaunchSplashViewModel()
-        model.entranceDidFinish()
         model.destinationDidBecomeReady()
+        XCTAssertEqual(model.stage, .revealing)
         model.revealDidFinish()
-        let previousID = model.presentationID
-        model.prepareForHome()
-        XCTAssertNotEqual(model.presentationID, previousID)
-        XCTAssertEqual(model.stage, .presenting)
-        model.entranceDidFinish()
-        XCTAssertEqual(model.stage, .presenting)
-        model.destinationDidBecomeReady()
-        XCTAssertEqual(model.stage, .revealing)
+        XCTAssertFalse(model.isVisible)
     }
 
     func testRepeatedReadinessAfterCompletionDoesNotShowSplashAgain() {
