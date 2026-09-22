@@ -42,7 +42,6 @@ xcuserdata/
 # Publish only explicitly reviewed Markdown documents
 *.md
 !/README.md
-!/.github/pull_request_template.md
 /docs/*
 !/docs/troubleshooting/
 /docs/troubleshooting/*
