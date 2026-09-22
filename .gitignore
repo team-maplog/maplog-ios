@@ -1,10 +1,51 @@
-Config/Secrets.xcconfig
-Maplog/GoogleService-Info.plist
+# Local credentials and signing files
+Config/Secrets*.xcconfig
+!Config/Secrets.xcconfig.example
+.env
+.env.*
+!.env.example
+*.p8
+*.p12
+*.mobileprovision
+*.key
+*.pem
+**/GoogleService-Info*.plist
+/Maplog/*.plist
+!/Maplog/Info.plist
+
+# Xcode user state and build output
 DerivedData/
 .DS_Store
 *.xcuserstate
 xcuserdata/
+*.xcresult/
+*.xcarchive/
 
-# Local-only collaboration references
-AGENTS.md
-design-review/
+# Local references, exports, and working files
+/figma-frame*
+/tmp/
+/design-review/
+/_workspace/
+/AppStoreScreenshots/
+/MaplogScreenShot/
+
+# Local assistant and browser tooling
+.codex/
+.codex-*/
+.agents/
+.claude/
+.cursor/
+.playwright-mcp/
+.mcp.json
+.aider*
+
+# Publish only explicitly reviewed Markdown documents
+*.md
+!/README.md
+!/.github/pull_request_template.md
+/docs/*
+!/docs/troubleshooting/
+/docs/troubleshooting/*
+!/docs/troubleshooting/tourism-response-cache.md
+!/docs/troubleshooting/token-refresh-coalescing.md
+!/docs/troubleshooting/route-video-playback.md
