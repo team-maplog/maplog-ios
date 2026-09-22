@@ -6,7 +6,6 @@ struct LaunchSplashView: View {
     let isRevealing: Bool
 
     @State private var hasEntered = false
-    @State private var revealScale: CGFloat = 0
     @State private var contentOpacity: Double = 1
 
     private let ink = Color(red: 36 / 255, green: 37 / 255, blue: 34 / 255)
@@ -61,42 +60,17 @@ struct LaunchSplashView: View {
                 .opacity(hasEntered || reduceMotion ? 1 : 0)
                 .offset(y: hasEntered || reduceMotion ? 0 : 14)
                 .animation(reduceMotion ? nil : .easeOut(duration: 0.35).delay(0.4), value: hasEntered)
-
-                HStack(spacing: 12) {
-                    Text("새로운 장면을 준비하고 있어요")
-                        .font(.system(size: max(11, width * 0.026)))
-                        .foregroundStyle(muted)
-                    Spacer(minLength: 0)
-                    ProgressView()
-                        .tint(ink)
-                        .scaleEffect(0.7)
-                        .accessibilityHidden(true)
-                }
-                .frame(width: width * 0.84)
-                .position(x: proxy.size.width / 2, y: height - max(proxy.safeAreaInsets.bottom + 24, height * 0.065))
-
-                if !reduceMotion {
-                    Circle()
-                        .fill(Color.maplogLime)
-                        .frame(width: max(proxy.size.width, height) * 2)
-                        .scaleEffect(revealScale)
-                        .position(x: proxy.size.width / 2, y: height * 0.45)
-                }
             }
             .foregroundStyle(ink)
         }
         .ignoresSafeArea()
         .opacity(contentOpacity)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("맵로그, 새로운 장면을 준비하고 있어요")
+        .accessibilityLabel("맵로그")
         .accessibilityIdentifier("launch-splash")
         .task { hasEntered = true }
         .task(id: isRevealing) {
             guard isRevealing else { return }
-            if !reduceMotion {
-                withAnimation(.easeInOut(duration: 0.24)) { revealScale = 1 }
-                do { try await Task.sleep(for: .milliseconds(240)) } catch { return }
-            }
             guard !Task.isCancelled else { return }
             withAnimation(.easeOut(duration: 0.22)) { contentOpacity = 0 }
         }
@@ -116,16 +90,6 @@ struct LaunchSplashView: View {
                 .rotationEffect(.degrees(hasEntered || reduceMotion ? -3 : 60))
                 .offset(y: hasEntered || reduceMotion ? height * 0.018 : height)
                 .animation(reduceMotion ? nil : .spring(response: 0.8, dampingFraction: 0.82).delay(0.24), value: hasEntered)
-            Text("LET’S\nGO!")
-                .font(.system(size: width * 0.027, weight: .bold))
-                .multilineTextAlignment(.center)
-                .frame(width: width * 0.15, height: width * 0.15)
-                .background(Color.maplogLime, in: Circle())
-                .rotationEffect(.degrees(12))
-                .offset(x: width * 0.33, y: width * 0.32)
-                .scaleEffect(hasEntered || reduceMotion ? 1 : 0.2)
-                .opacity(hasEntered || reduceMotion ? 1 : 0)
-                .animation(reduceMotion ? nil : .spring(response: 0.4).delay(0.65), value: hasEntered)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .offset(y: -height * 0.005)

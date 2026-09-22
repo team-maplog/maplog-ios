@@ -13,11 +13,11 @@ final class LaunchSplashViewModelTests: XCTestCase {
         XCTAssertFalse(model.isVisible)
     }
 
-    func testSlowDestinationRemainsCoveredUntilReadyOrDeadlineSignal() {
+    func testEntranceWaitsForSessionButDoesNotNeedHomeResponse() {
         let model = LaunchSplashViewModel()
         model.entranceDidFinish()
         XCTAssertEqual(model.stage, .presenting)
-        // RootView sends the same readiness signal when the home wait limit expires.
+        // 세션 분기 완료만 전달합니다. 홈 조회 완료 신호는 필요하지 않습니다.
         model.destinationDidBecomeReady()
         XCTAssertEqual(model.stage, .revealing)
     }
@@ -29,32 +29,18 @@ final class LaunchSplashViewModelTests: XCTestCase {
         XCTAssertEqual(model.stage, .presenting)
     }
 
-    func testRestoredSessionDoesNotRestartVisibleEntrance() {
+    func testDestinationChangeDuringRevealDoesNotRestartEntrance() {
         let model = LaunchSplashViewModel()
-        let id = model.presentationID
         model.entranceDidFinish()
-        model.prepareForHome()
-        XCTAssertEqual(model.presentationID, id)
         model.destinationDidBecomeReady()
         XCTAssertEqual(model.stage, .revealing)
-    }
-
-    func testLoginStartsNewPresentationAfterOnboarding() {
-        let model = LaunchSplashViewModel()
-        model.entranceDidFinish()
         model.destinationDidBecomeReady()
+        XCTAssertEqual(model.stage, .revealing)
         model.revealDidFinish()
-        let previousID = model.presentationID
-        model.prepareForHome()
-        XCTAssertNotEqual(model.presentationID, previousID)
-        XCTAssertEqual(model.stage, .presenting)
-        model.entranceDidFinish()
-        XCTAssertEqual(model.stage, .presenting)
-        model.destinationDidBecomeReady()
-        XCTAssertEqual(model.stage, .revealing)
+        XCTAssertFalse(model.isVisible)
     }
 
-    func testLateDataAfterTimeoutDoesNotShowSplashAgain() {
+    func testRepeatedReadinessAfterCompletionDoesNotShowSplashAgain() {
         let model = LaunchSplashViewModel()
         model.entranceDidFinish()
         model.destinationDidBecomeReady()

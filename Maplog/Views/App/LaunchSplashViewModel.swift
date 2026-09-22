@@ -1,7 +1,7 @@
 import Foundation
 
-/// 시작 화면의 최소 등장 시간과 목적지 준비 상태를 합칩니다.
-/// 네트워크 응답 자체는 HomeViewModel이 소유하며, 대기 제한 후에도 조회를 계속합니다.
+/// 앱 최초 진입 시 사진 등장 모션과 세션 분기 완료까지만 기다립니다.
+/// 홈 API 응답은 시작 화면을 닫는 조건에 포함하지 않습니다.
 @MainActor
 final class LaunchSplashViewModel: ObservableObject {
     enum Stage {
@@ -11,24 +11,13 @@ final class LaunchSplashViewModel: ObservableObject {
     }
 
     static let entranceDuration: Duration = .milliseconds(1300)
-    static let homeWaitLimit: Duration = .seconds(4)
-    static let revealDuration: Duration = .milliseconds(500)
+    static let revealDuration: Duration = .milliseconds(220)
 
     @Published private(set) var stage: Stage = .presenting
-    @Published private(set) var presentationID = UUID()
     private var hasFinishedEntrance = false
     private var isDestinationReady = false
 
     var isVisible: Bool { stage != .finished }
-
-    func prepareForHome() {
-        // 저장된 세션을 복원하는 동안 이미 시작한 모션은 다시 재생하지 않습니다.
-        guard stage != .presenting else { return }
-        hasFinishedEntrance = false
-        isDestinationReady = false
-        presentationID = UUID()
-        stage = .presenting
-    }
 
     func entranceDidFinish() {
         hasFinishedEntrance = true
