@@ -14,6 +14,17 @@ final class DefaultSocialConnectionRepository: SocialConnectionRepository {
         }
     }
 
+    func connectionRedirectURL(provider: String) async throws -> URL {
+        let response = try await apiService.fetchConnectionRedirect(provider: provider)
+        guard response.registrationID.lowercased() == provider,
+              let url = URL(string: response.redirectURL),
+              url.scheme?.lowercased() == "https", let host = url.host, !host.isEmpty,
+              url.user == nil, url.password == nil else {
+            throw OAuthRepositoryError.invalidRedirectURL
+        }
+        return url
+    }
+
     func fetchConnections() async throws -> [SocialConnection] {
         let response = try await apiService.fetchConnections()
         return response.map {

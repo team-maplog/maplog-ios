@@ -62,6 +62,10 @@ final class SocialConnectionsViewModelTests: XCTestCase {
 }
 
 private final class SocialConnectionRepositoryStub: SocialConnectionRepository {
+    func connectionRedirectURL(provider: String) async throws -> URL {
+        throw APIError.invalidResponse
+    }
+
     var disconnectFailure: Error?
     var disconnectedProvider: String?
     func disconnect(provider: String) async throws {
