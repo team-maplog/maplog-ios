@@ -22,7 +22,13 @@ import Foundation
 
 @MainActor
 final class AVVideoPlaybackService: VideoPlaybackService {
-    private let queuePlayer = AVQueuePlayer()
+    private let queuePlayer: AVQueuePlayer
+    private var wantsPlayback = false
+    private var loopRestartID: UUID?
+
+    init(player: AVQueuePlayer = AVQueuePlayer()) {
+        queuePlayer = player
+    }
     private var playerLooper: AVPlayerLooper?
     private var periodicTimeObserver: Any? // AVPlayer가 주기적으로 알려주는 재생 시간을 해제하기 위해 보관하는 토큰
     private var endOfItemObserver: NSObjectProtocol?
@@ -80,12 +86,15 @@ final class AVVideoPlaybackService: VideoPlaybackService {
     }
 
     private func restartLoopingItemIfNeeded(_ item: AVPlayerItem) {
-        guard loopingItem === item,
+        guard wantsPlayback,
+              loopingItem === item,
               queuePlayer.currentItem === item
         else {
             return
         }
 
+        let restartID = UUID()
+        loopRestartID = restartID
         queuePlayer.seek(
             to: .zero,
             toleranceBefore: .zero,
@@ -98,12 +107,15 @@ final class AVVideoPlaybackService: VideoPlaybackService {
             Task { @MainActor [weak self, weak item] in
                 guard let self,
                       let item,
+                      self.wantsPlayback,
+                      self.loopRestartID == restartID,
                       self.loopingItem === item,
                       self.queuePlayer.currentItem === item
                 else {
                     return
                 }
 
+                self.loopRestartID = nil
                 self.queuePlayer.play()
             }
         }
@@ -170,6 +182,8 @@ final class AVVideoPlaybackService: VideoPlaybackService {
         to seconds: TimeInterval,
         completion: @escaping @Sendable (Bool) -> Void
     ) {
+        // 위치 이동 이후에는 이전 루프의 완료가 재생 상태를 바꾸면 안 된다.
+        loopRestartID = nil
         let safeSeconds = max(seconds, 0)
 
         let time = CMTime(
@@ -269,14 +283,19 @@ final class AVVideoPlaybackService: VideoPlaybackService {
     }
 
     func play() {
+        wantsPlayback = true
         queuePlayer.play()
     }
 
     func pause() {
+        wantsPlayback = false
+        loopRestartID = nil
         queuePlayer.pause()
     }
 
     func stop() {
+        wantsPlayback = false
+        loopRestartID = nil
         cancelPendingSeek()
         removeProgressObserver()
         removeEndOfItemObserver()
