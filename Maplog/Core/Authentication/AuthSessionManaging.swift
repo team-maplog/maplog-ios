@@ -13,6 +13,8 @@ protocol AuthSessionManaging:
         AccessTokenProviding,
         RefreshTokenProviding {
 
+        var sessionGeneration: UUID { get }
+
         func startSession(with token: AuthToken) throws
         func stageSession(with token: AuthToken) throws
         func activateStagedSession() throws

@@ -10,15 +10,12 @@ import Foundation
 final class DefaultAuthAPIService: AuthAPIService {
     private let apiClient: APIClient
     private let accessTokenProvider: any AccessTokenProviding
-    private let refreshTokenProvider: any RefreshTokenProviding
 
     init(apiClient: APIClient,
-         accessTokenProvider: any AccessTokenProviding,
-         refreshTokenProvider: any RefreshTokenProviding
+         accessTokenProvider: any AccessTokenProviding
     ) {
         self.apiClient = apiClient
         self.accessTokenProvider = accessTokenProvider
-        self.refreshTokenProvider = refreshTokenProvider
     }
 
     func signUp(
@@ -122,10 +119,8 @@ final class DefaultAuthAPIService: AuthAPIService {
         }
     }
 
-    func reissueToken() async throws -> AuthTokenResponseDTO {
-        let refreshToken = try await refreshTokenProvider.currentRefreshToken()
-
-        guard let refreshToken, !refreshToken.isEmpty else {
+    func reissueToken(refreshToken: String) async throws -> AuthTokenResponseDTO {
+        guard !refreshToken.isEmpty else {
             throw APIError.missingRefreshToken
         }
 
