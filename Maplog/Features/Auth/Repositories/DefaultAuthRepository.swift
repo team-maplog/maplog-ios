@@ -46,8 +46,8 @@ final class DefaultAuthRepository: AuthRepository {
         try await apiService.signOut()
     }
 
-    func reissueToken() async throws -> AuthToken {
-        let tokenResponse = try await apiService.reissueToken()
+    func reissueToken(refreshToken: String) async throws -> AuthToken {
+        let tokenResponse = try await apiService.reissueToken(refreshToken: refreshToken)
 
         return makeAuthToken(from: tokenResponse)
     }

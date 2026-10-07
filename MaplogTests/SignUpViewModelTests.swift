@@ -187,7 +187,7 @@ private actor SignUpAuthRepositorySpy: AuthRepository {
 
     func signOut() async throws { }
 
-    func reissueToken() async throws -> AuthToken {
+    func reissueToken(refreshToken: String) async throws -> AuthToken {
         AuthToken(
             accessToken: "test-access-token",
             refreshToken: "test-refresh-token"
@@ -205,6 +205,7 @@ private actor SignUpAuthRepositorySpy: AuthRepository {
 
 @MainActor
 private final class SignUpAuthSessionSpy: AuthSessionManaging {
+    var sessionGeneration = UUID()
     private(set) var replacedTokens: [AuthToken] = []
 
     func currentAccessToken() throws -> String? {

@@ -13,6 +13,12 @@ import Foundation
 
 
 final class APIClient {
+    private let session: URLSession
+
+    init(session: URLSession = .shared) {
+        self.session = session
+    }
+
     func request<Response: Decodable>(
         _ urlRequest: URLRequest,
         responseType: Response.Type
@@ -41,7 +47,7 @@ final class APIClient {
         let urlResponse: URLResponse
 
         do {
-            (data, urlResponse) = try await URLSession.shared.data(
+            (data, urlResponse) = try await session.data(
                 for: urlRequest
             )
         } catch {
@@ -67,7 +73,7 @@ final class APIClient {
         let urlResponse: URLResponse
 
         do {
-            (temporaryURL, urlResponse) = try await URLSession.shared.download(
+            (temporaryURL, urlResponse) = try await session.download(
                 for: urlRequest
             )
         } catch {

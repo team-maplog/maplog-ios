@@ -50,8 +50,7 @@ struct MaplogApp: App { // 앱의 조립 담당자
 
         let authAPIService = DefaultAuthAPIService(
             apiClient: apiClient,
-            accessTokenProvider: sessionStore,
-            refreshTokenProvider: sessionStore
+            accessTokenProvider: sessionStore
         )
 
         let authRepository = DefaultAuthRepository(apiService: authAPIService)
