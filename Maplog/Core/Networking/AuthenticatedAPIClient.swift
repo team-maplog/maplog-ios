@@ -40,6 +40,14 @@ final class AuthenticatedAPIClient {
         }
     }
 
+    func upload<Response: Decodable>(
+        _ request: URLRequest, fromFile fileURL: URL, responseType: Response.Type
+    ) async throws -> Response {
+        try await perform(request) {
+            try await self.apiClient.upload($0, fromFile: fileURL, responseType: responseType)
+        }
+    }
+
     private func perform<Value>(
         _ request: URLRequest,
         operation: (URLRequest) async throws -> Value

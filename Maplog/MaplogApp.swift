@@ -67,7 +67,10 @@ struct MaplogApp: App { // 앱의 조립 담당자
             apiService: logLocationAPIService,
             searchService: MapKitLocationSearchService()
         )
-        let logPublishingAPIService = DefaultLogPublishingAPIService(authenticatedAPIClient: authenticatedAPIClient)
+        let logPublishingAPIService = DefaultLogPublishingAPIService(
+            authenticatedAPIClient: authenticatedAPIClient,
+            uploadFileBuilder: LogVideoUploadFileBuilder()
+        )
         let logPublishingRepository = DefaultLogPublishingRepository(apiService: logPublishingAPIService)
         let logReelAPIService = DefaultLogReelAPIService(authenticatedAPIClient: authenticatedAPIClient)
         let logReelRepository = DefaultLogReelRepository(apiService: logReelAPIService)
