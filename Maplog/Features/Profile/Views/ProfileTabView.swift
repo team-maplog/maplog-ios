@@ -44,6 +44,7 @@ struct ProfileTabView: View {
         .background(Color.maplogSurface)
         .task {
             await viewModel.loadIfNeeded()
+            await viewModel.refreshProfileHeaderIfNeeded()
         }
         .task(id: selectedLogTab) {
             guard selectedLogTab == .savedLogs else {

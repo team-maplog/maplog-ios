@@ -1,5 +1,9 @@
 import Foundation
 
+extension Notification.Name {
+    static let maplogFollowStateDidChange = Notification.Name("MaplogFollowStateDidChange")
+}
+
 enum FollowListKind: CaseIterable, Hashable, Sendable {
     case followers
     case following

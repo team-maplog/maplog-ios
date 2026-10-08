@@ -292,14 +292,17 @@ final class PublicProfileViewModel: ObservableObject {
                 isFollowing: requestedState
             )
 
+            guard followState.userID == loadedProfile.id else {
+                throw APIError.invalidResponse
+            }
+            // 서버에서 확인한 변경은 이 화면의 수명과 관계없이 내 프로필에도 전달한다.
+            NotificationCenter.default.post(name: .maplogFollowStateDidChange, object: nil)
+
             guard !Task.isCancelled else {
                 return nil
             }
 
             guard revision == contentRevision, state == .content else { return nil }
-            guard followState.userID == loadedProfile.id else {
-                throw APIError.invalidResponse
-            }
 
             let updatedProfile = loadedProfile.replacingFollowState(
                 isFollowedByViewer: followState.isFollowing
