@@ -376,6 +376,7 @@ struct MainTabView: View {
                         logMediaRepository: logMediaRepository,
                         playbackService: videoPlaybackService,
                         onLogUpdated: { await homeviewModel.refreshHome() },
+                        onLogRemoved: { homeviewModel.removeReel(withID: $0) },
                         viewModel: profileViewModel
                     )
                 }
