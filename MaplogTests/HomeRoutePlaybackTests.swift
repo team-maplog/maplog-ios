@@ -77,6 +77,125 @@ final class HomeRoutePlaybackTests: XCTestCase {
         XCTAssertEqual(dependencies.playCount, 1)
     }
 
+    func testRefreshRemovesDeletedReelAndStopsItsPlayback() async {
+        let dependencies = RoutePlaybackDependencies()
+        dependencies.reels = [makeReel(2), makeReel(3)]
+        let model = makeModel(dependencies)
+        await model.loadInitialReels()
+        await model.playReel(withID: 2, from: 0)
+        let oldSeek = dependencies.seekCompletions[0]
+        dependencies.reels = [makeReel(3)]
+        await model.refreshHome()
+        guard case let .content(reels) = model.reelState else { return XCTFail("Expected remaining reel") }
+        XCTAssertEqual(reels.map(\.id), [3])
+        XCTAssertNil(model.activePlaybackReelID)
+        XCTAssertNil(model.playbackLoadingReelID)
+        XCTAssertNil(model.player(for: 2))
+        oldSeek(true)
+        await Task.yield()
+        XCTAssertEqual(dependencies.playCount, 0)
+        XCTAssertEqual(dependencies.reelRequests, 2)
+    }
+
+    func testRefreshToEmptyStopsDeletedLastReel() async {
+        let dependencies = RoutePlaybackDependencies()
+        dependencies.reels = [makeReel(2)]
+        let model = makeModel(dependencies)
+        await model.loadInitialReels()
+        await model.playReel(withID: 2, from: 0)
+        dependencies.reels = []
+        await model.refreshHome()
+        XCTAssertEqual(model.reelState, .empty)
+        XCTAssertNil(model.activePlaybackReelID)
+        XCTAssertNil(model.player(for: 2))
+    }
+
+    func testRefreshRetainsPlaybackWhenActiveReelStillExists() async {
+        let dependencies = RoutePlaybackDependencies()
+        dependencies.reels = [makeReel(2)]
+        let model = makeModel(dependencies)
+        await model.loadInitialReels()
+        await model.playReel(withID: 2, from: 0)
+        await model.refreshHome()
+        XCTAssertEqual(model.activePlaybackReelID, 2)
+        XCTAssertNotNil(model.player(for: 2))
+        XCTAssertEqual(dependencies.loadCount, 1)
+    }
+
+    func testFailedRefreshKeepsExistingListAndPlayback() async {
+        let dependencies = RoutePlaybackDependencies()
+        dependencies.reels = [makeReel(2)]
+        let model = makeModel(dependencies)
+        await model.loadInitialReels()
+        let original = model.reelState
+        await model.playReel(withID: 2, from: 0)
+        dependencies.reelError = APIError.invalidResponse
+        await model.refreshHome()
+        XCTAssertEqual(model.reelState, original)
+        XCTAssertEqual(model.activePlaybackReelID, 2)
+        XCTAssertNotNil(model.player(for: 2))
+    }
+
+    func testKnownDeletionRemovesImmediatelyAndCannotReappearInStaleRefresh() async {
+        let dependencies = RoutePlaybackDependencies()
+        dependencies.reels = [makeReel(2), makeReel(3)]
+        let model = makeModel(dependencies)
+        await model.loadInitialReels()
+        await model.playReel(withID: 2, from: 0)
+        model.removeReel(withID: 2)
+        guard case let .content(reels) = model.reelState else { return XCTFail("Expected remaining reel") }
+        XCTAssertEqual(reels.map(\.id), [3])
+        XCTAssertNil(model.activePlaybackReelID)
+        // 서버/진행 중 응답이 이전 목록을 주더라도 앱이 확인한 삭제는 되돌리지 않는다.
+        await model.refreshHome()
+        guard case let .content(refreshed) = model.reelState else { return XCTFail("Expected remaining reel") }
+        XCTAssertEqual(refreshed.map(\.id), [3])
+        let downloads = dependencies.downloadCount
+        await model.playReel(withID: 2, from: 0)
+        XCTAssertEqual(dependencies.downloadCount, downloads)
+    }
+
+    func testDeletionBeforeInitialResponseIsAppliedCannotReinsertReel() async {
+        let dependencies = RoutePlaybackDependencies()
+        dependencies.reels = [makeReel(2)]
+        let model = makeModel(dependencies)
+        model.removeReel(withID: 2)
+        await model.loadInitialReels()
+        XCTAssertEqual(model.reelState, .empty)
+    }
+
+    func testPlaybackLogNotFoundRemovesUnavailableReel() async {
+        let dependencies = RoutePlaybackDependencies()
+        dependencies.reels = [makeReel(2), makeReel(3)]
+        dependencies.playbackError = APIError.server(statusCode: 404, response: .init(successFlag: false, code: "LOG-001", message: "fixture", data: nil))
+        let model = makeModel(dependencies)
+        await model.loadInitialReels()
+        await model.playReel(withID: 2, from: 0)
+        guard case let .content(reels) = model.reelState else { return XCTFail("Expected remaining reel") }
+        XCTAssertEqual(reels.map(\.id), [3])
+        XCTAssertNil(model.activePlaybackReelID)
+        XCTAssertFalse(model.hasPlaybackFailed(for: 2))
+    }
+
+    func testUnknownVideo404KeepsReelAndShowsPlaybackRetry() async {
+        let dependencies = RoutePlaybackDependencies()
+        dependencies.reels = [makeReel(2)]
+        dependencies.playbackError = APIError.server(statusCode: 404, response: .init(successFlag: false, code: "UNKNOWN", message: "fixture", data: nil))
+        let model = makeModel(dependencies)
+        await model.loadInitialReels()
+        let original = model.reelState
+        await model.playReel(withID: 2, from: 0)
+        XCTAssertEqual(model.reelState, original)
+        XCTAssertTrue(model.hasPlaybackFailed(for: 2))
+    }
+
+    private func makeReel(_ id: Int64) -> LogReel {
+        LogReel(id: id, author: .init(id: UUID(), nickname: "fixture", profileImageURL: nil),
+                caption: "fixture", tags: [], address: "", thumbnailURL: nil, playbackURL: nil,
+                publishedAt: Date(), viewCount: 0, clips: [], likeCount: 0, commentCount: 0,
+                isLikedByViewer: false, isSavedByViewer: false)
+    }
+
     private func makeModel(_ dependencies: RoutePlaybackDependencies) -> HomeViewModel {
         HomeViewModel(
             tourismRepository: RoutePlaybackTourismStub(),
@@ -90,7 +209,7 @@ final class HomeRoutePlaybackTests: XCTestCase {
 private struct RoutePlaybackTourismStub: TourismRepository {
     func invalidateCache() async {}
     func fetchPortraitImage(tourismID: Int64, policy: TourismFetchPolicy) async throws -> TourismPortraitImage? { fatalError("Unused") }
-    func fetchTourisms(category: TourismCategory, cursor: String?, size: Int, policy: TourismFetchPolicy) async throws -> TourismPage { fatalError("Unused") }
+    func fetchTourisms(category: TourismCategory, cursor: String?, size: Int, policy: TourismFetchPolicy) async throws -> TourismPage { .init(tourisms: [], hasNext: false, nextCursor: nil) }
     func fetchTourismDetail(tourismID: Int64, policy: TourismFetchPolicy) async throws -> TourismDetail { fatalError("Unused") }
 }
 
@@ -98,17 +217,26 @@ private struct RoutePlaybackTourismStub: TourismRepository {
 private final class RoutePlaybackDependencies: LogReelRepository, LogInteractionRepository, LogMediaRepository, ProfileRepository, VideoPlaybackService {
     let player = AVPlayer()
     let isMuted = true
-    func fetchReels(cursor: String?, size: Int) async throws -> LogReelPage { fatalError("Unused") }
+    var reels: [LogReel] = []
+    var reelError: Error?
+    var reelRequests = 0
+    func fetchReels(cursor: String?, size: Int) async throws -> LogReelPage {
+        reelRequests += 1
+        if let reelError { throw reelError }
+        return .init(reels: reels, hasNext: false, nextCursor: nil)
+    }
     func fetchSavedLogs(cursor: String?, size: Int) async throws -> LogReelPage { fatalError("Unused") }
     func setLike(logID: Int64, isLiked: Bool) async throws -> LogLikeInteractionResult { fatalError("Unused") }
     func setSaved(logID: Int64, isSaved: Bool) async throws -> LogSaveInteractionResult { fatalError("Unused") }
     func fetchThumbnailData(logID: Int64, targetSize: MaplogImageTargetSize) async throws -> Data { fatalError("Unused") }
+    var playbackError: Error?
     var downloadCount = 0
     var cancelsFirstDownload = false
     var delaysFirstDownload = false
     var firstDownloadContinuation: CheckedContinuation<URL, Error>?
     func fetchPlaybackFileURL(logID: Int64) async throws -> URL {
         downloadCount += 1
+        if let playbackError { throw playbackError }
         if cancelsFirstDownload && downloadCount == 1 { throw CancellationError() }
         if delaysFirstDownload && downloadCount == 1 {
             return try await withCheckedThrowingContinuation { firstDownloadContinuation = $0 }

@@ -84,6 +84,7 @@ final class HomeViewModel: ObservableObject {
     private let profileRepository: any ProfileRepository
     private let playbackService: any VideoPlaybackService
     private var failedInteraction: FailedInteraction?
+    private var removedReelIDs = Set<Int64>()
 
     private enum FailedInteraction {
         case like(logID: Int64, isLiked: Bool)
@@ -182,9 +183,7 @@ final class HomeViewModel: ObservableObject {
             let reels = try await fetchReelViewData()
             try Task.checkCancellation()
 
-            reelState = reels.isEmpty
-                ? .empty
-                : .content(reels)
+            applyReels(reels)
 
         } catch is CancellationError {
             reelState = .idle
@@ -316,6 +315,7 @@ final class HomeViewModel: ObservableObject {
         for reelID: Int64,
         from startTimeMillis: Int64
     ) async {
+        guard !removedReelIDs.contains(reelID) else { return }
         let safeStartTimeMillis = max(
             startTimeMillis,
             0
@@ -400,6 +400,12 @@ final class HomeViewModel: ObservableObject {
                 return
             }
 
+            // 영상 파일의 일반 404와 로그 자체의 삭제 확인을 구분한다.
+            if case let APIError.server(_, response) = error,
+               BackendErrorCode(serverCode: response.code) == .logNotFound {
+                removeReel(withID: reelID)
+                return
+            }
             playbackService.stop()
             playbackLoadingReelID = nil
             playbackFailedReelID = reelID
@@ -766,9 +772,7 @@ final class HomeViewModel: ObservableObject {
                 return
             }
 
-            reelState = reels.isEmpty
-                ? .empty
-                : .content(reels)
+            applyReels(reels)
 
         } catch is CancellationError {
             return
@@ -783,6 +787,28 @@ final class HomeViewModel: ObservableObject {
 
             // 기존 릴스가 있다면 그대로 유지한다.
         }
+    }
+
+    func removeReel(withID reelID: Int64) {
+        removedReelIDs.insert(reelID)
+        if activePlaybackReelID == reelID { stopPlayback() }
+        thumbnailDataByReelID[reelID] = nil
+        authorProfileImageDataByReelID[reelID] = nil
+        guard case let .content(reels) = reelState else { return }
+        applyReels(reels)
+    }
+
+    private func applyReels(_ receivedReels: [HomeReelViewData]) {
+        // 삭제 이전에 시작한 목록 응답이 나중에 도착해도 확인한 삭제를 되돌리지 않는다.
+        let reels = receivedReels.filter { !removedReelIDs.contains($0.id) }
+        let reelIDs = Set(reels.map(\.id))
+        // 새 목록에서 제거된 릴스의 다운로드·seek 완료도 더 이상 재생을 시작할 수 없다.
+        if let activePlaybackReelID, !reelIDs.contains(activePlaybackReelID) {
+            stopPlayback()
+        }
+        thumbnailDataByReelID = thumbnailDataByReelID.filter { reelIDs.contains($0.key) }
+        authorProfileImageDataByReelID = authorProfileImageDataByReelID.filter { reelIDs.contains($0.key) }
+        reelState = reels.isEmpty ? .empty : .content(reels)
     }
 
     private func setLike(

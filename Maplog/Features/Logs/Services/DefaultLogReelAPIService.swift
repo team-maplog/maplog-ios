@@ -84,7 +84,8 @@ final class DefaultLogReelAPIService: LogReelAPIService {
             throw APIError.invalidURL
         }
 
-        var urlRequest = URLRequest(url: url)
+        // 삭제·저장 변경을 목록 조회에 반영하도록 로컬 HTTP 캐시를 사용하지 않는다.
+        var urlRequest = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData)
         urlRequest.httpMethod = "GET"
         urlRequest.setValue(
             "application/json",

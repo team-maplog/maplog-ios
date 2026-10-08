@@ -471,9 +471,9 @@ struct HomeView: View {
             }
         }
         .task {
-            // 첫 조회는 MainTabView가 유지합니다. 화면 복귀에서는 관광 캐시 만료만 확인합니다.
+            // 첫 조회는 MainTabView가 유지하고, 화면 복귀 시 릴스의 삭제·수정을 재조회한다.
             guard viewModel.hasPreparedInitialContent else { return }
-            await viewModel.loadInitialTourisms()
+            await viewModel.refreshHome()
         }
         .task(
             id: MapRouteLoadRequest(
@@ -652,6 +652,11 @@ struct HomeView: View {
             .refreshable {
                 await viewModel.refreshHome(tourismPolicy: .reload)
             }
+            .onChange(of: reelIDs) { _, ids in
+                guard let activeReelID, !ids.contains(activeReelID) else { return }
+                // 삭제된 페이지 ID가 scrollPosition에 남지 않도록 홈 시작 위치로 돌아간다.
+                homeScrollPosition = "home-intro"
+            }
             .onPreferenceChange(FirstReelTopOffsetPreferenceKey.self) {
                 firstReelTopOffset = $0
             }
@@ -687,6 +692,11 @@ struct HomeView: View {
         .onDisappear {
             viewModel.stopPlayback()
         }
+    }
+
+    private var reelIDs: [Int64] {
+        guard case let .content(reels) = viewModel.reelState else { return [] }
+        return reels.map(\.id)
     }
 
     private var reelPageCount: Int {
