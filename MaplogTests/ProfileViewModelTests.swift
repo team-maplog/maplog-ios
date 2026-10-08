@@ -170,6 +170,92 @@ final class ProfileViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.savedLogs.map(\.id), [41])
     }
 
+    func testFollowCountRefreshUpdatesHeaderWithoutReloadingLogPages() async {
+        let repository = ProfileRepositoryStub(profile: followProfile(8), pages: [
+            .init(logs: [makeLog(id: 1, address: "서울")], hasNext: true, nextCursor: "next")
+        ])
+        let model = ProfileTabViewModel(profileRepository: repository, logReelRepository: LogReelRepositoryStub())
+        await model.loadIfNeeded()
+        repository.profile = followProfile(9, id: repository.profile.id)
+        await model.refreshAfterFollowChange()
+        XCTAssertEqual(model.profile?.followingCountText, "9")
+        XCTAssertEqual(model.profile?.followerCountText, "12")
+        XCTAssertEqual(model.logs.map(\.id), [1])
+        XCTAssertTrue(model.hasNextPage)
+        XCTAssertEqual(repository.requestedCursors.count, 1)
+        repository.profile = followProfile(8, id: repository.profile.id)
+        await model.refreshAfterFollowChange()
+        XCTAssertEqual(model.profile?.followingCountText, "8")
+        XCTAssertEqual(repository.profileRequests, 3)
+    }
+
+    func testFailedHeaderRefreshKeepsContentAndRetriesOnNextAppearance() async {
+        let repository = ProfileRepositoryStub(profile: followProfile(8), pages: [])
+        let model = ProfileTabViewModel(profileRepository: repository, logReelRepository: LogReelRepositoryStub())
+        await model.loadIfNeeded()
+        repository.profileError = APIError.invalidResponse
+        await model.refreshAfterFollowChange()
+        XCTAssertEqual(model.state, .content)
+        XCTAssertEqual(model.profile?.followingCountText, "8")
+        repository.profileError = nil
+        repository.profile = followProfile(9, id: repository.profile.id)
+        await model.refreshProfileHeaderIfNeeded()
+        XCTAssertEqual(model.profile?.followingCountText, "9")
+    }
+
+    func testFollowBeforeInitialProfileLoadUsesFirstLoadWithoutExtraRequest() async {
+        let repository = ProfileRepositoryStub(profile: followProfile(9), pages: [])
+        let model = ProfileTabViewModel(profileRepository: repository, logReelRepository: LogReelRepositoryStub())
+        await model.refreshAfterFollowChange()
+        XCTAssertEqual(repository.profileRequests, 0)
+        await model.loadIfNeeded()
+        XCTAssertEqual(model.profile?.followingCountText, "9")
+        XCTAssertEqual(repository.profileRequests, 1)
+    }
+
+    func testOldFullReloadCannotOverwriteRefreshedFollowCount() async {
+        let repository = ProfileRepositoryStub(profile: followProfile(8), pages: [])
+        let model = ProfileTabViewModel(profileRepository: repository, logReelRepository: LogReelRepositoryStub())
+        await model.loadIfNeeded()
+        let started = expectation(description: "old profile request started")
+        var continuation: CheckedContinuation<MyProfile, Never>?
+        repository.profileHandler = {
+            await withCheckedContinuation { continuation = $0; started.fulfill() }
+        }
+        let oldReload = Task { await model.reload() }
+        await fulfillment(of: [started], timeout: 2)
+        repository.profileHandler = nil
+        repository.profile = followProfile(9, id: repository.profile.id)
+        await model.refreshAfterFollowChange()
+        continuation?.resume(returning: followProfile(8, id: repository.profile.id))
+        await oldReload.value
+        XCTAssertEqual(model.profile?.followingCountText, "9")
+    }
+
+    func testSecondFollowDuringHeaderFetchRequestsNewerCount() async {
+        let repository = ProfileRepositoryStub(profile: followProfile(8), pages: [])
+        let model = ProfileTabViewModel(profileRepository: repository, logReelRepository: LogReelRepositoryStub())
+        await model.loadIfNeeded()
+        let started = expectation(description: "first header refresh started")
+        var continuation: CheckedContinuation<MyProfile, Never>?
+        repository.profileHandler = {
+            await withCheckedContinuation { continuation = $0; started.fulfill() }
+        }
+        let firstChange = Task { await model.refreshAfterFollowChange() }
+        await fulfillment(of: [started], timeout: 2)
+        repository.profileHandler = nil
+        repository.profile = followProfile(10, id: repository.profile.id)
+        await model.refreshAfterFollowChange()
+        continuation?.resume(returning: followProfile(9, id: repository.profile.id))
+        await firstChange.value
+        XCTAssertEqual(model.profile?.followingCountText, "10")
+        XCTAssertEqual(repository.profileRequests, 3)
+    }
+
+    private func followProfile(_ following: Int64, id: UUID = UUID()) -> MyProfile {
+        MyProfile(id: id, nickname: "fixture", profileImageURL: nil, bio: "", followerCount: 12, followingCount: following, logCount: 1)
+    }
+
     private func makeLog(
         id: Int64,
         address: String
@@ -212,7 +298,10 @@ final class ProfileViewModelTests: XCTestCase {
 }
 
 private final class ProfileRepositoryStub: ProfileRepository {
-    private let profile: MyProfile
+    var profile: MyProfile
+    var profileError: Error?
+    var profileRequests = 0
+    var profileHandler: (() async -> MyProfile)?
     private var pages: [ProfileLogPage]
     private(set) var requestedCursors: [String?] = []
     var shouldCancelProfileFetch = false
@@ -226,6 +315,9 @@ private final class ProfileRepositoryStub: ProfileRepository {
     }
 
     func fetchMyProfile() async throws -> MyProfile {
+        profileRequests += 1
+        if let profileError { throw profileError }
+        if let profileHandler { return await profileHandler() }
         if shouldCancelProfileFetch {
             throw CancellationError()
         }

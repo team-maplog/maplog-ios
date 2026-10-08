@@ -53,6 +53,9 @@ final class ProfileTabViewModel: ObservableObject {
     private let pageSize = 20
     private var nextCursor: String?
     private var nextSavedLogsCursor: String?
+    private var profileHeaderRequestID = UUID()
+    private var needsProfileHeaderRefresh = false
+    private var isRefreshingProfileHeader = false
 
     init(
         profileRepository: any ProfileRepository,
@@ -70,12 +73,46 @@ final class ProfileTabViewModel: ObservableObject {
         await reload()
     }
 
+    func refreshAfterFollowChange() async {
+        // 진행 중인 이전 프로필 조회가 팔로우 변경 이전 값을 적용하지 못하게 한다.
+        profileHeaderRequestID = UUID()
+        needsProfileHeaderRefresh = true
+        await refreshProfileHeaderIfNeeded()
+    }
+
+    func refreshProfileHeaderIfNeeded() async {
+        guard state == .content, !isRefreshingProfileHeader else { return }
+        isRefreshingProfileHeader = true
+        defer { isRefreshingProfileHeader = false }
+
+        while needsProfileHeaderRefresh {
+            needsProfileHeaderRefresh = false
+            let requestID = UUID()
+            profileHeaderRequestID = requestID
+            do {
+                try Task.checkCancellation()
+                let latest = try await profileRepository.fetchMyProfile()
+                try Task.checkCancellation()
+                guard profileHeaderRequestID == requestID else { continue }
+                profile = makeProfileViewData(from: latest)
+            } catch {
+                guard profileHeaderRequestID == requestID else { continue }
+                // 기존 헤더·로그는 유지하고 다음 프로필 진입에서 다시 조회한다.
+                needsProfileHeaderRefresh = true
+                return
+            }
+        }
+    }
+
     func reload() async {
         guard state != .initialLoading else {
             return
         }
 
         let preservesVisibleContent = state == .content
+        let headerRequestID = UUID()
+        profileHeaderRequestID = headerRequestID
+        if isRefreshingProfileHeader { needsProfileHeaderRefresh = true }
 
         if preservesVisibleContent {
             // pull-to-refresh에서는 기존 프로필을 지우지 않는다.
@@ -113,9 +150,12 @@ final class ProfileTabViewModel: ObservableObject {
                 return
             }
 
-            profile = makeProfileViewData(
-                from: myProfile
-            )
+            if profile == nil || profileHeaderRequestID == headerRequestID {
+                profile = makeProfileViewData(from: myProfile)
+            }
+            if profileHeaderRequestID == headerRequestID {
+                needsProfileHeaderRefresh = false
+            }
 
             let profileLogs = page.logs.map(
                 makeLogCardViewData
@@ -130,6 +170,7 @@ final class ProfileTabViewModel: ObservableObject {
                 for: myProfile,
                 logs: page.logs
             )
+            await refreshProfileHeaderIfNeeded()
         } catch is CancellationError {
             restoreProfileStateAfterCancellation(
                 preservesVisibleContent: preservesVisibleContent

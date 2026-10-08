@@ -112,6 +112,34 @@ final class FollowViewModelTests: XCTestCase {
         XCTAssertEqual(viewModel.state, .empty)
     }
 
+    func testFollowAndUnfollowNotifyProfileRefreshOnlyAfterSuccess() async {
+        let user = makeUser(nickname: "fixture")
+        let repository = FollowRepositoryStub()
+        let model = PublicProfileViewModel(user: user, followRepository: repository,
+            profileRepository: FollowProfileRepositoryStub(publicUserID: user.id))
+        await model.loadIfNeeded()
+        let changed = expectation(forNotification: .maplogFollowStateDidChange, object: nil)
+        changed.expectedFulfillmentCount = 2
+        await model.toggleFollow()
+        await model.toggleFollow()
+        await fulfillment(of: [changed], timeout: 2)
+        XCTAssertFalse(model.isFollowing)
+    }
+
+    func testFailedFollowDoesNotNotifyProfileRefresh() async {
+        let user = makeUser(nickname: "fixture")
+        let repository = FollowRepositoryStub()
+        repository.changeError = APIError.invalidResponse
+        let model = PublicProfileViewModel(user: user, followRepository: repository,
+            profileRepository: FollowProfileRepositoryStub(publicUserID: user.id))
+        await model.loadIfNeeded()
+        let noChange = expectation(forNotification: .maplogFollowStateDidChange, object: nil)
+        noChange.isInverted = true
+        await model.toggleFollow()
+        await fulfillment(of: [noChange], timeout: 0.1)
+        XCTAssertFalse(model.isFollowing)
+    }
+
     private func makeUser(
         nickname: String
     ) -> FollowUser {
@@ -131,6 +159,7 @@ private final class FollowRepositoryStub: FollowRepository {
 
     private var pages: [FollowUserPage]
     private var currentFollowState: Bool
+    var changeError: Error?
     private(set) var requestedCursors: [String?] = []
     private(set) var followRequests: [FollowRequest] = []
 
@@ -170,6 +199,7 @@ private final class FollowRepositoryStub: FollowRepository {
         userID: UUID,
         isFollowing: Bool
     ) async throws -> FollowState {
+        if let changeError { throw changeError }
         followRequests.append(
             FollowRequest(
                 userID: userID,
