@@ -57,7 +57,7 @@ private actor AuthRepositorySpy: AuthRepository {
 
     func signOut() async throws { }
 
-    func reissueToken() async throws -> AuthToken {
+    func reissueToken(refreshToken: String) async throws -> AuthToken {
         reissueCallCount += 1
 
         try await Task.sleep(
@@ -75,6 +75,7 @@ private actor AuthRepositorySpy: AuthRepository {
 
 @MainActor
 private final class AuthSessionSpy: AuthSessionManaging {
+    var sessionGeneration = UUID()
     private(set) var replacedTokens: [AuthToken] = []
 
     func currentAccessToken() throws -> String? {

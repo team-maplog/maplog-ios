@@ -376,6 +376,7 @@ struct MainTabView: View {
                         logMediaRepository: logMediaRepository,
                         playbackService: videoPlaybackService,
                         onLogUpdated: { await homeviewModel.refreshHome() },
+                        onLogRemoved: { homeviewModel.removeReel(withID: $0) },
                         viewModel: profileViewModel
                     )
                 }
@@ -414,6 +415,9 @@ struct MainTabView: View {
         .task {
             // 홈 탭 외의 딥링크로 들어와도 같은 ViewModel에 첫 화면 데이터를 준비합니다.
             await homeviewModel.prepareInitialContent()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .maplogFollowStateDidChange)) { _ in
+            Task { await profileViewModel.refreshAfterFollowChange() }
         }
         .onChange(of: homeviewModel.hasResolvedInitialTourisms, initial: true) { _, isResolved in
             guard isResolved else { return }

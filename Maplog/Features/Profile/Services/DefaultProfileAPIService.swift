@@ -15,7 +15,8 @@ final class DefaultProfileAPIService: ProfileAPIService {
     func fetchMyProfile() async throws -> MyProfileResponseDTO {
         let response: APIResponse<MyProfileResponseDTO> = try await request(
             url: myProfileEndpoint,
-            responseType: APIResponse<MyProfileResponseDTO>.self
+            responseType: APIResponse<MyProfileResponseDTO>.self,
+            cachePolicy: .reloadIgnoringLocalCacheData
         )
 
         return try data(from: response)
@@ -237,9 +238,10 @@ final class DefaultProfileAPIService: ProfileAPIService {
 
     private func request<Response: Decodable>(
         url: URL,
-        responseType: Response.Type
+        responseType: Response.Type,
+        cachePolicy: URLRequest.CachePolicy = .useProtocolCachePolicy
     ) async throws -> Response {
-        var request = URLRequest(url: url)
+        var request = URLRequest(url: url, cachePolicy: cachePolicy)
         request.httpMethod = "GET"
         request.setValue(
             "application/json",

@@ -6,15 +6,17 @@
 //
 
 import Foundation
-import UniformTypeIdentifiers
 
 final class DefaultLogPublishingAPIService: LogPublishingAPIService {
     private let authenticatedAPIClient: AuthenticatedAPIClient
+    private let uploadFileBuilder: any LogVideoUploadFileBuilding
 
     init(
-        authenticatedAPIClient: AuthenticatedAPIClient
+        authenticatedAPIClient: AuthenticatedAPIClient,
+        uploadFileBuilder: any LogVideoUploadFileBuilding
     ) {
         self.authenticatedAPIClient = authenticatedAPIClient
+        self.uploadFileBuilder = uploadFileBuilder
     }
 
     func uploadLogVideo( // .mov 파일을 multipart 형식으로 서버에 전달하고 fileId를 받음
@@ -61,14 +63,15 @@ final class DefaultLogPublishingAPIService: LogPublishingAPIService {
             "multipart/form-data; boundary=\(boundary)",
             forHTTPHeaderField: "Content-Type"
         )
-        urlRequest.httpBody = try makeMultipartBody(
-            fileURL: fileURL,
-            boundary: boundary
-        )
+        let bodyURL = try await uploadFileBuilder.makeMultipartFile(from: fileURL, boundary: boundary)
+        // 인증 재시도가 끝날 때까지 같은 본문 파일을 유지한다.
+        defer { try? FileManager.default.removeItem(at: bodyURL) }
+        try Task.checkCancellation()
 
         let response: APIResponse<LogVideoUploadResponseDTO> =
-            try await authenticatedAPIClient.request(
+            try await authenticatedAPIClient.upload(
                 urlRequest,
+                fromFile: bodyURL,
                 responseType: APIResponse<LogVideoUploadResponseDTO>.self
             )
 
@@ -140,47 +143,4 @@ final class DefaultLogPublishingAPIService: LogPublishingAPIService {
         return logDTO
     }
 
-    private func makeMultipartBody( // 영상 데이터를 file이라는 이름의 multipart 형식으로 포장함
-            fileURL: URL,
-            boundary: String
-        ) throws -> Data {
-            let fileData = try Data(contentsOf: fileURL)
-            let mimeType = mimeType(for: fileURL)
-
-            var body = Data()
-
-            body.append("--\(boundary)\r\n")
-            body.append(
-                """
-                Content-Disposition: form-data; name="file"; filename="\(fileURL.lastPathComponent)"\r\n
-                """
-            )
-            body.append("Content-Type: \(mimeType)\r\n\r\n")
-            body.append(fileData)
-            body.append("\r\n")
-            body.append("--\(boundary)--\r\n")
-
-            return body
-        }
-
-        private func mimeType( // .mov라면 보통 video/quicktime을 자동으로 구함
-            for fileURL: URL
-        ) -> String {
-            guard let type = UTType(
-                filenameExtension: fileURL.pathExtension
-            ),
-            let mimeType = type.preferredMIMEType else {
-                return "application/octet-stream"
-            }
-
-            return mimeType
-        }
-    }
-
-    private extension Data {
-        mutating func append(
-            _ string: String
-        ) {
-            append(Data(string.utf8))
-        }
-    }
+}

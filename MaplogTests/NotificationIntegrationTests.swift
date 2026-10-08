@@ -161,6 +161,7 @@ private final class Events { var values: [String] = [] }
 
 @MainActor
 private final class SessionStub: AuthSessionManaging, AuthenticationStateProviding {
+    var sessionGeneration = UUID()
     var isAuthenticated = true
     let events: Events
     init(events: Events) { self.events = events }
@@ -212,5 +213,5 @@ private final class AuthStub: AuthRepository {
     func signOut() async throws { events.values.append("logout"); if let error { throw error } }
     func signIn(credentials: SignInCredentials) async throws -> AuthToken { throw APIError.missingAccessToken }
     func signUp(credentials: SignUpCredentials) async throws -> AuthToken { throw APIError.missingAccessToken }
-    func reissueToken() async throws -> AuthToken { throw APIError.missingAccessToken }
+    func reissueToken(refreshToken: String) async throws -> AuthToken { throw APIError.missingAccessToken }
 }

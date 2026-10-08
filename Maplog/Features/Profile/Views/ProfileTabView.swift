@@ -27,6 +27,7 @@ struct ProfileTabView: View {
     let logMediaRepository: any LogMediaRepository
     let playbackService: any VideoPlaybackService
     var onLogUpdated: () async -> Void = {}
+    var onLogRemoved: (Int64) -> Void = { _ in }
     @ObservedObject var viewModel: ProfileTabViewModel
     @State private var selectedLogTab: ProfileLogTab = .myLogs
 
@@ -43,6 +44,7 @@ struct ProfileTabView: View {
         .background(Color.maplogSurface)
         .task {
             await viewModel.loadIfNeeded()
+            await viewModel.refreshProfileHeaderIfNeeded()
         }
         .task(id: selectedLogTab) {
             guard selectedLogTab == .savedLogs else {
@@ -190,7 +192,8 @@ struct ProfileTabView: View {
                     actionTitle: "새 맵로그 촬영하기"
                 ),
                 onSelectCapture: selectCaptureTab,
-                onLogUnavailable: { _ in
+                onLogUnavailable: { logID in
+                    onLogRemoved(logID)
                     await viewModel.reload()
                 },
                 onLogUpdated: {

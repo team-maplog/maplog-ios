@@ -68,6 +68,7 @@ final class AuthSessionLifecycleManagerTests: XCTestCase {
 
 @MainActor
 private final class SessionManagingSpy: AuthSessionManaging {
+    var sessionGeneration = UUID()
     private(set) var stagedTokens: [AuthToken] = []
     private(set) var didActivateStagedSession = false
     private(set) var didEndSession = false

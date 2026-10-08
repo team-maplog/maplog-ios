@@ -15,6 +15,7 @@ import Foundation
 @MainActor // ui 상태 변경을 메인 스레드에서 안전하게 함
 final class AuthSessionStore: ObservableObject, AuthSessionManaging, AuthenticationStateProviding { // AuthSessionStore는 AccessTokenProviding 역할을 수행할 수 있음
     @Published private(set) var isAuthenticated = false
+    private(set) var sessionGeneration = UUID()
 
     private enum TokenKey {
         static let accessToken = "maplog.accessToken"
@@ -43,6 +44,8 @@ final class AuthSessionStore: ObservableObject, AuthSessionManaging, Authenticat
     }
 
     func stageSession(with token: AuthToken) throws {
+        // await 중 도착한 이전 세션의 결과가 새 로그인에 반영되지 않게 한다.
+        sessionGeneration = UUID()
         try saveTokens(token)
         // handoff 교환 직후에는 /users/me 검증이 끝날 때까지 홈을 열지 않음
         isAuthenticated = false
@@ -68,6 +71,8 @@ final class AuthSessionStore: ObservableObject, AuthSessionManaging, Authenticat
 
     // 앱 실행 시 기존 세션 복구
     func restoreSession() throws {
+        // await 중 도착한 이전 세션의 결과가 새 로그인에 반영되지 않게 한다.
+        sessionGeneration = UUID()
         let refreshToken = try KeychainService.read(for: TokenKey.refreshToken)
 
         isAuthenticated = refreshToken != nil
@@ -75,6 +80,8 @@ final class AuthSessionStore: ObservableObject, AuthSessionManaging, Authenticat
 
     // 로그아웃 토큰 무효시 세션 종료
     func endSession() throws {
+        // await 중 도착한 이전 세션의 결과가 새 로그인에 반영되지 않게 한다.
+        sessionGeneration = UUID()
         // 이미 비로그인 상태여도 남아 있을 수 있는 임시 토큰까지 지움
         try KeychainService.delete(for: TokenKey.accessToken)
         try KeychainService.delete(for: TokenKey.refreshToken)

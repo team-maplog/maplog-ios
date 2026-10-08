@@ -13,6 +13,12 @@ import Foundation
 
 
 final class APIClient {
+    private let session: URLSession
+
+    init(session: URLSession = .shared) {
+        self.session = session
+    }
+
     func request<Response: Decodable>(
         _ urlRequest: URLRequest,
         responseType: Response.Type
@@ -41,7 +47,7 @@ final class APIClient {
         let urlResponse: URLResponse
 
         do {
-            (data, urlResponse) = try await URLSession.shared.data(
+            (data, urlResponse) = try await session.data(
                 for: urlRequest
             )
         } catch {
@@ -67,7 +73,7 @@ final class APIClient {
         let urlResponse: URLResponse
 
         do {
-            (temporaryURL, urlResponse) = try await URLSession.shared.download(
+            (temporaryURL, urlResponse) = try await session.download(
                 for: urlRequest
             )
         } catch {
@@ -90,6 +96,30 @@ final class APIClient {
         }
 
         return temporaryURL
+    }
+
+    func upload<Response: Decodable>(
+        _ request: URLRequest,
+        fromFile fileURL: URL,
+        responseType: Response.Type
+    ) async throws -> Response {
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.upload(for: request, fromFile: fileURL)
+        } catch is CancellationError {
+            throw CancellationError()
+        } catch let error as URLError where error.code == .cancelled {
+            throw CancellationError()
+        } catch {
+            throw APIError.network(error)
+        }
+        guard let httpResponse = response as? HTTPURLResponse else { throw APIError.invalidResponse }
+        guard (200..<300).contains(httpResponse.statusCode) else {
+            throw makeServerError(statusCode: httpResponse.statusCode, data: data)
+        }
+        do { return try JSONDecoder().decode(responseType, from: data) }
+        catch { throw APIError.decoding(error) }
     }
 
     private func makeServerError(
