@@ -24,7 +24,15 @@ import Security
 
 enum KeychainService {
     // service는 keychain 안에서 maplog 인증 정보 묶음을 식별하는 이름
-    private static let service = "\(Bundle.main.bundleIdentifier ?? "Maplog").auth"
+    private static let service = serviceName(
+        bundleIdentifier: Bundle.main.bundleIdentifier ?? "Maplog",
+        apiBaseURL: APIConfiguration.baseURL
+    )
+
+    // 서버를 알 수 없는 이전 공용 토큰은 복원하지 않고 각 환경에서 다시 로그인한다.
+    static func serviceName(bundleIdentifier: String, apiBaseURL: URL) -> String {
+        "\(bundleIdentifier).auth.\(APIConfiguration.storageNamespace(for: apiBaseURL))"
+    }
     
     enum KeychainError: Error {
         case unexpectedStatus(OSStatus) // keychain api가 성공 실패를 숫자로 알려주는 타입

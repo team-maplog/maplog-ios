@@ -55,6 +55,8 @@ enum MaplogImageCacheKey {
             return "image-url:\(url.absoluteString)"
         }
 
+        components.user = nil
+        components.password = nil
         components.fragment = nil
         components.queryItems = components.queryItems?
             .filter { !volatileQueryNames.contains($0.name.lowercased()) }
