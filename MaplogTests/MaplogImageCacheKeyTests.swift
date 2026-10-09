@@ -2,6 +2,20 @@ import XCTest
 @testable import Maplog
 
 final class MaplogImageCacheKeyTests: XCTestCase {
+    func testSameLogThumbnailOnDifferentServersHasDifferentCacheKeys() throws {
+        let development = try XCTUnwrap(URL(string: "https://dev-api.example.com/api/v1/logs/7/thumbnail"))
+        let production = try XCTUnwrap(URL(string: "https://api.example.com/api/v1/logs/7/thumbnail"))
+
+        XCTAssertNotEqual(MaplogImageCacheKey.stableURL(development), MaplogImageCacheKey.stableURL(production))
+        XCTAssertNotEqual(MaplogImageCacheKey.stableURL(development), "log-thumbnail-7")
+    }
+
+    func testStableURLDoesNotKeepCredentialsOrFragment() throws {
+        let url = try XCTUnwrap(URL(string: "https://user:password@images.example.com/log.jpg?token=secret&width=640#private"))
+
+        XCTAssertEqual(MaplogImageCacheKey.stableURL(url), "image-url:https://images.example.com/log.jpg?width=640")
+    }
+
     func testStableURLIgnoresExpiringAuthenticationQueryItems() throws {
         let firstURL = try XCTUnwrap(
             URL(

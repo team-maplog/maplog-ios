@@ -27,7 +27,8 @@ final class DefaultLogMediaAPIService: LogMediaAPIService {
 
         return try await imageDataLoader.imageData(
             from: url,
-            cacheKey: "log-thumbnail-\(logID)",
+            // 다른 서버에서 같은 로그 ID를 사용해도 이전 썸네일을 재사용하지 않는다.
+            cacheKey: MaplogImageCacheKey.stableURL(url),
             targetSize: targetSize
         )
     }
